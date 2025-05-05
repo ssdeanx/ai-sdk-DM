@@ -47,6 +47,7 @@ lib/memory/
 ```
 
 ### 2.1 db.ts
+
 - Exports `getLibSQLClient()`:
   - Initializes a LibSQL client using `LIBSQL_DATABASE_URL` and `LIBSQL_AUTH_TOKEN`.
   - Throws if the URL is not configured.
@@ -56,6 +57,7 @@ lib/memory/
   - Wrap low-level SQL operations with error handling and batched execution.
 
 ### 2.2 libsql.ts
+
 - Exports `createLibSQLClient()`:
   - Alias to `getLibSQLClient` for raw memory tables under `memory` (legacy vs. agent-memory distinction).
 - Provides direct functions on a `memory` table (thread_id, role, content, metadata):
@@ -63,6 +65,7 @@ lib/memory/
 - Use when you need fast, unstructured key/value style memory operations.
 
 ### 2.3 memory.ts
+
 - High-level orchestrator for agent conversations:
   - **Thread lifecycle**:
     - `createMemoryThread(name, options)`: creates new thread row.
@@ -156,6 +159,48 @@ lib/memory/
 - [ ] vector-store.ts: Implement a dedicated vector store module for efficient similarity search
 - [ ] store-embedding.ts: Create helper to batch-save embeddings and manage persistence
 - [ ] lru-cache: Integrate an LRU caching layer for hot threads and embeddings
+
+---
+
+## Setup LibSQL Vector DB (Embeddings)
+
+To optimize embeddings storage and similarity search using LibSQL/Turso:
+
+1. Follow Turso guidance on space-complexity of vector indexes:
+   https://turso.tech/blog/the-space-complexity-of-vector-indexes-in-libsql
+2. Create an `embeddings` table with a BLOB `vector` column:
+
+   ```sql
+   CREATE TABLE embeddings (
+     id TEXT PRIMARY KEY,
+     vector BLOB NOT NULL,
+     model TEXT,
+     dimensions INTEGER,
+     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+3. Install or enable the HNSW extension if needed.
+4. Create an HNSW index on the `vector` column:
+
+   ```sql
+   CREATE INDEX embeddings_hnsw
+     ON embeddings USING HNSW (vector)
+     WITH (dims = 384, m = 16, efConstruction = 200);
+   ```
+
+5. Verify performance and storage footprint as per Turso recommendations.
+
+---
+
+## Current Scope Checklist
+
+- [x] Core memory APIs (`db.ts`, `libsql.ts`, `memory.ts`)
+- [x] High-level thread/message management and summarization
+- [x] Token counting and embedding generation
+- [x] State management for agents
+- [x] Semantic search over embeddings
+- [x] **Vector DB integration**: `embeddings` table with HNSW index per Turso blog
 
 ---
 
