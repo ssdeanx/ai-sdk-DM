@@ -52,7 +52,7 @@ lib/
 - **ai-integration.ts**: Low-level wrappers for `streamText`/`generateText`, token counting (`js-tiktoken`), embedding generation (`@xenova/transformers`), and vector search.
 - **ai.ts**: Unified entry point to select and initialize AI providers (Google, future OpenAI/Anthropic) based on Supabase `models` table.
 - **google-ai.ts**: Specialized Google Generative AI functions (`streamGoogleAI`, `generateGoogleAI`) with Supabase-driven config lookup.
-- **agentic-integration.ts**: High-level SDK integration for multi-step and orchestrated agentic flows (if using @agentic/sdk).
+- **agentic-integration.ts**: High-level SDK integration for multi-step and orchestrated agentic flows (if using @agentic/core).
 
 ### 2.2 Agents Framework
 
