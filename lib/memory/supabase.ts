@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
 
 // Initialize Supabase client
-export const createSupabaseClient = () => {
+export const getSupabaseClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -17,7 +17,7 @@ export const createSupabaseClient = () => {
 
 // Check if Supabase is available
 export const isSupabaseAvailable = async () => {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   try {
     const { error } = await supabase.from("models").select("count", { count: "exact", head: true })
@@ -39,7 +39,7 @@ export async function getData<T>(
     orderBy?: { column: string; ascending?: boolean }
   },
 ): Promise<T[]> {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   try {
     let query = supabase.from(tableName).select(options?.select || "*")
@@ -84,7 +84,7 @@ export async function getData<T>(
 
 // Generic function to get a single item by ID
 export async function getItemById<T>(tableName: string, id: string): Promise<T | null> {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   try {
     const { data, error } = await supabase.from(tableName).select("*").eq("id", id).single()
@@ -103,7 +103,7 @@ export async function getItemById<T>(tableName: string, id: string): Promise<T |
 
 // Generic function to create an item
 export async function createItem<T>(tableName: string, item: Omit<T, "id" | "created_at" | "updated_at">): Promise<T> {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   try {
     const { data, error } = await supabase.from(tableName).insert(item).select().single()
@@ -122,7 +122,7 @@ export async function createItem<T>(tableName: string, item: Omit<T, "id" | "cre
 
 // Generic function to update an item
 export async function updateItem<T>(tableName: string, id: string, updates: Partial<T>): Promise<T> {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   try {
     const { data, error } = await supabase
@@ -146,7 +146,7 @@ export async function updateItem<T>(tableName: string, id: string, updates: Part
 
 // Generic function to delete an item
 export async function deleteItem(tableName: string, id: string): Promise<boolean> {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   try {
     const { error } = await supabase.from(tableName).delete().eq("id", id)

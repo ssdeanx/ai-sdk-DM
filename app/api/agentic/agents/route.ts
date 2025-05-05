@@ -105,6 +105,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("Error creating agent:", error)
-    return NextResponse.json({ error: "Failed to create agent", details: error.message }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    return NextResponse.json({ error: "Failed to create agent", details: errorMessage }, { status: 500 })
   }
 }

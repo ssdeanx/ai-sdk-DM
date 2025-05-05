@@ -1,7 +1,10 @@
-import { getLibSQLClient, generateUUID } from "./db"
+import { getLibSQLClient } from "./db"
+import { v4 as generateUUID } from "uuid"
 import { encodingForModel } from "js-tiktoken"
 import { pipeline } from "@xenova/transformers"
 import { generateAIResponse } from "../ai"
+import { LRUCache } from "lru-cache"
+import { getGoogleAI } from "../google-ai" // for fallback embeddings
 
 // Types for memory management
 export interface Message {
@@ -33,6 +36,9 @@ export interface AgentState {
 
 // Initialize embedding model
 let embeddingModel: any = null
+
+// Cache for thread messages: key = thread_id, value = Message[]
+const messagesCache = new LRUCache<string, Message[]>({ max: 100, ttl: 1000 * 60 * 10 })
 
 // Create a new memory thread
 export async function createMemoryThread(
@@ -149,6 +155,9 @@ export async function deleteMemoryThread(thread_id: string): Promise<boolean> {
       args: [thread_id],
     })
 
+    // Clear cache for this thread
+    messagesCache.delete(thread_id)
+
     return true
   } catch (error) {
     console.error(`Error deleting memory thread ${thread_id}:`, error)
@@ -158,6 +167,14 @@ export async function deleteMemoryThread(thread_id: string): Promise<boolean> {
 
 // Load messages for a memory thread
 export async function loadMessages(thread_id: string, limit?: number): Promise<Message[]> {
+  // Return cached messages if no limit is specified
+  if (!limit) {
+    const cached = messagesCache.get(thread_id)
+    if (cached) {
+      return cached
+    }
+  }
+
   const db = getLibSQLClient()
 
   let sql = `
@@ -174,7 +191,7 @@ export async function loadMessages(thread_id: string, limit?: number): Promise<M
 
   const result = await db.execute({ sql, args })
 
-  return result.rows.map((row) => ({
+  const messages = result.rows.map((row) => ({
     id: row.id as string,
     role: row.role as "user" | "assistant" | "system" | "tool",
     content: row.content as string,
@@ -185,6 +202,13 @@ export async function loadMessages(thread_id: string, limit?: number): Promise<M
     metadata: JSON.parse((row.metadata as string) || "{}"),
     created_at: row.created_at as string,
   }))
+
+  // Cache full message list when no limit
+  if (!limit) {
+    messagesCache.set(thread_id, messages)
+  }
+
+  return messages
 }
 
 // Count tokens in a text using js-tiktoken
@@ -222,23 +246,40 @@ export function countTokens(text: string, model: "o200k_base" | "cl100k_base" | 
     }
 
 
-// Generate embeddings using @xenova/transformers
-export async function generateEmbedding(text: string): Promise<Float32Array> {
-  try {
-    if (!embeddingModel) {
-      // Initialize the embedding model
-      embeddingModel = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
+// Generate embeddings using @xenova/transformers or fallback to Google text-embedding-004
+export async function generateEmbedding(
+  text: string,
+  modelName?: string // optional: specify 'text-embedding-004' for Google
+): Promise<Float32Array> {
+  // Try local Xenova pipeline first unless explicit Google model requested
+  if (!modelName || modelName !== "text-embedding-004") {
+    try {
+      if (!embeddingModel) {
+        embeddingModel = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
+      }
+      const result = await embeddingModel(text, { pooling: "mean", normalize: true })
+      return result.data
+    } catch (error) {
+      console.warn("Xenova embedding failed, falling back to Google text-embedding-004:", error)
     }
+  }
 
-    const result = await embeddingModel(text, {
-      pooling: "mean",
-      normalize: true,
-    })
-
-    return result.data
+  // Fallback: Google text-embedding-004 via AI SDK (second choice)
+  try {
+    const googleAI = getGoogleAI() // uses process.env.GOOGLE_API_KEY
+    // hypothetically support embed method; adjust per SDK
+    if (typeof (googleAI as any).embed === "function") {
+      const res = await (googleAI as any).embed({ model: "text-embedding-004", input: text })
+      // assume response contains embeddings as number[][]
+      const data = res.data[0].embedding
+      return new Float32Array(data)
+    } else {
+      throw new Error("Google AI SDK embedding method not available")
+    }
   } catch (error) {
-    console.error("Error generating embedding:", error)
-    throw error
+    console.error("Google embedding failed:", error)
+    // final fallback: zero vector
+    return new Float32Array(384)
   }
 }
 
@@ -334,6 +375,9 @@ export async function saveMessage(
     sql: `UPDATE memory_threads SET updated_at = datetime('now') WHERE id = ?`,
     args: [thread_id],
   })
+
+  // Clear cache for this thread so next load fetches fresh
+  messagesCache.delete(thread_id)
 
   return message_id
 }

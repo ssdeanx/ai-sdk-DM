@@ -96,9 +96,25 @@ export interface Database {
           updated_at?: string
         }
       }
+      agent_tools: {
+        Row: {
+          agent_id: string
+          tool_id: string
+          created_at: string
+        }
+        Insert: {
+          agent_id: string
+          tool_id: string
+          created_at?: string
+        }
+        Update: {
+          agent_id?: string
+          tool_id?: string
+          created_at?: string
+        }
+      }
       settings: {
         Row: {
-          id: string
           category: string
           key: string
           value: string
@@ -106,7 +122,6 @@ export interface Database {
           updated_at: string
         }
         Insert: {
-          id?: string
           category: string
           key: string
           value: string
@@ -114,7 +129,6 @@ export interface Database {
           updated_at?: string
         }
         Update: {
-          id?: string
           category?: string
           key?: string
           value?: string

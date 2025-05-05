@@ -60,7 +60,7 @@ export function useSupabaseFetch<T>({
           toast({
             title: "Using mock data",
             description: `Database connection not available. Using mock data for ${resourceName.toLowerCase()}.`,
-            variant: "warning",
+            variant: "default",
           })
         }
       } else {

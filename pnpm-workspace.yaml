@@ -1,4 +1,6 @@
 onlyBuiltDependencies:
+  - esbuild
+  - hnswlib-node
   - openai-zod-to-json-schema
   - protobufjs
   - sharp

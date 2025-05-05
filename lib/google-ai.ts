@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { streamText, generateText } from "ai"
-import { createSupabaseClient } from "./memory/supabase"
+import { getSupabaseClient } from "./memory/supabase"
 
 // Initialize Google AI provider
 export function getGoogleAI(apiKey?: string, baseURL?: string) {
@@ -12,7 +12,7 @@ export function getGoogleAI(apiKey?: string, baseURL?: string) {
 
 // Get model configuration from Supabase
 export async function getModelConfig(modelId: string) {
-  const supabase = createSupabaseClient()
+  const supabase = getSupabaseClient()
 
   const { data, error } = await supabase.from("models").select("*").eq("id", modelId).single()
 

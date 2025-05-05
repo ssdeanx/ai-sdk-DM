@@ -2,11 +2,11 @@ import { createClient } from "@libsql/client"
 
 // Initialize LibSQL client for agent memory and threads
 export const createLibSQLClient = () => {
-  const url = process.env.LIBSQL_NEON_DATABASE_URL
+  const url = process.env.LIBSQL_DATABASE_URL
   const authToken = process.env.LIBSQL_AUTH_TOKEN
 
   if (!url) {
-    throw new Error("LibSQL database URL not found. Please set LIBSQL_DATABASE_URL environment variable.")
+    throw new Error("LIBSQL_DATABASE_URL environment variable is not set")
   }
 
   return createClient({ url, authToken })
@@ -91,3 +91,35 @@ export async function deleteThread(threadId: string) {
     throw error
   }
 }
+
+// Initialize vector index (HNSW) on embeddings table
+export async function initVectorIndex(
+  options: { dims?: number; m?: number; efConstruction?: number } = { dims: 384, m: 16, efConstruction: 200 }
+) {
+  const client = createClient({ url: process.env.LIBSQL_DATABASE_URL!, authToken: process.env.LIBSQL_AUTH_TOKEN });
+  const { dims = 384, m = 16, efConstruction = 200 } = options;
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS embeddings_hnsw
+      ON embeddings USING HNSW (vector)
+      WITH (dims = ${dims}, m = ${m}, efConstruction = ${efConstruction});
+  `);
+}
+
+// Perform vector similarity search against embeddings table
+export async function vectorSearch(
+  queryVector: Float32Array,
+  limit = 5
+): Promise<Array<{ id: string; vector: Float32Array }>> {
+  const client = createClient({ url: process.env.LIBSQL_DATABASE_URL!, authToken: process.env.LIBSQL_AUTH_TOKEN });
+  const buffer = Buffer.from(queryVector.buffer);
+  const result = await client.execute({
+    sql: `SELECT id, vector FROM embeddings ORDER BY vector <-> ? LIMIT ?`,
+    args: [buffer, limit],
+  });
+  return result.rows.map(row => ({
+    id: row.id as string,
+    vector: new Float32Array((row.vector as ArrayBuffer)),
+  }));
+}
+
+export { createLibSQLClient as getLibSQLClient }

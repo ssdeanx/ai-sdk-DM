@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import dotenv from "dotenv"
 import { createClient as createLibSQLClient } from "@libsql/client"
+import { initVectorStore } from "../lib/memory/vector-store"
 
 dotenv.config()
 
@@ -16,7 +17,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Initialize LibSQL client
-const libsqlUrl = process.env.LIBSQL_NEON_DATABASE_URL
+const libsqlUrl = process.env.LIBSQL_DATABASE_URL
 const libsqlToken = process.env.LIBSQL_AUTH_TOKEN
 
 if (!libsqlUrl) {
@@ -116,6 +117,9 @@ async function initLibSQLSchema() {
     `)
 
     console.log("LibSQL schema initialized successfully")
+
+    // Initialize vector index for embeddings
+    await initVectorStore()
   } catch (error) {
     console.error("Error initializing LibSQL schema:", error)
   }
