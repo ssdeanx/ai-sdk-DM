@@ -3,6 +3,7 @@ import { customsearch_v1 as GoogleSearchAPI } from '@googleapis/customsearch'
 import { z } from 'zod'
 
 import { paginate } from './paginate'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace googleCustomSearch {
   export const SearchParamsSchema = z.object({
@@ -97,3 +98,5 @@ export class GoogleCustomSearchClient extends AIFunctionsProvider {
     return results
   }
 }
+
+export const googleCustomSearchTools = createAISDKTools(new GoogleCustomSearchClient())

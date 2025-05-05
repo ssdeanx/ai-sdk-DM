@@ -6,6 +6,7 @@ import {
 } from '@agentic/core'
 import defaultKy, { type KyInstance } from 'ky'
 import { z } from 'zod'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace reddit {
   export const BASE_URL = 'https://www.reddit.com'
@@ -453,3 +454,5 @@ export class RedditClient extends AIFunctionsProvider {
     }
   }
 }
+
+export const redditTools = createAISDKTools(new RedditClient())

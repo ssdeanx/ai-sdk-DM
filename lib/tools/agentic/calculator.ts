@@ -1,6 +1,7 @@
 import { createAIFunction } from '@agentic/core'
 import { evaluate } from 'mathjs'
 import { z } from 'zod'
+import { createAISDKTools } from './ai-sdk'
 
 // TODO: ensure `expr` is sanitized to not run arbitrary code
 
@@ -21,3 +22,5 @@ export const calculator = createAIFunction(
     return result
   }
 )
+
+export const calculatorTools = createAISDKTools(calculator)

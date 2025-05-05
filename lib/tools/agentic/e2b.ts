@@ -1,6 +1,7 @@
 import { createAIFunction, getEnv } from '@agentic/core'
 import { Sandbox } from '@e2b/code-interpreter'
 import { z } from 'zod'
+import { createAISDKTools } from './ai-sdk'
 
 /**
  * E2B Python code interpreter sandbox.
@@ -52,3 +53,5 @@ Execute python code in a Jupyter notebook cell and returns any result, stdout, s
     }
   }
 )
+
+export const e2bTools = createAISDKTools(e2b)

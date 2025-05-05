@@ -6,10 +6,11 @@ import * as dataTools from "./data-tools"
 import * as fileTools from "./file-tools"
 import * as apiTools from "./api-tools"
 import * as ragTools from "./rag-tools"
+import * as agenticTools from "./agentic"
 import { getLibSQLClient } from "../memory/db"
 
 // Export all tool modules
-export { webTools, codeTools, dataTools, fileTools, apiTools, ragTools }
+export { webTools, codeTools, dataTools, fileTools, apiTools, ragTools, agenticTools }
 
 // Tool categories
 export const toolCategories = [
@@ -19,6 +20,7 @@ export const toolCategories = [
   { id: "file", name: "File Tools", description: "Tools for file system operations" },
   { id: "api", name: "API Tools", description: "Tools for API interactions" },
   { id: "rag", name: "RAG Tools", description: "Tools for retrieval-augmented generation" },
+  { id: "agentic", name: "Agentic Tools", description: "Agentic and AI SDK compatible tools" },
   { id: "custom", name: "Custom Tools", description: "User-defined custom tools" },
 ]
 
@@ -31,6 +33,7 @@ export function getAllBuiltInTools() {
     ...fileTools.tools,
     ...apiTools.tools,
     ...ragTools.tools,
+    ...agenticTools,
   }
 }
 
@@ -102,7 +105,6 @@ export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
       for (const [key, prop] of Object.entries(schema.properties)) {
         let zodProp = jsonSchemaToZod(prop as any)
 
-        // Make  {
         // Make property optional if not in required array
         if (schema.required && !schema.required.includes(key)) {
           zodProp = zodProp.optional()

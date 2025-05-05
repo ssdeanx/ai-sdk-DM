@@ -8,6 +8,7 @@ import {
 import defaultKy, { type KyInstance } from 'ky'
 
 import { bravesearch } from './brave-search'
+import { createAISDKTools } from './ai-sdk'
 
 /**
  * Agentic client for the Brave search engine.
@@ -152,3 +153,5 @@ export class BraveSearchClient extends AIFunctionsProvider {
       .json<bravesearch.Description>()
   }
 }
+
+export const braveSearchTools = createAISDKTools(new BraveSearchClient())

@@ -3,6 +3,7 @@ import { AIFunctionsProvider, assert, getEnv, throttleKy } from '@agentic/core'
 import defaultKy, { type KyInstance } from 'ky'
 import pThrottle from 'p-throttle'
 import wdk from 'wikibase-sdk/wikidata.org'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace wikidata {
   // Allow up to 200 requests per second by default.
@@ -119,3 +120,5 @@ export class WikidataClient extends AIFunctionsProvider {
     return entities as wikidata.SimplifiedEntityMap
   }
 }
+
+export const wikidataTools = createAISDKTools(new WikidataClient())

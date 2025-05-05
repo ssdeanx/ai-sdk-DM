@@ -118,4 +118,34 @@ lib/tools/
 
 ---
 
+## Agentic Tools AI SDK Integration
+
+- [x] All major agentic tool files in `lib/tools/agentic` export their tools using `createAISDKTools` and are compatible with the Vercel AI SDK:
+  - [x] wikipedia-client.ts
+  - [x] wikidata-client.ts
+  - [x] reddit-client.ts
+  - [x] arxiv-client.ts
+  - [x] brave-search-client.ts
+  - [x] calculator.ts
+  - [x] e2b.ts
+  - [x] firecrawl-client.ts
+  - [x] google-custom-search-client.ts
+  - [x] tavily-client.ts
+  - [x] polygon-client.ts
+  - [x] github-client.ts
+- [x] All agentic tools are re-exported in `lib/tools/agentic/index.ts`.
+- [x] All agentic tools are imported and exported in `lib/tools/index.ts` as `agenticTools`.
+- [x] The `agentic` category is present in `toolCategories` in `lib/tools/index.ts`.
+- [x] All agentic tools are included in `getAllBuiltInTools()` and available as built-in tools.
+- [x] README documents onboarding and usage for agentic tools.
+
+You can now access all agentic tools via the `agenticTools` export in `lib/tools/index.ts` and as part of the built-in registry (`getAllBuiltInTools`).
+
+**To add a new agentic tool:**
+1. Import `createAISDKTools` from `./ai-sdk` in your tool file.
+2. Export your tool as `export const <name>Tools = createAISDKTools(new <ClassName>())` or similar.
+3. Ensure it is re-exported in `lib/tools/agentic/index.ts` and available in the main `lib/tools/index.ts` aggregator.
+
+---
+
 *End of `/lib/tools/README.md`*

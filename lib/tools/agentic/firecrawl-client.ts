@@ -9,6 +9,7 @@ import {
 import defaultKy, { type KyInstance } from 'ky'
 import pThrottle from 'p-throttle'
 import { z } from 'zod'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace firecrawl {
   export const BASE_URL = 'https://api.firecrawl.dev'
@@ -841,3 +842,5 @@ export class FirecrawlClient extends AIFunctionsProvider {
     }
   }
 }
+
+export const firecrawlTools = createAISDKTools(new FirecrawlClient())

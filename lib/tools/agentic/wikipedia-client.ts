@@ -8,6 +8,7 @@ import {
 import defaultKy, { type KyInstance } from 'ky'
 import pThrottle from 'p-throttle'
 import { z } from 'zod'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace wikipedia {
   // Allow up to 200 requests per second by default.
@@ -194,3 +195,5 @@ export class WikipediaClient extends AIFunctionsProvider {
       .json<wikipedia.PageSummaryResponse>()
   }
 }
+
+export const wikipediaTools = createAISDKTools(new WikipediaClient())

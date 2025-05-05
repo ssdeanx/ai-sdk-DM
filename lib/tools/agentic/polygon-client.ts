@@ -1,5 +1,6 @@
 import { AIFunctionsProvider, assert, getEnv } from '@agentic/core'
 import defaultKy, { type KyInstance } from 'ky'
+import { createAISDKTools } from './ai-sdk'
 
 // TODO: add aiFunction decorator to select methods
 
@@ -1083,3 +1084,5 @@ export class PolygonClient extends AIFunctionsProvider {
       .json<polygon.GroupedDailyOutput>()
   }
 }
+
+export const polygonTools = createAISDKTools(new PolygonClient())

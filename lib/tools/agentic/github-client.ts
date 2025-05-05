@@ -1,6 +1,7 @@
 import { aiFunction, AIFunctionsProvider, assert, getEnv } from '@agentic/core'
 import { Octokit } from 'octokit'
 import { z } from 'zod'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace github {
   export interface User {
@@ -88,3 +89,5 @@ export class GitHubClient extends AIFunctionsProvider {
     return res.data
   }
 }
+
+export const githubTools = createAISDKTools(new GitHubClient())

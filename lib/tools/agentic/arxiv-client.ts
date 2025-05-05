@@ -9,6 +9,7 @@ import defaultKy, { type KyInstance } from 'ky'
 import { z } from 'zod'
 
 import { castArray, getProp } from './utils'
+import { createAISDKTools } from './ai-sdk'
 
 export namespace arxiv {
   export const API_BASE_URL = 'https://export.arxiv.org/api'
@@ -241,3 +242,5 @@ export class ArXivClient extends AIFunctionsProvider {
     }
   }
 }
+
+export const arxivTools = createAISDKTools(new ArXivClient({}))

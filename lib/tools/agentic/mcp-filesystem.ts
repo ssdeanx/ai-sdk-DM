@@ -2,7 +2,7 @@ import 'dotenv/config'
 
 import { createAISDKTools } from '@agentic/ai-sdk'
 import { createMcpTools } from '@agentic/mcp'
-import { openai } from '@ai-sdk/openai'
+import { google } from '@ai-sdk/google'
 import { generateText } from 'ai'
 import { gracefulExit } from 'exit-hook'
 
@@ -24,7 +24,7 @@ async function main() {
   })
 
   const result = await generateText({
-    model: openai('gpt-4o-mini'),
+    model: google('gemini-2.0-flash-exp'),
     tools: createAISDKTools(mcpTools),
     toolChoice: 'required',
     temperature: 0,
@@ -36,7 +36,7 @@ async function main() {
 }
 
 try {
-  await main()
+  main()
   gracefulExit(0)
 } catch (err) {
   console.error(err)
