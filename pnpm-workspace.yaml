@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - openai-zod-to-json-schema
+  - protobufjs
+  - sharp
+  - tree-sitter
