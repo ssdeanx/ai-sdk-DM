@@ -1,150 +1,179 @@
-# /lib/agents — Agent Framework
-
-_Last updated: 2025-05-05_
+# /lib/agents — AI Agent System (AI Assistant Onboarding)
 
 ## Chat Context & Prompt Guidelines
 
-When you (AI assistant) join a new chat about `/lib/agents`, use this onboarding and context-enrichment template. This is designed for maximum clarity, accuracy, and adaptability for future coding agents and maintainers, focused specifically on the agent system.
+When you (AI assistant) join a new chat about `/lib/agents`, use the following pattern to enrich your responses:
 
-### 1. Mental Model & System Overview
+1. **Background**: This folder implements the Agent framework—`BaseAgent`, `AgentRegistry`, and `agent-service`—for loading agent configs from Supabase and running AI-driven workflows with memory and tools.
+2. **Your Role**: Provide code snippets, refactor suggestions, and troubleshooting steps tailored to agent classes, registry logic, and service flows.
+3. **Goals**:
+   - Clarify file responsibilities and data flows (Supabase → Agent → Memory → Tools → AI).
+   - Offer step-by-step guidance for adding/updating agents, hooks, or multi-agent features.
+   - Maintain consistency with existing architecture and TypeScript types (`agent.types.ts`).
+4. **Constraints**:
+   - Avoid large-scale refactors unless explicitly requested.
+   - Align code with Supabase-driven configs and LibSQL memory patterns.
+   - Use clear, concise explanations and minimal examples.
+5. **Example Prompt**:
+   "Explain how to add a lifecycle hook (`onStart`) to `BaseAgent` so that it logs a message before each run, ensuring type safety and minimal changes."
 
-- `/lib/agents` contains all core logic for agent creation, registration, orchestration, and execution.
-- Agents are defined as TypeScript classes (BaseAgent), registered in a central registry, and can be loaded dynamically from Supabase.
-- The folder includes the agent base class, registry, service runner, and type definitions for all agent-related data.
-- Agents interact with tools, memory, and workflows via well-defined interfaces and hooks.
-
-### 2. Your Role as Coding Agent
-
-- **Diagnose**: Determine if a request is about agent definition, registration, orchestration, or execution.
-- **Guide**: Offer code snippets, onboarding steps, and troubleshooting for agent creation, loading, and running.
-- **Clarify**: Ask for missing context (e.g., "Is this a new agent type, a registry update, or a run-time orchestration?").
-- **Validate**: Ensure new agents are registered, types are updated, and all flows are tested.
-- **Explain**: For every suggestion, provide rationale, file references, and potential pitfalls.
-
-### 3. Decision Tree (Where Should Agent Logic Live?)
-
-- **Base agent logic**: `baseAgent.ts` (core class, run loop, memory/tools integration)
-- **Agent registry**: `registry.ts` (loads agents from Supabase, caches in memory)
-- **Agent service**: `agent-service.ts` (procedural runner, exposes `runAgent()`)
-- **Types**: `agent.types.ts` (TypeScript interfaces for all agent data)
-- **If unsure**: Ask the user for intent and expected agent workflow.
-
-### 4. Key Files & Integration Points
-
-- **baseAgent.ts**: Abstract class for all agents, defines `run()`, memory, tool, and provider hooks.
-- **agent-service.ts**: Exposes `runAgent(agentId, threadId, prompt)` for procedural agent runs.
-- **registry.ts**: Loads agents from Supabase, caches for fast lookup, supports hot reload.
-- **agent.types.ts**: TypeScript interfaces for agent config, state, and Supabase rows.
-- **Supabase**: Agents are defined in the `agents` table, loaded at startup.
-- **Memory/Tools**: Agents interact with memory (`lib/memory/`) and tools (`lib/tools/`) via injected dependencies.
-- **Workflow**: Advanced orchestration can be implemented in `lib/workflow/` and referenced from agents.
-
-### 5. Advanced Scenarios & Examples
-
-- **Add a new agent**: Define a new class extending `BaseAgent` in `agents/`, add config to Supabase `agents` table, update `agent.types.ts`, and register in `registry.ts`.
-- **Run an agent**: Use `runAgent()` from `agent-service.ts` with the agent ID, thread ID, and prompt.
-- **Update agent config**: Edit the Supabase `agents` table, update types, and reload the registry.
-- **Integrate with tools/memory**: Inject tool/memory dependencies into the agent class, use hooks for context and tool calls.
-- **Orchestrate multi-agent flows**: Use `lib/workflow/` to coordinate multiple agents, passing state and context as needed.
-
-### 6. Onboarding & Troubleshooting Checklist
-
-- [x] All agent classes extend `BaseAgent` — 2025-05-05
-- [x] Registry loads agents from Supabase and caches in memory — 2025-05-05
-- [x] `runAgent()` in `agent-service.ts` is tested and documented — 2025-05-05
-- [x] Types in `agent.types.ts` are up to date — 2025-05-05
-- [x] Agents interact with tools and memory via dependency injection — 2025-05-05
-
-### 7. Questions to Ask (for Maximum Context)
-
-- Is this a new agent type, or an update to an existing one?
-- Should this agent be loaded from Supabase or defined in code?
-- Are all required types and Supabase columns up to date?
-- Does the agent need access to tools, memory, or workflows?
-- Is the agent run loop (`run()`) implemented and tested?
-
-### 8. Common Pitfalls & Anti-Patterns
-
-- Forgetting to register a new agent in `registry.ts` (agent won't be available)
-- Type mismatch between Supabase and `agent.types.ts`
-- Not injecting tools/memory dependencies (agent can't access context)
-- Not handling errors in agent run loop (breaks orchestration)
-- Not updating Supabase after schema/type changes
-
-### 9. End-to-End Example (Full Flow)
-
-- Developer defines a new agent class in `baseAgent.ts` or `agents/` → adds config to Supabase `agents` table → updates `agent.types.ts` → registers in `registry.ts` → agent is available for `runAgent()` calls and orchestration.
+Use this template as context for all code and documentation suggestions in the `agents` folder.
 
 ---
 
-## 1. Folder Structure & File Responsibilities
+## 1. Purpose and Scope
+
+- **Agents** are autonomous, modular classes that encapsulate LLM configurations, memory threads, and tools.
+- The system loads agent definitions from Supabase (`agents` table), assigns tools, and manages memory via LibSQL (`db.ts`).
+- This folder implements the core classes and services for running agents and will eventually support multi-agent orchestration.
+
+---
+
+## 2. Current Folder Structure & Files
 
 ```
 lib/agents/
-├── agent-service.ts   # Procedural runner, exposes `runAgent()`
-├── agent.types.ts     # TypeScript interfaces for agent config, state, Supabase rows
-├── baseAgent.ts       # Abstract base class for all agents, defines run loop and hooks
-├── registry.ts        # Loads agents from Supabase, caches in memory, supports hot reload
-└── README.md          # This file: overview, onboarding, scope checklists
+├── agent.types.ts       # TypeScript interfaces for Agent configuration rows
+├── baseAgent.ts         # Core Agent class: config loading, tool init, run logic
+├── agent-service.ts     # Procedural runner: loads config, memory, tools, invokes BaseAgent
+├── registry.ts          # AgentRegistry: loads all agents from Supabase into memory
+├── README.md            # This file: onboarding for AI assistants
 ```
 
----
+### 2.1 agent.types.ts
 
-## 2. Agent Lifecycle & Integration
+- Defines the `Agent` interface matching Supabase `agents` table (`id`, `name`, `description`, `model_id`, `tool_ids`, `system_prompt`, timestamps).
+- Use this for type safety when reading from Supabase.
 
-- **Definition**: Agents are defined as classes extending `BaseAgent`, with config in Supabase and types in `agent.types.ts`.
-- **Registration**: All agents must be registered in `registry.ts` for discovery and hot reload.
-- **Execution**: Use `runAgent()` in `agent-service.ts` to execute an agent with a given prompt and context.
-- **Integration**: Agents interact with memory (`lib/memory/`), tools (`lib/tools/`), and workflows (`lib/workflow/`) via dependency injection and hooks.
-- **State**: Agent state is managed in Supabase and in-memory, with type safety enforced by `agent.types.ts`.
+### 2.2 baseAgent.ts
 
----
+- Exports `BaseAgent` class.
+- Constructor accepts an `Agent` config object and array of tool configs.
+- `run(input?, threadId?)` handles:
+  1. Memory thread creation via `libsql`.
+  2. Loading and saving messages (`memory.ts`).
+  3. State loading/saving (`memory.ts`).
+  4. Provider initialization (`ai.ts`).
+  5. Tool initialization via `jsonSchemaToZod` and `tool-execution.ts`.
+  6. Invocation of `streamText` with messages, tools, and maxSteps.
 
-## 3. Current Scope Checklist
+### 2.3 agent-service.ts
 
-- [x] BaseAgent class with run loop and hooks
-- [x] Agent registry with Supabase loading and hot reload
-- [x] Procedural runner (`runAgent()`) in `agent-service.ts`
-- [x] TypeScript interfaces for all agent config/state
-- [x] Integration with tools, memory, and workflows
+- Exports `runAgent(agentId, memoryThreadId, initialInput?)`.
+- Procedural wrapper that directly:
+  - Reads agent row from Supabase (`supabase.ts`).
+  - Reads model row (`supabase.ts`).
+  - Reads tool rows (`supabase.ts`).
+  - Delegates to `getLibSQLClient()` (`db.ts`) for memory thread management.
+  - Initializes provider & model, builds `aiTools`, and streams response using `ai` SDK.
 
----
+### 2.4 registry.ts
 
-## 4. Completed Checklist (as of 2025-05-05)
-
-- [x] Agent CRUD via Supabase and type-safe helpers — 2025-05-05
-- [x] Agent registry with dynamic reload — 2025-05-05
-- [x] Agent run loop with error handling — 2025-05-05
-- [x] Agent state management and persistence — 2025-05-05
-- [x] Agent-tool-memory integration — 2025-05-05
-
----
-
-## 5. Future Scope Checklist
-
-- [ ] Multi-agent orchestration and planning (`lib/workflow/`, `agents/multiAgent.ts`)
-- [ ] Agent lifecycle hooks (preLoad, postRun, onError, onToolCall, onMemoryUpdate)
-- [ ] Advanced state management and persistence (versioning, migrations)
-- [ ] Telemetry and analytics for agent runs (Langfuse, OpenTelemetry, custom metrics)
-- [ ] Automated and integration tests for agent flows and error boundaries
-- [ ] Admin UI/API for agent management, inspection, and live debugging
-- [ ] Documentation and code samples for custom agent development
-- [ ] Agent versioning and rollback
-- [ ] Agent sandboxing and security (resource limits, isolation)
-- [ ] Real-time agent collaboration and event streaming
-- [ ] Agent plugin system for runtime extension
-- [ ] Supabase/LibSQL schema evolution and migration scripts
+- Exports `AgentRegistry` and instantiated `agentRegistry` singleton.
+- `init()`: loads all agents and their tools from Supabase.
+- `listAgents()`: returns array of `BaseAgent` instances.
+- `getAgent(id)`: fetches a `BaseAgent` by ID or throws an error.
 
 ---
 
-## 5. Troubleshooting
+## 3. Agent Loading & Execution Flow
 
-- **Agent not found**: Check registration in `registry.ts` and Supabase `agents` table.
-- **Type errors**: Ensure `agent.types.ts` matches Supabase schema.
-- **Run loop issues**: Debug `run()` implementation in agent class.
-- **Dependency errors**: Verify tools/memory are injected and available.
-- **Orchestration failures**: Inspect workflow integration and state passing.
+1. **Registry Initialization** (`registry.ts`):
+   - Connect to Supabase via `createSupabaseClient()`.
+   - Load all `agents` rows.
+   - For each agent, load its tool configs and instantiate `BaseAgent(config, tools)`.
+
+2. **Running an Agent** (`agent-service.ts`):
+   - Call `runAgent(agentId, threadId, optionalInput)`.
+   - Service fetches agent & model configs, loads tools, and manages memory thread.
+   - Delegates to either `BaseAgent.run()` or inline logic to stream/generate response.
+
+3. **Memory Management** (`db.ts` / `memory.ts`):
+   - Uses LibSQL client for threads and messages.
+   - Persists messages and agent state for context.
+
+4. **Tool Invocation**:
+   - Tools loaded via `jsonSchemaToZod()` in `baseAgent.ts` or service.
+   - Each tool executor imported from `tool-execution.ts`.
+   - Agents call tools during `streamText` with `maxSteps` support.
 
 ---
 
-_End of `/lib/agents/README.md`_
+## 4. Persona System
+
+- **Persona** = agent instance with unique `tool_ids`.
+- `tool_ids` array on `agents` table controls which built-in or custom tools an agent can call.
+- No code change is required to add or remove tools from a persona—update Supabase `tool_ids`.
+- When assisting, confirm that `tool_ids` for the target agent align with available tool names.
+
+---
+
+## 5. How I (AI Assistant) Should Help
+
+### 5.1. When Adding/Modifying Agents
+
+- Suggest updates to Supabase schema (`agents` table) matching `Agent` interface (`agent.types.ts`).
+- Guide edits in `baseAgent.ts` for custom logic or additional hooks.
+- Update `registry.ts` if agent loading logic needs extension (e.g., caching).
+- Ensure `agent-service.ts` reflects any changes in memory or provider flow.
+
+### 5.2. When Troubleshooting Agents
+
+- Verify Supabase queries in `agent-service.ts` and `registry.ts` for correct table/column usage.
+- Check memory loading/saving in `memory.ts` and client instantiation in `db.ts`.
+- Inspect tool initialization in `baseAgent.ts` and `tool-execution.ts` for missing executors.
+- Log and debug streaming/generation errors from `ai-integration.ts` or `ai.ts` providers.
+
+### 5.3. When Extending Capabilities
+
+- Propose adding multi-agent orchestration in a new `multiAgent.ts` file.
+- Suggest lifecycle methods (e.g., `beforeRun` / `afterRun`) in `BaseAgent` for hooks.
+- Recommend dynamic agent registration via file discovery or configuration.
+- Advise integrating analytics or telemetry around agent runs.
+
+### 5.4. Best Practices
+
+- Maintain separation of concerns: config loading, memory, tools, provider invocation.
+- Keep agent logic in `BaseAgent` generic; use subclassing or composition for specialization.
+- Use TypeScript types (`agent.types.ts`) to enforce schema correctness.
+- Add unit/integration tests for `BaseAgent` run flows and `registry` loading.
+
+---
+
+## 6. Onboarding Steps for a New Agent Persona
+
+1. **Supabase Configuration**:
+   - Add row to `agents` table with `id`, `name`, `description`, `model_id`, `tool_ids`, `system_prompt`.
+
+2. **Code Verification**:
+   - Run `agentRegistry.init()` to load new agent.
+   - Call `agentRegistry.getAgent(newId).run(prompt)` to exercise.
+
+3. **Testing & Feedback**:
+   - Validate memory thread creation in LibSQL.
+   - Inspect logs for streaming and tool calls.
+   - Iterate on `system_prompt` and tool list.
+
+---
+
+## 7. Future Scope / Sprint Items
+
+- [ ] **Multi-Agent Orchestration:** Add `multiAgent.ts` for agent-to-agent messaging and workflow delegation.
+- [ ] **Agent Lifecycle Hooks:** Support `onStart`, `onToolCall`, `onFinish` hooks in `BaseAgent`.
+- [ ] **Dynamic Persona Loading:** Auto-discover and register agents from a JSON/YAML config folder.
+- [ ] **Agent Analytics:** Integrate event logging and metrics (e.g., run duration, tool usage).
+- [ ] **Versioning & Rollback:** Store agent versions and allow rollbacks via Supabase.
+
+---
+
+## 8. Troubleshooting
+
+- **Agent Not Found**: Ensure `agents` table row exists and `agentRegistry.init()` was called.
+- **Tool Missing**: Check `tool_ids` vs. keys from `getAllBuiltInTools()` and `loadCustomTools()`.
+- **Memory Errors**: Validate LibSQL connection env vars and `memory.ts` queries.
+- **Provider Errors**: Verify `model_id`, provider name, and API keys in `models` table.
+- **Streaming Issues**: Inspect `streamText` call in `baseAgent.ts` or `agent-service.ts`.
+
+---
+
+*End of `/lib/agents/README.md`*
