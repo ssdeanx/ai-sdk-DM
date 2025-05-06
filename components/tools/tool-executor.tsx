@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
+import { useToolExecutor } from "@/hooks/use-executor"
 
 interface ToolExecutorProps {
   tool: {
@@ -19,10 +19,19 @@ interface ToolExecutorProps {
 }
 
 export function ToolExecutor({ tool, onExecutionComplete }: ToolExecutorProps) {
-  const { toast } = useToast()
-  const [isExecuting, setIsExecuting] = useState(false)
   const [parameters, setParameters] = useState<Record<string, string>>({})
   const [result, setResult] = useState<any>(null)
+
+  // Use our custom hook for tool execution
+  const { executeTool, isExecuting } = useToolExecutor({
+    toolId: tool.id,
+    onSuccess: (data) => {
+      setResult(data.result)
+      if (onExecutionComplete) {
+        onExecutionComplete(data.result)
+      }
+    }
+  })
 
   // Parse the schema
   let schema: any = {}
@@ -40,46 +49,13 @@ export function ToolExecutor({ tool, onExecutionComplete }: ToolExecutorProps) {
   }
 
   const executeToolAction = async () => {
-    setIsExecuting(true)
     setResult(null)
-
     try {
-      const response = await fetch("/api/tools/execute", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          toolId: tool.id,
-          parameters,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to execute tool")
-      }
-
-      setResult(data.result)
-
-      if (onExecutionComplete) {
-        onExecutionComplete(data.result)
-      }
-
-      toast({
-        title: "Tool executed successfully",
-        description: `${tool.name} completed execution`,
-      })
+      // Use our custom hook to execute the tool
+      await executeTool(parameters)
     } catch (error) {
       console.error("Error executing tool:", error)
-      toast({
-        title: "Error executing tool",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      })
-    } finally {
-      setIsExecuting(false)
+      // Error handling is done in the hook
     }
   }
 

@@ -10,6 +10,8 @@ interface UseSupabaseFetchOptions {
   initialData?: any[]
   queryParams?: Record<string, string>
   enabled?: boolean
+  maxRetries?: number
+  retryDelay?: number
 }
 
 export function useSupabaseFetch<T>({
@@ -19,14 +21,16 @@ export function useSupabaseFetch<T>({
   initialData = [],
   queryParams = {},
   enabled = true,
+  maxRetries = 3,
+  retryDelay = 1000,
 }: UseSupabaseFetchOptions) {
   const { toast } = useToast()
   const [data, setData] = useState<T[]>(initialData)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [isMockData, setIsMockData] = useState(false)
+  const [connectionError, setConnectionError] = useState<boolean>(false)
 
-  const fetchData = async () => {
+  const fetchData = async (retryCount = 0) => {
     if (!enabled) {
       setIsLoading(false)
       return
@@ -34,6 +38,7 @@ export function useSupabaseFetch<T>({
 
     setIsLoading(true)
     setError(null)
+    setConnectionError(false)
 
     try {
       // Build URL with query parameters
@@ -45,7 +50,7 @@ export function useSupabaseFetch<T>({
       const response = await fetch(url)
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }))
         throw new Error(errorData.error || `Failed to fetch ${resourceName.toLowerCase()}`)
       }
 
@@ -54,15 +59,6 @@ export function useSupabaseFetch<T>({
       // Check if we have the expected data structure
       if (result && dataKey in result) {
         setData(result[dataKey])
-        setIsMockData(result.isMockData || false)
-
-        if (result.isMockData) {
-          toast({
-            title: "Using mock data",
-            description: `Database connection not available. Using mock data for ${resourceName.toLowerCase()}.`,
-            variant: "default",
-          })
-        }
       } else {
         console.error(`Data key "${dataKey}" not found in response:`, result)
         setData([])
@@ -70,12 +66,32 @@ export function useSupabaseFetch<T>({
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(`Failed to fetch ${resourceName.toLowerCase()}`)
-      setError(error)
       console.error(`Error fetching ${resourceName.toLowerCase()}:`, error)
+
+      // Implement retry logic for network errors or server errors
+      const isNetworkError = error.message.includes('fetch') ||
+                             error.message.includes('network') ||
+                             error.message.includes('HTTP error 5');
+
+      if (retryCount < maxRetries && isNetworkError) {
+        console.log(`Retrying fetch for ${resourceName} (${retryCount + 1}/${maxRetries})...`)
+        // Exponential backoff: delay increases with each retry
+        const delay = retryDelay * Math.pow(2, retryCount)
+        setTimeout(() => fetchData(retryCount + 1), delay)
+        return
+      }
+
+      setError(error)
+      setConnectionError(true)
+
+      // Show a more specific error message
+      const errorMessage = isNetworkError
+        ? `Could not connect to the backend. Please check your connection and ensure the backend is running.`
+        : error.message;
 
       toast({
         title: `Failed to fetch ${resourceName.toLowerCase()}`,
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -91,7 +107,7 @@ export function useSupabaseFetch<T>({
     data,
     isLoading,
     error,
-    refresh: fetchData,
-    isMockData,
+    connectionError,
+    refresh: () => fetchData(0),
   }
 }

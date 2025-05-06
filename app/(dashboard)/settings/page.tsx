@@ -108,52 +108,50 @@ export default function SettingsPage() {
     },
   })
 
-  // Fetch settings on component mount
+  // Fetch settings using the standardized hook
+  const {
+    data: settingsData,
+    isLoading: isLoadingSettings,
+  } = useSupabaseFetch<any>({
+    endpoint: "/api/settings",
+    resourceName: "Settings",
+    dataKey: "settings",
+  })
+
+  // Update form values when settings data is loaded
   useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const response = await fetch("/api/settings")
-        const data = await response.json()
+    if (settingsData && settingsData.length > 0) {
+      const data = settingsData[0]
 
-        // Update API form
-        apiForm.reset({
-          google_api_key: data?.api?.google_api_key || "",
-          default_model_id: data?.api?.default_model_id || "",
-        })
+      // Update API form
+      apiForm.reset({
+        google_api_key: data?.api?.google_api_key || "",
+        default_model_id: data?.api?.default_model_id || "",
+      })
 
-        // Update appearance form
-        appearanceForm.reset({
-          theme: data?.appearance?.theme || "system",
-          enable_animations: data?.appearance?.enable_animations !== false,
-          accent_color: data?.appearance?.accent_color || "violet",
-        })
+      // Update appearance form
+      appearanceForm.reset({
+        theme: data?.appearance?.theme || "system",
+        enable_animations: data?.appearance?.enable_animations !== false,
+        accent_color: data?.appearance?.accent_color || "violet",
+      })
 
-        // Update advanced form
-        advancedForm.reset({
-          token_limit_warning: String(data?.advanced?.token_limit_warning || 3500),
-          enable_embeddings: data?.advanced?.enable_embeddings !== false,
-          enable_token_counting: data?.advanced?.enable_token_counting !== false,
-          streaming_responses: data?.advanced?.streaming_responses !== false,
-        })
+      // Update advanced form
+      advancedForm.reset({
+        token_limit_warning: String(data?.advanced?.token_limit_warning || 3500),
+        enable_embeddings: data?.advanced?.enable_embeddings !== false,
+        enable_token_counting: data?.advanced?.enable_token_counting !== false,
+        streaming_responses: data?.advanced?.streaming_responses !== false,
+      })
 
-        // Update notification form
-        notificationForm.reset({
-          email_notifications: data?.notifications?.email_notifications || false,
-          agent_completion_notifications: data?.notifications?.agent_completion_notifications !== false,
-          system_notifications: data?.notifications?.system_notifications !== false,
-        })
-      } catch (error) {
-        console.error("Error fetching settings:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load settings. Using defaults.",
-          variant: "destructive",
-        })
-      }
+      // Update notification form
+      notificationForm.reset({
+        email_notifications: data?.notifications?.email_notifications || false,
+        agent_completion_notifications: data?.notifications?.agent_completion_notifications !== false,
+        system_notifications: data?.notifications?.system_notifications !== false,
+      })
     }
-
-    fetchSettings()
-  }, [toast])
+  }, [settingsData])
 
   // Handle API settings submission
   async function onApiSubmit(values: z.infer<typeof apiSettingsSchema>) {

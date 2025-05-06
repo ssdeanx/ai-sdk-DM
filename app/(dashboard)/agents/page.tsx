@@ -130,7 +130,7 @@ export default function AgentsPage() {
         description: values.description,
         model_id: values.modelId,
         tool_ids: values.toolIds || [],
-        system_prompt: values.systemPrompt || null,
+        system_prompt: values.systemPrompt,
       })
     } else {
       await create({
@@ -138,7 +138,7 @@ export default function AgentsPage() {
         description: values.description,
         model_id: values.modelId,
         tool_ids: values.toolIds || [],
-        system_prompt: values.systemPrompt || null,
+        system_prompt: values.systemPrompt,
       })
     }
   }
@@ -173,7 +173,7 @@ export default function AgentsPage() {
       description: agent.description,
       model_id: agent.model_id,
       tool_ids: agent.tool_ids,
-      system_prompt: agent.system_prompt || null,
+      system_prompt: agent.system_prompt,
     })
 
     toast({

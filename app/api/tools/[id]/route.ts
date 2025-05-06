@@ -3,7 +3,7 @@ import { getSupabaseClient } from "@/lib/memory/supabase"
 import { handleApiError } from "@/lib/api-error-handler"
 import { revalidatePath } from "next/cache"
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
 
@@ -77,7 +77,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
 

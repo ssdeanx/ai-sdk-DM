@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { BlogCard } from "@/components/blog/blog-card"
 import { BlogFeatured } from "@/components/blog/blog-featured"
 import { useToast } from "@/hooks/use-toast"
+import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
 
 interface BlogPost {
   id: string
@@ -25,43 +26,40 @@ interface BlogPost {
 
 export default function BlogPage() {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(true)
   const [featuredPost, setFeaturedPost] = useState<BlogPost | null>(null)
-  const [posts, setPosts] = useState<BlogPost[]>([])
   const [searchQuery, setSearchQuery] = useState("")
 
+  // Fetch featured post
+  const {
+    data: featuredPosts,
+    isLoading: isLoadingFeatured,
+  } = useSupabaseFetch<any>({
+    endpoint: "/api/blog",
+    resourceName: "Featured Posts",
+    dataKey: "posts",
+    queryParams: { featured: "true", limit: "1" }
+  })
+
+  // Fetch regular posts
+  const {
+    data: regularPosts,
+    isLoading: isLoadingPosts,
+  } = useSupabaseFetch<any>({
+    endpoint: "/api/blog",
+    resourceName: "Blog Posts",
+    dataKey: "posts",
+    queryParams: { limit: "10" }
+  })
+
+  // Format posts when data is loaded
   useEffect(() => {
-    async function fetchPosts() {
-      try {
-        // Fetch featured post
-        const featuredResponse = await fetch("/api/blog?featured=true&limit=1")
-        const featuredData = await featuredResponse.json()
-
-        if (featuredData.posts && featuredData.posts.length > 0) {
-          setFeaturedPost(formatPost(featuredData.posts[0]))
-        }
-
-        // Fetch regular posts
-        const postsResponse = await fetch("/api/blog?limit=10")
-        const postsData = await postsResponse.json()
-
-        if (postsData.posts) {
-          setPosts(postsData.posts.map(formatPost))
-        }
-      } catch (error) {
-        console.error("Error fetching blog posts:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load blog posts",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
-      }
+    if (featuredPosts && featuredPosts.length > 0) {
+      setFeaturedPost(formatPost(featuredPosts[0]))
     }
+  }, [featuredPosts])
 
-    fetchPosts()
-  }, [toast])
+  // Determine if we're still loading
+  const isLoading = isLoadingFeatured || isLoadingPosts
 
   // Helper function to format post data
   function formatPost(post: any): BlogPost {
@@ -79,8 +77,9 @@ export default function BlogPage() {
     }
   }
 
-  // Filter posts based on search query
-  const filteredPosts = posts.filter(
+  // Format and filter posts based on search query
+  const formattedPosts = regularPosts ? regularPosts.map(formatPost) : []
+  const filteredPosts = formattedPosts.filter(
     (post) =>
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||

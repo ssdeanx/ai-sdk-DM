@@ -12,11 +12,13 @@ export async function GET() {
     const libsqlAvailable = await isLibSQLAvailable()
 
     return NextResponse.json({
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      supabase: supabaseAvailable,
-      libsql: libsqlAvailable,
-      environment: process.env.NODE_ENV,
+      status: [{
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        supabase: supabaseAvailable,
+        libsql: libsqlAvailable,
+        environment: process.env.NODE_ENV,
+      }]
     })
   } catch (error) {
     return handleApiError(error)

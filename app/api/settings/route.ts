@@ -23,7 +23,9 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json(settings)
+    return NextResponse.json({
+      settings: [settings]
+    })
   } catch (error) {
     return handleApiError(error)
   }

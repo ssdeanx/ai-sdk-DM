@@ -206,6 +206,44 @@ export interface Database {
           updated_at?: string
         }
       }
+      content: {
+        Row: {
+          id: string
+          type: string // e.g. 'architecture', 'features', 'footer', 'hero', 'cta', 'code-examples', etc.
+          title?: string
+          subtitle?: string
+          description?: string
+          content?: string // markdown, html, or rich text
+          data?: Json // JSON for structured content (e.g. stats, links, sections, code, etc.)
+          image_url?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          type: string
+          title?: string
+          subtitle?: string
+          description?: string
+          content?: string
+          data?: Json
+          image_url?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          type?: string
+          title?: string
+          subtitle?: string
+          description?: string
+          content?: string
+          data?: Json
+          image_url?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }

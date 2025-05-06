@@ -1,0 +1,97 @@
+{
+    "mcpServers": {
+      "gitingest-mcp": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@smithery/cli@latest",
+          "run",
+          "@puravparab/gitingest-mcp",
+          "--key",
+          "be98d3d0-f628-45e5-a532-cc4ade91164c"
+        ]
+      },
+      "server-sequential-thinking": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/server-sequential-thinking",
+        "--key",
+        "be98d3d0-f628-45e5-a532-cc4ade91164c"
+      ]
+      },
+      "desktop-commander": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@wonderwhy-er/desktop-commander",
+        "--key",
+        "be98d3d0-f628-45e5-a532-cc4ade91164c"
+      ]
+    },
+    "brave-search": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@smithery/cli@latest",
+          "run",
+          "@smithery-ai/brave-search",
+          "--key",
+          "be98d3d0-f628-45e5-a532-cc4ade91164c",
+          "--profile",
+          "mysterious-caterpillar-7VW37j"
+        ]
+      },
+      "think-mcp-server": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@PhillipRt/think-mcp-server",
+        "--key",
+        "be98d3d0-f628-45e5-a532-cc4ade91164c"
+      ]
+    },
+    "mcp-taskmanager": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@kazuph/mcp-taskmanager",
+        "--key",
+        "be98d3d0-f628-45e5-a532-cc4ade91164c"
+      ]
+    },
+    "code-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@block/code-mcp",
+        "--key",
+        "be98d3d0-f628-45e5-a532-cc4ade91164c"
+      ]
+    }
+    }
+}

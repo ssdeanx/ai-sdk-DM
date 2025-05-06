@@ -8,6 +8,7 @@ import * as apiTools from "./api-tools"
 import * as ragTools from "./rag-tools"
 import * as agenticTools from "./agentic"
 import { getLibSQLClient } from "../memory/db"
+import { getData, getItemById } from "../memory/supabase"
 
 // Export all tool modules
 export { webTools, codeTools, dataTools, fileTools, apiTools, ragTools, agenticTools }
@@ -37,57 +38,63 @@ export function getAllBuiltInTools() {
   }
 }
 
-// Load custom tools from database
+// Load custom tools from Supabase
 export async function loadCustomTools() {
   try {
-    const db = getLibSQLClient()
-
-    const result = await db.execute({
-      sql: `
-        SELECT t.*, a.code as implementation
-        FROM tools t
-        LEFT JOIN apps a ON t.name = a.name AND a.type = 'tool'
-        WHERE t.type = 'custom'
-      `,
+    // Fetch custom tools from Supabase
+    const tools = await getData<any>("tools", {
+      filters: { type: "custom" },
     })
+
+    // Optionally join with implementation code from an "apps" table if needed
+    // For now, assume implementation is stored in a column (e.g., implementation or code)
 
     const customTools: Record<string, any> = {}
 
-    for (const row of result.rows) {
+    for (const tool of tools) {
       try {
-        const name = row.name as string
-        const description = row.description as string
-        const parametersSchema = JSON.parse(row.parameters_schema as string)
-        const implementation = row.implementation as string
+        const name = tool.name as string
+        const description = tool.description as string
+        const parametersSchema = JSON.parse(tool.parameters_schema as string)
+        // If implementation is in a separate table, fetch it here
+        let implementation = tool.implementation as string | undefined
+        if (!implementation && tool.app_id) {
+          // Example: fetch from apps table if needed
+          const app = await getItemById<any>("apps", tool.app_id)
+          implementation = app?.code
+        }
+        if (!implementation) continue
 
         // Convert JSON schema to Zod schema
         const zodSchema = jsonSchemaToZod(parametersSchema)
 
         // Create a safe execution environment for the custom tool
-        // This is a simplified approach - in production, you would want more security
         const executeTool = new Function("params", implementation)
 
         customTools[name] = tool({
           description,
-          parameters: zodSchema,
-          execute: async (params) => {
+          parameters: zodSchema, // Assuming zodSchema is of type z.ZodTypeAny
+          execute: async (params: z.infer<typeof zodSchema>): Promise<any | { error: string }> => {
             try {
-              return await executeTool(params)
-            } catch (error) {
-              console.error(`Error executing custom tool ${name}:`, error)
+              // Assuming executeTool is typed as:
+              // const executeTool: (params: z.infer<typeof zodSchema>) => Promise<any> | any;
+              const executionResult: any = await executeTool(params);
+              return executionResult;
+            } catch (error: unknown) {
+              console.error(`Error executing custom tool ${name}:`, error);
               const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-              return { error: `Tool execution failed: ${errorMessage}` }
+              return { error: `Tool execution failed: ${errorMessage}` } as { error: string };
             }
           },
-        })
+        });
       } catch (error) {
-        console.error(`Error loading custom tool ${row.name}:`, error)
+        console.error(`Error loading custom tool ${tool.name}:`, error)
       }
     }
 
     return customTools
   } catch (error) {
-    console.error("Error loading custom tools:", error)
+    console.error("Error loading custom tools from Supabase:", error)
     return {}
   }
 }

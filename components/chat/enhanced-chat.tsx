@@ -1,23 +1,17 @@
 "use client"
 
 import { SelectItem } from "@/components/ui/select"
-
 import { SelectContent } from "@/components/ui/select"
-
 import { SelectValue } from "@/components/ui/select"
-
 import { SelectTrigger } from "@/components/ui/select"
-
 import { Select } from "@/components/ui/select"
-
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Bot, Send, Loader2, Code, FileText, Image, BarChart } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { nanoid } from "nanoid"
-import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,19 +24,7 @@ import { MermaidDiagram } from "./mermaid-diagram"
 import { ImageDisplay } from "./image-display"
 import { FileUpload } from "./file-upload"
 import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
-
-interface Message {
-  id: string
-  role: "user" | "assistant" | "system"
-  content: string
-  timestamp?: string
-  isLoading?: boolean
-  attachments?: Array<{
-    type: string
-    url: string
-    name: string
-  }>
-}
+import { useChat, type Message } from "@/hooks/use-chat"
 
 interface EnhancedChatProps {
   initialThreadId?: string
@@ -60,18 +42,35 @@ export function EnhancedChat({
   className,
 }: EnhancedChatProps) {
   const router = useRouter()
-  const [threadId, setThreadId] = useState<string>(initialThreadId || nanoid())
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState<string>(initialModelId || "")
   const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(1000)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [attachments, setAttachments] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<string>("chat")
+
+  // Use our custom chat hook
+  const {
+    messages,
+    input,
+    setInput,
+    isLoading,
+    threadId,
+    setThreadId,
+    attachments,
+    setAttachments,
+    sendMessage,
+    fetchMessages
+  } = useChat({
+    initialMessages,
+    initialThreadId,
+    apiEndpoint: agentId ? `/api/agents/${agentId}/run` : "/api/chat",
+    onFinish: () => {
+      // Refetch threads to update the list
+      refetchThreads()
+    }
+  })
 
   // Fetch models from Supabase
   const { data: models, isLoading: isLoadingModels } = useSupabaseFetch({
@@ -113,167 +112,19 @@ export function EnhancedChat({
     }
   }, [input])
 
-  // Load messages for the current thread
-  useEffect(() => {
-    if (threadId) {
-      fetchMessages(threadId)
-    }
-  }, [threadId])
-
-  // Fetch messages for a thread
-  const fetchMessages = async (threadId: string) => {
-    try {
-      const response = await fetch(`/api/threads/${threadId}/messages`)
-      if (!response.ok) throw new Error("Failed to fetch messages")
-
-      const data = await response.json()
-
-      if (data.messages) {
-        setMessages(
-          data.messages.map((msg: any) => ({
-            id: msg.id || nanoid(),
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.created_at,
-          })),
-        )
-      }
-    } catch (error) {
-      console.error("Error fetching messages:", error)
-      toast.error("Failed to load messages")
-    }
-  }
-
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!input.trim() && attachments.length === 0) return
-
-    // Add user message to the UI immediately
-    const userMessage: Message = {
-      id: nanoid(),
-      role: "user",
-      content: input,
-      timestamp: new Date().toISOString(),
-      attachments: attachments.length > 0 ? attachments : undefined,
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-
-    // Add loading message
-    const loadingMessage: Message = {
-      id: nanoid(),
-      role: "assistant",
-      content: "",
-      isLoading: true,
-    }
-
-    setMessages((prev) => [...prev, loadingMessage])
-    setInput("")
-    setAttachments([])
-    setIsLoading(true)
-
-    try {
-      // Format messages for the API
-      const apiMessages = messages
-        .filter((m) => !m.isLoading)
-        .map((m) => ({
-          role: m.role,
-          content: m.content,
-        }))
-
-      // Add the new user message
-      apiMessages.push({
-        role: "user",
-        content: input,
-      })
-
-      // Determine which API endpoint to use
-      const apiEndpoint = agentId ? `/api/agents/${agentId}/run` : "/api/chat"
-
-      // Prepare request body
-      const requestBody: any = {
-        messages: apiMessages,
-        threadId,
-      }
-
-      // Add model ID if not using an agent
-      if (!agentId && selectedModelId) {
-        requestBody.modelId = selectedModelId
-      }
-
-      // Add tools if selected
-      if (selectedTools.length > 0) {
-        requestBody.tools = selectedTools
-      }
-
-      // Add temperature and max tokens
-      requestBody.temperature = temperature
-      requestBody.maxTokens = maxTokens
-
-      // Make API request
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      })
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`)
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let responseText = ""
-
-      if (reader) {
-        // Remove loading message
-        setMessages((prev) => prev.filter((m) => !m.isLoading))
-
-        // Add assistant message that will be updated
-        const assistantMessageId = nanoid()
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: assistantMessageId,
-            role: "assistant",
-            content: "",
-            timestamp: new Date().toISOString(),
-          },
-        ])
-
-        // Process the stream
-        while (true) {
-          const { done, value } = await reader.read()
-
-          if (done) {
-            break
-          }
-
-          // Decode the chunk and update the message
-          const chunk = decoder.decode(value, { stream: true })
-          responseText += chunk
-
-          // Update the assistant message with the accumulated text
-          setMessages((prev) => prev.map((m) => (m.id === assistantMessageId ? { ...m, content: responseText } : m)))
-        }
-      }
-
-      // Refetch threads to update the list
-      refetchThreads()
-    } catch (error) {
-      console.error("Error sending message:", error)
-      toast.error("Failed to send message")
-
-      // Remove loading message
-      setMessages((prev) => prev.filter((m) => !m.isLoading))
-    } finally {
-      setIsLoading(false)
-    }
+    await sendMessage({
+      message: input,
+      attachments,
+      modelId: selectedModelId,
+      tools: selectedTools,
+      temperature,
+      maxTokens,
+      agentId
+    })
   }
 
   // Handle file upload
@@ -308,7 +159,6 @@ export function EnhancedChat({
   const handleCreateThread = () => {
     const newThreadId = nanoid()
     setThreadId(newThreadId)
-    setMessages([])
     router.push(`/chat?thread=${newThreadId}`)
   }
 

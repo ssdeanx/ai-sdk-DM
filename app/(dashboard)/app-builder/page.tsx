@@ -19,13 +19,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Code, Play, Plus, Save, Trash } from "lucide-react"
+import { AlertCircle, Code, Loader2, Play, Plus, Save, Trash } from "lucide-react"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import CodeMirror from "@uiw/react-codemirror"
 import { javascript } from "@codemirror/lang-javascript"
 import { json } from "@codemirror/lang-json"
 import { vscodeDark } from "@uiw/codemirror-theme-vscode"
+import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // Define the form schema
 const appFormSchema = z.object({
@@ -38,69 +40,21 @@ const appFormSchema = z.object({
   type: z.enum(["tool", "workflow", "agent"]),
 })
 
-// Mock data for apps
-const mockApps = [
-  {
-    id: "1",
-    name: "WebSearchTool",
-    description: "A tool for searching the web",
-    type: "tool",
-    code: `// Web search tool implementation
-async function execute(params) {
-  const { query } = params;
-  
-  console.log(\`Searching for: \${query}\`);
-  
-  // This is a placeholder implementation
-  // In a real app, you would integrate with a search API
-  
-  return {
-    results: [
-      {
-        title: \`Result for "\${query}"\`,
-        snippet: \`This is information about \${query}\`,
-        url: \`https://example.com/search?q=\${encodeURIComponent(query)}\`
-      }
-    ]
-  };
-}`,
-  },
-  {
-    id: "2",
-    name: "ResearchWorkflow",
-    description: "A workflow for conducting research",
-    type: "workflow",
-    code: `// Research workflow implementation
-async function execute(input) {
-  // Step 1: Search for information
-  const searchResults = await tools.WebSearchTool({
-    query: input
-  });
-  
-  // Step 2: Analyze the results
-  const analysis = await agent.DataAnalyzer({
-    input: JSON.stringify(searchResults)
-  });
-  
-  // Step 3: Generate a summary
-  const summary = await agent.ContentGenerator({
-    input: analysis
-  });
-  
-  return {
-    searchResults,
-    analysis,
-    summary
-  };
-}`,
-  },
-]
+interface App {
+  id: string
+  name: string
+  description: string
+  type: string
+  code: string
+  parameters_schema?: string
+  created_at: string
+  updated_at: string
+}
 
 export default function AppBuilderPage() {
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
-  const [apps, setApps] = useState(mockApps)
-  const [editingApp, setEditingApp] = useState<any>(null)
+  const [editingApp, setEditingApp] = useState<App | null>(null)
   const [code, setCode] = useState("")
   const [testInput, setTestInput] = useState("")
   const [testOutput, setTestOutput] = useState("")
@@ -116,6 +70,21 @@ export default function AppBuilderPage() {
   },
   "required": ["query"]
 }`)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Fetch apps from the API
+  const {
+    data: apps,
+    isLoading,
+    error,
+    connectionError,
+    refresh: refreshApps
+  } = useSupabaseFetch<App>({
+    endpoint: "/api/apps",
+    resourceName: "Apps",
+    dataKey: "apps",
+  })
 
   const form = useForm<z.infer<typeof appFormSchema>>({
     resolver: zodResolver(appFormSchema),
@@ -130,8 +99,10 @@ export default function AppBuilderPage() {
     if (editingApp) {
       setCode(editingApp.code)
 
-      // Set parameters schema based on type
-      if (editingApp.type === "tool") {
+      // Set parameters schema based on type and existing schema
+      if (editingApp.parameters_schema) {
+        setParametersSchema(editingApp.parameters_schema)
+      } else if (editingApp.type === "tool") {
         setParametersSchema(`{
   "type": "object",
   "properties": {
@@ -162,67 +133,118 @@ async function execute(params) {
     }
   }, [editingApp])
 
-  function onSubmit(values: z.infer<typeof appFormSchema>) {
-    // Here you would normally send this to your API
-    console.log(values)
-    console.log("Code:", code)
-    console.log("Parameters Schema:", parametersSchema)
+  async function onSubmit(values: z.infer<typeof appFormSchema>) {
+    setIsSubmitting(true)
 
-    if (editingApp) {
-      // Update existing app
-      setApps(
-        apps.map((app) =>
-          app.id === editingApp.id
-            ? {
-                ...app,
-                ...values,
-                code,
-              }
-            : app,
-        ),
-      )
+    try {
+      const appData = {
+        name: values.name,
+        description: values.description,
+        type: values.type,
+        code,
+        parametersSchema,
+      }
+
+      if (editingApp) {
+        // Update existing app
+        const response = await fetch(`/api/apps/${editingApp.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(appData),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "Failed to update app")
+        }
+
+        toast({
+          title: "App updated",
+          description: `${values.name} has been updated successfully.`,
+        })
+      } else {
+        // Create new app
+        const response = await fetch("/api/apps", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(appData),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "Failed to create app")
+        }
+
+        toast({
+          title: "App created",
+          description: `${values.name} has been created successfully.`,
+        })
+      }
+
+      // Refresh the apps list
+      refreshApps()
+
+      // Close the dialog and reset form
+      setOpen(false)
+      form.reset()
+      setEditingApp(null)
+      setCode("")
+    } catch (error) {
+      console.error("Error saving app:", error)
       toast({
-        title: "App updated",
-        description: `${values.name} has been updated successfully.`,
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while saving the app",
+        variant: "destructive",
       })
-    } else {
-      // Add new app
-      setApps([
-        ...apps,
-        {
-          id: (apps.length + 1).toString(),
-          ...values,
-          code,
-        },
-      ])
-      toast({
-        title: "App created",
-        description: `${values.name} has been created successfully.`,
-      })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setOpen(false)
-    form.reset()
-    setEditingApp(null)
-    setCode("")
   }
 
-  function handleEdit(app: any) {
+  function handleEdit(app: App) {
     setEditingApp(app)
     form.reset({
       name: app.name,
       description: app.description,
-      type: app.type,
+      type: app.type as any,
     })
     setOpen(true)
   }
 
-  function handleDelete(id: string) {
-    setApps(apps.filter((app) => app.id !== id))
-    toast({
-      title: "App deleted",
-      description: "The app has been deleted successfully.",
-    })
+  async function handleDelete(id: string) {
+    setIsDeleting(true)
+
+    try {
+      const response = await fetch(`/api/apps/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to delete app")
+      }
+
+      toast({
+        title: "App deleted",
+        description: "The app has been deleted successfully.",
+      })
+
+      // Refresh the apps list
+      refreshApps()
+    } catch (error) {
+      console.error("Error deleting app:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while deleting the app",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   async function handleRunTest() {

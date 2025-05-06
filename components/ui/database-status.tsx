@@ -4,10 +4,19 @@ import { useState, useEffect } from "react"
 import { Database, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
+import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
 
 interface DatabaseStatusProps {
   showLabels?: boolean
   className?: string
+}
+
+interface SystemStatus {
+  status: string
+  timestamp: string
+  supabase: boolean
+  libsql: boolean
+  environment: string
 }
 
 export function DatabaseStatus({ showLabels = false, className = "" }: DatabaseStatusProps) {
@@ -15,27 +24,32 @@ export function DatabaseStatus({ showLabels = false, className = "" }: DatabaseS
   const [libsqlStatus, setLibsqlStatus] = useState<"loading" | "connected" | "error">("loading")
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
 
+  // Use the standardized hook for fetching system status
+  const {
+    data: statusData,
+    isLoading,
+    refresh: checkStatus
+  } = useSupabaseFetch<SystemStatus>({
+    endpoint: "/api/system/status",
+    resourceName: "System Status",
+    dataKey: "status",
+  })
+
+  // Update status when data changes
   useEffect(() => {
-    async function checkStatus() {
-      try {
-        const response = await fetch("/api/system/status")
-        const data = await response.json()
-
-        setSupabaseStatus(data.supabase ? "connected" : "error")
-        setLibsqlStatus(data.libsql ? "connected" : "error")
-        setLastChecked(new Date())
-      } catch (error) {
-        console.error("Error checking database status:", error)
-        setSupabaseStatus("error")
-        setLibsqlStatus("error")
-        setLastChecked(new Date())
-      }
+    if (statusData && statusData.length > 0) {
+      const data = statusData[0]
+      setSupabaseStatus(data.supabase ? "connected" : "error")
+      setLibsqlStatus(data.libsql ? "connected" : "error")
+      setLastChecked(new Date())
     }
+  }, [statusData])
 
-    checkStatus()
-
-    // Check status every 5 minutes
-    const interval = setInterval(checkStatus, 5 * 60 * 1000)
+  // Check status every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkStatus()
+    }, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [])

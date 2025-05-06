@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast"
+import { useAgentExecutor } from "@/hooks/use-executor"
 
 interface Message {
   role: "user" | "assistant" | "system"
@@ -37,8 +37,6 @@ interface AgentExecutorProps {
 }
 
 export function AgentExecutor({ agent, onExecutionComplete }: AgentExecutorProps) {
-  const { toast } = useToast()
-  const [isExecuting, setIsExecuting] = useState(false)
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -47,6 +45,21 @@ export function AgentExecutor({ agent, onExecutionComplete }: AgentExecutorProps
     },
   ])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Use our custom hook for agent execution
+  const { executeAgent, isExecuting } = useAgentExecutor({
+    agentId: agent.id,
+    onError: () => {
+      // Add an error message
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "system",
+          content: "Sorry, I encountered an error while processing your request.",
+        },
+      ])
+    }
+  })
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -65,26 +78,10 @@ export function AgentExecutor({ agent, onExecutionComplete }: AgentExecutorProps
 
     setMessages((prev) => [...prev, userMessage])
     setInput("")
-    setIsExecuting(true)
 
     try {
-      const response = await fetch(`/api/agents/${agent.id}/run`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: input,
-          history: messages,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to execute agent")
-      }
-
-      const data = await response.json()
+      // Use our custom hook to execute the agent
+      const data = await executeAgent(input, messages)
 
       // Add the agent's response to messages
       setMessages((prev) => [...prev, ...data.messages])
@@ -94,22 +91,7 @@ export function AgentExecutor({ agent, onExecutionComplete }: AgentExecutorProps
       }
     } catch (error) {
       console.error("Error executing agent:", error)
-      toast({
-        title: "Error executing agent",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      })
-
-      // Add an error message
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "system",
-          content: "Sorry, I encountered an error while processing your request.",
-        },
-      ])
-    } finally {
-      setIsExecuting(false)
+      // Error handling is done in the hook
     }
   }
 
