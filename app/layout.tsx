@@ -7,8 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AI SDK Framework",
-  description: "Management interface for building and running multi-agent AI systems",
+  title: "DeanmachinesAI",
+  description: "Build, manage, and deploy sophisticated AI systems with cutting-edge technology",
   generator: "v0.dev",
 }
 

@@ -338,6 +338,12 @@ export default function AiSdkChatPage() {
               Try OpenAI Assistant
             </a>
           </Button>
+          <Button variant="outline" asChild>
+            <a href="/demo-chat" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Try Demo Chat
+            </a>
+          </Button>
         </div>
       </div>
     </div>

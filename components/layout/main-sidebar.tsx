@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from "framer-motion"
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,6 +24,7 @@ import {
   Zap,
   Users,
   Sparkles,
+  Rocket,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -64,13 +65,18 @@ export function MainSidebar({ className }: MainSidebarProps) {
   const navItems: NavItem[] = [
     {
       title: "Dashboard",
-      href: "/",
-      icon: <LayoutDashboard className="h-4 w-4" />,
+      href: "/dashboard",
+      icon: <Home className="h-4 w-4" />,
     },
     {
       title: "Chat",
       href: "/chat",
-      icon: <MessageSquare className="h-4 w-4" />,
+      icon: <Zap className="h-4 w-4" />,
+    },
+    {
+      title: "Demo Chat",
+      href: "/demo-chat",
+      icon: <Sparkles className="h-4 w-4" />,
     },
     {
       title: "Models",
@@ -126,10 +132,32 @@ export function MainSidebar({ className }: MainSidebarProps) {
     setOpenSubmenu((prev) => (prev === title ? null : title))
   }
 
+  // Mouse position for hover effects
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top } = e.currentTarget.getBoundingClientRect()
+    mouseX.set(e.clientX - left)
+    mouseY.set(e.clientY - top)
+  }
+
   // Animation variants
   const sidebarVariants = {
-    expanded: { width: 240, transition: { duration: 0.2, ease: "easeInOut" } },
-    collapsed: { width: 64, transition: { duration: 0.2, ease: "easeInOut" } },
+    expanded: {
+      width: 240,
+      transition: {
+        duration: 0.3,
+        ease: [0.3, 0.1, 0.3, 1]
+      }
+    },
+    collapsed: {
+      width: 64,
+      transition: {
+        duration: 0.3,
+        ease: [0.3, 0.1, 0.3, 1]
+      }
+    },
   }
 
   const iconVariants = {
@@ -138,8 +166,31 @@ export function MainSidebar({ className }: MainSidebarProps) {
   }
 
   const textVariants = {
-    expanded: { opacity: 1, x: 0, display: "block" },
-    collapsed: { opacity: 0, x: -10, display: "none", transition: { duration: 0.1 } },
+    expanded: {
+      opacity: 1,
+      x: 0,
+      display: "block",
+      transition: {
+        duration: 0.3,
+        ease: [0.3, 0.1, 0.3, 1],
+        delay: 0.1
+      }
+    },
+    collapsed: {
+      opacity: 0,
+      x: -10,
+      display: "none",
+      transition: {
+        duration: 0.2,
+        ease: [0.3, 0.1, 0.3, 1]
+      }
+    },
+  }
+
+  const buttonVariants = {
+    rest: { scale: 1 },
+    hover: { scale: 1.05 },
+    tap: { scale: 0.95 }
   }
 
   return (
@@ -147,12 +198,27 @@ export function MainSidebar({ className }: MainSidebarProps) {
       initial={false}
       animate={collapsed ? "collapsed" : "expanded"}
       variants={sidebarVariants}
+      onMouseMove={handleMouseMove}
       className={cn(
-        "relative h-screen border-r bg-background shadow-sm z-20",
+        "relative h-screen border-r bg-background/80 backdrop-blur-md shadow-sm z-20 overflow-hidden",
         collapsed ? "w-[64px]" : "w-[240px]",
         className
       )}
     >
+      {/* Animated background gradient */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-purple-600/5 opacity-0 group-hover:opacity-100 pointer-events-none"
+        animate={{
+          opacity: [0.05, 0.1, 0.05],
+          backgroundPosition: ['0% 0%', '100% 100%'],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          repeatType: 'reverse',
+          ease: 'linear',
+        }}
+      />
       {/* Collapse toggle button */}
       <Button
         variant="ghost"
@@ -170,22 +236,37 @@ export function MainSidebar({ className }: MainSidebarProps) {
 
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-12 items-center border-b px-3">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
+        <div className="flex h-16 items-center border-b px-3">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold group">
+            <div className="relative flex items-center justify-center">
+              <motion.div
+                initial={{ rotate: 0, scale: 1 }}
+                animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+                transition={{
+                  rotate: { duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
+                  scale: { duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
+                }}
+                className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 opacity-70 blur-sm"
+              />
+              <motion.div
+                initial={{ rotate: 0 }}
+                animate={{ rotate: -360 }}
+                transition={{ duration: 15, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                className="absolute inset-0 rounded-full bg-gradient-to-r from-fuchsia-500 via-violet-600 to-indigo-500 opacity-70 blur-[2px]"
+              />
+              <div className="relative h-7 w-7 rounded-full bg-background flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+            </div>
             <motion.div
-              initial={{ rotate: 0 }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-              className="rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 p-1 flex-shrink-0"
-            >
-              <div className="h-5 w-5 rounded-full bg-background" />
-            </motion.div>
-            <motion.span
               variants={textVariants}
-              className="text-sm font-medium truncate"
+              className="flex flex-col"
             >
-              AI SDK Framework
-            </motion.span>
+              <span className="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 to-purple-600">
+                DeanmachinesAI
+              </span>
+              <span className="text-xs text-muted-foreground">Advanced AI Platform</span>
+            </motion.div>
           </Link>
         </div>
 
@@ -273,25 +354,62 @@ export function MainSidebar({ className }: MainSidebarProps) {
                   <Tooltip key={item.title}>
                     <TooltipTrigger asChild>
                       <Link href={item.href} className="block">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={cn(
-                            "w-full justify-start h-9",
-                            isActive && "bg-accent text-accent-foreground",
-                            collapsed && "justify-center px-0",
-                          )}
+                        <motion.div
+                          whileHover="hover"
+                          whileTap="tap"
+                          initial="rest"
+                          variants={buttonVariants}
                         >
-                          <span className={cn("flex items-center justify-center", !collapsed && "mr-2")}>
-                            {item.icon}
-                          </span>
-                          <motion.span
-                            variants={textVariants}
-                            className="truncate"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "w-full justify-start h-9 relative overflow-hidden group",
+                              isActive ? "bg-gradient-to-r from-cyan-500/10 to-purple-600/10 text-foreground" : "hover:bg-accent/30",
+                              collapsed && "justify-center px-0",
+                            )}
                           >
-                            {item.title}
-                          </motion.span>
-                        </Button>
+                            {isActive && (
+                              <motion.div
+                                className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-600/10 opacity-0 group-hover:opacity-100"
+                                animate={{
+                                  opacity: [0.5, 0.8, 0.5],
+                                }}
+                                transition={{
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  repeatType: 'reverse',
+                                }}
+                              />
+                            )}
+                            <span className={cn(
+                              "flex items-center justify-center relative z-10",
+                              !collapsed && "mr-2",
+                              isActive && "text-primary"
+                            )}>
+                              {item.icon}
+                            </span>
+                            <motion.span
+                              variants={textVariants}
+                              className={cn(
+                                "truncate relative z-10",
+                                isActive && "font-medium"
+                              )}
+                            >
+                              {item.title}
+                            </motion.span>
+                            {isActive && !collapsed && (
+                              <motion.div
+                                layoutId="nav-active-indicator"
+                                className="absolute right-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                              />
+                            )}
+                          </Button>
+                        </motion.div>
                       </Link>
                     </TooltipTrigger>
                     {collapsed && <TooltipContent side="right">{item.title}</TooltipContent>}

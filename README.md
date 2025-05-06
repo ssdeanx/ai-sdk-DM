@@ -204,6 +204,7 @@ DEFAULT_MODEL_ID=google-gemini-pro
 
 ```mermaid
 graph TD
+
     14520["User<br>External Actor"]
     subgraph 14514["AI SDK System"]
         14544["Initialization Scripts<br>TypeScript"]
@@ -249,13 +250,13 @@ graph TD
     end
     %% Edges at this level (grouped by source)
     14520["User<br>External Actor"] -->|Uses| 14528["Web Application<br>Next.js"]
-    14542["Supabase Client Wrapper<br>TypeScript"] -->|Connects to| 14521["Supabase<br>BaaS/Database"]
-    14543["LibSQL Client Wrapper<br>TypeScript"] -->|Connects to| 14522["LibSQL<br>Database"]
     14535["AI Integration<br>TypeScript"] -->|Calls| 14523["Google AI / Vertex AI<br>External AI Service"]
     14536["Agentic Toolkit Integration<br>TypeScript"] -->|Integrates with| 14524["Agentic Toolkit<br>External Service/Library"]
     14539["Langfuse Integration<br>TypeScript"] -->|Sends data to| 14525["Langfuse<br>Observability Service"]
     14537["Tool Definitions &amp; Execution<br>TypeScript"] -->|Executes Web Tools via| 14526["Web Tools Provider<br>External Service (Search/Scrape)"]
     14537["Tool Definitions &amp; Execution<br>TypeScript"] -->|Executes Code via| 14527["Code Execution Environment<br>External Service"]
+    14542["Supabase Client Wrapper<br>TypeScript"] -->|Connects to| 14521["Supabase<br>BaaS/Database"]
+    14543["LibSQL Client Wrapper<br>TypeScript"] -->|Connects to| 14522["LibSQL<br>Database"]
 ```
 
 ---
