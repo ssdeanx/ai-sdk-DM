@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Trace {
   id: string
@@ -41,6 +42,7 @@ export function TracingTimeline({
   selectedTraceId,
   onSelectTrace
 }: TracingTimelineProps) {
+  const { toast } = useToast()
   const [timelineData, setTimelineData] = useState<any[]>([])
   const [timeScale, setTimeScale] = useState<string>("relative")
   const [filterStatus, setFilterStatus] = useState<string>("all")
@@ -233,6 +235,11 @@ export function TracingTimeline({
       })
       .on("click", (_, d) => {
         onSelectTrace(d.id)
+        toast({
+          title: "Trace selected",
+          description: `Trace ${d.name.substring(0, 20)}${d.name.length > 20 ? '...' : ''} has been selected.`,
+          duration: 2000
+        })
       })
 
     // Add gradients
@@ -294,8 +301,37 @@ export function TracingTimeline({
 
   }, [timelineData, selectedTraceId, hoveredTrace, timeScale, zoomLevel, onSelectTrace])
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    show: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 260,
+        damping: 20
+      }
+    }
+  }
+
   return (
-    <div className="space-y-4">
+    <motion.div
+      className="space-y-4"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -333,7 +369,15 @@ export function TracingTimeline({
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.5))}
+            onClick={() => {
+              const newZoom = Math.max(0.5, zoomLevel - 0.5);
+              setZoomLevel(newZoom);
+              toast({
+                title: "Zoom level changed",
+                description: `Timeline zoom decreased to ${newZoom}x`,
+                duration: 2000
+              });
+            }}
             disabled={zoomLevel <= 0.5}
           >
             <Minimize2 className="h-4 w-4" />
@@ -341,7 +385,15 @@ export function TracingTimeline({
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setZoomLevel(Math.min(5, zoomLevel + 0.5))}
+            onClick={() => {
+              const newZoom = Math.min(5, zoomLevel + 0.5);
+              setZoomLevel(newZoom);
+              toast({
+                title: "Zoom level changed",
+                description: `Timeline zoom increased to ${newZoom}x`,
+                duration: 2000
+              });
+            }}
             disabled={zoomLevel >= 5}
           >
             <Maximize2 className="h-4 w-4" />
@@ -350,7 +402,8 @@ export function TracingTimeline({
       </div>
 
       {/* Timeline Visualization */}
-      <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
+      <motion.div variants={itemVariants}>
+        <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -404,6 +457,7 @@ export function TracingTimeline({
           )}
         </CardContent>
       </Card>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

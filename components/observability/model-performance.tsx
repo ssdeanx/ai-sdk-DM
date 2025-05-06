@@ -79,10 +79,12 @@ export function ModelPerformance({
   performance,
   isLoading
 }: ModelPerformanceProps) {
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<string>("overview")
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<string>("latency")
   const [chartType, setChartType] = useState<string>("line")
+  const [isExporting, setIsExporting] = useState<boolean>(false)
 
   // Set the first model as selected when data loads
   useEffect(() => {

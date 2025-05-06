@@ -74,9 +74,21 @@ export function TracingDetails({
   selectedTraceId,
   onSelectTrace
 }: TracingDetailsProps) {
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [expandedMetadata, setExpandedMetadata] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<string>("overview")
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Use effect to reset copied state after 2 seconds
+  useEffect(() => {
+    if (copiedId) {
+      const timer = setTimeout(() => {
+        setCopiedId(null)
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [copiedId])
 
   // Fetch detailed trace data when a trace is selected
   const { data: traceDetailsArray, isLoading: detailsLoading } = useSupabaseFetch<Trace>({
@@ -105,6 +117,25 @@ export function TracingDetails({
       ...prev,
       [traceId]: !prev[traceId]
     }))
+
+    // Show toast notification when metadata is expanded/collapsed
+    toast({
+      title: expandedMetadata[traceId] ? "Metadata collapsed" : "Metadata expanded",
+      description: `Metadata for ${traceId.substring(0, 8)}... has been ${expandedMetadata[traceId] ? "collapsed" : "expanded"}`,
+      duration: 2000
+    })
+  }
+
+  // Copy trace ID to clipboard
+  const copyToClipboard = (text: string, type: string = "ID") => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(text)
+
+    toast({
+      title: `${type} copied to clipboard`,
+      description: `${text.substring(0, 15)}${text.length > 15 ? '...' : ''} has been copied to your clipboard.`,
+      duration: 2000
+    })
   }
 
   // Format timestamp
@@ -177,9 +208,25 @@ export function TracingDetails({
         <Card className="lg:col-span-1 overflow-hidden border-opacity-40 backdrop-blur-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Layers className="h-5 w-5 text-primary" />
-                Traces
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Traces
+                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <Info className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        Select a trace to view detailed information. You can search traces by name or ID.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardTitle>
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                 {filteredTraces.length}
@@ -238,8 +285,32 @@ export function TracingDetails({
                         <span>•</span>
                         <span>{formatDuration(trace.duration)}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1 truncate">
-                        ID: {trace.id}
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <span>ID: {trace.id}</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0 hover:bg-transparent"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  copyToClipboard(trace.id)
+                                }}
+                              >
+                                {copiedId === trace.id ? (
+                                  <CheckCircle className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <Copy className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="text-xs">
+                              {copiedId === trace.id ? "Copied!" : "Copy ID"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                       {trace.metadata && (
                         <div className="mt-2">
@@ -259,13 +330,23 @@ export function TracingDetails({
                             )}
                             Metadata
                           </Button>
-                          {expandedMetadata[trace.id] && (
-                            <div className="mt-2 text-xs bg-muted/50 p-2 rounded-md">
-                              <pre className="whitespace-pre-wrap break-all">
-                                {JSON.stringify(trace.metadata, null, 2)}
-                              </pre>
-                            </div>
-                          )}
+                          <AnimatePresence>
+                            {expandedMetadata[trace.id] && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="mt-2 text-xs bg-muted/50 p-2 rounded-md">
+                                  <pre className="whitespace-pre-wrap break-all">
+                                    {JSON.stringify(trace.metadata, null, 2)}
+                                  </pre>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       )}
                     </motion.div>
@@ -279,9 +360,98 @@ export function TracingDetails({
         {/* Trace Details */}
         <Card className="lg:col-span-2 overflow-hidden border-opacity-40 backdrop-blur-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
-              Trace Details
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                Trace Details
+              </span>
+              {traceDetails && (
+                <div className="flex items-center gap-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const dataStr = JSON.stringify(traceDetails, null, 2)
+                            const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`
+                            const downloadAnchorNode = document.createElement('a')
+                            downloadAnchorNode.setAttribute('href', dataUri)
+                            downloadAnchorNode.setAttribute('download', `trace-${traceDetails.id}.json`)
+                            document.body.appendChild(downloadAnchorNode)
+                            downloadAnchorNode.click()
+                            downloadAnchorNode.remove()
+
+                            toast({
+                              title: "Trace downloaded",
+                              description: `Trace ${traceDetails.id.substring(0, 8)}... has been downloaded as JSON.`,
+                              duration: 3000
+                            })
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Download trace as JSON</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // Open trace in new window/tab
+                            window.open(`/observability/traces/${traceDetails.id}`, '_blank')
+
+                            toast({
+                              title: "Trace opened in new tab",
+                              description: `Trace ${traceDetails.id.substring(0, 8)}... has been opened in a new tab.`,
+                              duration: 2000
+                            })
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Open trace in new tab</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // Toggle code view
+                            setActiveTab("metadata")
+
+                            toast({
+                              title: "Viewing trace code",
+                              description: "Switched to metadata view to see the raw trace data.",
+                              duration: 2000
+                            })
+                          }}
+                        >
+                          <Code className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>View trace code</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              )}
             </CardTitle>
             <CardDescription>
               {selectedTraceId ? 'Detailed information about the selected trace' : 'Select a trace to view details'}
@@ -429,13 +599,23 @@ export function TracingDetails({
                                   View
                                 </Button>
                               )}
-                              {expandedMetadata[event.id] && event.metadata && (
-                                <div className="mt-2 text-xs bg-muted/50 p-2 rounded-md">
-                                  <pre className="whitespace-pre-wrap break-all">
-                                    {JSON.stringify(event.metadata, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
+                              <AnimatePresence>
+                                {expandedMetadata[event.id] && event.metadata && (
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="mt-2 text-xs bg-muted/50 p-2 rounded-md">
+                                      <pre className="whitespace-pre-wrap break-all">
+                                        {JSON.stringify(event.metadata, null, 2)}
+                                      </pre>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -466,6 +646,35 @@ export function TracingDetails({
               </Tabs>
             )}
           </CardContent>
+          <CardFooter className="flex justify-end pt-0">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => {
+                      if (selectedTraceId) {
+                        // Refetch trace details
+                        toast({
+                          title: "Refreshing trace details",
+                          description: "Fetching the latest trace information...",
+                          duration: 2000
+                        })
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>Refresh</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh trace details</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardFooter>
         </Card>
       </div>
     </div>
