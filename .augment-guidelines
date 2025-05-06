@@ -1,0 +1,1992 @@
+# AI SDK DM Project Technical Specification
+
+## AI SDK Overview
+
+This project leverages the Vercel AI SDK, a powerful toolkit for building AI-powered applications. The AI SDK consists of two main components:
+
+### AI SDK Core
+
+AI SDK Core simplifies working with Large Language Models (LLMs) by offering a standardized way of integrating them into applications. It provides functions for:
+
+- **Text Generation**: `generateText` and `streamText` for generating and streaming text responses
+- **Structured Data**: `generateObject` and `streamObject` for generating and streaming structured data
+- **Tool Usage**: Support for function calling and tool integration
+- **Image Generation**: `generateImage` for creating images from text prompts (experimental)
+- **Transcription**: `transcribe` for converting audio to text (experimental)
+- **Speech**: Text-to-speech capabilities (experimental)
+
+### AI SDK UI
+
+AI SDK UI is designed to build interactive chat, completion, and assistant applications with ease. It provides framework-agnostic hooks:
+
+- **`useChat`**: Real-time streaming of chat messages with state management
+- **`useCompletion`**: Text completion with automatic UI updates
+- **`useObject`**: Streaming structured JSON objects
+- **`useAssistant`**: Integration with OpenAI-compatible assistant APIs
+
+## Architecture Overview
+
+This project implements a modular, extensible AI chat application using the Vercel AI SDK with multi-provider support. The architecture follows a layered approach with clear separation of concerns:
+
+```ascii
+┌─────────────────────────────────────────────────────────────┐
+│                      Frontend Layer                         │
+│  ┌─────────────────┐  ┌─────────────────┐ ┌──────────────┐  │
+│  │ Chat Components │  │ Tool Components │ │ UI Components│  │
+│  └─────────────────┘  └─────────────────┘ └──────────────┘  │
+└───────────────────────────────┬─────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                        API Layer                            │
+│  ┌─────────────────┐  ┌─────────────────┐ ┌──────────────┐  │
+│  │   Chat Routes   │  │  Thread Routes  │ │ Tools Routes │  │
+│  └─────────────────┘  └─────────────────┘ └──────────────┘  │
+└───────────────────────────────┬─────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Integration Layer                       │
+│  ┌─────────────────┐  ┌─────────────────┐ ┌──────────────┐  │
+│  │  AI Providers   │  │  Tracing System │ │ Tools System │  │
+│  └─────────────────┘  └─────────────────┘ └──────────────┘  │
+└───────────────────────────────┬─────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Persistence Layer                       │
+│  ┌─────────────────┐  ┌─────────────────┐ ┌──────────────┐  │
+│  │ Thread Storage  │  │ Message Storage │ │ Embeddings   │  │
+│  └─────────────────┘  └─────────────────┘ └──────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Core Technologies
+
+- **Frontend**: React 18+, Next.js App Router, Framer Motion, Tailwind CSS
+- **Backend**: Next.js API Routes, Edge Runtime
+- **AI SDK**: Vercel AI SDK (`@ai-sdk/core`, `@ai-sdk/react`)
+- **Providers**: Google AI (`@ai-sdk/google`), OpenAI (`@ai-sdk/openai`), Anthropic (`@ai-sdk/anthropic`)
+- **Database**: LibSQL (for memory), Supabase (for configuration)
+- **Observability**: OpenTelemetry, Langfuse
+- **Tools Framework**: Custom agentic tools system with AI SDK compatibility
+
+## Module Specifications
+
+### Frontend Components (`./components/chat/`)
+
+#### AI SDK Chat Component (`ai-sdk-chat.tsx`)
+
+The main chat interface component that serves as the primary user interaction point. It leverages the `useChat` hook from AI SDK UI to create a rich, interactive chat experience with real-time streaming and tool execution.
+
+```typescript
+export function AiSdkChat({
+  apiEndpoint = '/api/chat',
+  initialMessages = [],
+  initialThreadId,
+  modelId = 'gemini-2.0-flash',
+  temperature = 0.7,
+  maxTokens = 8192,
+  tools = [],
+  className,
+}: AiSdkChatProps)
+```
+
+**Key Features**:
+
+- Thread management with persistence across sessions
+- File attachment handling with image preview
+- Voice input via Web Speech API
+- Function calling with dynamic tool selection
+- Real-time streaming responses with typing indicators
+- Message history with infinite scrolling and virtualization
+- Tool execution visualization and interactive tool UI
+- Responsive design with mobile support
+- Error handling with retry capabilities
+- Message persistence with token counting
+- Support for resumable streams after disconnection
+- Interactive UI for tool confirmation dialogs
+- Support for multi-modal content (text, images, structured data)
+- Customizable UI components for different message types
+
+**State Management**:
+
+- Uses React hooks for local state
+- Leverages AI SDK's `useChat` for chat state
+- Implements optimistic updates for UI responsiveness
+- Handles loading, error, and success states
+- Manages tool execution state and results
+
+**Event Flow**:
+
+1. User inputs message (text, voice, or file)
+2. Message sent to API endpoint with metadata
+3. API processes with selected model and tools
+4. Streaming response displayed in real-time
+5. Function calls executed and visualized
+6. Messages persisted to memory system
+7. UI updated with new message and state
+
+**AI SDK UI Hooks Usage**:
+
+- **`useChat`**: Primary hook for chat interface
+  - Manages messages, input, status, and error states
+  - Handles submission and streaming
+  - Provides tool execution capabilities
+  - Supports resumable streams
+
+- **`useCompletion`**: Used for text completion scenarios
+  - Simpler interface for non-chat completions
+  - Manages completion state and streaming
+
+- **`useObject`**: Used for structured data generation
+  - Streams JSON objects with schema validation
+  - Useful for generating UI components dynamically
+
+- **`useAssistant`**: Used for OpenAI Assistant integration
+  - Manages assistant-specific states and interactions
+  - Handles assistant tools and capabilities
+
+### Backend API Routes (`./app/api/chat/ai-sdk/`)
+
+#### Main Chat Endpoint (`route.ts`)
+
+Handles chat requests from the frontend with streaming responses.
+
+```typescript
+export async function POST(request: Request) {
+  // Request validation
+  // Thread management
+  // Message persistence
+  // Model configuration
+  // Tracing setup
+  // AI SDK integration
+  // Response streaming
+}
+```
+
+**Request Processing Flow**:
+
+1. Parse and validate incoming request
+2. Retrieve or create thread
+3. Save user message to memory
+4. Fetch model configuration
+5. Create trace for observability
+6. Configure tools for function calling
+7. Stream AI response with tracing
+8. Save assistant response to memory
+
+**Error Handling**:
+
+- Comprehensive error handling with specific error types
+- Graceful degradation with fallbacks
+- Detailed error logging for debugging
+
+#### Thread Management (`threads/route.ts`, `threads/[id]/route.ts`)
+
+Handles CRUD operations for chat threads.
+
+```typescript
+// GET /api/chat/ai-sdk/threads
+export async function GET(request: Request)
+
+// POST /api/chat/ai-sdk/threads
+export async function POST(request: Request)
+
+// GET /api/chat/ai-sdk/threads/[id]
+export async function GET(request: Request, { params })
+
+// PATCH /api/chat/ai-sdk/threads/[id]
+export async function PATCH(request: Request, { params })
+
+// DELETE /api/chat/ai-sdk/threads/[id]
+export async function DELETE(request: Request, { params })
+```
+
+**Thread Operations**:
+
+- List threads with pagination and filtering
+- Create new threads with metadata
+- Retrieve thread details with optional messages
+- Update thread properties
+- Delete threads with cascade
+
+#### Message Management (`threads/[id]/messages/route.ts`)
+
+Handles operations for messages within threads.
+
+```typescript
+// GET /api/chat/ai-sdk/threads/[id]/messages
+export async function GET(request: Request, { params })
+
+// POST /api/chat/ai-sdk/threads/[id]/messages
+export async function POST(request: Request, { params })
+```
+
+**Message Operations**:
+
+- List messages with pagination
+- Add messages with token counting and embeddings
+- Support for different message roles (user, assistant, system, tool)
+- Metadata attachment for tracing and source tracking
+
+### Library Implementation (`./lib/`)
+
+#### AI SDK Integration (`ai-sdk-integration.ts`)
+
+Core integration layer for AI providers with the AI SDK.
+
+```typescript
+export async function streamWithAISDK({
+  provider,
+  modelId,
+  messages,
+  temperature = 0.7,
+  maxTokens,
+  tools = {},
+  apiKey,
+  baseURL,
+  traceName,
+  userId,
+  metadata,
+}: StreamWithAISDKOptions): Promise<StreamingTextResponse>
+
+export async function generateWithAISDK({
+  provider,
+  modelId,
+  messages,
+  temperature = 0.7,
+  maxTokens,
+  tools = {},
+  apiKey,
+  baseURL,
+  traceName,
+  userId,
+  metadata,
+}: GenerateWithAISDKOptions): Promise<AIResponse>
+
+export async function getAllAISDKTools({
+  includeBuiltIn = true,
+  includeCustom = true,
+  includeAgentic = true
+}: GetAllAISDKToolsOptions = {}): Promise<Record<string, Tool>>
+```
+
+**Provider Integration**:
+
+- Google AI (Gemini) - Primary provider
+- OpenAI - Secondary provider
+- Anthropic - Secondary provider
+- Vertex AI - Optional provider
+
+**Configuration Management**:
+
+- Dynamic model configuration from database
+- Environment variable fallbacks
+- Runtime provider selection
+
+#### Tracing System (`ai-sdk-tracing.ts`)
+
+Comprehensive tracing and observability for AI operations.
+
+```typescript
+export async function streamGoogleAIWithTracing({
+  modelId,
+  messages,
+  temperature,
+  maxTokens,
+  tools,
+  apiKey,
+  baseURL,
+  traceName,
+  userId,
+  metadata,
+}: GoogleAITracingOptions): Promise<StreamingTextResponse>
+
+export async function generateGoogleAIWithTracing({
+  modelId,
+  messages,
+  temperature,
+  maxTokens,
+  tools,
+  apiKey,
+  baseURL,
+  traceName,
+  userId,
+  metadata,
+}: GoogleAITracingOptions): Promise<AIResponse>
+
+// Similar functions for OpenAI and Anthropic
+```
+
+**Tracing Capabilities**:
+
+- Span creation and management
+- Event logging with detailed metadata
+- Token usage tracking
+- Latency measurement
+- Error capturing and categorization
+- Integration with OpenTelemetry
+- Custom trace visualization
+
+### Tools System (`./lib/tools/`)
+
+#### Tool Categories
+
+The tools system is organized into functional categories:
+
+1. **Web Tools** (`web-tools.ts`):
+   - Web scraping and content extraction
+   - URL parsing and validation
+   - HTTP request handling
+
+2. **Code Tools** (`code-tools.ts`):
+   - Code analysis and execution
+   - Syntax highlighting and formatting
+   - Repository interaction
+
+3. **Data Tools** (`data-tools.ts`):
+   - Data processing and transformation
+   - CSV/JSON handling
+   - Visualization generation
+
+4. **File Tools** (`file-tools.ts`):
+   - File system operations
+   - Content reading and writing
+   - Directory management
+
+5. **API Tools** (`api-tools.ts`):
+   - External API integration
+   - Authentication handling
+   - Response processing
+
+6. **RAG Tools** (`rag-tools.ts`):
+   - Vector search and similarity
+   - Context retrieval and chunking
+   - Embedding generation
+
+7. **Agentic Tools** (`agentic/`):
+   - Wikipedia, Wikidata clients
+   - Search engines (Brave, Google, Tavily)
+   - Specialized APIs (GitHub, Reddit, ArXiv)
+   - Computational tools (Calculator)
+
+#### Agentic Tools Integration (`agentic/ai-sdk.ts`)
+
+Adapter for converting agentic tools to AI SDK format.
+
+```typescript
+export function createAISDKTools(...aiFunctionLikeTools: AIFunctionLike[]) {
+  const fns = new AIFunctionSet(aiFunctionLikeTools)
+
+  return Object.fromEntries(
+    fns.map((fn) => [
+      fn.spec.name,
+      tool({
+        description: fn.spec.description,
+        parameters: isZodSchema(fn.inputSchema)
+          ? fn.inputSchema
+          : jsonSchema(asAgenticSchema(fn.inputSchema).jsonSchema),
+        execute: fn.execute
+      })
+    ])
+  )
+}
+```
+
+**Tool Registration Pattern**:
+
+```typescript
+// Example tool implementation
+export class WikipediaClient extends AIFunctionsProvider {
+  // Implementation details
+}
+
+// Export as AI SDK compatible tool
+export const wikipediaTools = createAISDKTools(new WikipediaClient())
+```
+
+#### Tool Loading System (`index.ts`)
+
+Centralized system for loading and managing tools.
+
+```typescript
+// Get all built-in tools
+export function getAllBuiltInTools() {
+  return {
+    ...webTools.tools,
+    ...codeTools.tools,
+    ...dataTools.tools,
+    ...fileTools.tools,
+    ...apiTools.tools,
+    ...ragTools.tools,
+    ...agenticTools,
+  }
+}
+
+// Load custom tools from database
+export async function loadCustomTools() {
+  // Implementation details
+}
+```
+
+**Custom Tool Loading**:
+
+- Dynamic loading from database
+- JSON Schema to Zod conversion
+- Secure execution environment
+- Runtime validation
+
+### Memory System (`./lib/memory/`)
+
+#### Thread Management (`memory.ts`)
+
+```typescript
+export async function createMemoryThread(
+  name: string,
+  options?: {
+    metadata?: Record<string, any>;
+  }
+): Promise<string>
+
+export async function getMemoryThread(
+  threadId: string
+): Promise<MemoryThread | null>
+
+export async function listMemoryThreads(
+  options?: {
+    filters?: {
+      metadata?: Record<string, any>;
+    };
+    limit?: number;
+    offset?: number;
+    orderBy?: {
+      column: string;
+      ascending: boolean;
+    };
+  }
+): Promise<MemoryThread[]>
+
+export async function deleteMemoryThread(
+  threadId: string
+): Promise<boolean>
+```
+
+**Thread Features**:
+
+- Unique ID generation
+- Metadata attachment
+- Creation and update timestamps
+- Filtering and sorting
+- Pagination support
+
+#### Message Management (`memory.ts`)
+
+```typescript
+export async function saveMessage(
+  threadId: string,
+  role: "user" | "assistant" | "system" | "tool",
+  content: string,
+  options?: {
+    count_tokens?: boolean;
+    generate_embeddings?: boolean;
+    metadata?: Record<string, any>;
+  }
+): Promise<string>
+
+export async function loadMessages(
+  threadId: string,
+  limit?: number,
+  options?: {
+    orderBy?: {
+      column: string;
+      ascending: boolean;
+    };
+  }
+): Promise<MemoryMessage[]>
+```
+
+**Message Features**:
+
+- Role-based categorization
+- Token counting with tiktoken
+- Embedding generation for semantic search
+- Metadata attachment
+- Ordering and pagination
+
+## Development Patterns
+
+### Provider Integration Pattern
+
+When integrating a new AI provider:
+
+1. Create provider-specific adapter in `lib/ai.ts`:
+
+   ```typescript
+   export function getNewProvider(apiKey?: string, baseURL?: string) {
+     return createNewProvider({
+       apiKey: apiKey || process.env.NEW_PROVIDER_API_KEY,
+       ...(baseURL ? { baseURL } : {}),
+     })
+   }
+   ```
+
+2. Add tracing support in `lib/ai-sdk-tracing.ts`:
+
+   ```typescript
+   export async function streamNewProviderWithTracing({
+     modelId,
+     messages,
+     temperature,
+     maxTokens,
+     tools,
+     apiKey,
+     baseURL,
+     traceName,
+     userId,
+     metadata,
+   }: NewProviderTracingOptions): Promise<StreamingTextResponse> {
+     // Implementation
+   }
+   ```
+
+3. Update integration layer in `lib/ai-sdk-integration.ts`:
+
+   ```typescript
+   // Add to provider switch statement
+   case 'new-provider':
+     return await streamNewProviderWithTracing({
+       modelId,
+       messages,
+       temperature,
+       maxTokens,
+       tools,
+       apiKey: apiKey || getNewProviderConfig(modelId)?.api_key,
+       baseURL,
+       traceName,
+       userId,
+       metadata: {
+         ...metadata,
+         parentTraceId: traceId
+       }
+     });
+   ```
+
+### Tool Development Pattern
+
+When creating a new tool:
+
+1. Define tool schema and implementation:
+
+   ```typescript
+   export const myNewTool = tool({
+     description: "Description of what the tool does",
+     parameters: z.object({
+       param1: z.string().describe("Description of parameter 1"),
+       param2: z.number().describe("Description of parameter 2"),
+     }),
+     execute: async ({ param1, param2 }) => {
+       // Implementation
+       return result;
+     }
+   });
+   ```
+
+2. Add to appropriate category in `lib/tools/`:
+
+   ```typescript
+   // In category-tools.ts
+   export const tools = {
+     existing_tool: existingTool,
+     my_new_tool: myNewTool,
+   };
+   ```
+
+3. For agentic tools, use the adapter pattern:
+
+   ```typescript
+   export class MyNewClient extends AIFunctionsProvider {
+     // Implementation
+   }
+
+   export const myNewTools = createAISDKTools(new MyNewClient())
+   ```
+
+4. Export from category index:
+
+   ```typescript
+   // In lib/tools/agentic/index.ts
+   export const agenticTools = {
+     ...existingTools,
+     ...myNewTools,
+   }
+   ```
+
+### API Route Pattern
+
+When creating a new API route:
+
+1. Define request validation:
+
+   ```typescript
+   const body = await request.json();
+   const { requiredParam } = body;
+
+   if (!requiredParam) {
+     return NextResponse.json(
+       { error: 'Required parameter missing' },
+       { status: 400 }
+     );
+   }
+   ```
+
+2. Implement error handling:
+
+   ```typescript
+   try {
+     // Implementation
+   } catch (error) {
+     return handleApiError(error);
+   }
+   ```
+
+3. Create trace for observability:
+
+   ```typescript
+   const trace = await createTrace({
+     name: "operation_name",
+     userId: userId,
+     metadata: {
+       // Relevant metadata
+     }
+   });
+   ```
+
+4. Return structured response:
+
+   ```typescript
+   return NextResponse.json({
+     id: resultId,
+     // Other response fields
+     createdAt: new Date().toISOString(),
+   });
+   ```
+
+## Testing Strategy
+
+### Unit Testing
+
+- Test individual components and functions in isolation
+- Mock external dependencies
+- Focus on edge cases and error handling
+
+```typescript
+// Example unit test for a tool
+describe('myNewTool', () => {
+  it('should handle valid parameters', async () => {
+    const result = await myNewTool.execute({
+      param1: 'test',
+      param2: 42
+    });
+    expect(result).toEqual(expectedResult);
+  });
+
+  it('should handle invalid parameters', async () => {
+    await expect(myNewTool.execute({
+      param1: '',
+      param2: -1
+    })).rejects.toThrow();
+  });
+});
+```
+
+### Integration Testing
+
+- Test interaction between components
+- Focus on API routes and database operations
+- Use test database for persistence tests
+
+```typescript
+// Example integration test for an API route
+describe('POST /api/chat/ai-sdk/threads', () => {
+  it('should create a new thread', async () => {
+    const response = await fetch('/api/chat/ai-sdk/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Test Thread' })
+    });
+
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.id).toBeDefined();
+    expect(data.name).toBe('Test Thread');
+  });
+});
+```
+
+### E2E Testing
+
+- Test complete user flows
+- Use Playwright or Cypress
+- Focus on critical paths
+
+```typescript
+// Example E2E test
+test('user can send a message and receive a response', async ({ page }) => {
+  await page.goto('/chat');
+  await page.fill('textarea', 'Hello, AI!');
+  await page.click('button[type="submit"]');
+
+  await page.waitForSelector('[data-testid="assistant-message"]');
+  const responseText = await page.textContent('[data-testid="assistant-message"]');
+  expect(responseText).not.toBe('');
+});
+```
+
+## Performance Considerations
+
+### Frontend Optimization
+
+- Implement virtualized lists for message history
+- Use React.memo for expensive components
+- Optimize re-renders with useMemo and useCallback
+- Implement progressive loading for attachments
+
+### Backend Optimization
+
+- Use edge runtime for API routes when possible
+- Implement caching for model configurations
+- Optimize database queries with indexes
+- Use connection pooling for database access
+
+### Memory Management
+
+- Implement token counting to stay within context limits
+- Use chunking for large message histories
+- Implement TTL for inactive threads
+- Use efficient embedding storage and retrieval
+
+## Security Considerations
+
+### API Security
+
+- Implement rate limiting for API routes
+- Validate and sanitize all user inputs
+- Use proper authentication and authorization
+- Keep API keys secure with environment variables
+
+### Tool Execution
+
+- Sandbox custom tool execution
+- Validate tool inputs against schemas
+- Implement timeout for tool execution
+- Log all tool executions for audit
+
+### Data Protection
+
+- Encrypt sensitive data at rest
+- Implement proper access controls
+- Follow data retention policies
+- Provide data export and deletion capabilities
+
+## Advanced AI SDK Features
+
+### Middleware System
+
+The AI SDK supports middleware for intercepting and modifying requests and responses. There are two types of middleware in the AI SDK:
+
+#### Language Model Middleware
+
+Language model middleware enhances the behavior of language models by intercepting and modifying calls to the language model. It can be used with the `wrapLanguageModel` function:
+
+```typescript
+import { wrapLanguageModel } from 'ai';
+
+const wrappedLanguageModel = wrapLanguageModel({
+  model: yourModel,
+  middleware: yourLanguageModelMiddleware,
+});
+```
+
+You can implement any of the following three functions to modify the behavior of the language model:
+
+1. **`transformParams`**: Transforms parameters before they're passed to the language model
+2. **`wrapGenerate`**: Wraps the `doGenerate` method of the language model
+3. **`wrapStream`**: Wraps the `doStream` method of the language model
+
+Built-in middleware includes:
+
+- **`extractReasoningMiddleware`**: Extracts reasoning information from generated text
+- **`simulateStreamingMiddleware`**: Simulates streaming with non-streaming models
+- **`defaultSettingsMiddleware`**: Applies default settings to a language model
+
+Example of a caching middleware:
+
+```typescript
+import type { LanguageModelV1Middleware } from 'ai';
+
+const cache = new Map<string, any>();
+
+export const cacheMiddleware: LanguageModelV1Middleware = {
+  wrapGenerate: async ({ doGenerate, params }) => {
+    const cacheKey = JSON.stringify(params);
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+    const result = await doGenerate();
+    cache.set(cacheKey, result);
+    return result;
+  },
+  wrapStream: async ({ doStream, params }) => {
+    // Implement streaming cache logic
+  }
+};
+```
+
+#### Request-Response Middleware
+
+This type of middleware intercepts and modifies requests and responses at the API level:
+
+1. **Request Middleware**:
+   - Modify prompts before they reach the model
+   - Add context or instructions dynamically
+   - Implement rate limiting or quota management
+
+   ```typescript
+   const middleware = createMiddleware({
+     name: 'context-injection',
+     beforeRequest: async ({ messages }) => {
+       // Add context to the first message
+       return {
+         messages: [
+           { role: 'system', content: 'Additional context: ...' },
+           ...messages
+         ]
+       };
+     }
+   });
+
+   const result = await streamText({
+     model: openai('gpt-4'),
+     messages,
+     middleware: [middleware]
+   });
+   ```
+
+2. **Response Middleware**:
+   - Process model outputs before returning to the client
+   - Implement content filtering or moderation
+   - Add metadata or annotations to responses
+
+   ```typescript
+   const middleware = createMiddleware({
+     name: 'response-filter',
+     afterResponse: async ({ response }) => {
+       // Filter or modify the response
+       return {
+         response: {
+           ...response,
+           text: response.text().replace(/sensitive/g, '[redacted]')
+         }
+       };
+     }
+   });
+   ```
+
+3. **Error Handling Middleware**:
+   - Catch and process errors from models
+   - Implement fallbacks or retries
+   - Log errors for monitoring
+
+   ```typescript
+   const middleware = createMiddleware({
+     name: 'error-handler',
+     onError: async ({ error, runAgain }) => {
+       console.error('Model error:', error);
+       if (error.message.includes('rate limit')) {
+         // Wait and retry
+         await new Promise(resolve => setTimeout(resolve, 1000));
+         return runAgain();
+       }
+       // Let the error propagate
+       return { error };
+     }
+   });
+   ```
+
+### Google AI Advanced Features
+
+#### Multimodal Capabilities
+
+Google's Gemini models support multimodal inputs combining text and images:
+
+```typescript
+const result = await generateText({
+  model: google('gemini-pro-vision'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: 'What's in this image?' },
+        {
+          type: 'image',
+          image: await readFile('image.jpg')
+        }
+      ]
+    }
+  ]
+});
+```
+
+#### Hybrid Grounding
+
+Gemini supports hybrid grounding, which combines retrieval-augmented generation with multimodal inputs:
+
+```typescript
+const result = await generateText({
+  model: google('gemini-1.5-pro'),
+  messages: [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Analyze this document and extract key information' },
+        {
+          type: 'image',
+          image: await readFile('document.jpg')
+        },
+        {
+          type: 'text',
+          text: 'Additional context from database: ' + retrievedContext
+        }
+      ]
+    }
+  ]
+});
+```
+
+#### Advanced Function Calling
+
+Gemini models support sophisticated function calling with structured outputs:
+
+```typescript
+const result = await generateText({
+  model: google('gemini-1.5-pro'),
+  messages: [
+    { role: 'user', content: 'What's the weather in San Francisco and New York?' }
+  ],
+  tools: {
+    getWeather: {
+      description: 'Get the current weather in a location',
+      parameters: z.object({
+        location: z.string().describe('The city and state'),
+        unit: z.enum(['celsius', 'fahrenheit']).default('celsius')
+      }),
+      execute: async ({ location, unit }) => {
+        // Implementation to fetch weather data
+        return { temperature: 22, conditions: 'sunny' };
+      }
+    }
+  }
+});
+```
+
+#### System Instructions
+
+Gemini models support system instructions for controlling model behavior:
+
+```typescript
+const result = await generateText({
+  model: google('gemini-1.5-pro'),
+  system: 'You are a helpful assistant that specializes in technical documentation. Always provide code examples when explaining programming concepts.',
+  messages: [
+    { role: 'user', content: 'How do I implement a binary search tree in TypeScript?' }
+  ]
+});
+```
+
+#### Safety Settings
+
+Customize Gemini's safety settings for different harm categories:
+
+```typescript
+const result = await generateText({
+  model: google('gemini-1.5-pro'),
+  messages: [{ role: 'user', content: prompt }],
+  safetySettings: [
+    {
+      category: 'HARM_CATEGORY_HARASSMENT',
+      threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+    },
+    {
+      category: 'HARM_CATEGORY_HATE_SPEECH',
+      threshold: 'BLOCK_ONLY_HIGH'
+    }
+  ]
+});
+```
+
+### Advanced Tool Usage
+
+#### Parallel Tool Execution
+
+Execute multiple tools concurrently for improved performance:
+
+```typescript
+const result = await generateText({
+  model: openai('gpt-4o'),
+  messages: [{ role: 'user', content: 'Compare the weather in NYC and SF' }],
+  tools: {
+    getWeatherNYC: {
+      description: 'Get weather in New York',
+      parameters: z.object({}),
+      execute: async () => fetchWeather('New York')
+    },
+    getWeatherSF: {
+      description: 'Get weather in San Francisco',
+      parameters: z.object({}),
+      execute: async () => fetchWeather('San Francisco')
+    }
+  },
+  toolChoice: 'auto'
+});
+```
+
+#### Tool Choice Control
+
+Control which tools the model can use:
+
+```typescript
+// Force the model to use a specific tool
+const result = await generateText({
+  model: openai('gpt-4o'),
+  messages: [{ role: 'user', content: 'What's the weather in Paris?' }],
+  tools: { getWeather, searchWeb },
+  toolChoice: 'getWeather' // Force use of getWeather tool
+});
+
+// Let the model decide which tool to use
+const result = await generateText({
+  model: openai('gpt-4o'),
+  messages: [{ role: 'user', content: 'What's the weather in Paris?' }],
+  tools: { getWeather, searchWeb },
+  toolChoice: 'auto' // Model decides which tool to use
+});
+
+// Force the model to not use any tools
+const result = await generateText({
+  model: openai('gpt-4o'),
+  messages: [{ role: 'user', content: 'What's the weather in Paris?' }],
+  tools: { getWeather, searchWeb },
+  toolChoice: 'none' // Don't use any tools
+});
+```
+
+#### Recursive Tool Calling
+
+Implement recursive tool calling for complex workflows:
+
+```typescript
+const result = await generateText({
+  model: openai('gpt-4o'),
+  messages: [{ role: 'user', content: 'Plan a trip to Paris' }],
+  tools: {
+    searchFlights: {
+      description: 'Search for flights',
+      parameters: z.object({
+        from: z.string(),
+        to: z.string(),
+        date: z.string()
+      }),
+      execute: async ({ from, to, date }) => {
+        // Implementation
+        return flightResults;
+      }
+    },
+    searchHotels: {
+      description: 'Search for hotels',
+      parameters: z.object({
+        location: z.string(),
+        checkIn: z.string(),
+        checkOut: z.string()
+      }),
+      execute: async ({ location, checkIn, checkOut }) => {
+        // Implementation
+        return hotelResults;
+      }
+    },
+    bookTrip: {
+      description: 'Book a complete trip',
+      parameters: z.object({
+        flightId: z.string(),
+        hotelId: z.string()
+      }),
+      execute: async ({ flightId, hotelId }) => {
+        // Implementation
+        return bookingConfirmation;
+      }
+    }
+  },
+  maxSteps: 10 // Allow up to 10 tool calls in sequence
+});
+```
+
+#### Tool Repair
+
+The AI SDK supports repairing invalid tool calls:
+
+```typescript
+const result = await generateText({
+  model,
+  tools,
+  prompt,
+  experimental_repairToolCall: async ({
+    toolCall,
+    tools,
+    parameterSchema,
+    error,
+  }) => {
+    if (NoSuchToolError.isInstance(error)) {
+      return null; // do not attempt to fix invalid tool names
+    }
+
+    // Use the model to fix the tool call
+    const result = await generateText({
+      model,
+      system,
+      messages: [
+        ...messages,
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool-call',
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              args: toolCall.args,
+            },
+          ],
+        },
+        {
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              result: error.message,
+            },
+          ],
+        },
+      ],
+      tools,
+    });
+
+    // Return the fixed tool call
+    return result.toolCalls.find(
+      newToolCall => newToolCall.toolName === toolCall.toolName
+    );
+  }
+});
+```
+
+#### Full Stream Access
+
+You can access the full stream of events from the model:
+
+```typescript
+const result = streamText({
+  model: yourModel,
+  tools: {
+    cityAttractions: {
+      parameters: z.object({ city: z.string() }),
+      execute: async ({ city }) => ({
+        attractions: ['attraction1', 'attraction2', 'attraction3'],
+      }),
+    },
+  },
+  prompt: 'What are some San Francisco tourist attractions?',
+});
+
+for await (const part of result.fullStream) {
+  switch (part.type) {
+    case 'text-delta': {
+      // handle text delta here
+      break;
+    }
+    case 'reasoning': {
+      // handle reasoning here
+      break;
+    }
+    case 'source': {
+      // handle source here
+      break;
+    }
+    case 'tool-call': {
+      // handle tool call here
+      break;
+    }
+    case 'tool-result': {
+      // handle tool result here
+      break;
+    }
+    case 'finish': {
+      // handle finish here
+      break;
+    }
+    case 'error': {
+      // handle error here
+      break;
+    }
+  }
+}
+```
+
+## Advanced AI SDK UI Features
+
+### OpenAI Assistants Integration
+
+The AI SDK UI provides the `useAssistant` hook for integrating with OpenAI-compatible assistant APIs:
+
+```typescript
+'use client';
+import { Message, useAssistant } from '@ai-sdk/react';
+
+export default function Chat() {
+  const { status, messages, input, submitMessage, handleInputChange } =
+    useAssistant({ api: '/api/assistant' });
+
+  return (
+    <div>
+      {messages.map((m: Message) => (
+        <div key={m.id}>
+          <strong>{`${m.role}: `}</strong>
+          {m.role !== 'data' && m.content}
+          {m.role === 'data' && (
+            <>
+              {(m.data as any).description}
+              <br />
+              <pre className={'bg-gray-200'}>
+                {JSON.stringify(m.data, null, 2)}
+              </pre>
+            </>
+          )}
+        </div>
+      ))}
+      {status === 'in_progress' && <div />}
+      <form onSubmit={submitMessage}>
+        <input
+          disabled={status !== 'awaiting_message'}
+          value={input}
+          placeholder="What is the temperature in the living room?"
+          onChange={handleInputChange}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+On the server side, you can use the `AssistantResponse` class to handle assistant interactions:
+
+```typescript
+import { AssistantResponse } from 'ai';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(req: Request) {
+  const { threadId, message } = await req.json();
+
+  return AssistantResponse({
+    threadId,
+    messageId: message.id,
+
+    async process({ forwardStream, sendDataMessage }) {
+      // Create a thread if needed
+      const threadId = threadId ?? (await openai.beta.threads.create({})).id;
+
+      // Add user message to thread
+      await openai.beta.threads.messages.create(threadId, {
+        role: 'user',
+        content: message.content,
+      });
+
+      // Run the assistant
+      let runResult = await forwardStream(
+        openai.beta.threads.runs.createAndStream(threadId, {
+          assistant_id: process.env.ASSISTANT_ID!,
+        }),
+      );
+
+      // Handle tool calls if needed
+      while (runResult.status === 'requires_action') {
+        const toolCalls = runResult.required_action!.submit_tool_outputs.tool_calls;
+        const tool_outputs = [];
+
+        for (const toolCall of toolCalls) {
+          // Process tool calls and add outputs
+          tool_outputs.push({
+            tool_call_id: toolCall.id,
+            output: JSON.stringify({ result: 'Tool output' }),
+          });
+        }
+
+        // Submit tool outputs
+        runResult = await forwardStream(
+          openai.beta.threads.runs.submitToolOutputsStream(
+            threadId,
+            runResult.id,
+            { tool_outputs },
+          ),
+        );
+      }
+    },
+  });
+}
+```
+
+### Streaming Custom Data
+
+The AI SDK UI provides utilities for streaming custom data alongside model responses:
+
+```typescript
+import { openai } from '@ai-sdk/openai';
+import { generateId, createDataStreamResponse, streamText } from 'ai';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  return createDataStreamResponse({
+    execute: dataStream => {
+      // Send initial status
+      dataStream.writeData('initialized call');
+
+      const result = streamText({
+        model: openai('gpt-4o'),
+        messages,
+        onChunk() {
+          dataStream.writeMessageAnnotation({ chunk: '123' });
+        },
+        onFinish() {
+          // Add message annotation
+          dataStream.writeMessageAnnotation({
+            id: generateId(),
+            other: 'information',
+          });
+          // Add call annotation
+          dataStream.writeData('call completed');
+        },
+      });
+
+      // Merge the stream into the data stream
+      result.mergeIntoDataStream(dataStream);
+    },
+  });
+}
+```
+
+### Message Persistence
+
+The AI SDK UI provides utilities for message persistence:
+
+```typescript
+import { appendResponseMessages, streamText } from 'ai';
+import { saveChat } from '@/lib/chat-store';
+
+export async function POST(req: Request) {
+  const { messages, id } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4o-mini'),
+    messages,
+    async onFinish({ response }) {
+      // Save chat messages to database
+      await saveChat({
+        id,
+        messages: appendResponseMessages({
+          messages,
+          responseMessages: response.messages,
+        }),
+      });
+    },
+  });
+
+  return result.toDataStreamResponse();
+}
+```
+
+For client-side message handling:
+
+```typescript
+import { appendClientMessage } from 'ai';
+
+export async function POST(req: Request) {
+  // Get the last message from the client
+  const { message, id } = await req.json();
+
+  // Load previous messages from the server
+  const previousMessages = await loadChat(id);
+
+  // Append the new message to the previous messages
+  const messages = appendClientMessage({
+    messages: previousMessages,
+    message,
+  });
+
+  const result = streamText({
+    model,
+    messages,
+  });
+
+  return result.toDataStreamResponse();
+}
+```
+
+### Stream Protocols
+
+The AI SDK UI supports two stream protocols for real-time communication:
+
+1. **Text Stream Protocol**:
+   - Simple protocol for streaming text responses
+   - Used by `useCompletion` hook
+   - Supports basic text streaming without additional metadata
+
+2. **Data Stream Protocol**:
+   - More advanced protocol for structured data
+   - Used by `useChat` and `useObject` hooks
+   - Supports tool calls, attachments, and metadata
+   - Enables resumable streams and error handling
+
+### Message Persistence Features
+
+The AI SDK UI provides built-in support for message persistence:
+
+1. **Thread Management**:
+   - Create and manage chat threads
+   - Store thread metadata and settings
+   - Support for thread listing and filtering
+
+2. **Message Storage**:
+   - Save messages with role-based categorization
+   - Support for token counting and embeddings
+   - Metadata attachment for tracing
+
+3. **Resumable Streams**:
+   - Continue streaming after disconnection
+   - Preserve state across page reloads
+   - Seamless user experience with long-running conversations
+
+### Provider Registry
+
+The AI SDK provides a provider registry for managing multiple providers and models in a central place:
+
+```typescript
+import { anthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createProviderRegistry } from 'ai';
+
+export const registry = createProviderRegistry({
+  // register provider with prefix and default setup:
+  anthropic,
+  // register provider with prefix and custom setup:
+  openai: createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  }),
+});
+
+// Use the registry with model IDs:
+const result = await generateText({
+  model: registry('anthropic:claude-3-5-sonnet-20240620'),
+  prompt: 'Hello, world!',
+});
+```
+
+You can also create custom providers with pre-configured settings:
+
+```typescript
+import { openai as originalOpenAI } from '@ai-sdk/openai';
+import { customProvider } from 'ai';
+
+// custom provider with different model settings:
+export const openai = customProvider({
+  languageModels: {
+    // replacement model with custom settings:
+    'gpt-4o': originalOpenAI('gpt-4o', { structuredOutputs: true }),
+    // alias model with custom settings:
+    'gpt-4o-mini-structured': originalOpenAI('gpt-4o-mini', {
+      structuredOutputs: true,
+    }),
+  },
+  fallbackProvider: originalOpenAI,
+});
+```
+
+### Caching
+
+The AI SDK supports caching responses to improve performance and reduce costs:
+
+```typescript
+import { Redis } from '@upstash/redis';
+import {
+  type LanguageModelV1Middleware,
+  simulateReadableStream,
+} from 'ai';
+
+const redis = new Redis({
+  url: process.env.KV_URL,
+  token: process.env.KV_TOKEN,
+});
+
+export const cacheMiddleware: LanguageModelV1Middleware = {
+  wrapGenerate: async ({ doGenerate, params }) => {
+    const cacheKey = JSON.stringify(params);
+    const cached = await redis.get(cacheKey);
+
+    if (cached !== null) {
+      return cached;
+    }
+
+    const result = await doGenerate();
+    redis.set(cacheKey, result);
+    return result;
+  },
+
+  wrapStream: async ({ doStream, params }) => {
+    const cacheKey = JSON.stringify(params);
+    const cached = await redis.get(cacheKey);
+
+    if (cached !== null) {
+      // Return a simulated stream from the cached parts
+      return simulateReadableStream(cached, {
+        initialDelayInMs: 0,
+        chunkDelayInMs: 10,
+      });
+    }
+
+    const parts: any[] = [];
+    const stream = await doStream();
+
+    // Create a new stream that captures the parts for caching
+    const reader = stream.getReader();
+    const cachedStream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            parts.push(value);
+            controller.enqueue(value);
+          }
+          controller.close();
+          // Cache the parts
+          redis.set(cacheKey, parts);
+        } catch (e) {
+          controller.error(e);
+        }
+      },
+    });
+
+    return cachedStream;
+  },
+};
+```
+
+### Experimental Features
+
+#### Image Generation
+
+The AI SDK provides experimental support for image generation:
+
+```typescript
+import { experimental_generateImage as generateImage } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const { image } = await generateImage({
+  model: openai.image('dall-e-3'),
+  prompt: 'Santa Claus driving a Cadillac',
+});
+```
+
+#### Transcription
+
+The AI SDK provides experimental support for audio transcription:
+
+```typescript
+import { experimental_transcribe as transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+});
+```
+
+#### Speech Synthesis
+
+The AI SDK provides experimental support for text-to-speech:
+
+```typescript
+import { experimental_generateSpeech as generateSpeech } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const { audio } = await generateSpeech({
+  model: openai.speech('tts-1'),
+  voice: 'alloy',
+  input: 'Hello, world!',
+});
+```
+
+### Sequential Generations
+
+The AI SDK supports creating sequences of generations (chains or pipes), where the output of one becomes the input for the next:
+
+```typescript
+import { openai } from '@ai-sdk/openai';
+import { generateText } from 'ai';
+
+async function sequentialActions() {
+  // Generate blog post ideas
+  const ideasGeneration = await generateText({
+    model: openai('gpt-4o'),
+    prompt: 'Generate 10 ideas for a blog post about making spaghetti.',
+  });
+  console.log('Generated Ideas:\n', ideasGeneration);
+
+  // Pick the best idea
+  const bestIdeaGeneration = await generateText({
+    model: openai('gpt-4o'),
+    prompt: `Here are some blog post ideas about making spaghetti:
+${ideasGeneration}
+Pick the best idea from the list above and explain why it's the best.`,
+  });
+  console.log('\nBest Idea:\n', bestIdeaGeneration);
+
+  // Generate an outline
+  const outlineGeneration = await generateText({
+    model: openai('gpt-4o'),
+    prompt: `We've chosen the following blog post idea about making spaghetti:
+${bestIdeaGeneration}
+Create a detailed outline for a blog post based on this idea.`,
+  });
+  console.log('\nBlog Post Outline:\n', outlineGeneration);
+}
+```
+
+### Multistep Interfaces
+
+The AI SDK supports multistep interfaces that require multiple independent steps to complete a task:
+
+```typescript
+// Example of a multistep flight booking interface
+User: I want to book a flight from New York to London.
+Tool: searchFlights("New York", "London")
+Model: Here are the available flights from New York to London.
+
+User: I want to book flight number BA123 on 12th December for myself and my wife.
+Tool: lookupFlight("BA123") -> "4 seats available"
+Model: Sure, there are seats available! Can you provide the names of the passengers?
+
+User: John Doe and Jane Doe.
+Tool: bookFlight("BA123", "12th December", ["John Doe", "Jane Doe"])
+Model: Your flight has been booked!
+```
+
+Tool composition allows the model to combine multiple tools to create a coherent user experience:
+
+```typescript
+User: What's the status of my wife's upcoming flight?
+Tool: lookupContacts() -> ["John Doe", "Jane Doe"]
+Tool: lookupBooking("Jane Doe") -> "BA123 confirmed"
+Tool: lookupFlight("BA123") -> "Flight BA123 is scheduled to depart on 12th December."
+Model: Your wife's flight BA123 is confirmed and scheduled to depart on 12th December.
+```
+
+### Stopping Streams
+
+The AI SDK provides ways to cancel ongoing streams:
+
+1. **AI SDK Core**:
+
+   ```typescript
+   import { openai } from '@ai-sdk/openai';
+   import { streamText } from 'ai';
+
+   export async function POST(req: Request) {
+     const { prompt } = await req.json();
+     const result = streamText({
+       model: openai('gpt-4-turbo'),
+       prompt,
+       // forward the abort signal:
+       abortSignal: req.signal,
+     });
+     return result.toTextStreamResponse();
+   }
+   ```
+
+2. **AI SDK UI**:
+
+   ```typescript
+   'use client';
+   import { useCompletion } from '@ai-sdk/react';
+
+   export default function Chat() {
+     const { input, completion, stop, status, handleSubmit, handleInputChange } =
+       useCompletion();
+     return (
+       <div>
+         {(status === 'submitted' || status === 'streaming') && (
+           <button type="button" onClick={() => stop()}>
+             Stop
+           </button>
+         )}
+         {completion}
+         <form onSubmit={handleSubmit}>
+           <input value={input} onChange={handleInputChange} />
+         </form>
+       </div>
+     );
+   }
+   ```
+
+### Backpressure
+
+The AI SDK handles stream backpressure to optimize performance and resource usage:
+
+- **Lazy Streaming**: Only produces values when the consumer requests them
+- **Memory Efficiency**: Prevents buffer overflow by matching production to consumption rate
+- **Automatic Cancellation**: Frees resources when the consumer stops reading
+
+### Multiple Streamables
+
+The AI SDK supports multiple streamable UIs in a single request:
+
+```typescript
+'use server';
+import { createStreamableUI } from 'ai/rsc';
+
+export async function getWeather() {
+  const weatherUI = createStreamableUI();
+  const forecastUI = createStreamableUI();
+
+  weatherUI.update(<div>Loading weather...</div>);
+  forecastUI.update(<div>Loading forecast...</div>);
+
+  getWeatherData().then(weatherData => {
+    weatherUI.done(<div>{weatherData}</div>);
+  });
+
+  getForecastData().then(forecastData => {
+    forecastUI.done(<div>{forecastData}</div>);
+  });
+
+  // Return both streamable UIs and other data fields.
+  return {
+    requestedAt: Date.now(),
+    weather: weatherUI.value,
+    forecast: forecastUI.value,
+  };
+}
+```
+
+### Language Models as Routers
+
+The AI SDK supports using language models as routers for generative user interfaces:
+
+1. **Routing by Parameters**:
+   - Models can generate the correct parameters for dynamic routes
+   - Example: `/search?q=[query]` or `/profile/[username]`
+
+2. **Routing by Sequence**:
+   - Models can determine the correct sequence of steps to complete a task
+   - Example: Scheduling a meeting by looking up calendars, finding available times, and creating an event
+
+### Object Generation
+
+The AI SDK UI provides the `useObject` hook for generating structured data with real-time UI updates:
+
+```typescript
+'use client';
+import { useObject } from '@ai-sdk/react';
+import { notificationSchema } from './api/notifications/schema';
+
+export default function Page() {
+  const { object, isLoading, error, stop, submit } = useObject({
+    api: '/api/notifications',
+    schema: notificationSchema,
+    onFinish({ object, error }) {
+      console.log('Object generation completed:', object);
+      console.log('Schema validation error:', error);
+    },
+    onError(error) {
+      console.error('An error occurred:', error);
+    },
+  });
+
+  return (
+    <>
+      {isLoading && (
+        <button type="button" onClick={() => stop()}>
+          Stop
+        </button>
+      )}
+      {error && <div>An error occurred.</div>}
+      <button onClick={() => submit('Messages during finals week.')}>
+        Generate notifications
+      </button>
+      {object?.notifications?.map((notification, index) => (
+        <div key={index}>
+          <p>{notification?.name}</p>
+          <p>{notification?.message}</p>
+        </div>
+      ))}
+    </>
+  );
+}
+```
+
+On the server side:
+
+```typescript
+import { openai } from '@ai-sdk/openai';
+import { streamObject } from 'ai';
+import { notificationSchema } from './schema';
+
+export async function POST(req: Request) {
+  const context = await req.json();
+  const result = streamObject({
+    model: openai('gpt-4-turbo'),
+    schema: notificationSchema,
+    prompt: `Generate 3 notifications for a messages app in this context:` + context,
+  });
+  return result.toTextStreamResponse();
+}
+```
+
+### Error Handling
+
+The AI SDK UI provides comprehensive error handling capabilities:
+
+```typescript
+'use client';
+import { useChat } from '@ai-sdk/react';
+
+export default function Chat() {
+  const { messages, input, handleInputChange, handleSubmit, error, reload } =
+    useChat({
+      onError: error => {
+        console.error('Chat error:', error);
+      }
+    });
+
+  return (
+    <div>
+      {messages.map(m => (
+        <div key={m.id}>
+          {m.role}: {m.content}
+        </div>
+      ))}
+      {error && (
+        <>
+          <div>An error occurred.</div>
+          <button type="button" onClick={() => reload()}>
+            Retry
+          </button>
+        </>
+      )}
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={handleInputChange}
+          disabled={error != null}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+Server-side error handling:
+
+```typescript
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const result = streamText({
+    model: openai('gpt-4o'),
+    messages,
+  });
+  return result.toDataStreamResponse({
+    getErrorMessage: error => {
+      if (error == null) {
+        return 'unknown error';
+      }
+      if (typeof error === 'string') {
+        return error;
+      }
+      if (error instanceof Error) {
+        return error.message;
+      }
+      return JSON.stringify(error);
+    },
+  });
+}
+```
+
+### Generative User Interfaces
+
+The AI SDK UI supports generative user interfaces, allowing the model to generate UI components:
+
+```typescript
+'use client';
+import { useChat } from '@ai-sdk/react';
+import { Weather } from '@/components/weather';
+import { Stock } from '@/components/stock';
+
+export default function Page() {
+  const { messages, input, setInput, handleSubmit } = useChat();
+
+  return (
+    <div>
+      {messages.map(message => (
+        <div key={message.id}>
+          <div>{message.role}</div>
+          <div>{message.content}</div>
+          <div>
+            {message.toolInvocations?.map(toolInvocation => {
+              const { toolName, toolCallId, state } = toolInvocation;
+              if (state === 'result') {
+                if (toolName === 'displayWeather') {
+                  const { result } = toolInvocation;
+                  return (
+                    <div key={toolCallId}>
+                      <Weather {...result} />
+                    </div>
+                  );
+                } else if (toolName === 'getStockPrice') {
+                  const { result } = toolInvocation;
+                  return <Stock key={toolCallId} {...result} />;
+                }
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      ))}
+      <form onSubmit={handleSubmit}>
+        <input value={input} onChange={e => setInput(e.target.value)} />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  );
+}
+```
+
+## User Preferences
+
+- **Primary Provider**: Google AI (Gemini) is the preferred provider
+- **Tool Integration**: Use the `createAISDKTools` adapter for consistency
+- **Code Style**: Use TSDoc with comprehensive documentation
+- **Error Handling**: Implement detailed error handling with fallbacks
+- **Testing**: Prioritize unit and integration tests for core functionality

@@ -7,7 +7,8 @@ import {
   FileText, Code, Mic, Copy, Check, Eraser,
   Maximize2, Minimize2, ThumbsUp, ThumbsDown,
   Zap, Settings, MessageSquare, Image as ImageIcon,
-  Terminal, BarChart, Table, Globe
+  Terminal, BarChart, Table, Globe, Monitor,
+  MapPin, FormInput, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,10 @@ import { DataVisualization } from './data-visualization';
 import { VisualizationWithTracing } from './visualization-with-tracing';
 import { DataTable } from './data-table';
 import { BrowserDisplay } from './browser-display';
+import { ChatSidebar } from './chat-sidebar';
+import { ScreenShare } from './screen-share';
+import { InteractiveMap } from './interactive-map';
+import { InteractiveForm } from './interactive-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -42,6 +47,11 @@ interface AiSdkChatProps {
   maxTokens?: number;
   tools?: string[];
   className?: string;
+  provider?: string;
+  systemPrompt?: string;
+  streamProtocol?: 'text' | 'data';
+  toolChoice?: 'auto' | 'none' | string;
+  maxSteps?: number;
 }
 
 interface FileAttachment {
@@ -52,17 +62,38 @@ interface FileAttachment {
   size: number;
 }
 
+interface ImageAttachment {
+  id: string;
+  url: string;
+  type: 'image';
+  width?: number;
+  height?: number;
+}
+
+interface ToolCall {
+  id: string;
+  name: string;
+  args: any;
+  result?: string;
+  status: 'pending' | 'completed' | 'error';
+}
+
 
 
 export function AiSdkChat({
-  apiEndpoint = '/api/chat',
+  apiEndpoint = '/api/chat/ai-sdk',
   initialMessages = [],
   initialThreadId,
-  modelId = 'gemini-2.0-flash',
+  modelId = 'gemini-1.5-pro',
   temperature = 0.7,
   maxTokens = 8192,
   tools = [],
   className,
+  provider,
+  systemPrompt,
+  streamProtocol = 'data',
+  toolChoice = 'auto',
+  maxSteps = 5
 }: AiSdkChatProps) {
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -72,13 +103,142 @@ export function AiSdkChat({
 
   // State
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+  const [imageAttachments, setImageAttachments] = useState<ImageAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSpeechRecording, setIsSpeechRecording] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [threadName, setThreadName] = useState('New Chat');
+  const [selectedSystemPrompt, setSelectedSystemPrompt] = useState(systemPrompt || '');
+  // Fetch models from Supabase with fallback to registry
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, { id: string, name: string }[]>>({});
+  const [providers, setProviders] = useState<{ id: string, name: string }[]>([]);
+  const [allModels, setAllModels] = useState<{ id: string, name: string }[]>([]);
+  const [modelSettings, setModelSettings] = useState<Record<string, any>>({});
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
+
+  // Fetch models on mount
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        setIsLoadingModels(true);
+
+        // Fetch models from API
+        const response = await fetch('/api/models');
+        const data = await response.json();
+
+        if (!data.models || !Array.isArray(data.models)) {
+          throw new Error('Invalid response format');
+        }
+
+        // Group models by provider
+        const modelsByProviderMap: Record<string, { id: string, name: string }[]> = {};
+        const modelSettingsMap: Record<string, any> = {};
+
+        data.models.forEach((model: any) => {
+          // Add to models by provider
+          if (!modelsByProviderMap[model.provider]) {
+            modelsByProviderMap[model.provider] = [];
+          }
+
+          modelsByProviderMap[model.provider].push({
+            id: model.model_id,
+            name: model.name
+          });
+
+          // Add to model settings
+          modelSettingsMap[model.model_id] = {
+            id: model.id,
+            name: model.name,
+            provider: model.provider,
+            model_id: model.model_id,
+            max_tokens: model.max_tokens || 4096,
+            context_window: model.context_window || 8192,
+            supports_vision: model.supports_vision || false,
+            supports_functions: model.supports_functions || false,
+            supports_streaming: model.supports_streaming || true,
+            default_temperature: model.default_temperature || 0.7,
+            default_top_p: model.default_top_p || 1.0,
+            default_frequency_penalty: model.default_frequency_penalty || 0,
+            default_presence_penalty: model.default_presence_penalty || 0,
+          };
+        });
+
+        // Get providers
+        const providersArray = Object.keys(modelsByProviderMap).map(key => ({
+          id: key,
+          name: key.charAt(0).toUpperCase() + key.slice(1) // Capitalize first letter
+        }));
+
+        // Get all models
+        const allModelsArray = Object.values(modelsByProviderMap).flat();
+
+        setModelsByProvider(modelsByProviderMap);
+        setProviders(providersArray);
+        setAllModels(allModelsArray);
+        setModelSettings(modelSettingsMap);
+      } catch (error) {
+        console.error('Error fetching models:', error);
+
+        // Fallback to hardcoded models from model-registry.ts
+        // This would be imported from the registry in a real implementation
+        const fallbackModelsByProvider = {
+          'google': [
+            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+            { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro' },
+            { id: 'gemini-1.0-pro-vision', name: 'Gemini 1.0 Pro Vision' }
+          ],
+          'openai': [
+            { id: 'gpt-4o', name: 'GPT-4o' },
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+            { id: 'gpt-4', name: 'GPT-4' },
+            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
+          ],
+          'anthropic': [
+            { id: 'claude-3-opus', name: 'Claude 3 Opus' },
+            { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet' },
+            { id: 'claude-3-haiku', name: 'Claude 3 Haiku' }
+          ]
+        };
+
+        const fallbackProviders = Object.keys(fallbackModelsByProvider).map(key => ({
+          id: key,
+          name: key.charAt(0).toUpperCase() + key.slice(1)
+        }));
+
+        const fallbackAllModels = Object.values(fallbackModelsByProvider).flat();
+
+        // Fallback model settings
+        const fallbackModelSettings: Record<string, any> = {
+          'gemini-1.5-pro': { max_tokens: 65536, context_window: 1048576 },
+          'gemini-1.5-flash': { max_tokens: 65536, context_window: 1048576 },
+          'gemini-1.0-pro': { max_tokens: 8192, context_window: 32768 },
+          'gemini-1.0-pro-vision': { max_tokens: 8192, context_window: 32768 },
+          'gpt-4o': { max_tokens: 8192, context_window: 128000 },
+          'gpt-4-turbo': { max_tokens: 4096, context_window: 128000 },
+          'gpt-4': { max_tokens: 8192, context_window: 8192 },
+          'gpt-3.5-turbo': { max_tokens: 4096, context_window: 16385 },
+          'claude-3-opus': { max_tokens: 4096, context_window: 200000 },
+          'claude-3-sonnet': { max_tokens: 4096, context_window: 200000 },
+          'claude-3-haiku': { max_tokens: 4096, context_window: 200000 }
+        };
+
+        setModelsByProvider(fallbackModelsByProvider);
+        setProviders(fallbackProviders);
+        setAllModels(fallbackAllModels);
+        setModelSettings(fallbackModelSettings);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+
+    fetchModels();
+  }, []);
+
   const [selectedModel, setSelectedModel] = useState(modelId);
+  const [selectedProvider, setSelectedProvider] = useState<string>('all');
   const [selectedTemperature, setSelectedTemperature] = useState(temperature);
   const [selectedMaxTokens, setSelectedMaxTokens] = useState(maxTokens);
   const [enabledTools, setEnabledTools] = useState<string[]>(tools);
@@ -100,8 +260,28 @@ export function AiSdkChat({
       },
       execute: async (args: { query: string }) => {
         console.log('Searching for:', args.query);
-        // In a real implementation, this would call an actual search API
-        return `Results for "${args.query}": Found relevant information about this topic.`;
+        try {
+          // Call the web search API
+          const response = await fetch('/api/tools/web-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: args.query })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Search failed with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          return data.results ?
+            `Results for "${args.query}":\n\n${data.results.map((r: any, i: number) =>
+              `${i+1}. [${r.title}](${r.url})\n${r.snippet || ''}`
+            ).join('\n\n')}` :
+            `No results found for "${args.query}"`;
+        } catch (error: any) {
+          console.error('Error searching web:', error);
+          return `Error searching for "${args.query}": ${error.message || 'Unknown error'}`;
+        }
       }
     },
     'weather': {
@@ -118,8 +298,32 @@ export function AiSdkChat({
       },
       execute: async (args: { location: string }) => {
         console.log('Getting weather for:', args.location);
-        // In a real implementation, this would call a weather API
-        return `Weather in ${args.location}: 72°F, Partly Cloudy`;
+        try {
+          // Call the weather API
+          const response = await fetch('/api/tools/weather', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location: args.location })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Weather request failed with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          return `Weather in ${args.location}: ${data.temperature}°${data.unit || 'F'}, ${data.conditions}
+Humidity: ${data.humidity}%
+Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
+        } catch (error: any) {
+          console.error('Error getting weather:', error);
+          // Fallback to mock data if API fails
+          return `Weather in ${args.location}: 72°F, Partly Cloudy (Note: Using fallback data due to API error: ${error.message || 'Unknown error'})`;
+        }
       }
     },
     'image-generation': {
@@ -142,8 +346,49 @@ export function AiSdkChat({
       },
       execute: async (args: { prompt: string, style?: string }) => {
         console.log('Generating image for:', args.prompt, 'with style:', args.style || 'vivid');
-        // In a real implementation, this would call an image generation API
-        return `<AIImageGenerator prompt="${args.prompt}" style="${args.style || 'vivid'}" />`;
+        try {
+          // Call the image generation API
+          const response = await fetch('/api/tools/image-generation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: args.prompt,
+              style: args.style || 'vivid',
+              size: '1024x1024'
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Image generation failed with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // Add the generated image to the image attachments
+          if (data.imageUrl) {
+            const imageId = nanoid();
+            const newImage: ImageAttachment = {
+              id: imageId,
+              url: data.imageUrl,
+              type: 'image'
+            };
+
+            setImageAttachments(prev => [...prev, newImage]);
+
+            // Return the component with the actual image URL
+            return `<AIImageGenerator imageUrl="${data.imageUrl}" prompt="${args.prompt}" style="${args.style || 'vivid'}" />`;
+          } else {
+            throw new Error('No image URL returned from the API');
+          }
+        } catch (error: any) {
+          console.error('Error generating image:', error);
+          // Return a placeholder component that will show the error
+          return `<AIImageGenerator error="${error.message || 'Unknown error'}" prompt="${args.prompt}" style="${args.style || 'vivid'}" />`;
+        }
       }
     },
     'computer-use': {
@@ -165,8 +410,44 @@ export function AiSdkChat({
       },
       execute: async (args: { task: string, showSteps?: boolean }) => {
         console.log('Executing computer task:', args.task, 'with showSteps:', args.showSteps);
-        // In a real implementation, this would execute the task
-        return `<ComputerUse task="${args.task}" showSteps="${args.showSteps ? 'true' : 'false'}" />`;
+        try {
+          // Call the computer-use API to execute the task
+          const response = await fetch('/api/tools/computer-use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              task: args.task,
+              showSteps: args.showSteps || false
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Task execution failed with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // Return the component with the execution results
+          return `<ComputerUse
+            task="${args.task}"
+            showSteps="${args.showSteps ? 'true' : 'false'}"
+            result="${data.result ? data.result.replace(/"/g, '&quot;') : ''}"
+            exitCode="${data.exitCode !== undefined ? data.exitCode : ''}"
+            executionTime="${data.executionTime || ''}"
+          />`;
+        } catch (error: any) {
+          console.error('Error executing computer task:', error);
+          // Return a component that will show the error
+          return `<ComputerUse
+            task="${args.task}"
+            showSteps="${args.showSteps ? 'true' : 'false'}"
+            error="${error.message || 'Unknown error'}"
+          />`;
+        }
       }
     },
     'data-visualization': {
@@ -192,8 +473,28 @@ export function AiSdkChat({
       },
       execute: async (args: { data: any[], type?: string }) => {
         console.log('Creating visualization for data with type:', args.type || 'bar');
-        // In a real implementation, this would create a visualization
-        return `<DataVisualization data='${JSON.stringify(args.data)}' type="${args.type || 'bar'}" />`;
+        try {
+          // Validate the data
+          if (!Array.isArray(args.data) || args.data.length === 0) {
+            throw new Error('Invalid data: must be a non-empty array');
+          }
+
+          // Validate the visualization type
+          const validTypes = ['bar', 'line', 'pie', 'scatter'];
+          const type = args.type || 'bar';
+          if (!validTypes.includes(type)) {
+            throw new Error(`Invalid visualization type: ${type}. Must be one of: ${validTypes.join(', ')}`);
+          }
+
+          // Process the data for visualization
+          // In a real implementation, you might want to transform the data based on the type
+
+          // Return the component with the data and type
+          return `<DataVisualization data='${JSON.stringify(args.data)}' type="${type}" />`;
+        } catch (error: any) {
+          console.error('Error creating visualization:', error);
+          return `Error creating visualization: ${error.message || 'Unknown error'}`;
+        }
       }
     },
     'browser-display': {
@@ -215,20 +516,159 @@ export function AiSdkChat({
       },
       execute: async (args: { url: string, height?: string }) => {
         console.log('Displaying webpage:', args.url, 'with height:', args.height || '400px');
-        // In a real implementation, this would display the webpage
-        return `<BrowserDisplay url="${args.url}" height="${args.height || '400px'}" />`;
+        try {
+          // Validate URL
+          const url = new URL(args.url);
+
+          // Check if URL is allowed (you might want to implement a whitelist)
+          const allowedDomains = ['github.com', 'vercel.com', 'nextjs.org', 'react.dev', 'tailwindcss.com'];
+          const isAllowed = allowedDomains.some(domain => url.hostname.includes(domain));
+
+          if (!isAllowed) {
+            console.warn(`URL domain not in allowed list: ${url.hostname}`);
+            // We'll still display it but with a warning
+          }
+
+          // Sanitize height
+          const height = args.height || '400px';
+          const sanitizedHeight = height.match(/^\d+(px|vh|%)$/) ? height : '400px';
+
+          // Return the component with the URL and height
+          return `<BrowserDisplay url="${args.url}" height="${sanitizedHeight}" />`;
+        } catch (error: any) {
+          console.error('Error displaying webpage:', error);
+          return `Error displaying webpage: ${error.message || 'Invalid URL'}`;
+        }
+      }
+    },
+    'screen-share': {
+      description: 'Display a screen recording or screenshot',
+      parameters: {
+        type: 'object',
+        properties: {
+          src: {
+            type: 'string',
+            description: 'The URL of the screen recording or screenshot'
+          },
+          title: {
+            type: 'string',
+            description: 'The title of the screen recording or screenshot',
+            default: 'Screen Recording'
+          },
+          isVideo: {
+            type: 'boolean',
+            description: 'Whether the source is a video or an image',
+            default: true
+          }
+        },
+        required: ['src']
+      },
+      execute: async (args: { src: string, title?: string, isVideo?: boolean }) => {
+        console.log('Displaying screen recording:', args.src, 'with title:', args.title || 'Screen Recording');
+        // In a real implementation, this would display the screen recording
+        return `<ScreenShare src="${args.src}" title="${args.title || 'Screen Recording'}" isVideo="${args.isVideo !== false}" />`;
+      }
+    },
+    'interactive-map': {
+      description: 'Display an interactive map',
+      parameters: {
+        type: 'object',
+        properties: {
+          center: {
+            type: 'array',
+            description: 'The center coordinates of the map [latitude, longitude]',
+            items: {
+              type: 'number'
+            },
+            minItems: 2,
+            maxItems: 2
+          },
+          zoom: {
+            type: 'number',
+            description: 'The zoom level of the map',
+            default: 13
+          },
+          locations: {
+            type: 'array',
+            description: 'The locations to display on the map',
+            items: {
+              type: 'object',
+              properties: {
+                lat: { type: 'number' },
+                lng: { type: 'number' },
+                title: { type: 'string' },
+                description: { type: 'string' }
+              },
+              required: ['lat', 'lng']
+            },
+            default: []
+          }
+        },
+        required: ['center']
+      },
+      execute: async (args: { center: [number, number], zoom?: number, locations?: any[] }) => {
+        console.log('Displaying map at:', args.center, 'with zoom:', args.zoom || 13);
+        // In a real implementation, this would display the map
+        return `<InteractiveMap center="[${args.center[0]},${args.center[1]}]" zoom="${args.zoom || 13}" locations='${JSON.stringify(args.locations || [])}' />`;
+      }
+    },
+    'interactive-form': {
+      description: 'Display an interactive form',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'The title of the form',
+            default: 'Feedback Form'
+          },
+          fields: {
+            type: 'array',
+            description: 'The fields to display in the form',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                type: {
+                  type: 'string',
+                  enum: ['text', 'textarea', 'number', 'email', 'checkbox', 'radio', 'select', 'date']
+                },
+                label: { type: 'string' },
+                placeholder: { type: 'string' },
+                required: { type: 'boolean' },
+                options: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      value: { type: 'string' },
+                      label: { type: 'string' }
+                    },
+                    required: ['value', 'label']
+                  }
+                }
+              },
+              required: ['id', 'type', 'label']
+            }
+          },
+          submitLabel: {
+            type: 'string',
+            description: 'The label for the submit button',
+            default: 'Submit'
+          }
+        },
+        required: ['title', 'fields']
+      },
+      execute: async (args: { title: string, fields: any[], submitLabel?: string }) => {
+        console.log('Displaying form with title:', args.title, 'and fields:', args.fields);
+        // In a real implementation, this would display the form
+        return `<InteractiveForm title="${args.title}" fields='${JSON.stringify(args.fields)}' submitLabel="${args.submitLabel || 'Submit'}" />`;
       }
     }
   };
 
   // Track function calls
-  const [functionCalls, setFunctionCalls] = useState<{
-    id: string;
-    name: string;
-    args: any;
-    result?: string;
-    status: 'pending' | 'completed' | 'error';
-  }[]>([]);
+  const [functionCalls, setFunctionCalls] = useState<ToolCall[]>([]);
 
   // Fetch threads
   const [threads, setThreads] = useState<{ id: string; name: string; updatedAt: string }[]>([]);
@@ -281,7 +721,8 @@ export function AiSdkChat({
     reload,
     stop,
     setInput,
-    setMessages
+    setMessages,
+    addToolResult
   } = useChat({
     api: apiEndpoint,
     initialMessages,
@@ -291,6 +732,12 @@ export function AiSdkChat({
       temperature: selectedTemperature,
       maxTokens: selectedMaxTokens,
       threadId: initialThreadId,
+      provider: provider,
+      systemPrompt: selectedSystemPrompt,
+      streamProtocol: streamProtocol,
+      toolChoice: toolChoice,
+      maxSteps: maxSteps,
+      images: imageAttachments,
       tools: enabledTools.map(toolName => ({
         type: 'function',
         function: {
@@ -300,6 +747,7 @@ export function AiSdkChat({
         }
       }))
     },
+    maxSteps: maxSteps,
     onResponse: (response) => {
       // Extract thread ID from response headers
       const threadId = response.headers.get('x-thread-id');
@@ -320,12 +768,54 @@ export function AiSdkChat({
         .then(data => setThreads(data.threads))
         .catch(err => console.error('Error refreshing threads:', err));
 
-      // In a real implementation, you would parse the message content
-      // to look for function calls and handle them
-      const content = message.content;
-      if (content.includes('function call')) {
-        // This is just a placeholder - in a real app, you would parse the actual function call
-        console.log('Function call detected in message');
+      // Process tool calls if any
+      if ((message as any).toolCalls && (message as any).toolCalls.length > 0) {
+        (message as any).toolCalls.forEach((toolCall: any) => {
+          // Track this tool call
+          const callId = toolCall.id || nanoid();
+          const newToolCall: ToolCall = {
+            id: callId,
+            name: toolCall.name,
+            args: toolCall.args || {},
+            status: 'pending'
+          };
+
+          setFunctionCalls(prev => [...prev, newToolCall]);
+
+          // Execute the tool if available
+          const fn = availableFunctions[toolCall.name as keyof typeof availableFunctions];
+          if (fn) {
+            fn.execute(toolCall.args)
+              .then(result => {
+                // Update the function call with the result
+                setFunctionCalls(prev =>
+                  prev.map(call =>
+                    call.id === callId
+                      ? { ...call, result, status: 'completed' as const }
+                      : call
+                  )
+                );
+
+                // Add the tool result to the chat
+                addToolResult({
+                  toolCallId: callId,
+                  result
+                });
+              })
+              .catch(error => {
+                // Update the function call with the error
+                setFunctionCalls(prev =>
+                  prev.map(call =>
+                    call.id === callId
+                      ? { ...call, result: String(error), status: 'error' as const }
+                      : call
+                  )
+                );
+
+                console.error('Tool execution error:', error);
+              });
+          }
+        });
       }
     },
     onError: (error) => {
@@ -601,6 +1091,9 @@ export function AiSdkChat({
     const visualizationWithTracingRegex = /<VisualizationWithTracing\s+data="([^"]+)"(?:\s+type="([^"]+)")?\s*\/>/g;
     const dataTableRegex = /<DataTable\s+data="([^"]+)"(?:\s+columns="([^"]+)")?\s*\/>/g;
     const browserDisplayRegex = /<BrowserDisplay\s+url="([^"]+)"(?:\s+height="([^"]+)")?\s*\/>/g;
+    const screenShareRegex = /<ScreenShare\s+src="([^"]+)"(?:\s+title="([^"]+)")?(?:\s+isVideo="(true|false)")?\s*\/>/g;
+    const interactiveMapRegex = /<InteractiveMap\s+center="\[([^,]+),([^,]+)\]"(?:\s+zoom="([^"]+)")?(?:\s+locations="([^"]+)")?\s*\/>/g;
+    const interactiveFormRegex = /<InteractiveForm\s+title="([^"]+)"(?:\s+fields="([^"]+)")?(?:\s+submitLabel="([^"]+)")?\s*\/>/g;
 
     const parts = [];
     let lastIndex = 0;
@@ -819,6 +1312,87 @@ export function AiSdkChat({
           className={`h-[${height}]`}
         />
       );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Process ScreenShare components
+    while ((match = screenShareRegex.exec(content)) !== null) {
+      processTextBeforeMatch(match.index);
+
+      const src = match[1];
+      const title = match[2] || 'Screen Recording';
+      const isVideo = match[3] !== 'false'; // Default to true
+
+      parts.push(
+        <ScreenShare
+          key={`screen-${match.index}`}
+          src={src}
+          title={title}
+          isVideo={isVideo}
+        />
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Process InteractiveMap components
+    while ((match = interactiveMapRegex.exec(content)) !== null) {
+      processTextBeforeMatch(match.index);
+
+      const lat = parseFloat(match[1]);
+      const lng = parseFloat(match[2]);
+      const zoom = match[3] ? parseInt(match[3]) : 13;
+      const locationsStr = match[4] || '[]';
+
+      try {
+        const locations = JSON.parse(locationsStr);
+        parts.push(
+          <InteractiveMap
+            key={`map-${match.index}`}
+            center={[lat, lng]}
+            zoom={zoom}
+            locations={locations}
+            title={`Map: ${lat}, ${lng}`}
+          />
+        );
+      } catch (e) {
+        parts.push(
+          <p key={`map-error-${match.index}`} className="text-red-500">
+            Error parsing map data: {String(e)}
+          </p>
+        );
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Process InteractiveForm components
+    while ((match = interactiveFormRegex.exec(content)) !== null) {
+      processTextBeforeMatch(match.index);
+
+      const title = match[1];
+      const fieldsStr = match[2] || '[]';
+      const submitLabel = match[3] || 'Submit';
+
+      try {
+        const fields = JSON.parse(fieldsStr);
+        parts.push(
+          <InteractiveForm
+            key={`form-${match.index}`}
+            title={title}
+            fields={fields}
+            submitLabel={submitLabel}
+            onSubmit={(data) => console.log('Form submitted:', data)}
+          />
+        );
+      } catch (e) {
+        parts.push(
+          <p key={`form-error-${match.index}`} className="text-red-500">
+            Error parsing form data: {String(e)}
+          </p>
+        );
+      }
 
       lastIndex = match.index + match[0].length;
     }
@@ -1323,19 +1897,80 @@ export function AiSdkChat({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Label htmlFor="provider">Provider</Label>
+              <select
+                id="provider"
+                className="w-full p-2 border rounded-md"
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value)}
+              >
+                <option value="all">All Providers</option>
+                {providers.map(provider => (
+                  <option key={provider.id} value={provider.id}>{provider.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="model">Model</Label>
               <select
                 id="model"
                 className="w-full p-2 border rounded-md"
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                onChange={(e) => {
+                  setSelectedModel(e.target.value);
+
+                  // Update max tokens based on model settings
+                  if (modelSettings[e.target.value]?.max_tokens) {
+                    // Set max tokens to either the current value or the model's max, whichever is smaller
+                    const modelMaxTokens = modelSettings[e.target.value].max_tokens;
+                    if (selectedMaxTokens > modelMaxTokens) {
+                      setSelectedMaxTokens(modelMaxTokens);
+                    }
+                  }
+                }}
               >
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="claude-3-opus">Claude 3 Opus</option>
-                <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                <option value="llama-3-70b">Llama 3 70B</option>
+                {selectedProvider === 'all' ? (
+                  // Show all models grouped by provider
+                  Object.entries(modelsByProvider).map(([provider, models]) => (
+                    <optgroup key={provider} label={provider.charAt(0).toUpperCase() + provider.slice(1)}>
+                      {models.map(model => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                          {modelSettings[model.id]?.supports_vision && " (Vision)"}
+                          {modelSettings[model.id]?.supports_functions && " (Functions)"}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                ) : (
+                  // Show only models for the selected provider
+                  modelsByProvider[selectedProvider as keyof typeof modelsByProvider]?.map(model => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                      {modelSettings[model.id]?.supports_vision && " (Vision)"}
+                      {modelSettings[model.id]?.supports_functions && " (Functions)"}
+                    </option>
+                  ))
+                )}
               </select>
+
+              {/* Model capabilities */}
+              {modelSettings[selectedModel] && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {modelSettings[selectedModel].supports_vision && (
+                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">Vision</span>
+                    )}
+                    {modelSettings[selectedModel].supports_functions && (
+                      <span className="px-1.5 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Functions</span>
+                    )}
+                    {modelSettings[selectedModel].supports_streaming && (
+                      <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded-full">Streaming</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -1365,7 +2000,7 @@ export function AiSdkChat({
                 id="max-tokens"
                 type="range"
                 min={256}
-                max={4096}
+                max={modelSettings[selectedModel]?.max_tokens || 4096}
                 step={256}
                 value={selectedMaxTokens}
                 onChange={(e) => setSelectedMaxTokens(parseInt(e.target.value))}
@@ -1373,6 +2008,11 @@ export function AiSdkChat({
               />
               <p className="text-xs text-muted-foreground">
                 Maximum number of tokens to generate in the response.
+                {modelSettings[selectedModel]?.context_window && (
+                  <span className="block mt-1">
+                    Model context window: {modelSettings[selectedModel].context_window.toLocaleString()} tokens
+                  </span>
+                )}
               </p>
             </div>
 
@@ -1464,6 +2104,51 @@ export function AiSdkChat({
                         checked
                           ? [...prev, 'browser-display']
                           : prev.filter(t => t !== 'browser-display')
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="screen-share" className="cursor-pointer">Screen Share</Label>
+                  <Switch
+                    id="screen-share"
+                    checked={enabledTools.includes('screen-share')}
+                    onCheckedChange={(checked) => {
+                      setEnabledTools(prev =>
+                        checked
+                          ? [...prev, 'screen-share']
+                          : prev.filter(t => t !== 'screen-share')
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="interactive-map" className="cursor-pointer">Interactive Map</Label>
+                  <Switch
+                    id="interactive-map"
+                    checked={enabledTools.includes('interactive-map')}
+                    onCheckedChange={(checked) => {
+                      setEnabledTools(prev =>
+                        checked
+                          ? [...prev, 'interactive-map']
+                          : prev.filter(t => t !== 'interactive-map')
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="interactive-form" className="cursor-pointer">Interactive Form</Label>
+                  <Switch
+                    id="interactive-form"
+                    checked={enabledTools.includes('interactive-form')}
+                    onCheckedChange={(checked) => {
+                      setEnabledTools(prev =>
+                        checked
+                          ? [...prev, 'interactive-form']
+                          : prev.filter(t => t !== 'interactive-form')
                       );
                     }}
                   />

@@ -46,8 +46,10 @@ This folder consolidates all memory and persistence logic for AI agents and othe
 ```
 lib/memory/
 ├── db.ts                  # LibSQL client, query and transaction helpers
+├── drizzle.ts             # Drizzle ORM integration for Supabase
 ├── libsql.ts              # Raw memory operations (getMemory, addMemory, getThreads, deleteThread)
 ├── memory.ts              # High-level memory API (threads, messages, embeddings, state, summarization, semantic search)
+├── supabase.ts            # Supabase client with Drizzle integration
 ├── vector-store.ts        # Helpers for HNSW index init, storeTextEmbedding, searchTextStore
 ├── store-embedding.ts     # Batch save embeddings helper for multiple texts
 ├── memory-processors.ts   # Modular message processing pipeline (pruning, filtering)
@@ -72,7 +74,35 @@ lib/memory/
   - `getMemory(threadId)`, `addMemory(threadId, role, content, metadata)`, `getThreads()`, `deleteThread(threadId)`.
 - Use when you need fast, unstructured key/value style memory operations.
 
-### 2.3 memory.ts
+### 2.3 drizzle.ts
+
+- Exports `getDrizzleClient()`:
+  - Initializes a Drizzle ORM client using `DATABASE_URL`.
+  - Throws if the connection string is not configured.
+- Exports `isDrizzleAvailable()`:
+  - Checks connectivity by executing a simple query.
+- Exports `getDataWithDrizzle(table, options)`:
+  - Provides a generic function for querying data with filtering, sorting, and pagination.
+- Exports `getModelConfigWithDrizzle(modelId)`:
+  - Retrieves a model configuration by ID using Drizzle.
+
+### 2.4 supabase.ts
+
+- Exports `getSupabaseClient()`:
+  - Initializes a Supabase client using `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+  - Throws if the credentials are not configured.
+- Exports `getDrizzleClient()`:
+  - Initializes a Drizzle ORM client for Supabase.
+- Exports `getData()`, `getItemById()`, `createItem()`, `updateItem()`, `deleteItem()`:
+  - Generic CRUD operations for Supabase tables.
+- Exports `getModelConfig()`, `getModels()`:
+  - Model-specific operations with Drizzle integration.
+- Exports `getAgentConfig()`, `getAgents()`, `getAgentTools()`:
+  - Agent-specific operations.
+- Exports `getSetting()`:
+  - Retrieves a setting by category and key.
+
+### 2.5 memory.ts
 
 - High-level orchestrator for agent conversations:
   - **Thread lifecycle**:
@@ -158,8 +188,9 @@ lib/memory/
 
 ## 7. Future Enhancements
 
-- [ ] Drizzle migrations for Supabase schema (`db/supabase/schema.ts`) with rollback scripts
-- [ ] Drizzle migrations for LibSQL schema (`db/libsql/schema.ts`) and versioning
+- [x] Drizzle migrations for Supabase schema (`db/supabase/schema.ts`) with rollback scripts
+- [x] Drizzle migrations for LibSQL schema (`db/libsql/schema.ts`) and versioning
+- [x] Drizzle ORM integration for Supabase in `lib/memory/drizzle.ts` and `lib/memory/supabase.ts`
 - [ ] Improve TypeScript definitions in `types/supabase.ts` to cover all tables and relationships
 - [ ] Refactor and enhance `db.ts`, `libsql.ts`, and `memory.ts` for consistency, error isolation, and testing
 - [ ] Provide API route templates and examples for CRUD operations in `hooks/use-supabase-*` and `app/api/*`
@@ -173,17 +204,66 @@ lib/memory/
 
 ## 8. Building & Migrating Schemas
 
-This project uses Drizzle to manage both Postgres (Supabase) and SQLite (LibSQL) migrations defined in `drizzle.config.ts`:
+This project uses Drizzle to manage both Postgres (Supabase) and SQLite (LibSQL) migrations defined in separate configuration files:
+
+- `drizzle.supabase.config.ts`: Configuration for Supabase (Postgres) migrations
+- `drizzle.libsql.config.ts`: Configuration for LibSQL (SQLite) migrations
+
+### 8.1 Generating Migrations
+
+To generate migration files based on schema changes:
 
 ```bash
-# Generate SQL migration files for both databases based on the TS schemas
-pnpm migrate:generate --name init
+# Generate Supabase migrations
+pnpm migrate:generate:supabase my_migration_name
 
-# Apply migrations to Supabase and LibSQL targets
-pnpm migrate:up
+# Generate LibSQL migrations
+pnpm migrate:generate:libsql my_migration_name
 ```
 
-Ensure your `.env.local` variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `LIBSQL_DATABASE_URL`, `LIBSQL_AUTH_TOKEN`) are set before running migrations.
+### 8.2 Applying Migrations
+
+To apply pending migrations to the databases:
+
+```bash
+# Apply Supabase migrations
+pnpm migrate:up:supabase
+
+# Apply LibSQL migrations
+pnpm migrate:up:libsql
+```
+
+### 8.3 Rolling Back Migrations
+
+If needed, you can roll back migrations:
+
+```bash
+# Roll back Supabase migrations
+pnpm migrate:down:supabase
+
+# Roll back LibSQL migrations
+pnpm migrate:down:libsql
+```
+
+Ensure your `.env.local` variables are set before running migrations:
+
+- For Supabase: `DATABASE_URL` (Postgres connection string)
+- For LibSQL: `LIBSQL_DATABASE_URL`, `LIBSQL_AUTH_TOKEN`
+
+### 8.4 Drizzle Integration
+
+The project now includes Drizzle ORM integration for Supabase in `lib/memory/drizzle.ts` and `lib/memory/supabase.ts`. This integration provides:
+
+- Type-safe database operations
+- Schema validation
+- Query building with filtering, sorting, and pagination
+- Fallback to Supabase client when needed
+
+To enable Drizzle for database operations, set the environment variable:
+
+```bash
+USE_DRIZZLE=true
+```
 
 ---
 
@@ -205,8 +285,8 @@ To optimize embeddings storage and similarity search using LibSQL/Turso:
    );
    ```
 
-4. Install or enable the HNSW extension if needed.
-5. Create an HNSW index on the `vector` column:
+3. Install or enable the HNSW extension if needed.
+4. Create an HNSW index on the `vector` column:
 
    ```sql
    CREATE INDEX embeddings_hnsw
@@ -214,7 +294,7 @@ To optimize embeddings storage and similarity search using LibSQL/Turso:
      WITH (dims = 384, m = 16, efConstruction = 200);
    ```
 
-6. Verify performance and storage footprint as per Turso recommendations.
+5. Verify performance and storage footprint as per Turso recommendations.
 
 ---
 

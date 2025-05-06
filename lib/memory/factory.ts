@@ -22,7 +22,7 @@ export interface MemoryInterface {
   deleteMemoryThread: (id: string) => Promise<boolean>
   
   // Message operations
-  saveMessage: (threadId: string, role: string, content: string, options?: any) => Promise<string>
+  saveMessage: (threadId: string, role: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: any) => Promise<string>
   loadMessages: (threadId: string, limit?: number) => Promise<any[]>
   
   // Embedding operations

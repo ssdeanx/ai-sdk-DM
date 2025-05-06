@@ -1,0 +1,1 @@
+ALTER TABLE "models" ALTER COLUMN "capabilities" SET DEFAULT '{"text":true,"vision":false,"audio":false,"video":false,"functions":false,"streaming":true,"json_mode":false,"fine_tuning":false,"thinking":false,"search_grounding":false,"code_execution":false,"structured_output":false,"image_generation":false,"video_generation":false,"audio_generation":false}'::jsonb;

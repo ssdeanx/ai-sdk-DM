@@ -1,8 +1,13 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from '@/db/supabase/schema';
+import { eq } from 'drizzle-orm';
 
-// Singleton instance for connection reuse
+// Singleton instances for connection reuse
 let supabaseClient: SupabaseClient<Database> | null = null
+let drizzleClient: ReturnType<typeof drizzle> | null = null
 
 // Initialize Supabase client
 export const getSupabaseClient = () => {
@@ -21,6 +26,29 @@ export const getSupabaseClient = () => {
 
   supabaseClient = createClient<Database>(supabaseUrl, supabaseKey)
   return supabaseClient
+}
+
+// Initialize Drizzle client
+export const getDrizzleClient = () => {
+  if (drizzleClient) {
+    return drizzleClient
+  }
+
+  const connectionString = process.env.DATABASE_URL
+
+  if (!connectionString) {
+    throw new Error(
+      "Database connection string not found. Please set DATABASE_URL environment variable."
+    )
+  }
+
+  // Create a Postgres client
+  const client = postgres(connectionString, { max: 10 })
+
+  // Create a Drizzle client
+  drizzleClient = drizzle(client, { schema })
+
+  return drizzleClient
 }
 
 // Check if Supabase is available
@@ -173,49 +201,96 @@ export async function deleteItem(tableName: string, id: string): Promise<boolean
 
 // Get model configuration by ID
 export async function getModelConfig(modelId: string) {
-  const supabase = getSupabaseClient()
-
   try {
-    const { data, error } = await supabase.from("models").select("*").eq("id", modelId).single()
+    // Try using Drizzle first
+    if (process.env.USE_DRIZZLE === 'true') {
+      try {
+        const db = getDrizzleClient();
+        const allModels = await db.select().from(schema.models);
 
-    if (error) {
-      console.error("Error fetching model config:", error)
-      throw error
+        // Find the model with the matching ID
+        const model = allModels.find(m => m.id === modelId);
+
+        if (model) {
+          return model;
+        }
+      } catch (drizzleError) {
+        console.error("Error using Drizzle, falling back to Supabase:", drizzleError);
+        // Continue to Supabase fallback
+      }
     }
 
-    return data
+    // Fall back to Supabase client
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.from("models").select("*").eq("id", modelId).single();
+
+    if (error) {
+      console.error("Error fetching model config:", error);
+      throw error;
+    }
+
+    return data;
   } catch (error) {
-    console.error("Error fetching model config:", error)
-    throw error
+    console.error("Error fetching model config:", error);
+    throw error;
   }
 }
 
 // Get all available models
 export async function getModels(options?: { provider?: string; status?: string }) {
-  const supabase = getSupabaseClient()
-
   try {
-    let query = supabase.from("models").select("*")
+    // Try using Drizzle first
+    if (process.env.USE_DRIZZLE === 'true') {
+      try {
+        const db = getDrizzleClient();
+
+        // For simplicity, we'll just get all models and filter in memory
+        const allModels = await db.select().from(schema.models);
+
+        // Apply filters in memory
+        let result = allModels;
+
+        if (options?.provider) {
+          result = result.filter(model => model.provider === options.provider);
+        }
+
+        if (options?.status) {
+          result = result.filter(model => model.status === options.status);
+        }
+
+        // Sort by name
+        result.sort((a, b) => a.name.localeCompare(b.name));
+
+        return result;
+      } catch (drizzleError) {
+        console.error("Error using Drizzle, falling back to Supabase:", drizzleError);
+        // Continue to Supabase fallback
+      }
+    }
+
+    // Fall back to Supabase client
+    const supabase = getSupabaseClient();
+    let query = supabase.from("models").select("*");
 
     if (options?.provider) {
-      query = query.eq("provider", options.provider)
+      query = query.eq("provider", options.provider);
     }
 
     if (options?.status) {
-      query = query.eq("status", options.status)
+      query = query.eq("status", options.status);
     }
 
-    const { data, error } = await query.order("name")
+    const { data, error } = await query.order("name");
 
     if (error) {
-      console.error("Error fetching models:", error)
-      throw error
+      console.error("Error fetching models:", error);
+      throw error;
     }
 
-    return data
+    return data;
   } catch (error) {
-    console.error("Error fetching models:", error)
-    throw error
+    console.error("Error fetching models:", error);
+    throw error;
   }
 }
 

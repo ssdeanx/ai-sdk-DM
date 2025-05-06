@@ -12,6 +12,21 @@ export interface Database {
           base_url: string | null
           api_key: string
           status: "active" | "inactive"
+          max_tokens: number
+          input_cost_per_token: number
+          output_cost_per_token: number
+          supports_vision: boolean
+          supports_functions: boolean
+          supports_streaming: boolean
+          default_temperature: number
+          default_top_p: number
+          default_frequency_penalty: number
+          default_presence_penalty: number
+          context_window: number
+          description: string | null
+          category: string
+          capabilities: Json
+          metadata: Json | null
           created_at: string
           updated_at: string
         }
@@ -23,6 +38,21 @@ export interface Database {
           base_url?: string | null
           api_key: string
           status?: "active" | "inactive"
+          max_tokens?: number
+          input_cost_per_token?: number
+          output_cost_per_token?: number
+          supports_vision?: boolean
+          supports_functions?: boolean
+          supports_streaming?: boolean
+          default_temperature?: number
+          default_top_p?: number
+          default_frequency_penalty?: number
+          default_presence_penalty?: number
+          context_window?: number
+          description?: string | null
+          category?: string
+          capabilities?: Json
+          metadata?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -34,6 +64,21 @@ export interface Database {
           base_url?: string | null
           api_key?: string
           status?: "active" | "inactive"
+          max_tokens?: number
+          input_cost_per_token?: number
+          output_cost_per_token?: number
+          supports_vision?: boolean
+          supports_functions?: boolean
+          supports_streaming?: boolean
+          default_temperature?: number
+          default_top_p?: number
+          default_frequency_penalty?: number
+          default_presence_penalty?: number
+          context_window?: number
+          description?: string | null
+          category?: string
+          capabilities?: Json
+          metadata?: Json | null
           created_at?: string
           updated_at?: string
         }

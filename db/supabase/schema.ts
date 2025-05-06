@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, jsonb, boolean, timestamp, integer } from 'drizzle-orm/pg-core'
+import { pgTable, text, varchar, jsonb, boolean, timestamp, integer, numeric } from 'drizzle-orm/pg-core'
 
 // Workflows table for storing workflows
 export const workflows = pgTable('workflows', {
@@ -32,6 +32,37 @@ export const models = pgTable('models', {
   name: text('name').notNull(),
   provider: text('provider').notNull(),
   model_id: text('model_id').notNull(),
+  max_tokens: integer('max_tokens').notNull().default(4096),
+  input_cost_per_token: numeric('input_cost_per_token').notNull().default('0.0'),
+  output_cost_per_token: numeric('output_cost_per_token').notNull().default('0.0'),
+  supports_vision: boolean('supports_vision').notNull().default(false),
+  supports_functions: boolean('supports_functions').notNull().default(false),
+  supports_streaming: boolean('supports_streaming').notNull().default(true),
+  default_temperature: numeric('default_temperature').notNull().default('0.7'),
+  default_top_p: numeric('default_top_p').notNull().default('1.0'),
+  default_frequency_penalty: numeric('default_frequency_penalty').notNull().default('0.0'),
+  default_presence_penalty: numeric('default_presence_penalty').notNull().default('0.0'),
+  context_window: integer('context_window').notNull().default(8192),
+  description: text('description'),
+  category: text('category').notNull().default('text'),
+  capabilities: jsonb('capabilities').notNull().default({
+    text: true,
+    vision: false,
+    audio: false,
+    video: false,
+    functions: false,
+    streaming: true,
+    json_mode: false,
+    fine_tuning: false,
+    thinking: false,
+    search_grounding: false,
+    code_execution: false,
+    structured_output: false,
+    image_generation: false,
+    video_generation: false,
+    audio_generation: false
+  }),
+  metadata: jsonb('metadata'),
   base_url: text('base_url'),
   api_key: text('api_key').notNull(),
   status: text('status').notNull(),
