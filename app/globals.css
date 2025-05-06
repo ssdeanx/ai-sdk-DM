@@ -26,9 +26,9 @@
     --radius: 0.5rem;
 
     /* Custom gradient colors */
-    --gradient-start: 221 83% 53%;
-    --gradient-end: 262 83% 58%;
-    --gradient-accent: 199 89% 48%;
+    --gradient-start: 142 83% 53%; /* Neon green */
+    --gradient-end: 199 83% 58%;   /* Neon blue */
+    --gradient-accent: 169 89% 48%; /* Teal accent */
 
     /* Custom animation speeds */
     --speed-fast: 0.15s;
@@ -58,9 +58,9 @@
     --ring: 142.1 76.2% 36.3%;
 
     /* Custom gradient colors - dark mode */
-    --gradient-start: 221 70% 40%;
-    --gradient-end: 262 70% 45%;
-    --gradient-accent: 199 76% 35%;
+    --gradient-start: 142 70% 40%; /* Neon green - dark mode */
+    --gradient-end: 199 70% 45%;   /* Neon blue - dark mode */
+    --gradient-accent: 169 76% 35%; /* Teal accent - dark mode */
   }
 }
 
@@ -112,7 +112,7 @@
 
   /* Gradient text */
   .gradient-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-violet-500 dark:from-blue-400 dark:to-violet-400;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-blue-500 dark:from-green-400 dark:to-blue-400;
   }
 
   /* Gradient borders */
@@ -146,7 +146,7 @@
     height: 2px;
     bottom: -2px;
     left: 0;
-    @apply bg-gradient-to-r from-blue-500 to-violet-500 dark:from-blue-400 dark:to-violet-400;
+    @apply bg-gradient-to-r from-green-500 to-blue-500 dark:from-green-400 dark:to-blue-400;
     transition: width var(--speed-normal) ease;
   }
 
