@@ -25,6 +25,7 @@ import {
   Users,
   Sparkles,
   Rocket,
+  Activity,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -119,6 +120,11 @@ export function MainSidebar({ className }: MainSidebarProps) {
       title: "Networks",
       href: "/networks",
       icon: <Network className="h-4 w-4" />,
+    },
+    {
+      title: "Observability",
+      href: "/observability",
+      icon: <Activity className="h-4 w-4" />,
     },
     {
       title: "Settings",

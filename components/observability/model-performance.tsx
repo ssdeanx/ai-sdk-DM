@@ -3,19 +3,19 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import * as d3 from "d3"
-import { 
-  Activity, 
-  AlertCircle, 
-  BarChart, 
-  CheckCircle, 
-  Clock, 
-  Download, 
-  Filter, 
-  Info, 
-  Layers, 
-  RefreshCw, 
-  Search, 
-  Zap 
+import {
+  Activity,
+  AlertCircle,
+  BarChart,
+  CheckCircle,
+  Clock,
+  Download,
+  Filter,
+  Info,
+  Layers,
+  RefreshCw,
+  Search,
+  Zap
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,21 +26,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { 
-  AreaChart, 
-  Area, 
-  BarChart as RechartsBarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  Legend, 
+import {
+  AreaChart,
+  Area,
+  BarChart as RechartsBarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -53,6 +53,7 @@ import {
   RadialBarChart,
   RadialBar
 } from "recharts"
+import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 
 interface ModelPerformanceData {
@@ -74,25 +75,25 @@ interface ModelPerformanceProps {
   isLoading: boolean
 }
 
-export function ModelPerformance({ 
-  performance, 
-  isLoading 
+export function ModelPerformance({
+  performance,
+  isLoading
 }: ModelPerformanceProps) {
   const [activeTab, setActiveTab] = useState<string>("overview")
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<string>("latency")
   const [chartType, setChartType] = useState<string>("line")
-  
+
   // Set the first model as selected when data loads
   useEffect(() => {
     if (performance && performance.length > 0 && !selectedModel) {
       setSelectedModel(performance[0].modelId)
     }
   }, [performance, selectedModel])
-  
+
   // Get the selected model data
   const selectedModelData = performance?.find(m => m.modelId === selectedModel)
-  
+
   // Prepare data for comparison chart
   const comparisonData = performance?.map(model => ({
     name: model.displayName,
@@ -103,7 +104,7 @@ export function ModelPerformance({
     tokens: model.metrics.totalTokens,
     provider: model.provider
   }))
-  
+
   // Prepare time series data for the selected model
   const timeSeriesData = selectedModelData?.timeSeriesData.map(point => ({
     timestamp: new Date(point.timestamp).toLocaleTimeString(),
@@ -114,7 +115,7 @@ export function ModelPerformance({
     tokens: point.total_tokens,
     errors: point.error_count
   }))
-  
+
   // Get provider color
   const getProviderColor = (provider: string) => {
     switch (provider?.toLowerCase()) {
@@ -124,7 +125,7 @@ export function ModelPerformance({
       default: return "#64748b"
     }
   }
-  
+
   // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -141,7 +142,7 @@ export function ModelPerformance({
     }
     return null
   }
-  
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -152,11 +153,11 @@ export function ModelPerformance({
       }
     }
   }
-  
+
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    show: { 
-      y: 0, 
+    show: {
+      y: 0,
       opacity: 1,
       transition: {
         type: "spring",
@@ -165,7 +166,7 @@ export function ModelPerformance({
       }
     }
   }
-  
+
   // Format metric value
   const formatMetricValue = (metric: string, value: number) => {
     switch (metric) {
@@ -177,7 +178,7 @@ export function ModelPerformance({
       default: return value
     }
   }
-  
+
   // Get metric display name
   const getMetricDisplayName = (metric: string) => {
     switch (metric) {
@@ -189,9 +190,9 @@ export function ModelPerformance({
       default: return metric
     }
   }
-  
+
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       variants={containerVariants}
       initial="hidden"
@@ -207,8 +208,8 @@ export function ModelPerformance({
             {performance?.map(model => (
               <SelectItem key={model.modelId} value={model.modelId}>
                 <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
+                  <div
+                    className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: getProviderColor(model.provider) }}
                   />
                   {model.displayName}
@@ -217,7 +218,7 @@ export function ModelPerformance({
             ))}
           </SelectContent>
         </Select>
-        
+
         <Select value={selectedMetric} onValueChange={setSelectedMetric}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Select Metric" />
@@ -230,7 +231,7 @@ export function ModelPerformance({
             <SelectItem value="tokens">Token Count</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Select value={chartType} onValueChange={setChartType}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Chart Type" />
@@ -241,7 +242,7 @@ export function ModelPerformance({
             <SelectItem value="area">Area Chart</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <TabsList className="grid grid-cols-3 w-[300px] ml-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -250,7 +251,7 @@ export function ModelPerformance({
           </TabsList>
         </Tabs>
       </div>
-      
+
       {/* Content */}
       <TabsContent value="overview" className="m-0">
         {isLoading ? (
@@ -264,7 +265,7 @@ export function ModelPerformance({
             {/* Model Cards */}
             {performance?.map(model => (
               <motion.div key={model.modelId} variants={itemVariants}>
-                <Card 
+                <Card
                   className={cn(
                     "overflow-hidden border-opacity-40 backdrop-blur-sm cursor-pointer transition-all",
                     selectedModel === model.modelId && "border-primary/50 bg-primary/5"
@@ -273,10 +274,10 @@ export function ModelPerformance({
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <Badge 
-                        variant="outline" 
-                        className="px-2 py-1" 
-                        style={{ 
+                      <Badge
+                        variant="outline"
+                        className="px-2 py-1"
+                        style={{
                           backgroundColor: `${getProviderColor(model.provider)}20`,
                           color: getProviderColor(model.provider),
                           borderColor: `${getProviderColor(model.provider)}40`
@@ -298,19 +299,19 @@ export function ModelPerformance({
                         <span className="text-muted-foreground">Latency:</span>
                       </div>
                       <div className="font-medium text-right">{model.metrics.avgLatency} ms</div>
-                      
+
                       <div className="flex items-center gap-1">
                         <Zap className="h-3 w-3 text-muted-foreground" />
                         <span className="text-muted-foreground">Tokens/sec:</span>
                       </div>
                       <div className="font-medium text-right">{model.metrics.avgTokensPerSecond}</div>
-                      
+
                       <div className="flex items-center gap-1">
                         <BarChart className="h-3 w-3 text-muted-foreground" />
                         <span className="text-muted-foreground">Requests:</span>
                       </div>
                       <div className="font-medium text-right">{model.metrics.totalRequests.toLocaleString()}</div>
-                      
+
                       <div className="flex items-center gap-1">
                         <Layers className="h-3 w-3 text-muted-foreground" />
                         <span className="text-muted-foreground">Tokens:</span>
@@ -324,7 +325,7 @@ export function ModelPerformance({
           </div>
         )}
       </TabsContent>
-      
+
       <TabsContent value="comparison" className="m-0">
         {isLoading ? (
           <Skeleton className="h-[400px] w-full" />
@@ -342,22 +343,22 @@ export function ModelPerformance({
                   <RechartsBarChart data={comparisonData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis type="number" />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
+                    <YAxis
+                      dataKey="name"
+                      type="category"
                       width={120}
                       tick={{ fill: 'var(--muted-foreground)' }}
                     />
                     <RechartsTooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Bar 
-                      dataKey={selectedMetric} 
+                    <Bar
+                      dataKey={selectedMetric}
                       name={getMetricDisplayName(selectedMetric)}
                       radius={[0, 4, 4, 0]}
                     >
                       {comparisonData?.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
+                        <Cell
+                          key={`cell-${index}`}
                           fill={getProviderColor(entry.provider)}
                           stroke="rgba(255,255,255,0.2)"
                           strokeWidth={1}
@@ -371,7 +372,7 @@ export function ModelPerformance({
           </Card>
         )}
       </TabsContent>
-      
+
       <TabsContent value="timeseries" className="m-0">
         {isLoading || !selectedModelData ? (
           <Skeleton className="h-[400px] w-full" />
@@ -391,19 +392,19 @@ export function ModelPerformance({
                   {chartType === 'line' ? (
                     <LineChart data={timeSeriesData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey={selectedMetric} 
+                      <Line
+                        type="monotone"
+                        dataKey={selectedMetric}
                         name={getMetricDisplayName(selectedMetric)}
                         stroke={getProviderColor(selectedModelData.provider)}
                         strokeWidth={2}
@@ -414,18 +415,18 @@ export function ModelPerformance({
                   ) : chartType === 'bar' ? (
                     <RechartsBarChart data={timeSeriesData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey={selectedMetric} 
+                      <Bar
+                        dataKey={selectedMetric}
                         name={getMetricDisplayName(selectedMetric)}
                         fill={getProviderColor(selectedModelData.provider)}
                         radius={[4, 4, 0, 0]}
@@ -435,32 +436,32 @@ export function ModelPerformance({
                     <AreaChart data={timeSeriesData}>
                       <defs>
                         <linearGradient id={`${selectedMetric}Gradient`} x1="0" y1="0" x2="0" y2="1">
-                          <stop 
-                            offset="5%" 
-                            stopColor={getProviderColor(selectedModelData.provider)} 
+                          <stop
+                            offset="5%"
+                            stopColor={getProviderColor(selectedModelData.provider)}
                             stopOpacity={0.8}
                           />
-                          <stop 
-                            offset="95%" 
-                            stopColor={getProviderColor(selectedModelData.provider)} 
+                          <stop
+                            offset="95%"
+                            stopColor={getProviderColor(selectedModelData.provider)}
                             stopOpacity={0.1}
                           />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey={selectedMetric} 
+                      <Area
+                        type="monotone"
+                        dataKey={selectedMetric}
                         name={getMetricDisplayName(selectedMetric)}
                         stroke={getProviderColor(selectedModelData.provider)}
                         fillOpacity={1}

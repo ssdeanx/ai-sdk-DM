@@ -3,20 +3,20 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import * as d3 from "d3"
-import { 
-  Activity, 
-  AlertCircle, 
-  BarChart, 
-  CheckCircle, 
-  Clock, 
-  DollarSign, 
-  Download, 
-  Filter, 
-  Info, 
-  Layers, 
-  RefreshCw, 
-  Search, 
-  Zap 
+import {
+  Activity,
+  AlertCircle,
+  BarChart,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Download,
+  Filter,
+  Info,
+  Layers,
+  RefreshCw,
+  Search,
+  Zap
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,23 +25,24 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { 
-  AreaChart, 
-  Area, 
-  BarChart as RechartsBarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  Legend, 
+import {
+  AreaChart,
+  Area,
+  BarChart as RechartsBarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -79,29 +80,29 @@ interface CostEstimationProps {
   timeRange?: string
 }
 
-export function CostEstimation({ 
-  costData, 
+export function CostEstimation({
+  costData,
   isLoading,
   timeRange = '30d'
 }: CostEstimationProps) {
   const [activeTab, setActiveTab] = useState<string>("overview")
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [chartType, setChartType] = useState<string>("bar")
-  
+
   // Set the first model as selected when data loads
   useEffect(() => {
     if (costData && costData.length > 0 && !selectedModel) {
       setSelectedModel(costData[0].modelId)
     }
   }, [costData, selectedModel])
-  
+
   // Get the selected model data
   const selectedModelData = costData?.find(m => m.modelId === selectedModel)
-  
+
   // Calculate total cost across all models
   const totalCost = costData?.reduce((sum, model) => sum + model.metrics.totalCost, 0) || 0
   const projectedMonthlyCost = costData?.reduce((sum, model) => sum + model.metrics.projectedMonthlyCost, 0) || 0
-  
+
   // Prepare data for cost breakdown chart
   const costBreakdownData = costData?.map(model => ({
     name: model.displayName,
@@ -109,7 +110,7 @@ export function CostEstimation({
     provider: model.provider,
     color: getProviderColor(model.provider)
   }))
-  
+
   // Prepare time series data for the selected model
   const timeSeriesData = selectedModelData?.timeSeriesData.map(point => ({
     date: new Date(point.date).toLocaleDateString(),
@@ -118,7 +119,7 @@ export function CostEstimation({
     outputTokens: point.outputTokens,
     requests: point.requests
   }))
-  
+
   // Get provider color
   function getProviderColor(provider: string) {
     switch (provider?.toLowerCase()) {
@@ -128,7 +129,7 @@ export function CostEstimation({
       default: return "#64748b"
     }
   }
-  
+
   // Format currency
   function formatCurrency(value: number) {
     return new Intl.NumberFormat('en-US', {
@@ -138,7 +139,7 @@ export function CostEstimation({
       maximumFractionDigits: 2
     }).format(value)
   }
-  
+
   // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -155,7 +156,7 @@ export function CostEstimation({
     }
     return null
   }
-  
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -166,11 +167,11 @@ export function CostEstimation({
       }
     }
   }
-  
+
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    show: { 
-      y: 0, 
+    show: {
+      y: 0,
       opacity: 1,
       transition: {
         type: "spring",
@@ -179,11 +180,11 @@ export function CostEstimation({
       }
     }
   }
-  
+
   // Generate mock data if needed for demo
   const generateMockCostData = () => {
     if (costData && costData.length > 0) return costData
-    
+
     const mockModels = [
       { modelId: "gemini-1.5-pro", provider: "google", displayName: "Gemini 1.5 Pro", costPerInputToken: 0.00001, costPerOutputToken: 0.00002 },
       { modelId: "gpt-4o", provider: "openai", displayName: "GPT-4o", costPerInputToken: 0.00001, costPerOutputToken: 0.00003 },
@@ -191,27 +192,27 @@ export function CostEstimation({
       { modelId: "gemini-1.5-flash", provider: "google", displayName: "Gemini 1.5 Flash", costPerInputToken: 0.000003, costPerOutputToken: 0.000006 },
       { modelId: "gpt-3.5-turbo", provider: "openai", displayName: "GPT-3.5 Turbo", costPerInputToken: 0.0000015, costPerOutputToken: 0.000002 }
     ]
-    
+
     return mockModels.map(model => {
       // Generate random usage data
       const totalInputTokens = Math.floor(Math.random() * 10000000) + 1000000
       const totalOutputTokens = Math.floor(totalInputTokens * 0.3)
       const totalCost = (totalInputTokens * model.costPerInputToken) + (totalOutputTokens * model.costPerOutputToken)
       const avgCostPerRequest = totalCost / (Math.floor(Math.random() * 10000) + 1000)
-      
+
       // Generate time series data
       const timeSeriesData = []
       const days = timeRange === '7d' ? 7 : 30
       const now = new Date()
-      
+
       for (let i = 0; i < days; i++) {
         const date = new Date(now)
         date.setDate(date.getDate() - (days - i))
-        
+
         const dailyInputTokens = Math.floor(Math.random() * (totalInputTokens / days * 1.5)) + (totalInputTokens / days * 0.5)
         const dailyOutputTokens = Math.floor(dailyInputTokens * 0.3)
         const dailyCost = (dailyInputTokens * model.costPerInputToken) + (dailyOutputTokens * model.costPerOutputToken)
-        
+
         timeSeriesData.push({
           date: date.toISOString(),
           cost: dailyCost,
@@ -220,11 +221,11 @@ export function CostEstimation({
           requests: Math.floor(Math.random() * 1000) + 100
         })
       }
-      
+
       // Calculate daily average and projected monthly cost
       const dailyAverage = timeSeriesData.reduce((sum, day) => sum + day.cost, 0) / timeSeriesData.length
       const projectedMonthlyCost = dailyAverage * 30
-      
+
       return {
         ...model,
         timeSeriesData,
@@ -239,12 +240,12 @@ export function CostEstimation({
       }
     })
   }
-  
+
   // Use mock data if no real data is provided
   const displayData = costData?.length > 0 ? costData : generateMockCostData()
-  
+
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       variants={containerVariants}
       initial="hidden"
@@ -260,8 +261,8 @@ export function CostEstimation({
             {displayData?.map(model => (
               <SelectItem key={model.modelId} value={model.modelId}>
                 <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
+                  <div
+                    className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: getProviderColor(model.provider) }}
                   />
                   {model.displayName}
@@ -270,7 +271,7 @@ export function CostEstimation({
             ))}
           </SelectContent>
         </Select>
-        
+
         <Select value={chartType} onValueChange={setChartType}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Chart Type" />
@@ -282,7 +283,7 @@ export function CostEstimation({
             <SelectItem value="pie">Pie Chart</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <TabsList className="grid grid-cols-3 w-[300px] ml-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -291,7 +292,7 @@ export function CostEstimation({
           </TabsList>
         </Tabs>
       </div>
-      
+
       {/* Content */}
       <TabsContent value="overview" className="m-0">
         {isLoading ? (
@@ -320,7 +321,7 @@ export function CostEstimation({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* Projected Monthly Cost */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -338,7 +339,7 @@ export function CostEstimation({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* Total Tokens */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -353,14 +354,14 @@ export function CostEstimation({
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">
-                    {displayData.reduce((sum, model) => 
+                    {displayData.reduce((sum, model) =>
                       sum + model.metrics.totalInputTokens + model.metrics.totalOutputTokens, 0
                     ).toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* Cost Per Request */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -385,7 +386,7 @@ export function CostEstimation({
           </div>
         )}
       </TabsContent>
-      
+
       <TabsContent value="breakdown" className="m-0">
         {isLoading ? (
           <Skeleton className="h-[400px] w-full" />
@@ -417,33 +418,33 @@ export function CostEstimation({
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <RechartsTooltip 
+                      <RechartsTooltip
                         formatter={(value: number) => formatCurrency(value)}
-                        content={<CustomTooltip />} 
+                        content={<CustomTooltip />}
                       />
                     </PieChart>
                   ) : (
                     <RechartsBarChart data={costBreakdownData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                       <XAxis type="number" />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
+                      <YAxis
+                        dataKey="name"
+                        type="category"
                         width={120}
                         tick={{ fill: 'var(--muted-foreground)' }}
                       />
-                      <RechartsTooltip 
+                      <RechartsTooltip
                         formatter={(value: number) => formatCurrency(value)}
-                        content={<CustomTooltip />} 
+                        content={<CustomTooltip />}
                       />
-                      <Bar 
-                        dataKey="value" 
+                      <Bar
+                        dataKey="value"
                         name="Cost"
                         radius={[0, 4, 4, 0]}
                       >
                         {costBreakdownData?.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
+                          <Cell
+                            key={`cell-${index}`}
                             fill={entry.color}
                             stroke="rgba(255,255,255,0.2)"
                             strokeWidth={1}
@@ -458,7 +459,7 @@ export function CostEstimation({
           </Card>
         )}
       </TabsContent>
-      
+
       <TabsContent value="trends" className="m-0">
         {isLoading || !selectedModelData ? (
           <Skeleton className="h-[400px] w-full" />
@@ -478,19 +479,19 @@ export function CostEstimation({
                   {chartType === 'line' ? (
                     <LineChart data={timeSeriesData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="date" 
+                      <XAxis
+                        dataKey="date"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="cost" 
+                      <Line
+                        type="monotone"
+                        dataKey="cost"
                         name="Cost"
                         stroke={getProviderColor(selectedModelData.provider)}
                         strokeWidth={2}
@@ -501,18 +502,18 @@ export function CostEstimation({
                   ) : chartType === 'bar' ? (
                     <RechartsBarChart data={timeSeriesData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="date" 
+                      <XAxis
+                        dataKey="date"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="cost" 
+                      <Bar
+                        dataKey="cost"
                         name="Cost"
                         fill={getProviderColor(selectedModelData.provider)}
                         radius={[4, 4, 0, 0]}
@@ -522,32 +523,32 @@ export function CostEstimation({
                     <AreaChart data={timeSeriesData}>
                       <defs>
                         <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop 
-                            offset="5%" 
-                            stopColor={getProviderColor(selectedModelData.provider)} 
+                          <stop
+                            offset="5%"
+                            stopColor={getProviderColor(selectedModelData.provider)}
                             stopOpacity={0.8}
                           />
-                          <stop 
-                            offset="95%" 
-                            stopColor={getProviderColor(selectedModelData.provider)} 
+                          <stop
+                            offset="95%"
+                            stopColor={getProviderColor(selectedModelData.provider)}
                             stopOpacity={0.1}
                           />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="date" 
+                      <XAxis
+                        dataKey="date"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="cost" 
+                      <Area
+                        type="monotone"
+                        dataKey="cost"
                         name="Cost"
                         stroke={getProviderColor(selectedModelData.provider)}
                         fillOpacity={1}

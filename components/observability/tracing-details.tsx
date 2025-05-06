@@ -2,27 +2,27 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Activity, 
-  AlertCircle, 
-  ArrowRight, 
-  CheckCircle, 
-  ChevronDown, 
-  ChevronRight, 
-  Clock, 
-  Code, 
-  Copy, 
-  Download, 
-  ExternalLink, 
-  Eye, 
-  Filter, 
-  Info, 
-  Layers, 
-  List, 
-  MoreHorizontal, 
-  RefreshCw, 
-  Search, 
-  Zap 
+import {
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Code,
+  Copy,
+  Download,
+  ExternalLink,
+  Eye,
+  Filter,
+  Info,
+  Layers,
+  List,
+  MoreHorizontal,
+  RefreshCw,
+  Search,
+  Zap
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
+import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 
 interface Trace {
@@ -45,6 +46,19 @@ interface Trace {
   status: string
   userId?: string
   metadata?: any
+  spans?: Array<{
+    id: string
+    name: string
+    startTime: string
+    duration: number
+    status: string
+  }>
+  events?: Array<{
+    id: string
+    name: string
+    timestamp: string
+    metadata?: any
+  }>
 }
 
 interface TracingDetailsProps {
@@ -54,34 +68,37 @@ interface TracingDetailsProps {
   onSelectTrace: (traceId: string) => void
 }
 
-export function TracingDetails({ 
-  traces, 
-  isLoading, 
+export function TracingDetails({
+  traces,
+  isLoading,
   selectedTraceId,
   onSelectTrace
 }: TracingDetailsProps) {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [expandedMetadata, setExpandedMetadata] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<string>("overview")
-  
+
   // Fetch detailed trace data when a trace is selected
-  const { data: traceDetails, isLoading: detailsLoading } = useSupabaseFetch({
+  const { data: traceDetailsArray, isLoading: detailsLoading } = useSupabaseFetch<Trace>({
     endpoint: "/api/observability/traces",
     resourceName: "Trace Details",
     dataKey: "trace",
     queryParams: { traceId: selectedTraceId || "" },
     enabled: !!selectedTraceId
   })
-  
+
+  // Get the first trace from the array (should be only one)
+  const traceDetails = traceDetailsArray?.[0]
+
   // Filter traces based on search query
-  const filteredTraces = searchQuery 
-    ? traces.filter(trace => 
+  const filteredTraces = searchQuery
+    ? traces.filter(trace =>
         trace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         trace.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (trace.metadata && JSON.stringify(trace.metadata).toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : traces
-  
+
   // Toggle metadata expansion
   const toggleMetadata = (traceId: string) => {
     setExpandedMetadata(prev => ({
@@ -89,19 +106,19 @@ export function TracingDetails({
       [traceId]: !prev[traceId]
     }))
   }
-  
+
   // Format timestamp
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString()
   }
-  
+
   // Format duration
   const formatDuration = (duration?: number) => {
     if (!duration) return "N/A"
     if (duration < 1000) return `${duration}ms`
     return `${(duration / 1000).toFixed(2)}s`
   }
-  
+
   // Get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -128,7 +145,7 @@ export function TracingDetails({
         )
     }
   }
-  
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -139,11 +156,11 @@ export function TracingDetails({
       }
     }
   }
-  
+
   const itemVariants = {
     hidden: { y: 10, opacity: 0 },
-    show: { 
-      y: 0, 
+    show: {
+      y: 0,
       opacity: 1,
       transition: {
         type: "spring",
@@ -152,7 +169,7 @@ export function TracingDetails({
       }
     }
   }
-  
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -195,14 +212,14 @@ export function TracingDetails({
                   <p className="text-muted-foreground">No traces found</p>
                 </div>
               ) : (
-                <motion.div 
+                <motion.div
                   className="divide-y divide-border/30"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
                 >
                   {filteredTraces.map((trace) => (
-                    <motion.div 
+                    <motion.div
                       key={trace.id}
                       variants={itemVariants}
                       className={cn(
@@ -258,7 +275,7 @@ export function TracingDetails({
             </ScrollArea>
           </CardContent>
         </Card>
-        
+
         {/* Trace Details */}
         <Card className="lg:col-span-2 overflow-hidden border-opacity-40 backdrop-blur-sm">
           <CardHeader className="pb-2">
@@ -300,7 +317,7 @@ export function TracingDetails({
                   <TabsTrigger value="events">Events</TabsTrigger>
                   <TabsTrigger value="metadata">Metadata</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="overview" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -328,7 +345,7 @@ export function TracingDetails({
                       <div className="font-medium">{traceDetails.userId || 'N/A'}</div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2 mt-4">
                     <div className="text-sm text-muted-foreground">Summary</div>
                     <Card className="bg-muted/30">
@@ -351,9 +368,9 @@ export function TracingDetails({
                     </Card>
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="spans">
-                  {traceDetails.spans?.length > 0 ? (
+                  {(traceDetails.spans?.length ?? 0) > 0 ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -364,7 +381,7 @@ export function TracingDetails({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {traceDetails.spans.map((span: any) => (
+                        {traceDetails.spans?.map((span: any) => (
                           <TableRow key={span.id}>
                             <TableCell className="font-medium">{span.name}</TableCell>
                             <TableCell>{formatDuration(span.duration)}</TableCell>
@@ -380,9 +397,9 @@ export function TracingDetails({
                     </div>
                   )}
                 </TabsContent>
-                
+
                 <TabsContent value="events">
-                  {traceDetails.events?.length > 0 ? (
+                  {(traceDetails.events?.length ?? 0) > 0 ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -392,7 +409,7 @@ export function TracingDetails({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {traceDetails.events.map((event: any) => (
+                        {traceDetails.events?.map((event: any) => (
                           <TableRow key={event.id}>
                             <TableCell className="font-medium">{event.name}</TableCell>
                             <TableCell>{formatTime(event.timestamp)}</TableCell>
@@ -430,7 +447,7 @@ export function TracingDetails({
                     </div>
                   )}
                 </TabsContent>
-                
+
                 <TabsContent value="metadata">
                   {traceDetails.metadata ? (
                     <Card className="bg-muted/30">

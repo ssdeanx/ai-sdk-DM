@@ -2,34 +2,34 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Activity, 
-  AlertCircle, 
-  ArrowRight, 
-  CheckCircle, 
-  Clock, 
-  Database, 
-  Layers, 
-  Maximize2, 
-  Minimize2, 
-  RefreshCw, 
-  Zap 
+import {
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  Database,
+  Layers,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  Zap
 } from "lucide-react"
-import { 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 
 interface Trace {
@@ -95,9 +96,9 @@ interface TracingOverviewProps {
   modelPerformance?: ModelPerformance[]
 }
 
-export function TracingOverview({ 
-  traces, 
-  isLoading, 
+export function TracingOverview({
+  traces,
+  isLoading,
   onSelectTrace,
   systemMetrics,
   modelPerformance
@@ -105,15 +106,15 @@ export function TracingOverview({
   const [expanded, setExpanded] = useState<string | null>(null)
   const [activeMetricsTab, setActiveMetricsTab] = useState("system")
   const [hoveredTrace, setHoveredTrace] = useState<string | null>(null)
-  
+
   // Calculate statistics
   const totalTraces = traces.length
   const successfulTraces = traces.filter(t => t.status === "success").length
   const failedTraces = traces.filter(t => t.status === "error").length
-  const avgDuration = traces.length > 0 
-    ? Math.round(traces.reduce((sum, t) => sum + (t.duration || 0), 0) / traces.length) 
+  const avgDuration = traces.length > 0
+    ? Math.round(traces.reduce((sum, t) => sum + (t.duration || 0), 0) / traces.length)
     : 0
-  
+
   // Group traces by type
   const tracesByType = traces.reduce((acc, trace) => {
     const type = trace.name || "unknown"
@@ -121,19 +122,19 @@ export function TracingOverview({
     acc[type].push(trace)
     return acc
   }, {} as Record<string, Trace[]>)
-  
+
   // Prepare data for charts
   const statusData = [
     { name: "Success", value: successfulTraces, color: "#10b981" },
     { name: "Failed", value: failedTraces, color: "#ef4444" }
   ]
-  
+
   const typeData = Object.entries(tracesByType).map(([type, traces]) => ({
     name: type,
     count: traces.length,
     avgDuration: Math.round(traces.reduce((sum, t) => sum + (t.duration || 0), 0) / traces.length)
   }))
-  
+
   // Prepare model performance data
   const modelData = modelPerformance?.map(model => ({
     name: model.displayName,
@@ -143,7 +144,7 @@ export function TracingOverview({
     requests: model.metrics.totalRequests,
     provider: model.provider
   })) || []
-  
+
   // Custom tooltip styles
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -160,7 +161,7 @@ export function TracingOverview({
     }
     return null
   }
-  
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -171,11 +172,11 @@ export function TracingOverview({
       }
     }
   }
-  
+
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    show: { 
-      y: 0, 
+    show: {
+      y: 0,
       opacity: 1,
       transition: {
         type: "spring",
@@ -184,7 +185,7 @@ export function TracingOverview({
       }
     }
   }
-  
+
   // Color functions
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -194,7 +195,7 @@ export function TracingOverview({
       default: return "bg-blue-500/10 text-blue-500 border-blue-500/20"
     }
   }
-  
+
   const getProviderColor = (provider: string) => {
     switch (provider?.toLowerCase()) {
       case "google": return "#4285F4"
@@ -203,9 +204,9 @@ export function TracingOverview({
       default: return "#64748b"
     }
   }
-  
+
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       variants={containerVariants}
       initial="hidden"
@@ -233,7 +234,7 @@ export function TracingOverview({
             </CardContent>
           </Card>
         </motion.div>
-        
+
         <motion.div variants={itemVariants}>
           <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
             <CardHeader className="pb-2">
@@ -258,7 +259,7 @@ export function TracingOverview({
             </CardContent>
           </Card>
         </motion.div>
-        
+
         <motion.div variants={itemVariants}>
           <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
             <CardHeader className="pb-2">
@@ -279,7 +280,7 @@ export function TracingOverview({
             </CardContent>
           </Card>
         </motion.div>
-        
+
         <motion.div variants={itemVariants}>
           <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
             <CardHeader className="pb-2">
@@ -305,7 +306,7 @@ export function TracingOverview({
           </Card>
         </motion.div>
       </div>
-      
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution */}
@@ -345,9 +346,9 @@ export function TracingOverview({
                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                     >
                       {statusData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={index === 0 ? "url(#successGradient)" : "url(#errorGradient)"} 
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index === 0 ? "url(#successGradient)" : "url(#errorGradient)"}
                           stroke="rgba(255,255,255,0.2)"
                           strokeWidth={2}
                         />
@@ -360,7 +361,7 @@ export function TracingOverview({
             </CardContent>
           </Card>
         </motion.div>
-        
+
         {/* Trace Types */}
         <motion.div variants={itemVariants}>
           <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm h-[350px]">
@@ -387,39 +388,39 @@ export function TracingOverview({
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       tick={{ fill: 'var(--muted-foreground)' }}
                       axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     />
-                    <YAxis 
-                      yAxisId="left" 
-                      orientation="left" 
-                      stroke="#3b82f6" 
+                    <YAxis
+                      yAxisId="left"
+                      orientation="left"
+                      stroke="#3b82f6"
                       tick={{ fill: 'var(--muted-foreground)' }}
                       axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     />
-                    <YAxis 
-                      yAxisId="right" 
-                      orientation="right" 
-                      stroke="#8b5cf6" 
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      stroke="#8b5cf6"
                       tick={{ fill: 'var(--muted-foreground)' }}
                       axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Bar 
-                      yAxisId="left" 
-                      dataKey="count" 
-                      name="Count" 
-                      fill="url(#countGradient)" 
+                    <Bar
+                      yAxisId="left"
+                      dataKey="count"
+                      name="Count"
+                      fill="url(#countGradient)"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      yAxisId="right" 
-                      dataKey="avgDuration" 
-                      name="Avg Duration (ms)" 
-                      fill="url(#durationGradient)" 
+                    <Bar
+                      yAxisId="right"
+                      dataKey="avgDuration"
+                      name="Avg Duration (ms)"
+                      fill="url(#durationGradient)"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>

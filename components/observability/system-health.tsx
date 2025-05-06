@@ -3,21 +3,21 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import * as d3 from "d3"
-import { 
-  Activity, 
-  AlertCircle, 
-  BarChart, 
-  CheckCircle, 
-  Clock, 
-  Database, 
-  Download, 
-  Filter, 
-  Info, 
-  Layers, 
-  RefreshCw, 
-  Search, 
-  Server, 
-  Zap 
+import {
+  Activity,
+  AlertCircle,
+  BarChart,
+  CheckCircle,
+  Clock,
+  Database,
+  Download,
+  Filter,
+  Info,
+  Layers,
+  RefreshCw,
+  Search,
+  Server,
+  Zap
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,23 +26,24 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { 
-  AreaChart, 
-  Area, 
-  BarChart as RechartsBarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  Legend, 
+import {
+  AreaChart,
+  Area,
+  BarChart as RechartsBarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -84,66 +85,66 @@ interface SystemHealthProps {
   isLoading: boolean
 }
 
-export function SystemHealth({ 
-  metrics, 
-  isLoading 
+export function SystemHealth({
+  metrics,
+  isLoading
 }: SystemHealthProps) {
   const [activeTab, setActiveTab] = useState<string>("overview")
   const [selectedMetric, setSelectedMetric] = useState<string>("cpu")
   const [chartType, setChartType] = useState<string>("line")
   const [timeRange, setTimeRange] = useState<string>("24h")
-  
+
   const gaugeRef = useRef<SVGSVGElement>(null)
-  
+
   // D3 Gauge Chart
   useEffect(() => {
     if (!gaugeRef.current || !metrics?.summary) return
-    
+
     const svg = d3.select(gaugeRef.current)
     svg.selectAll("*").remove()
-    
+
     const width = gaugeRef.current.clientWidth
     const height = gaugeRef.current.clientHeight
     const radius = Math.min(width, height) / 2
-    
+
     const g = svg.append("g")
       .attr("transform", `translate(${width / 2}, ${height / 2})`)
-    
+
     // Create gauge background
     const backgroundArc = d3.arc()
       .innerRadius(radius * 0.7)
       .outerRadius(radius * 0.9)
       .startAngle(-Math.PI / 2)
       .endAngle(Math.PI / 2)
-    
+
     g.append("path")
       .attr("d", backgroundArc as any)
       .style("fill", "#1e293b")
-    
+
     // Create value arc
     const valueScale = d3.scaleLinear()
       .domain([0, 100])
       .range([-Math.PI / 2, Math.PI / 2])
-    
+
     const valueArc = d3.arc()
       .innerRadius(radius * 0.7)
       .outerRadius(radius * 0.9)
       .startAngle(-Math.PI / 2)
       .endAngle((d: any) => valueScale(d.value))
-    
+
     // Determine color based on value
     const getColor = (value: number) => {
       if (value < 50) return "#10b981" // Green
       if (value < 80) return "#f59e0b" // Yellow
       return "#ef4444" // Red
     }
-    
+
     // Add value arc
     g.append("path")
       .datum({ value: metrics.summary.avgCpuUsage })
       .attr("d", valueArc as any)
       .style("fill", getColor(metrics.summary.avgCpuUsage))
-    
+
     // Add text
     g.append("text")
       .attr("text-anchor", "middle")
@@ -151,14 +152,14 @@ export function SystemHealth({
       .attr("class", "text-4xl font-bold")
       .text(`${metrics.summary.avgCpuUsage}%`)
       .style("fill", "white")
-    
+
     g.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", "3em")
       .attr("class", "text-sm")
       .text("CPU Usage")
       .style("fill", "var(--muted-foreground)")
-    
+
     // Add ticks
     const ticks = [0, 25, 50, 75, 100]
     const tickArc = d3.arc()
@@ -166,14 +167,14 @@ export function SystemHealth({
       .outerRadius(radius * 0.95)
       .startAngle((d: any) => valueScale(d) - 0.01)
       .endAngle((d: any) => valueScale(d) + 0.01)
-    
+
     g.selectAll(".tick")
       .data(ticks)
       .enter()
       .append("path")
       .attr("d", tickArc as any)
       .style("fill", "white")
-    
+
     g.selectAll(".tick-text")
       .data(ticks)
       .enter()
@@ -185,9 +186,9 @@ export function SystemHealth({
       .attr("class", "text-xs")
       .text((d: any) => d)
       .style("fill", "var(--muted-foreground)")
-    
+
   }, [metrics?.summary])
-  
+
   // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -204,7 +205,7 @@ export function SystemHealth({
     }
     return null
   }
-  
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -215,11 +216,11 @@ export function SystemHealth({
       }
     }
   }
-  
+
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    show: { 
-      y: 0, 
+    show: {
+      y: 0,
       opacity: 1,
       transition: {
         type: "spring",
@@ -228,7 +229,7 @@ export function SystemHealth({
       }
     }
   }
-  
+
   // Get metric display name
   const getMetricDisplayName = (metric: string) => {
     switch (metric) {
@@ -241,7 +242,7 @@ export function SystemHealth({
       default: return metric
     }
   }
-  
+
   // Get metric data key
   const getMetricDataKey = (metric: string) => {
     switch (metric) {
@@ -254,7 +255,7 @@ export function SystemHealth({
       default: return metric
     }
   }
-  
+
   // Get metric color
   const getMetricColor = (metric: string) => {
     switch (metric) {
@@ -267,7 +268,7 @@ export function SystemHealth({
       default: return "#64748b"
     }
   }
-  
+
   // Get metric unit
   const getMetricUnit = (metric: string) => {
     switch (metric) {
@@ -280,7 +281,7 @@ export function SystemHealth({
       default: return ""
     }
   }
-  
+
   // Get health status
   const getHealthStatus = (metric: string, value: number) => {
     switch (metric) {
@@ -294,7 +295,7 @@ export function SystemHealth({
         return "good"
     }
   }
-  
+
   // Get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -328,9 +329,9 @@ export function SystemHealth({
         )
     }
   }
-  
+
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       variants={containerVariants}
       initial="hidden"
@@ -351,7 +352,7 @@ export function SystemHealth({
             <SelectItem value="users">Active Users</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Select value={chartType} onValueChange={setChartType}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Chart Type" />
@@ -362,7 +363,7 @@ export function SystemHealth({
             <SelectItem value="area">Area Chart</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <TabsList className="grid grid-cols-3 w-[300px] ml-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -371,7 +372,7 @@ export function SystemHealth({
           </TabsList>
         </Tabs>
       </div>
-      
+
       {/* Content */}
       <TabsContent value="overview" className="m-0">
         {isLoading || !metrics ? (
@@ -403,7 +404,7 @@ export function SystemHealth({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* Memory Usage */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -422,7 +423,7 @@ export function SystemHealth({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* Response Time */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -441,7 +442,7 @@ export function SystemHealth({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* API Requests */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -458,7 +459,7 @@ export function SystemHealth({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* Active Users */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -474,7 +475,7 @@ export function SystemHealth({
                 </CardContent>
               </Card>
             </motion.div>
-            
+
             {/* System Status */}
             <motion.div variants={itemVariants}>
               <Card className="overflow-hidden border-opacity-40 backdrop-blur-sm">
@@ -511,7 +512,7 @@ export function SystemHealth({
           </div>
         )}
       </TabsContent>
-      
+
       <TabsContent value="metrics" className="m-0">
         {isLoading || !metrics ? (
           <Skeleton className="h-[400px] w-full" />
@@ -531,19 +532,19 @@ export function SystemHealth({
                   {chartType === 'line' ? (
                     <LineChart data={metrics.dataPoints}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Line 
-                        type="monotone" 
-                        dataKey={getMetricDataKey(selectedMetric)} 
+                      <Line
+                        type="monotone"
+                        dataKey={getMetricDataKey(selectedMetric)}
                         name={getMetricDisplayName(selectedMetric)}
                         stroke={getMetricColor(selectedMetric)}
                         strokeWidth={2}
@@ -554,18 +555,18 @@ export function SystemHealth({
                   ) : chartType === 'bar' ? (
                     <RechartsBarChart data={metrics.dataPoints}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey={getMetricDataKey(selectedMetric)} 
+                      <Bar
+                        dataKey={getMetricDataKey(selectedMetric)}
                         name={getMetricDisplayName(selectedMetric)}
                         fill={getMetricColor(selectedMetric)}
                         radius={[4, 4, 0, 0]}
@@ -575,32 +576,32 @@ export function SystemHealth({
                     <AreaChart data={metrics.dataPoints}>
                       <defs>
                         <linearGradient id={`${selectedMetric}Gradient`} x1="0" y1="0" x2="0" y2="1">
-                          <stop 
-                            offset="5%" 
-                            stopColor={getMetricColor(selectedMetric)} 
+                          <stop
+                            offset="5%"
+                            stopColor={getMetricColor(selectedMetric)}
                             stopOpacity={0.8}
                           />
-                          <stop 
-                            offset="95%" 
-                            stopColor={getMetricColor(selectedMetric)} 
+                          <stop
+                            offset="95%"
+                            stopColor={getMetricColor(selectedMetric)}
                             stopOpacity={0.1}
                           />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
-                      <YAxis 
+                      <YAxis
                         tick={{ fill: 'var(--muted-foreground)' }}
                         axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey={getMetricDataKey(selectedMetric)} 
+                      <Area
+                        type="monotone"
+                        dataKey={getMetricDataKey(selectedMetric)}
                         name={getMetricDisplayName(selectedMetric)}
                         stroke={getMetricColor(selectedMetric)}
                         fillOpacity={1}
@@ -614,7 +615,7 @@ export function SystemHealth({
           </Card>
         )}
       </TabsContent>
-      
+
       <TabsContent value="gauge" className="m-0">
         {isLoading || !metrics ? (
           <Skeleton className="h-[400px] w-full" />

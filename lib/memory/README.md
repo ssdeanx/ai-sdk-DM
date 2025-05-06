@@ -165,10 +165,15 @@ lib/
 - **When extending persistence**:
   - Guide you to add caching layers or Redis integration for hot threads.
   - Recommend schema versioning and migrations via `init-database.ts`.
+- **When enhancing observability**:
+  - Suggest improvements to tracing integration in `ai-sdk-tracing.ts`.
+  - Recommend new metrics or visualizations for the observability dashboard.
+  - Guide on adding new tables or columns to the observability schema.
+  - Advise on best practices for trace sampling, span creation, and event logging.
 - **Always**:
   - Keep memory modules decoupled from business logic.
-  - Use proper typing (`Message`, `MemoryThread`, `AgentState`) to enforce schema.
-  - Ask for clarification when a request references parts of the memory API.
+  - Use proper typing (`Message`, `MemoryThread`, `AgentState`, `Trace`, `Span`) to enforce schema.
+  - Ask for clarification when a request references parts of the memory or tracing API.
 
 ---
 
