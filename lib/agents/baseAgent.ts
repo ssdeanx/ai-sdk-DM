@@ -2,7 +2,7 @@ import { streamText, CoreMessage } from "ai"
 import { getProviderByName } from "../ai"
 import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
 import { jsonSchemaToZod } from "../tools"
-import * as toolExecutors from "../tool-execution"
+import * as toolExecutors from "../tools/tool-execution"
 import { getLibSQLClient } from "../memory/db"
 import { v4 as uuidv4 } from "uuid"
 

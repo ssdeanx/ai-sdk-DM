@@ -1,8 +1,15 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
+
+// Singleton instance for connection reuse
+let supabaseClient: SupabaseClient<Database> | null = null
 
 // Initialize Supabase client
 export const getSupabaseClient = () => {
+  if (supabaseClient) {
+    return supabaseClient
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -12,7 +19,8 @@ export const getSupabaseClient = () => {
     )
   }
 
-  return createClient<Database>(supabaseUrl, supabaseKey)
+  supabaseClient = createClient<Database>(supabaseUrl, supabaseKey)
+  return supabaseClient
 }
 
 // Check if Supabase is available
@@ -159,6 +167,143 @@ export async function deleteItem(tableName: string, id: string): Promise<boolean
     return true
   } catch (error) {
     console.error(`Error deleting item from ${tableName}:`, error)
+    throw error
+  }
+}
+
+// Get model configuration by ID
+export async function getModelConfig(modelId: string) {
+  const supabase = getSupabaseClient()
+
+  try {
+    const { data, error } = await supabase.from("models").select("*").eq("id", modelId).single()
+
+    if (error) {
+      console.error("Error fetching model config:", error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error fetching model config:", error)
+    throw error
+  }
+}
+
+// Get all available models
+export async function getModels(options?: { provider?: string; status?: string }) {
+  const supabase = getSupabaseClient()
+
+  try {
+    let query = supabase.from("models").select("*")
+
+    if (options?.provider) {
+      query = query.eq("provider", options.provider)
+    }
+
+    if (options?.status) {
+      query = query.eq("status", options.status)
+    }
+
+    const { data, error } = await query.order("name")
+
+    if (error) {
+      console.error("Error fetching models:", error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error fetching models:", error)
+    throw error
+  }
+}
+
+// Get agent configuration by ID
+export async function getAgentConfig(agentId: string) {
+  const supabase = getSupabaseClient()
+
+  try {
+    const { data, error } = await supabase.from("agents").select("*").eq("id", agentId).single()
+
+    if (error) {
+      console.error("Error fetching agent config:", error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error fetching agent config:", error)
+    throw error
+  }
+}
+
+// Get all available agents
+export async function getAgents() {
+  const supabase = getSupabaseClient()
+
+  try {
+    const { data, error } = await supabase.from("agents").select("*").order("name")
+
+    if (error) {
+      console.error("Error fetching agents:", error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error fetching agents:", error)
+    throw error
+  }
+}
+
+// Get all tools for an agent
+export async function getAgentTools(agentId: string) {
+  const supabase = getSupabaseClient()
+
+  try {
+    const { data, error } = await supabase
+      .from("agent_tools")
+      .select("tools(*)")
+      .eq("agent_id", agentId)
+
+    if (error) {
+      console.error("Error fetching agent tools:", error)
+      throw error
+    }
+
+    // Extract the tools from the nested structure
+    return data.map((item: any) => item.tools)
+  } catch (error) {
+    console.error("Error fetching agent tools:", error)
+    throw error
+  }
+}
+
+// Get a setting by category and key
+export async function getSetting(category: string, key: string): Promise<string | null> {
+  const supabase = getSupabaseClient()
+
+  try {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("category", category)
+      .eq("key", key)
+      .single()
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        // Not found
+        return null
+      }
+      console.error("Error fetching setting:", error)
+      throw error
+    }
+
+    return data.value
+  } catch (error) {
+    console.error("Error fetching setting:", error)
     throw error
   }
 }

@@ -1,15 +1,25 @@
-import { createClient } from "@libsql/client"
+import { createClient, Client } from "@libsql/client"
+
+// Singleton instance for connection reuse
+let libsqlClient: Client | null = null
 
 // Initialize the LibSQL client for agent memory and threads
 export const getLibSQLClient = () => {
+  if (libsqlClient) {
+    return libsqlClient
+  }
+
   const url = process.env.LIBSQL_DATABASE_URL || ".output/memory.db"
   if (!url) {
     throw new Error("LIBSQL_DATABASE_URL environment variable is not set")
   }
-  return createClient({
+
+  libsqlClient = createClient({
     url,
     authToken: process.env.LIBSQL_AUTH_TOKEN || "",
   })
+
+  return libsqlClient
 }
 
 // Check if database is available
@@ -24,11 +34,12 @@ export async function isDatabaseAvailable() {
     return true
   } catch (error) {
     console.warn("Database not available:", error)
+    libsqlClient = null // Reset the client on connection error
     return false
   }
 }
 
-// Helper function to execute a query and return the results
+// Helper function to execute a query with proper error handling
 export async function query(sql: string, params: any[] = []) {
   try {
     const db = getLibSQLClient()
@@ -38,13 +49,37 @@ export async function query(sql: string, params: any[] = []) {
     })
     return result
   } catch (error) {
-    console.error("Database query error:", error)
+    console.error("LibSQL query error:", error)
     throw error
   }
 }
 
-// Helper function to execute a transaction
+// Helper function to execute multiple queries in a transaction
 export async function transaction(queries: { sql: string; params: any[] }[]) {
+  const db = getLibSQLClient()
+
+  try {
+    await db.execute("BEGIN TRANSACTION")
+
+    for (const { sql, params } of queries) {
+      await db.execute({ sql, args: params })
+    }
+
+    await db.execute("COMMIT")
+    return true
+  } catch (error) {
+    try {
+      await db.execute("ROLLBACK")
+    } catch (rollbackError) {
+      console.error("Error during transaction rollback:", rollbackError)
+    }
+    console.error("LibSQL transaction error:", error)
+    throw error
+  }
+}
+
+// Alternative transaction method using batch
+export async function batchTransaction(queries: { sql: string; params: any[] }[]) {
   try {
     const db = getLibSQLClient()
     return await db.batch(
@@ -54,7 +89,7 @@ export async function transaction(queries: { sql: string; params: any[] }[]) {
       })),
     )
   } catch (error) {
-    console.error("Database transaction error:", error)
+    console.error("Database batch transaction error:", error)
     throw error
   }
 }

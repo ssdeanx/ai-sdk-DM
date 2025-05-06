@@ -1,12 +1,16 @@
 import { generateText, streamText } from "ai"
 import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from "@ai-sdk/google"
-// Import other providers as needed
-// import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
-// import { createAnthropic, AnthropicProvider } from '@ai-sdk/anthropic'
+import { createVertex, GoogleVertexProvider } from "@ai-sdk/google-vertex"
+import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
+import { createAnthropic, AnthropicProvider } from '@ai-sdk/anthropic'
 import { getItemById } from "./memory/supabase"
 
-// Define a union type for possible providers (add others when implemented)
-type AIProvider = GoogleGenerativeAIProvider // | OpenAIProvider | AnthropicProvider;
+// Define a union type for possible providers
+type AIProvider =
+  | GoogleGenerativeAIProvider
+  | GoogleVertexProvider
+  | OpenAIProvider
+  | AnthropicProvider;
 
 // Initialize Google AI provider
 export function getGoogleAI(apiKey?: string, baseURL?: string) {
@@ -18,32 +22,58 @@ export function getGoogleAI(apiKey?: string, baseURL?: string) {
 
 // Initialize OpenAI provider
 export function getOpenAI(apiKey: string, baseURL?: string) {
-  // Uncomment when needed
-  // return createOpenAI({
-  //   apiKey,
-  //   ...(baseURL ? { baseURL } : {})
-  // })
-  throw new Error("OpenAI provider not implemented yet")
+  if (!apiKey) {
+    throw new Error("API key is required for OpenAI")
+  }
+  return createOpenAI({
+    apiKey,
+    ...(baseURL ? { baseURL } : {})
+  })
 }
 
 // Initialize Anthropic provider
 export function getAnthropic(apiKey: string, baseURL?: string) {
-  // Uncomment when needed
-  // return createAnthropic({
-  //   apiKey,
+  if (!apiKey) {
+    throw new Error("API key is required for Anthropic")
+  }
+  return createAnthropic({
+    apiKey,
+    ...(baseURL ? { baseURL } : {})
+  })
+}
+
+// Initialize Google Vertex AI provider
+export function getGoogleVertex(project?: string, location?: string) {
+  const effectiveProject = project || process.env.GOOGLE_VERTEX_PROJECT_ID
+  const effectiveLocation = location || process.env.GOOGLE_VERTEX_LOCATION || "us-central1"
+
+  if (!effectiveProject) {
+    throw new Error("Project ID is required for Google Vertex AI")
+  }
+
+  return createVertex({
+    project: effectiveProject,
+    location: effectiveLocation
+  })
 }
 
 // Get provider based on name
-export async function getProviderByName(providerName: string, apiKey?: string, baseURL?: string): Promise<AIProvider> {
+export async function getProviderByName(
+  providerName: string,
+  apiKey?: string,
+  baseURL?: string,
+  project?: string,
+  location?: string
+): Promise<AIProvider> {
   switch (providerName.toLowerCase()) {
     case "google":
       return getGoogleAI(apiKey, baseURL)
+    case "google-vertex":
+      return getGoogleVertex(project, location)
     case "openai":
-      // return getOpenAI(apiKey, baseURL); // Uncomment and implement when ready
-      throw new Error("OpenAI provider not implemented yet")
+      return getOpenAI(apiKey || "", baseURL)
     case "anthropic":
-      // return getAnthropic(apiKey, baseURL); // Uncomment and implement when ready
-      throw new Error("Anthropic provider not implemented yet")
+      return getAnthropic(apiKey || "", baseURL)
     default:
       throw new Error(`Unsupported provider: ${providerName}`)
   }

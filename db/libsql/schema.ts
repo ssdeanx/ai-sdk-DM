@@ -44,3 +44,30 @@ export const agent_states = sqliteTable('agent_states', {
 
 // HNSW index for embeddings (run as raw SQL migration):
 // CREATE INDEX IF NOT EXISTS embeddings_hnsw ON embeddings USING HNSW (vector) WITH (dims = 384, m = 16, efConstruction = 200);
+
+// Workflows table for storing workflows
+export const workflows = sqliteTable('workflows', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  current_step_index: integer('current_step_index').notNull().default(0),
+  status: text('status').notNull(),
+  metadata: text('metadata'), // JSON string
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+})
+
+// Workflow steps table for storing workflow steps
+export const workflow_steps = sqliteTable('workflow_steps', {
+  id: text('id').primaryKey(),
+  workflow_id: text('workflow_id').notNull(),
+  agent_id: text('agent_id').notNull(),
+  input: text('input'),
+  thread_id: text('thread_id').notNull(),
+  status: text('status').notNull(),
+  result: text('result'),
+  error: text('error'),
+  metadata: text('metadata'), // JSON string
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+})

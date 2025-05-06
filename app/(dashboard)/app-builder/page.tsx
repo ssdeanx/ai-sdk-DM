@@ -419,7 +419,16 @@ async function execute(params) {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit">{editingApp ? "Update App" : "Create App"}</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {editingApp ? "Updating..." : "Creating..."}
+                      </>
+                    ) : (
+                      <>{editingApp ? "Update App" : "Create App"}</>
+                    )}
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -427,87 +436,151 @@ async function execute(params) {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {apps.map((app) => (
-          <Card key={app.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Code className="h-5 w-5" />
-                  {app.name}
-                </CardTitle>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(app)}>
-                    <Save className="h-4 w-4" />
-                    <span className="sr-only">Edit</span>
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(app.id)}>
-                    <Trash className="h-4 w-4" />
-                    <span className="sr-only">Delete</span>
-                  </Button>
-                </div>
-              </div>
-              <CardDescription className="mt-2">{app.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Type:</span>
-                  <span className="font-medium capitalize">{app.type}</span>
-                </div>
-                <div className="border rounded-md p-2 bg-muted">
-                  <pre className="text-xs overflow-auto max-h-[100px]">
-                    <code>{app.code.slice(0, 150)}...</code>
-                  </pre>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="w-full">
-                    <Play className="mr-2 h-4 w-4" />
-                    Test App
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[725px]">
-                  <DialogHeader>
-                    <DialogTitle>Test {app.name}</DialogTitle>
-                    <DialogDescription>Test your app with custom input</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Input</h3>
-                      <CodeMirror
-                        value={testInput}
-                        height="300px"
-                        theme={vscodeDark}
-                        extensions={[json()]}
-                        onChange={setTestInput}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Output</h3>
-                      <CodeMirror
-                        value={testOutput}
-                        height="300px"
-                        theme={vscodeDark}
-                        extensions={[json()]}
-                        editable={false}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleRunTest} disabled={isRunning}>
-                      {isRunning ? "Running..." : "Run Test"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardFooter>
+      {/* Error message */}
+      {connectionError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            Could not connect to the backend. Please check your connection and ensure the backend is running.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-10">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading apps...</p>
+        </div>
+      ) : connectionError ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Show empty state when there's a connection error */}
+          <Card className="col-span-full p-6">
+            <div className="flex flex-col items-center justify-center text-center">
+              <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+              <h3 className="text-lg font-medium">Could not load apps</h3>
+              <p className="text-muted-foreground mt-1">
+                There was an error connecting to the backend. Please try again later.
+              </p>
+              <Button onClick={refreshApps} className="mt-4">
+                Retry
+              </Button>
+            </div>
           </Card>
-        ))}
-      </div>
+        </div>
+      ) : apps.length === 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Show empty state when there are no apps */}
+          <Card className="col-span-full p-6">
+            <div className="flex flex-col items-center justify-center text-center">
+              <Code className="h-10 w-10 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No apps found</h3>
+              <p className="text-muted-foreground mt-1">
+                You haven't created any apps yet. Click the "Create New App" button to get started.
+              </p>
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {apps.map((app) => (
+            <Card key={app.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Code className="h-5 w-5" />
+                    {app.name}
+                  </CardTitle>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(app)}>
+                      <Save className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(app.id)}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </div>
+                </div>
+                <CardDescription className="mt-2">{app.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Type:</span>
+                    <span className="font-medium capitalize">{app.type}</span>
+                  </div>
+                  <div className="border rounded-md p-2 bg-muted">
+                    <pre className="text-xs overflow-auto max-h-[100px]">
+                      <code>{app.code.slice(0, 150)}...</code>
+                    </pre>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full">
+                      <Play className="mr-2 h-4 w-4" />
+                      Test App
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[725px]">
+                    <DialogHeader>
+                      <DialogTitle>Test {app.name}</DialogTitle>
+                      <DialogDescription>Test your app with custom input</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium">Input</h3>
+                        <CodeMirror
+                          value={testInput}
+                          height="300px"
+                          theme={vscodeDark}
+                          extensions={[json()]}
+                          onChange={setTestInput}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium">Output</h3>
+                        <CodeMirror
+                          value={testOutput}
+                          height="300px"
+                          theme={vscodeDark}
+                          extensions={[json()]}
+                          editable={false}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleRunTest} disabled={isRunning}>
+                        {isRunning ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Running...
+                          </>
+                        ) : (
+                          "Run Test"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,32 @@
 import { pgTable, text, varchar, jsonb, boolean, timestamp, integer } from 'drizzle-orm/pg-core'
 
+// Workflows table for storing workflows
+export const workflows = pgTable('workflows', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  current_step_index: integer('current_step_index').notNull().default(0),
+  status: text('status').notNull(),
+  metadata: jsonb('metadata'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// Workflow steps table for storing workflow steps
+export const workflow_steps = pgTable('workflow_steps', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  workflow_id: varchar('workflow_id', { length: 36 }).notNull(),
+  agent_id: varchar('agent_id', { length: 36 }).notNull(),
+  input: text('input'),
+  thread_id: varchar('thread_id', { length: 36 }).notNull(),
+  status: text('status').notNull(),
+  result: text('result'),
+  error: text('error'),
+  metadata: jsonb('metadata'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
 export const models = pgTable('models', {
   id: varchar('id', { length: 36 }).primaryKey(),
   name: text('name').notNull(),

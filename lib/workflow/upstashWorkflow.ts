@@ -1,49 +1,34 @@
 import { getGoogleAI } from '../ai';
-import { HTTPMethods } from '@upstash/qstash';
 import { WorkflowAbort, WorkflowContext } from '@upstash/workflow';
 
+/**
+ * Creates a Google AI instance that can be used within a workflow context
+ * This implementation is specific to Upstash Workflow
+ */
 export const createWorkflowGoogleAI = (context: WorkflowContext) => {
-  return getGoogleAI({
-    compatibility: "strict",
-    fetch: async (input, init) => {
+  // Get the Google AI provider
+  const googleAI = getGoogleAI();
+  // Get the model
+  const model = googleAI("gemini-1.5-pro");
+
+  // Return a wrapped model that uses the workflow context for API calls
+  return {
+    ...model,
+    async generate(params: any) {
       try {
-        // Prepare headers from init.headers
-        const headers = init?.headers
-          ? Object.fromEntries(new Headers(init.headers).entries())
-          : {};
+        // Make the API call through the workflow context
+        // Pass the parameters directly to the workflow step
+        const responseInfo = await context.call("openai-call-step", params);
 
-        // Prepare body from init.body
-        const body = init?.body ? JSON.parse(init.body as string) : undefined;
-
-        // Make network call
-        const responseInfo = await context.call("openai-call-step", {
-          url: input.toString(),
-          method: init?.method as HTTPMethods,
-          headers,
-          body,
-        });
-
-        // Construct headers for the response
-        const responseHeaders = new Headers(
-          Object.entries(responseInfo.header).reduce((acc, [key, values]) => {
-            acc[key] = values.join(", ");
-            return acc;
-          }, {} as Record<string, string>)
-        );
-
-        // Return the constructed response
-        return new Response(JSON.stringify(responseInfo.body), {
-          status: responseInfo.status,
-          headers: responseHeaders,
-        });
+        return responseInfo;
       } catch (error) {
         if (error instanceof WorkflowAbort) {
-          throw error
+          throw error;
         } else {
-          console.error("Error in fetch implementation:", error);
-          throw error; // Rethrow error for further handling
+          console.error("Error in workflow AI generation:", error);
+          throw error;
         }
       }
-    },
-  });
+    }
+  };
 };

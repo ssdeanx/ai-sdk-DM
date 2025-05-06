@@ -63,7 +63,7 @@ export async function streamGoogleAI({
     const model = googleAI(modelConfig.model_id)
 
     // Stream the response
-    const result = await streamText({
+    const result = streamText({
       model,
       messages,
       temperature,

@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Send } from "lucide-react"
+import { AlertCircle, Loader2, Send } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // Define the model type for better type safety
 interface Model {
@@ -28,13 +29,15 @@ export default function TestPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [memoryThreadId, setMemoryThreadId] = useState("")
   const [isFetchingModels, setIsFetchingModels] = useState(false)
-  const [isMockData, setIsMockData] = useState(false)
+  const [connectionError, setConnectionError] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Fetch models on component mount
   useEffect(() => {
     async function fetchModels() {
       setIsFetchingModels(true)
+      setConnectionError(false)
+
       try {
         const response = await fetch("/api/models")
 
@@ -47,7 +50,6 @@ export default function TestPage() {
         // Check if the response has the expected structure
         if (data && data.models && Array.isArray(data.models)) {
           setModels(data.models)
-          setIsMockData(data.isMockData || false)
 
           if (data.models.length > 0) {
             setModelId(data.models[0].id)
@@ -66,22 +68,25 @@ export default function TestPage() {
           toast({
             title: "Error",
             description: "Received unexpected data format from API",
+            variant: "destructive",
           })
         }
       } catch (error) {
         console.error("Error fetching models:", error)
-        // Fallback to mock data if API fails
-        const mockModels = [
-          { id: "mock-1", name: "Mock Google Gemini Pro" },
-          { id: "mock-2", name: "Mock OpenAI GPT-4o" },
-        ]
-        setModels(mockModels)
-        setModelId(mockModels[0].id)
-        setIsMockData(true)
+        setModels([])
+        setConnectionError(true)
+
+        const isNetworkError = error instanceof Error &&
+          (error.message.includes('fetch') ||
+           error.message.includes('network') ||
+           error.message.includes('HTTP error 5'));
 
         toast({
-          title: "Using mock data",
-          description: "Could not connect to API. Using mock models.",
+          title: "Connection Error",
+          description: isNetworkError
+            ? "Could not connect to the backend. Please check your connection and ensure the backend is running."
+            : "An error occurred while fetching models.",
+          variant: "destructive",
         })
       } finally {
         setIsFetchingModels(false)
@@ -184,21 +189,23 @@ export default function TestPage() {
       }
     } catch (error) {
       console.error("Error sending message:", error)
-      toast({
-        title: "Error",
-        description: "Failed to send message. Using mock response.",
-      })
 
-      // Add a mock response if the API call fails
-      const mockResponseId = Date.now().toString()
+      // Add an error message from the assistant
+      const errorMessageId = Date.now().toString()
       setMessages((prev) => [
         ...prev,
         {
-          id: mockResponseId,
+          id: errorMessageId,
           role: "assistant",
-          content: "I'm sorry, I couldn't process your request. This is a mock response because the API call failed.",
+          content: "I'm sorry, I couldn't process your request. There was an error connecting to the AI service. Please try again later.",
         },
       ])
+
+      toast({
+        title: "Connection Error",
+        description: "Failed to send message. Please check your connection and try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -210,9 +217,19 @@ export default function TestPage() {
         <h1 className="text-3xl font-bold tracking-tight">Test Interface</h1>
         <p className="text-muted-foreground">
           Test AI models with direct prompts
-          {isMockData && <span className="ml-2 text-yellow-500">(Using mock data)</span>}
         </p>
       </div>
+
+      {/* Error message */}
+      {connectionError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Connection Error</AlertTitle>
+          <AlertDescription>
+            Could not connect to the backend. Please check your connection and ensure the backend is running.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="flex flex-col h-[calc(100vh-220px)]">
         <CardHeader>
@@ -220,7 +237,14 @@ export default function TestPage() {
             <CardTitle>Chat Interface</CardTitle>
             <Select value={modelId} onValueChange={setModelId} disabled={isFetchingModels}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={isFetchingModels ? "Loading models..." : "Select a model"} />
+                {isFetchingModels ? (
+                  <div className="flex items-center">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading models...
+                  </div>
+                ) : (
+                  <SelectValue placeholder="Select a model" />
+                )}
               </SelectTrigger>
               <SelectContent>
                 {models && models.length > 0 ? (
@@ -245,7 +269,11 @@ export default function TestPage() {
           <div className="space-y-4">
             {messages.length === 0 && (
               <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">No messages yet. Start a conversation!</p>
+                <p className="text-muted-foreground">
+                  {connectionError
+                    ? "Could not connect to the backend. Please check your connection and try again."
+                    : "No messages yet. Start a conversation!"}
+                </p>
               </div>
             )}
             {messages.map((message) => (
@@ -283,7 +311,11 @@ export default function TestPage() {
               disabled={isLoading || !modelId || models.length === 0}
             />
             <Button type="submit" size="icon" disabled={isLoading || !modelId || models.length === 0}>
-              <Send className="h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
               <span className="sr-only">Send</span>
             </Button>
           </form>

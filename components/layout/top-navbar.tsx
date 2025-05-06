@@ -20,14 +20,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { SignInDialog } from "@/components/auth/sign-in-dialog"
+import { SignUpDialog } from "@/components/auth/sign-up-dialog"
 
 export function TopNavbar() {
   const pathname = usePathname()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [showSignIn, setShowSignIn] = useState(false)
+  const [showSignUp, setShowSignUp] = useState(false)
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
+      <div className="container flex h-12 items-center">
         <div className="mr-4 hidden md:flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <motion.div
@@ -36,33 +40,33 @@ export function TopNavbar() {
               transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
               className="rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 p-1"
             >
-              <div className="h-6 w-6 rounded-full bg-background" />
+              <div className="h-5 w-5 rounded-full bg-background" />
             </motion.div>
-            <span className="hidden font-bold sm:inline-block">AI SDK Framework</span>
+            <span className="hidden font-bold sm:inline-block text-sm">AI SDK Framework</span>
           </Link>
         </div>
 
         {/* Mobile menu trigger */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="mr-2 md:hidden">
-              <Menu className="h-5 w-5" />
+            <Button variant="outline" size="icon" className="mr-2 h-8 w-8 md:hidden">
+              <Menu className="h-4 w-4" />
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="pr-0">
-            <MobileNav />
+            <MobileNav setShowSignIn={setShowSignIn} setShowSignUp={setShowSignUp} />
           </SheetContent>
         </Sheet>
 
         {/* Search */}
         <div className={cn("flex-1 md:grow-0", isSearchOpen ? "flex" : "hidden md:flex")}>
           <form className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[300px]"
+              className="h-8 w-full rounded-lg bg-background pl-8 md:w-[180px] lg:w-[240px]"
             />
           </form>
         </div>
@@ -70,25 +74,35 @@ export function TopNavbar() {
         <Button
           variant="ghost"
           size="icon"
-          className="ml-auto md:hidden"
+          className="ml-auto h-8 w-8 md:hidden"
           onClick={() => setIsSearchOpen(!isSearchOpen)}
         >
-          {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          {isSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
           <span className="sr-only">Toggle search</span>
         </Button>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <nav className="hidden md:flex items-center space-x-2">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
+          <nav className="hidden md:flex items-center space-x-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowSignIn(true)}>
+              Sign In
+            </Button>
+            <Button
+              variant="gradient"
+              size="sm"
+              onClick={() => setShowSignUp(true)}
+            >
+              Sign Up
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Bell className="h-4 w-4" />
               <span className="sr-only">Notifications</span>
             </Button>
             <ModeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
+                <Button variant="ghost" className="relative h-7 w-7 rounded-full">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src="/placeholder.svg?height=28&width=28" alt="User" />
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -119,11 +133,19 @@ export function TopNavbar() {
           </nav>
         </div>
       </div>
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} />
+      <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} />
     </header>
   )
 }
 
-function MobileNav() {
+function MobileNav({
+  setShowSignIn,
+  setShowSignUp
+}: {
+  setShowSignIn: (show: boolean) => void
+  setShowSignUp: (show: boolean) => void
+}) {
   const pathname = usePathname()
   const [openItems, setOpenItems] = useState<string[]>([])
 
@@ -163,9 +185,9 @@ function MobileNav() {
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 p-1"
         >
-          <div className="h-6 w-6 rounded-full bg-background" />
+          <div className="h-5 w-5 rounded-full bg-background" />
         </motion.div>
-        <span className="font-bold">AI SDK Framework</span>
+        <span className="font-bold text-sm">AI SDK Framework</span>
       </Link>
       <div className="flex flex-col space-y-2">
         {navItems.map((item) => (
@@ -216,10 +238,26 @@ function MobileNav() {
           </div>
         ))}
       </div>
+      <div className="flex flex-col space-y-3 mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowSignIn(true)}
+        >
+          Sign In
+        </Button>
+        <Button
+          variant="gradient"
+          size="sm"
+          onClick={() => setShowSignUp(true)}
+        >
+          Sign Up
+        </Button>
+      </div>
       <div className="flex items-center space-x-2">
         <ModeToggle />
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Bell className="h-4 w-4" />
           <span className="sr-only">Notifications</span>
         </Button>
       </div>
