@@ -1,4 +1,15 @@
-import { pgTable, text, varchar, jsonb, boolean, timestamp, integer, numeric } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  text,
+  varchar,
+  jsonb,
+  boolean,
+  timestamp,
+  integer,
+  numeric,
+  primaryKey,
+  foreignKey
+} from 'drizzle-orm/pg-core'
 
 // Workflows table for storing workflows
 export const workflows = pgTable('workflows', {
@@ -140,6 +151,131 @@ export const content = pgTable('content', {
   content: text('content'),
   data: jsonb('data'),
   image_url: text('image_url'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// Observability tables
+export const traces = pgTable('traces', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: text('name').notNull(),
+  startTime: timestamp('startTime', { withTimezone: true }).notNull(),
+  endTime: timestamp('endTime', { withTimezone: true }).notNull(),
+  duration: numeric('duration').notNull(),
+  status: text('status').notNull(),
+  userId: varchar('userId', { length: 36 }).notNull(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const spans = pgTable('spans', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  traceId: varchar('traceId', { length: 36 }).notNull().references(() => traces.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  startTime: timestamp('startTime', { withTimezone: true }).notNull(),
+  endTime: timestamp('endTime', { withTimezone: true }).notNull(),
+  duration: numeric('duration').notNull(),
+  status: text('status').notNull(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const events = pgTable('events', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  traceId: varchar('traceId', { length: 36 }).notNull().references(() => traces.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const system_metrics = pgTable('system_metrics', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  timeRange: text('timeRange').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+  cpu_usage: numeric('cpu_usage').notNull(),
+  memory_usage: numeric('memory_usage').notNull(),
+  database_connections: integer('database_connections').notNull(),
+  api_requests_per_minute: integer('api_requests_per_minute').notNull(),
+  average_response_time_ms: numeric('average_response_time_ms').notNull(),
+  active_users: integer('active_users').notNull(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const model_performance = pgTable('model_performance', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  modelId: varchar('modelId', { length: 36 }).notNull().references(() => models.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  displayName: text('displayName').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).notNull(),
+  latency_ms: numeric('latency_ms').notNull(),
+  tokens_per_second: numeric('tokens_per_second').notNull(),
+  success_rate: numeric('success_rate').notNull(),
+  request_count: integer('request_count').notNull(),
+  total_tokens: integer('total_tokens').notNull(),
+  error_count: integer('error_count').notNull(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const model_costs = pgTable('model_costs', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  modelId: varchar('modelId', { length: 36 }).notNull().references(() => models.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  displayName: text('displayName').notNull(),
+  costPerInputToken: numeric('costPerInputToken').notNull(),
+  costPerOutputToken: numeric('costPerOutputToken').notNull(),
+  date: timestamp('date', { withTimezone: true }).notNull(),
+  cost: numeric('cost').notNull(),
+  inputTokens: integer('inputTokens').notNull(),
+  outputTokens: integer('outputTokens').notNull(),
+  requests: integer('requests').notNull(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const model_evaluations = pgTable('model_evaluations', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  modelId: varchar('modelId', { length: 36 }).notNull().references(() => models.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  displayName: text('displayName').notNull(),
+  version: text('version').notNull(),
+  evaluationDate: timestamp('evaluationDate', { withTimezone: true }).notNull(),
+  datasetName: text('datasetName').notNull(),
+  datasetSize: integer('datasetSize').notNull(),
+  overallScore: numeric('overallScore').notNull(),
+  previousScore: numeric('previousScore'),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const evaluation_metrics = pgTable('evaluation_metrics', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  evaluationId: varchar('evaluationId', { length: 36 }).notNull().references(() => model_evaluations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  value: numeric('value').notNull(),
+  threshold: numeric('threshold').notNull(),
+  weight: numeric('weight').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const evaluation_examples = pgTable('evaluation_examples', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  evaluationId: varchar('evaluationId', { length: 36 }).notNull().references(() => model_evaluations.id, { onDelete: 'cascade' }),
+  input: text('input').notNull(),
+  expectedOutput: text('expectedOutput').notNull(),
+  actualOutput: text('actualOutput').notNull(),
+  scores: jsonb('scores').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })

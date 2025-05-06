@@ -289,6 +289,369 @@ export interface Database {
           updated_at?: string
         }
       }
+      traces: {
+        Row: {
+          id: string
+          name: string
+          startTime: string
+          endTime: string
+          duration: number
+          status: string
+          userId: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          startTime: string
+          endTime: string
+          duration: number
+          status: string
+          userId: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          startTime?: string
+          endTime?: string
+          duration?: number
+          status?: string
+          userId?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      spans: {
+        Row: {
+          id: string
+          traceId: string
+          name: string
+          startTime: string
+          endTime: string
+          duration: number
+          status: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          traceId: string
+          name: string
+          startTime: string
+          endTime: string
+          duration: number
+          status: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          traceId?: string
+          name?: string
+          startTime?: string
+          endTime?: string
+          duration?: number
+          status?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      events: {
+        Row: {
+          id: string
+          traceId: string
+          name: string
+          timestamp: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          traceId: string
+          name: string
+          timestamp: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          traceId?: string
+          name?: string
+          timestamp?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      system_metrics: {
+        Row: {
+          id: string
+          timeRange: string
+          timestamp: string
+          cpu_usage: number
+          memory_usage: number
+          database_connections: number
+          api_requests_per_minute: number
+          average_response_time_ms: number
+          active_users: number
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          timeRange: string
+          timestamp: string
+          cpu_usage: number
+          memory_usage: number
+          database_connections: number
+          api_requests_per_minute: number
+          average_response_time_ms: number
+          active_users: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          timeRange?: string
+          timestamp?: string
+          cpu_usage?: number
+          memory_usage?: number
+          database_connections?: number
+          api_requests_per_minute?: number
+          average_response_time_ms?: number
+          active_users?: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      model_performance: {
+        Row: {
+          id: string
+          modelId: string
+          provider: string
+          displayName: string
+          timestamp: string
+          latency_ms: number
+          tokens_per_second: number
+          success_rate: number
+          request_count: number
+          total_tokens: number
+          error_count: number
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          modelId: string
+          provider: string
+          displayName: string
+          timestamp: string
+          latency_ms: number
+          tokens_per_second: number
+          success_rate: number
+          request_count: number
+          total_tokens: number
+          error_count: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          modelId?: string
+          provider?: string
+          displayName?: string
+          timestamp?: string
+          latency_ms?: number
+          tokens_per_second?: number
+          success_rate?: number
+          request_count?: number
+          total_tokens?: number
+          error_count?: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      model_costs: {
+        Row: {
+          id: string
+          modelId: string
+          provider: string
+          displayName: string
+          costPerInputToken: number
+          costPerOutputToken: number
+          date: string
+          cost: number
+          inputTokens: number
+          outputTokens: number
+          requests: number
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          modelId: string
+          provider: string
+          displayName: string
+          costPerInputToken: number
+          costPerOutputToken: number
+          date: string
+          cost: number
+          inputTokens: number
+          outputTokens: number
+          requests: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          modelId?: string
+          provider?: string
+          displayName?: string
+          costPerInputToken?: number
+          costPerOutputToken?: number
+          date?: string
+          cost?: number
+          inputTokens?: number
+          outputTokens?: number
+          requests?: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      model_evaluations: {
+        Row: {
+          id: string
+          modelId: string
+          provider: string
+          displayName: string
+          version: string
+          evaluationDate: string
+          datasetName: string
+          datasetSize: number
+          overallScore: number
+          previousScore: number | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          modelId: string
+          provider: string
+          displayName: string
+          version: string
+          evaluationDate: string
+          datasetName: string
+          datasetSize: number
+          overallScore: number
+          previousScore?: number | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          modelId?: string
+          provider?: string
+          displayName?: string
+          version?: string
+          evaluationDate?: string
+          datasetName?: string
+          datasetSize?: number
+          overallScore?: number
+          previousScore?: number | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      evaluation_metrics: {
+        Row: {
+          id: string
+          evaluationId: string
+          name: string
+          description: string
+          value: number
+          threshold: number
+          weight: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          evaluationId: string
+          name: string
+          description: string
+          value: number
+          threshold: number
+          weight: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          evaluationId?: string
+          name?: string
+          description?: string
+          value?: number
+          threshold?: number
+          weight?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      evaluation_examples: {
+        Row: {
+          id: string
+          evaluationId: string
+          input: string
+          expectedOutput: string
+          actualOutput: string
+          scores: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          evaluationId: string
+          input: string
+          expectedOutput: string
+          actualOutput: string
+          scores: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          evaluationId?: string
+          input?: string
+          expectedOutput?: string
+          actualOutput?: string
+          scores?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }

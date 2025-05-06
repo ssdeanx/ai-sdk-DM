@@ -22,6 +22,13 @@
       "when": 1746561744919,
       "tag": "0002_update_model_capabilities",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1746568188795,
+      "tag": "0003_update_observability",
+      "breakpoints": true
     }
   ]
 }

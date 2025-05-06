@@ -43,7 +43,7 @@ This folder consolidates all memory and persistence logic for AI agents and othe
 
 ## 2. Current Folder Structure & Key Files
 
-```
+```bash
 lib/memory/
 ├── db.ts                  # LibSQL client, query and transaction helpers
 ├── drizzle.ts             # Drizzle ORM integration for Supabase
@@ -54,6 +54,13 @@ lib/memory/
 ├── store-embedding.ts     # Batch save embeddings helper for multiple texts
 ├── memory-processors.ts   # Modular message processing pipeline (pruning, filtering)
 └── README.md              # This file: overview, onboarding, and AI assistant guide
+
+# Related Tracing & Observability Files
+lib/
+├── ai-sdk-tracing.ts      # AI SDK integration with tracing system
+├── langfuse-integration.ts # Langfuse tracing integration
+├── otel-tracing.ts        # OpenTelemetry integration
+└── tracing.ts             # Core tracing utilities
 ```
 
 ### 2.1 db.ts
@@ -191,7 +198,9 @@ lib/memory/
 - [x] Drizzle migrations for Supabase schema (`db/supabase/schema.ts`) with rollback scripts
 - [x] Drizzle migrations for LibSQL schema (`db/libsql/schema.ts`) and versioning
 - [x] Drizzle ORM integration for Supabase in `lib/memory/drizzle.ts` and `lib/memory/supabase.ts`
-- [ ] Improve TypeScript definitions in `types/supabase.ts` to cover all tables and relationships
+- [x] Improve TypeScript definitions in `types/supabase.ts` to cover all tables and relationships
+- [x] Advanced observability components with d3, recharts, and plotly visualizations
+- [x] Comprehensive tracing system with spans, events, and metrics
 - [ ] Refactor and enhance `db.ts`, `libsql.ts`, and `memory.ts` for consistency, error isolation, and testing
 - [ ] Provide API route templates and examples for CRUD operations in `hooks/use-supabase-*` and `app/api/*`
 - [ ] Add cursor-based pagination to `loadMessages()` and `listMemoryThreads()`
@@ -295,6 +304,74 @@ To optimize embeddings storage and similarity search using LibSQL/Turso:
    ```
 
 5. Verify performance and storage footprint as per Turso recommendations.
+
+---
+
+## 10. Observability System
+
+The project includes a comprehensive observability system for monitoring AI model performance, system health, costs, and evaluations. This system is built on top of the memory layer and provides insights into the behavior of AI models and the overall system.
+
+### 10.1 Observability Tables
+
+The following tables have been added to the Supabase schema to support observability:
+
+- **Tracing Tables**:
+  - `traces`: Stores high-level trace information for AI model interactions
+  - `spans`: Stores detailed timing information for specific operations within a trace
+  - `events`: Stores discrete events that occur during a trace
+
+- **Metrics Tables**:
+  - `system_metrics`: Stores system health metrics like CPU usage, memory usage, etc.
+  - `model_performance`: Stores performance metrics for AI models like latency, tokens per second, etc.
+
+- **Cost Tables**:
+  - `model_costs`: Stores cost information for AI model usage
+
+- **Evaluation Tables**:
+  - `model_evaluations`: Stores evaluation results for AI models
+  - `evaluation_metrics`: Stores detailed metrics for model evaluations
+  - `evaluation_examples`: Stores example inputs and outputs for model evaluations
+
+### 10.2 Observability Components
+
+The project includes advanced visualization components for the observability dashboard:
+
+- **TracingOverview**: Displays a list of traces with filtering and sorting
+- **TracingDetails**: Shows detailed information about a specific trace
+- **TracingTimeline**: Visualizes the timeline of spans and events within a trace
+- **ModelPerformance**: Visualizes performance metrics for AI models using recharts
+- **SystemHealth**: Monitors system health metrics with d3 gauge charts
+- **CostEstimation**: Analyzes and projects costs for AI model usage
+- **ModelEvaluation**: Evaluates model quality with radar charts for metrics
+
+### 10.3 Tracing Integration
+
+The tracing system is integrated with the memory layer to provide insights into AI model interactions:
+
+- **Trace Creation**: Each AI model interaction creates a trace with a unique ID
+- **Span Recording**: Operations like token counting, embedding generation, and model inference create spans
+- **Event Logging**: Discrete events like user messages, tool calls, and errors are logged
+- **Metadata Capture**: Relevant metadata like model ID, temperature, and token counts are captured
+
+### 10.4 Usage
+
+To use the observability system:
+
+1. **View the Dashboard**: Navigate to `/observability` to see the dashboard
+2. **Filter Traces**: Use the time range selector and search box to filter traces
+3. **Analyze Performance**: View model performance metrics and system health
+4. **Track Costs**: Monitor and project costs for AI model usage
+5. **Evaluate Models**: Compare model quality across different metrics
+
+### 10.5 API Routes
+
+The following API routes are available for the observability system:
+
+- **GET /api/observability/traces**: Get a list of traces or a specific trace
+- **GET /api/observability/metrics**: Get system health metrics
+- **GET /api/observability/performance**: Get model performance metrics
+- **GET /api/observability/costs**: Get cost information for AI models
+- **GET /api/observability/evaluations**: Get evaluation results for AI models
 
 ---
 

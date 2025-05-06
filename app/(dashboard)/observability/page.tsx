@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { 
-  Activity, 
-  BarChart, 
-  Clock, 
-  Database, 
-  Layers, 
-  LineChart, 
-  Network, 
-  RefreshCw, 
-  Search, 
-  Zap 
+import {
+  Activity,
+  BarChart,
+  Clock,
+  Database,
+  DollarSign,
+  Layers,
+  LineChart,
+  Network,
+  RefreshCw,
+  Search,
+  Star,
+  Zap
 } from "lucide-react"
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
@@ -23,13 +25,14 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
-import { useSupabaseDirect } from "@/hooks/use-supabase-direct"
 
 import { TracingOverview } from "@/components/observability/tracing-overview"
 import { TracingTimeline } from "@/components/observability/tracing-timeline"
 import { TracingDetails } from "@/components/observability/tracing-details"
 import { ModelPerformance } from "@/components/observability/model-performance"
 import { SystemHealth } from "@/components/observability/system-health"
+import { CostEstimation } from "@/components/observability/cost-estimation"
+import { ModelEvaluation } from "@/components/observability/model-evaluation"
 
 export default function ObservabilityPage() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -37,7 +40,7 @@ export default function ObservabilityPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [timeRange, setTimeRange] = useState("24h")
   const [isRefreshing, setIsRefreshing] = useState(false)
-  
+
   // Fetch recent traces
   const { data: recentTraces, isLoading: tracesLoading, refetch: refetchTraces } = useSupabaseFetch({
     endpoint: "/api/observability/traces",
@@ -62,20 +65,38 @@ export default function ObservabilityPage() {
     queryParams: { timeRange }
   })
 
+  // Fetch cost data
+  const { data: costData, isLoading: costLoading, refetch: refetchCost } = useSupabaseFetch({
+    endpoint: "/api/observability/costs",
+    resourceName: "Cost Data",
+    dataKey: "costData",
+    queryParams: { timeRange }
+  })
+
+  // Fetch evaluation data
+  const { data: evaluationData, isLoading: evaluationLoading, refetch: refetchEvaluation } = useSupabaseFetch({
+    endpoint: "/api/observability/evaluations",
+    resourceName: "Evaluation Data",
+    dataKey: "evaluations",
+    queryParams: { timeRange }
+  })
+
   // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true)
     await Promise.all([
       refetchTraces(),
       refetchMetrics(),
-      refetchPerformance()
+      refetchPerformance(),
+      refetchCost(),
+      refetchEvaluation()
     ])
     setIsRefreshing(false)
   }
 
   // Filter traces based on search query
-  const filteredTraces = searchQuery 
-    ? recentTraces?.filter(trace => 
+  const filteredTraces = searchQuery
+    ? recentTraces?.filter(trace =>
         trace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         trace.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (trace.metadata && JSON.stringify(trace.metadata).toLowerCase().includes(searchQuery.toLowerCase()))
@@ -111,10 +132,10 @@ export default function ObservabilityPage() {
               <SelectItem value="30d">Last 30 days</SelectItem>
             </SelectContent>
           </Select>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handleRefresh} 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
             disabled={isRefreshing}
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -123,7 +144,7 @@ export default function ObservabilityPage() {
       </DashboardHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-5">
+        <TabsList className="grid grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -144,12 +165,20 @@ export default function ObservabilityPage() {
             <Database className="h-4 w-4" />
             <span className="hidden sm:inline">System</span>
           </TabsTrigger>
+          <TabsTrigger value="cost" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Cost</span>
+          </TabsTrigger>
+          <TabsTrigger value="evaluation" className="flex items-center gap-2">
+            <Star className="h-4 w-4" />
+            <span className="hidden sm:inline">Evaluation</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <TracingOverview 
-            traces={filteredTraces || []} 
-            isLoading={tracesLoading} 
+          <TracingOverview
+            traces={filteredTraces || []}
+            isLoading={tracesLoading}
             onSelectTrace={setSelectedTraceId}
             systemMetrics={systemMetrics}
             modelPerformance={modelPerformance}
@@ -157,8 +186,8 @@ export default function ObservabilityPage() {
         </TabsContent>
 
         <TabsContent value="traces" className="space-y-4">
-          <TracingDetails 
-            traces={filteredTraces || []} 
+          <TracingDetails
+            traces={filteredTraces || []}
             isLoading={tracesLoading}
             selectedTraceId={selectedTraceId}
             onSelectTrace={setSelectedTraceId}
@@ -166,8 +195,8 @@ export default function ObservabilityPage() {
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4">
-          <TracingTimeline 
-            traces={filteredTraces || []} 
+          <TracingTimeline
+            traces={filteredTraces || []}
             isLoading={tracesLoading}
             selectedTraceId={selectedTraceId}
             onSelectTrace={setSelectedTraceId}
@@ -175,16 +204,31 @@ export default function ObservabilityPage() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
-          <ModelPerformance 
-            performance={modelPerformance || []} 
+          <ModelPerformance
+            performance={modelPerformance || []}
             isLoading={performanceLoading}
           />
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
-          <SystemHealth 
-            metrics={systemMetrics || []} 
+          <SystemHealth
+            metrics={systemMetrics || null}
             isLoading={metricsLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="cost" className="space-y-4">
+          <CostEstimation
+            costData={costData || []}
+            isLoading={costLoading}
+            timeRange={timeRange}
+          />
+        </TabsContent>
+
+        <TabsContent value="evaluation" className="space-y-4">
+          <ModelEvaluation
+            evaluations={evaluationData || []}
+            isLoading={evaluationLoading}
           />
         </TabsContent>
       </Tabs>
