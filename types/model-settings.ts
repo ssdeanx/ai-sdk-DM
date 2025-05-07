@@ -70,11 +70,16 @@ export interface ModelCapabilities {
   fine_tuning: boolean;
   thinking: boolean;
   search_grounding: boolean;
+  dynamic_retrieval: boolean;
+  hybrid_grounding: boolean;
+  cached_content: boolean;
   code_execution: boolean;
   structured_output: boolean;
   image_generation: boolean;
   video_generation: boolean;
   audio_generation: boolean;
+  response_modalities: boolean;
+  file_inputs: boolean;
 }
 
 /**

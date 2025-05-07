@@ -85,10 +85,11 @@ export async function initializeTools(options: ToolInitializerOptions = {}) {
 
     // Log success event
     if (trace) {
-      await logEvent(trace.id, {
+      await logEvent({
+        traceId: trace.id,
         name: "tools_initialized",
-        level: "info",
         metadata: {
+          level: "info",
           builtInCount: Object.keys(builtInTools).length,
           customCount: Object.keys(customTools).length,
           agenticCount: Object.keys(aTools).length,
@@ -101,12 +102,13 @@ export async function initializeTools(options: ToolInitializerOptions = {}) {
   } catch (error) {
     // Log error event
     if (trace) {
-      await logEvent(trace.id, {
+      await logEvent({
+        traceId: trace.id,
         name: "tool_initialization_error",
-        level: "error",
         metadata: {
-          error: error.message,
-          stack: error.stack,
+          level: "error",
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
         },
       })
     }

@@ -2,7 +2,61 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file.
 
+## [v0.0.3] - 2025-05-07
+
+### Authentication Enhancements
+
+- Added GitHub OAuth callback for admin authentication
+- Implemented admin-specific authentication flow with dedicated callback route
+- Added admin user schema with role-based access control
+- Created admin GitHub sign-in button component for admin authentication
+- Updated Supabase schema to support both email/password and GitHub authentication
+- Added support for admin login with email (owner@deanmachines.com) and password (admin!)
+- Implemented proper error handling for authentication failures
+- Added migration for authentication schema updates (auth_github_callback_admin)
+
 ## [v0.0.2] - 2025-05-06
+
+### Enhanced Google AI Integration
+
+- Implemented full Google AI integration with all advanced features:
+  - Added support for hybrid grounding capabilities
+  - Implemented dynamic retrieval configuration
+  - Added response modalities support
+  - Implemented cached content capabilities
+  - Updated all model configurations with accurate capabilities
+
+### Authentication Improvements
+
+- Added Supabase authentication callback route for OAuth and magic link flows
+- Created server-side Supabase client for secure authentication operations
+- Added error handling page for authentication failures
+- Implemented proper redirect handling with environment detection
+- Added GitHub OAuth authentication support with dedicated callback route
+- Created GitHub sign-in button component for easy integration
+- Added sign-in page with email/password and GitHub authentication options
+- Created documentation for GitHub OAuth setup
+
+### Database Schema Updates
+
+- Updated Supabase schema to include agent_personas table with capabilities
+- Added persona_scores table for tracking persona performance
+- Enhanced model capabilities schema to support all Google AI features
+- Created migration for updated schema (persona_upgraded_gemini)
+
+### AI SDK Tracing Improvements
+
+- Enhanced AI SDK tracing to support all Google AI features
+- Updated streamGoogleAIWithTracing to handle new parameters
+- Updated generateGoogleAIWithTracing to handle new parameters
+- Improved streamTextWithTracing and generateTextWithTracing functions
+
+### Persona Management
+
+- Updated AgentPersona interface to include capabilities
+- Enhanced persona-manager.ts to handle capabilities field
+- Improved persona score tracking and management
+- Added support for dynamic persona capabilities based on model
 
 ### Changed
 
@@ -21,7 +75,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 
 ## [v0.0.1] - 2025-05-01
 
-### Added
+### Initial Features
 
 - Initial project setup with Next.js App Router
 - Basic AI SDK integration with Google AI (Gemini)

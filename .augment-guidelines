@@ -2,7 +2,7 @@
 
 ## AI SDK Overview
 
-This project leverages the Vercel AI SDK, a powerful toolkit for building AI-powered applications. The AI SDK consists of two main components:
+This project leverages the Vercel AI SDK, a powerful toolkit for building AI-powered applications. The AI SDK consists of three main components:
 
 ### AI SDK Core
 
@@ -23,6 +23,14 @@ AI SDK UI is designed to build interactive chat, completion, and assistant appli
 - **`useCompletion`**: Text completion with automatic UI updates
 - **`useObject`**: Streaming structured JSON objects
 - **`useAssistant`**: Integration with OpenAI-compatible assistant APIs
+
+### AI SDK RSC
+
+AI SDK RSC enables seamless integration with React Server Components for generating rich, component-based interfaces directly from LLM outputs:
+
+- **Generative UI**: Move beyond plaintext and markdown to dynamic component-based interfaces
+- **Streamable UI**: Stream React components in real-time as they're generated
+- **Component Composition**: Allow LLMs to select and parameterize UI components
 
 ## Architecture Overview
 
@@ -366,6 +374,8 @@ The tools system is organized into functional categories:
    - Vector search and similarity
    - Context retrieval and chunking
    - Embedding generation
+   - Query transformation and re-ranking
+   - Hybrid search strategies
 
 7. **Agentic Tools** (`agentic/`):
    - Wikipedia, Wikidata clients
@@ -2100,6 +2110,54 @@ await workflowProvider.addWorkflowStep(workflow.id, {
   metadata: { requiresApproval: true }
 });
 ```
+
+## Advanced Agent Techniques
+
+### Agent State Management
+
+Advanced AI agents require sophisticated state management beyond simple chat history:
+
+- **Persistent Memory**: Store user-specific information, preferences, and interaction history
+- **Context Window Management**: Intelligently manage token limits with summarization and prioritization
+- **Resumable Streams**: Support for reconnecting to long-running operations after disconnection
+- **Hybrid Memory Systems**: Combine conversation history, RAG context, and personalized memory
+
+### Multi-Agent Systems and Workflows
+
+Complex tasks can be decomposed into workflows involving multiple specialized agents:
+
+- **Sequential Processing (Chaining)**: Output of one agent becomes input for the next
+- **Routing**: Dispatcher agent analyzes queries and routes to specialized agents
+- **Parallel Processing**: Multiple independent sub-tasks executed concurrently
+- **Orchestrator-Worker**: Central agent plans tasks and delegates to specialized workers
+
+### Dynamic Persona Management
+
+Create adaptive AI personas that evolve based on context and user interactions:
+
+- **Dynamic System Prompts**: Generate prompts based on user roles, intent, or context
+- **Persona Libraries**: Use `customProvider` to define and select from multiple personas
+- **Stateful Adaptation**: Evolve personas based on interaction history and memory
+
+### Advanced Tool Integration
+
+Enhance agent capabilities with sophisticated tool usage patterns:
+
+- **Parallel Tool Execution**: Execute multiple tools concurrently for improved performance
+- **Tool Choice Control**: Explicitly control which tools the model can use
+- **Recursive Tool Calling**: Enable complex workflows with sequential tool operations
+- **Tool Repair**: Automatically fix invalid tool calls with `experimental_repairToolCall`
+- **Interactive Tools**: Tools that require user confirmation or additional input
+
+### Error Handling and Fault Tolerance
+
+Build resilient agent systems that gracefully handle failures:
+
+- **Granular Error Types**: Leverage specific error types like `AI_NoObjectGeneratedError`
+- **Retry Mechanisms**: Implement exponential backoff for transient errors
+- **Fallback Paths**: Define alternative processing routes when primary ones fail
+- **Human-in-the-Loop Escalation**: Escalate critical errors for human intervention
+- **Graceful Degradation**: Provide partial results when non-critical components fail
 
 ## User Preferences
 

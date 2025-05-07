@@ -93,6 +93,10 @@ export async function streamAIWithTracing({
   traceName,
   userId,
   metadata,
+  useSearchGrounding,
+  dynamicRetrievalConfig,
+  responseModalities,
+  cachedContent
 }: {
   provider: string
   modelId: string
@@ -105,6 +109,13 @@ export async function streamAIWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  useSearchGrounding?: boolean
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
+    dynamicThreshold?: number
+  }
+  responseModalities?: Array<"TEXT" | "IMAGE">
+  cachedContent?: string
 }) {
   // Determine which provider-specific function to use
   switch (provider.toLowerCase()) {
@@ -119,7 +130,11 @@ export async function streamAIWithTracing({
         baseURL,
         traceName,
         userId,
-        metadata
+        metadata,
+        useSearchGrounding,
+        dynamicRetrievalConfig,
+        responseModalities,
+        cachedContent
       });
     case 'openai':
       if (!apiKey) {
@@ -187,6 +202,10 @@ export async function generateAIWithTracing({
   traceName,
   userId,
   metadata,
+  useSearchGrounding,
+  dynamicRetrievalConfig,
+  responseModalities,
+  cachedContent
 }: {
   provider: string
   modelId: string
@@ -199,6 +218,13 @@ export async function generateAIWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  useSearchGrounding?: boolean
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
+    dynamicThreshold?: number
+  }
+  responseModalities?: Array<"TEXT" | "IMAGE">
+  cachedContent?: string
 }) {
   // Determine which provider-specific function to use
   switch (provider.toLowerCase()) {
@@ -213,7 +239,11 @@ export async function generateAIWithTracing({
         baseURL,
         traceName,
         userId,
-        metadata
+        metadata,
+        useSearchGrounding,
+        dynamicRetrievalConfig,
+        responseModalities,
+        cachedContent
       });
     case 'openai':
       if (!apiKey) {
@@ -279,6 +309,13 @@ export async function streamTextWithTracing(options: {
   traceName?: string;
   userId?: string;
   metadata?: any;
+  useSearchGrounding?: boolean;
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<"TEXT" | "IMAGE">;
+  cachedContent?: string;
   [key: string]: any;
 }) {
   const { traceName, userId, metadata, ...streamOptions } = options
@@ -325,7 +362,11 @@ export async function streamTextWithTracing(options: {
     // Call the original streamText function
     const result = await streamText({
       ...streamOptions,
-      model: options.model
+      model: options.model,
+      ...(options.useSearchGrounding !== undefined ? { useSearchGrounding: options.useSearchGrounding } : {}),
+      ...(options.dynamicRetrievalConfig ? { dynamicRetrievalConfig: options.dynamicRetrievalConfig } : {}),
+      ...(options.responseModalities ? { responseModalities: options.responseModalities } : {}),
+      ...(options.cachedContent ? { cachedContent: options.cachedContent } : {})
     })
 
     // When the stream completes, log the generation
@@ -424,6 +465,13 @@ export async function generateTextWithTracing(options: {
   traceName?: string;
   userId?: string;
   metadata?: any;
+  useSearchGrounding?: boolean;
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<"TEXT" | "IMAGE">;
+  cachedContent?: string;
   [key: string]: any;
 }) {
   const { traceName, userId, metadata, ...generateOptions } = options
@@ -470,7 +518,11 @@ export async function generateTextWithTracing(options: {
     // Call the original generateText function
     const result = await generateText({
       ...generateOptions,
-      model: options.model
+      model: options.model,
+      ...(options.useSearchGrounding !== undefined ? { useSearchGrounding: options.useSearchGrounding } : {}),
+      ...(options.dynamicRetrievalConfig ? { dynamicRetrievalConfig: options.dynamicRetrievalConfig } : {}),
+      ...(options.responseModalities ? { responseModalities: options.responseModalities } : {}),
+      ...(options.cachedContent ? { cachedContent: options.cachedContent } : {})
     })
 
     // Log the completed generation
@@ -666,6 +718,10 @@ export async function streamGoogleAIWithTracing({
   traceName,
   userId,
   metadata,
+  useSearchGrounding,
+  dynamicRetrievalConfig,
+  responseModalities,
+  cachedContent
 }: {
   modelId: string
   messages: any[]
@@ -677,6 +733,13 @@ export async function streamGoogleAIWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  useSearchGrounding?: boolean
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
+    dynamicThreshold?: number
+  }
+  responseModalities?: Array<"TEXT" | "IMAGE">
+  cachedContent?: string
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -732,13 +795,21 @@ export async function streamGoogleAIWithTracing({
       temperature,
       maxTokens,
       ...(Object.keys(tools).length > 0 ? { tools } : {}),
+      ...(useSearchGrounding !== undefined ? { useSearchGrounding } : {}),
+      ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig } : {}),
+      ...(responseModalities ? { responseModalities } : {}),
+      ...(cachedContent ? { cachedContent } : {}),
       traceName: `${traceName || "google_ai_stream"}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
         provider: "google",
-        parentTraceId: traceId
+        parentTraceId: traceId,
+        ...(useSearchGrounding !== undefined ? { useSearchGrounding } : {}),
+        ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig: JSON.stringify(dynamicRetrievalConfig) } : {}),
+        ...(responseModalities ? { responseModalities: JSON.stringify(responseModalities) } : {}),
+        ...(cachedContent ? { cachedContent } : {})
       }
     })
 
@@ -1035,6 +1106,10 @@ export async function generateGoogleAIWithTracing({
   traceName,
   userId,
   metadata,
+  useSearchGrounding,
+  dynamicRetrievalConfig,
+  responseModalities,
+  cachedContent
 }: {
   modelId: string
   messages: any[]
@@ -1046,6 +1121,13 @@ export async function generateGoogleAIWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  useSearchGrounding?: boolean
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
+    dynamicThreshold?: number
+  }
+  responseModalities?: Array<"TEXT" | "IMAGE">
+  cachedContent?: string
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -1101,13 +1183,21 @@ export async function generateGoogleAIWithTracing({
       temperature,
       maxTokens,
       ...(Object.keys(tools).length > 0 ? { tools } : {}),
+      ...(useSearchGrounding !== undefined ? { useSearchGrounding } : {}),
+      ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig } : {}),
+      ...(responseModalities ? { responseModalities } : {}),
+      ...(cachedContent ? { cachedContent } : {}),
       traceName: `${traceName || "google_ai_generate"}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
         provider: "google",
-        parentTraceId: traceId
+        parentTraceId: traceId,
+        ...(useSearchGrounding !== undefined ? { useSearchGrounding } : {}),
+        ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig: JSON.stringify(dynamicRetrievalConfig) } : {}),
+        ...(responseModalities ? { responseModalities: JSON.stringify(responseModalities) } : {}),
+        ...(cachedContent ? { cachedContent } : {})
       }
     })
 

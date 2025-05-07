@@ -30,3 +30,7 @@ next-env.d.ts
 .augmnt/
 .augment/
 Supabase/
+supa.md
+docs/
+docs/*.md
+docs/**/*.md

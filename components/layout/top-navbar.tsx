@@ -515,49 +515,51 @@ export const TopNavbar = memo(function TopNavbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowSignIn(true)}
+                asChild
                 className="relative overflow-hidden group"
               >
-                {/* Animated gradient background */}
-                <motion.span
-                  className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-teal-500/5 to-blue-600/5"
-                  initial={{ opacity: 0 }}
-                  whileHover={{ opacity: 1 }}
-                  animate={{
-                    backgroundPosition: ['0% 0%', '100% 100%'],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    repeatType: 'reverse',
-                    ease: 'linear',
-                  }}
-                />
+                <Link href="/auth/signin">
+                  {/* Animated gradient background */}
+                  <motion.span
+                    className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-teal-500/5 to-blue-600/5"
+                    initial={{ opacity: 0 }}
+                    whileHover={{ opacity: 1 }}
+                    animate={{
+                      backgroundPosition: ['0% 0%', '100% 100%'],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      repeatType: 'reverse',
+                      ease: 'linear',
+                    }}
+                  />
 
-                {/* Animated border effect */}
-                <motion.span
-                  className="absolute inset-0 rounded-md opacity-0 group-hover:opacity-100"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.2), transparent)",
-                  }}
-                  animate={{
-                    x: ['-100%', '100%'],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                />
+                  {/* Animated border effect */}
+                  <motion.span
+                    className="absolute inset-0 rounded-md opacity-0 group-hover:opacity-100"
+                    style={{
+                      background: "linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.2), transparent)",
+                    }}
+                    animate={{
+                      x: ['-100%', '100%'],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  />
 
-                {/* Text with hover effect */}
-                <motion.span
-                  className="relative z-10 bg-clip-text group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:to-purple-600"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Sign In
-                </motion.span>
+                  {/* Text with hover effect */}
+                  <motion.span
+                    className="relative z-10 bg-clip-text group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:to-purple-600"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Sign In
+                  </motion.span>
+                </Link>
               </Button>
             </motion.div>
 
@@ -863,7 +865,6 @@ export const TopNavbar = memo(function TopNavbar() {
 })
 
 const MobileNav = memo(function MobileNav({
-  setShowSignIn,
   setShowSignUp
 }: {
   setShowSignIn: (show: boolean) => void
@@ -1089,9 +1090,9 @@ const MobileNav = memo(function MobileNav({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowSignIn(true)}
+          asChild
         >
-          Sign In
+          <Link href="/auth/signin">Sign In</Link>
         </Button>
         <Button
           variant="gradient"

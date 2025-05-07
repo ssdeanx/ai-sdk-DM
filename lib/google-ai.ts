@@ -14,6 +14,28 @@ export interface ModelConfig {
   default_temperature?: number
   api_key?: string
   base_url?: string
+  capabilities?: {
+    text?: boolean
+    vision?: boolean
+    audio?: boolean
+    video?: boolean
+    functions?: boolean
+    streaming?: boolean
+    json_mode?: boolean
+    fine_tuning?: boolean
+    thinking?: boolean
+    search_grounding?: boolean
+    dynamic_retrieval?: boolean
+    hybrid_grounding?: boolean
+    cached_content?: boolean
+    code_execution?: boolean
+    structured_output?: boolean
+    image_generation?: boolean
+    video_generation?: boolean
+    audio_generation?: boolean
+    response_modalities?: boolean
+    file_inputs?: boolean
+  }
 }
 
 // Default model configurations for the latest Google models
@@ -28,6 +50,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: true,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: true,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   "models/gemini-2.5-flash-preview-04-17": {
     model_id: "models/gemini-2.5-flash-preview-04-17",
@@ -38,6 +82,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: true,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: true,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   // Gemini 2.0 Models
   "models/gemini-2.0-pro": {
@@ -49,6 +115,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: true,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: false,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   "models/gemini-2.0-flash": {
     model_id: "models/gemini-2.0-flash",
@@ -59,6 +147,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: false,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: false,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   "models/gemini-2.0-flash-live-001": {
     model_id: "models/gemini-2.0-flash-live-001",
@@ -69,6 +179,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: false,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: false,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: true,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   // Gemini 1.5 Models
   "models/gemini-1.5-pro": {
@@ -80,6 +212,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: false,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: true,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   "models/gemini-1.5-flash": {
     model_id: "models/gemini-1.5-flash",
@@ -90,6 +244,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: true,
     supports_streaming: true,
     default_temperature: 0.7,
+    capabilities: {
+      text: true,
+      vision: true,
+      audio: true,
+      video: true,
+      functions: true,
+      streaming: true,
+      json_mode: true,
+      fine_tuning: false,
+      thinking: false,
+      search_grounding: true,
+      dynamic_retrieval: true,
+      hybrid_grounding: true,
+      cached_content: true,
+      code_execution: true,
+      structured_output: true,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: true,
+      file_inputs: true
+    }
   },
   // Embedding Models
   "models/gemini-embedding-exp-03-07": {
@@ -101,6 +277,28 @@ export const GOOGLE_MODEL_CONFIGS: Record<string, ModelConfig> = {
     supports_functions: false,
     supports_streaming: false,
     default_temperature: 0.0,
+    capabilities: {
+      text: true,
+      vision: false,
+      audio: false,
+      video: false,
+      functions: false,
+      streaming: false,
+      json_mode: false,
+      fine_tuning: false,
+      thinking: false,
+      search_grounding: false,
+      dynamic_retrieval: false,
+      hybrid_grounding: false,
+      cached_content: false,
+      code_execution: false,
+      structured_output: false,
+      image_generation: false,
+      video_generation: false,
+      audio_generation: false,
+      response_modalities: false,
+      file_inputs: false
+    }
   },
   "models/text-embedding-004": {
     model_id: "models/text-embedding-004",

@@ -12,7 +12,11 @@
   "plugins": ["@typescript-eslint"],
   "extends": [
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/parser",
+    "plugin:react/recommended",
+    "plugin:@typescript-eslint/eslint-plugin",
+    "plugin:typescript-eslint"
   ],
   "env": {
     "browser": true,

@@ -1,17 +1,17 @@
 # AI SDK Providers: Google Generative AI
-[AI SDK Providers](https://ai-sdk.dev/providers/ai-sdk-providers)Google Generative AI
+AI SDK ProvidersGoogle Generative AI
 
-[Google Generative AI Provider](#google-generative-ai-provider)
+Google Generative AI Provider
 ---------------------------------------------------------------
 
-The [Google Generative AI](https://ai.google/discover/generativeai/) provider contains language and embedding model support for the [Google Generative AI](https://ai.google.dev/api/rest) APIs.
+The Google Generative AI provider contains language and embedding model support for the Google Generative AI APIs.
 
-[Setup](#setup)
+Setup
 ---------------
 
 The Google provider is available in the `@ai-sdk/google` module. You can install it with
 
-[Provider Instance](#provider-instance)
+Provider Instance
 ---------------------------------------
 
 You can import the default provider instance `google` from `@ai-sdk/google`:
@@ -49,13 +49,13 @@ You can use the following optional settings to customize the Google Generative A
     
 *   **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
     
-    Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation. Defaults to the global `fetch` function. You can use it as a middleware to intercept requests, or to provide a custom fetch implementation for e.g. testing.
+    Custom fetch implementation. Defaults to the global `fetch` function. You can use it as a middleware to intercept requests, or to provide a custom fetch implementation for e.g. testing.
     
 
-[Language Models](#language-models)
+Language Models
 -----------------------------------
 
-You can create models that call the [Google Generative AI API](https://ai.google.dev/api/rest) using the provider instance. The first argument is the model id, e.g. `gemini-1.5-pro-latest`. The models support tool calls and some have multi-modal capabilities.
+You can create models that call the Google Generative AI API using the provider instance. The first argument is the model id, e.g. `gemini-1.5-pro-latest`. The models support tool calls and some have multi-modal capabilities.
 
 ```
 
@@ -65,7 +65,7 @@ const model = google('gemini-1.5-pro-latest');
 
 You can use fine-tuned models by prefixing the model id with `tunedModels/`, e.g. `tunedModels/my-model`.
 
-Google Generative AI also supports some model specific settings that are not part of the [standard call settings](https://ai-sdk.dev/docs/ai-sdk-core/settings). You can pass them as an options argument:
+Google Generative AI also supports some model specific settings that are not part of the standard call settings. You can pass them as an options argument:
 
 ```
 
@@ -89,7 +89,7 @@ The following optional settings are available for Google Generative AI models:
     
     This is useful when the JSON Schema contains elements that are not supported by the OpenAPI schema version that Google Generative AI uses. You can use this to disable structured outputs if you need to.
     
-    See [Troubleshooting: Schema Limitations](#schema-limitations) for more details.
+    See Troubleshooting: Schema Limitations for more details.
     
 *   **safetySettings** _Array<{ category: string; threshold: string }>_
     
@@ -159,11 +159,11 @@ The following provider options are available:
     
 *   **thinkingConfig** _{ thinkingBudget: number; }_
     
-    Optional. Configuration for the model's thinking process. Only supported by specific [Google Generative AI models](https://ai.google.dev/gemini-api/docs/thinking).
+    Optional. Configuration for the model's thinking process. Only supported by specific Google Generative AI models.
     
     *   **thinkingBudget** _number_
         
-        Optional. Gives the model guidance on the number of thinking tokens it can use when generating a response. Must be an integer in the range 0 to 24576. Setting it to 0 disables thinking. Budgets from 1 to 1024 tokens will be set to 1024. For more information see [Google Generative AI documentation](https://ai.google.dev/gemini-api/docs/thinking).
+        Optional. Gives the model guidance on the number of thinking tokens it can use when generating a response. Must be an integer in the range 0 to 24576. Setting it to 0 disables thinking. Budgets from 1 to 1024 tokens will be set to 1024. For more information see Google Generative AI documentation.
         
 
 You can use Google Generative AI language models to generate text with the `generateText` function:
@@ -179,9 +179,9 @@ const { text } = await generateText({
 ```
 
 
-Google Generative AI language models can also be used in the `streamText`, `generateObject`, and `streamObject` functions (see [AI SDK Core](https://ai-sdk.dev/docs/ai-sdk-core)).
+Google Generative AI language models can also be used in the `streamText`, `generateObject`, and `streamObject` functions (see AI SDK Core).
 
-### [File Inputs](#file-inputs)
+### File Inputs
 
 The Google Generative AI provider supports file inputs, e.g. PDF files.
 
@@ -213,9 +213,9 @@ const result = await generateText({
 
 The AI SDK will automatically download URLs if you pass them as data, except for `https://generativelanguage.googleapis.com/v1beta/files/`. You can use the Google Generative AI Files API to upload larger files to that location.
 
-See [File Parts](about:/docs/foundations/prompts#file-parts) for details on how to use files in prompts.
+See File Parts for details on how to use files in prompts.
 
-### [Cached Content](#cached-content)
+### Cached Content
 
 You can use Google Generative AI language models to cache content:
 
@@ -253,9 +253,9 @@ const { text: meatLasangaRecipe } = await generateText({
 ```
 
 
-### [Search Grounding](#search-grounding)
+### Search Grounding
 
-With [search grounding](https://ai.google.dev/gemini-api/docs/grounding), the model has access to the latest information using Google search. Search grounding can be used to provide answers around current events:
+With search grounding, the model has access to the latest information using Google search. Search grounding can be used to provide answers around current events:
 
 ```
 
@@ -327,9 +327,9 @@ Example response:
 ```
 
 
-#### [Dynamic Retrieval](#dynamic-retrieval)
+#### Dynamic Retrieval
 
-With [dynamic retrieval](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/ground-with-google-search#dynamic-retrieval), you can configure how the model decides when to turn on Grounding with Google Search. This gives you more control over when and how the model grounds its responses.
+With dynamic retrieval, you can configure how the model decides when to turn on Grounding with Google Search. This gives you more control over when and how the model grounds its responses.
 
 ```
 
@@ -359,9 +359,9 @@ The `dynamicRetrievalConfig` describes the options to customize dynamic retrieva
 
 Dynamic retrieval is only available with Gemini 1.5 Flash models and is not supported with 8B variants.
 
-### [Sources](#sources)
+### Sources
 
-When you use [Search Grounding](#search-grounding), the model will include sources in the response. You can access them using the `sources` property of the result:
+When you use Search Grounding, the model will include sources in the response. You can access them using the `sources` property of the result:
 
 ```
 
@@ -374,7 +374,7 @@ const { sources } = await generateText({
 ```
 
 
-### [Image Outputs](#image-outputs)
+### Image Outputs
 
 The model `gemini-2.0-flash-exp` supports image generation. Images are exposed as files in the response. You need to enable image output in the provider options using the `responseModalities` option.
 
@@ -397,9 +397,9 @@ for (const file of result.files) {
 ```
 
 
-### [Safety Ratings](#safety-ratings)
+### Safety Ratings
 
-The safety ratings provide insight into the safety of the model's response. See [Google AI documentation on safety settings](https://ai.google.dev/gemini-api/docs/safety-settings).
+The safety ratings provide insight into the safety of the model's response. See Google AI documentation on safety settings.
 
 Example response excerpt:
 
@@ -441,9 +441,9 @@ Example response excerpt:
 ```
 
 
-### [Troubleshooting](#troubleshooting)
+### Troubleshooting
 
-#### [Schema Limitations](#schema-limitations)
+#### Schema Limitations
 
 The Google Generative AI API uses a subset of the OpenAPI 3.0 schema, which does not support features such as unions. The errors that you get in this case look like this:
 
@@ -481,11 +481,12 @@ The following Zod features are known to not work with Google Generative AI:
 *   `z.union`
 *   `z.record`
 
-### [Model Capabilities](#model-capabilities)
+### Model Capabilities
 
 
 |Model                         |Image Input|Object Generation|Tool Usage|Tool Streaming|
 |------------------------------|-----------|-----------------|----------|--------------|
+|gemini-2.5-pro-preview-05-06  |           |                 |          |              |
 |gemini-2.5-flash-preview-04-17|           |                 |          |              |
 |gemini-2.5-pro-exp-03-25      |           |                 |          |              |
 |gemini-2.0-flash              |           |                 |          |              |
@@ -497,12 +498,12 @@ The following Zod features are known to not work with Google Generative AI:
 |gemini-1.5-flash-8b-latest    |           |                 |          |              |
 
 
-The table above lists popular models. Please see the [Google Generative AI docs](https://ai.google.dev/gemini-api/docs/models/gemini) for a full list of available models. The table above lists popular models. You can also pass any available provider model ID as a string if needed.
+The table above lists popular models. Please see the Google Generative AI docs for a full list of available models. The table above lists popular models. You can also pass any available provider model ID as a string if needed.
 
-[Embedding Models](#embedding-models)
+Embedding Models
 -------------------------------------
 
-You can create models that call the [Google Generative AI embeddings API](https://ai.google.dev/api/embeddings) using the `.textEmbeddingModel()` factory method.
+You can create models that call the Google Generative AI embeddings API using the `.textEmbeddingModel()` factory method.
 
 ```
 
@@ -540,7 +541,7 @@ The following optional settings are available for Google Generative AI embedding
     *   `FACT_VERIFICATION`: Optimized for verifying factual information.
     *   `CODE_RETRIEVAL_QUERY`: Optimized for retrieving code blocks based on natural language queries.
 
-### [Model Capabilities](#model-capabilities-1)
+### Model Capabilities
 
 
 |Model             |Default Dimensions|Custom Dimensions|

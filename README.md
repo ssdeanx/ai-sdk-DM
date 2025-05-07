@@ -179,6 +179,38 @@ LANGFUSE_SECRET_KEY=your_langfuse_secret_key
 LANGFUSE_HOST=https://us.cloud.langfuse.com
 ```
 
+### Authentication Setup
+
+The project uses Supabase Authentication for user management with support for both email/password and GitHub OAuth authentication methods.
+
+1. **Configure Supabase Auth Settings**:
+   - In your Supabase dashboard, go to Authentication > Settings
+   - Set your Site URL to match your deployment URL (e.g., `http://localhost:3000` for local development)
+   - Add any additional redirect URLs under "Redirect URLs"
+   - Configure email templates and other auth settings as needed
+
+2. **GitHub OAuth Setup**:
+   - Create a GitHub OAuth App in your GitHub account settings
+   - Set the callback URL to `http://localhost:3000/api/auth/callback/github` (for development)
+   - Configure the GitHub provider in your Supabase dashboard with your Client ID and Secret
+   - See detailed instructions in `docs/github-oauth-setup.md`
+
+3. **Authentication Flow**:
+   - The project includes callback routes at `/auth/callback` and `/api/auth/callback/github` that handle OAuth flows
+   - Admin-specific authentication is handled by `/api/auth/callback/admin-github`
+   - The server-side Supabase client in `utils/supabase/server.ts` manages secure authentication operations
+   - API routes in `app/api/auth/` handle sign-in and sign-up operations
+   - The `GitHubSignInButton` component provides an easy way to integrate GitHub authentication
+   - The `AdminGitHubSignInButton` component is available for admin authentication
+   - Error handling for authentication failures is provided at `/auth/auth-code-error`
+   - A complete sign-in page is available at `/auth/signin`
+
+4. **Admin Authentication**:
+   - Admin users can authenticate using GitHub OAuth or email/password
+   - Default admin credentials: Email: `owner@deanmachines.com`, Password: `admin!`
+   - Admin users have access to additional features and settings
+   - Role-based access control is implemented through the `users` table with a `role` field
+
 ### Installation
 
 1. Clone the repository:

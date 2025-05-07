@@ -6,23 +6,23 @@ export async function GET(request: Request) {
     // Get URL parameters
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '5')
-    
+
     // Get Supabase client
     const supabase = getSupabaseClient()
-    
+
     // In a real application, you would query your Supabase database
     // Here we're simulating the response for demonstration purposes
-    
+
     // Check if we can connect to Supabase
     const { error: connectionError } = await supabase
       .from('models')
       .select('count')
       .limit(1)
       .single()
-    
+
     if (connectionError) {
       console.error("Error connecting to Supabase:", connectionError)
-      
+
       // Return mock data if we can't connect to Supabase
       return NextResponse.json({
         activities: [
@@ -80,27 +80,27 @@ export async function GET(request: Request) {
         isMockData: true
       })
     }
-    
+
     // If we can connect, get real activity data from the database
     const { data: activities, error } = await supabase
       .from('activity_log')
       .select('*')
       .order('timestamp', { ascending: false })
       .limit(limit)
-    
+
     if (error) {
       console.error("Error fetching activity data:", error)
       throw error
     }
-    
+
     return NextResponse.json({
       activities: activities || [],
       isMockData: false
     })
-    
+
   } catch (error) {
     console.error("Error in dashboard activity API:", error)
-    
+
     // Return mock data in case of error
     return NextResponse.json({
       activities: [
@@ -154,7 +154,7 @@ export async function GET(request: Request) {
           userAvatar: "",
           timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(), // 3 hours ago
         }
-      ].slice(0, limit),
+      ].slice(0, Number(searchParams.get('limit') || 10)),
       isMockData: true
     })
   }

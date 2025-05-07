@@ -3,6 +3,35 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      users: {
+        Row: {
+          id: string
+          email: string
+          name: string | null
+          avatar_url: string | null
+          role: 'user' | 'admin'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          name?: string | null
+          avatar_url?: string | null
+          role?: 'user' | 'admin'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          name?: string | null
+          avatar_url?: string | null
+          role?: 'user' | 'admin'
+          created_at?: string
+          updated_at?: string
+        }
+      }
       models: {
         Row: {
           id: string
@@ -89,6 +118,9 @@ export interface Database {
           name: string
           description: string
           parameters_schema: string
+          category: string | null
+          implementation: string | null
+          is_enabled: boolean
           created_at: string
           updated_at: string
         }
@@ -97,6 +129,9 @@ export interface Database {
           name: string
           description: string
           parameters_schema: string
+          category?: string | null
+          implementation?: string | null
+          is_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -105,6 +140,9 @@ export interface Database {
           name?: string
           description?: string
           parameters_schema?: string
+          category?: string | null
+          implementation?: string | null
+          is_enabled?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -117,6 +155,7 @@ export interface Database {
           model_id: string
           tool_ids: string[]
           system_prompt: string | null
+          persona_id: string | null
           created_at: string
           updated_at: string
         }
@@ -127,6 +166,7 @@ export interface Database {
           model_id: string
           tool_ids?: string[]
           system_prompt?: string | null
+          persona_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -137,6 +177,7 @@ export interface Database {
           model_id?: string
           tool_ids?: string[]
           system_prompt?: string | null
+          persona_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -650,6 +691,293 @@ export interface Database {
           scores?: Json
           created_at?: string
           updated_at?: string
+        }
+      }
+      agent_personas: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          system_prompt_template: string
+          model_settings: Json
+          capabilities: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description: string
+          system_prompt_template: string
+          model_settings?: Json
+          capabilities?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          system_prompt_template?: string
+          model_settings?: Json
+          capabilities?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      persona_scores: {
+        Row: {
+          id: string
+          persona_id: string
+          usage_count: number
+          success_rate: number
+          average_latency: number
+          user_satisfaction: number
+          adaptability_score: number
+          overall_score: number
+          last_used: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          persona_id: string
+          usage_count?: number
+          success_rate?: number
+          average_latency?: number
+          user_satisfaction?: number
+          adaptability_score?: number
+          overall_score?: number
+          last_used?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          persona_id?: string
+          usage_count?: number
+          success_rate?: number
+          average_latency?: number
+          user_satisfaction?: number
+          adaptability_score?: number
+          overall_score?: number
+          last_used?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      database_connections: {
+        Row: {
+          id: string
+          connection_type: 'session' | 'transaction' | 'direct'
+          pool_name: string
+          connection_url: string
+          max_connections: number
+          idle_timeout_ms: number
+          connection_timeout_ms: number
+          status: 'active' | 'inactive' | 'error'
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          connection_type: 'session' | 'transaction' | 'direct'
+          pool_name: string
+          connection_url: string
+          max_connections?: number
+          idle_timeout_ms?: number
+          connection_timeout_ms?: number
+          status?: 'active' | 'inactive' | 'error'
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          connection_type?: 'session' | 'transaction' | 'direct'
+          pool_name?: string
+          connection_url?: string
+          max_connections?: number
+          idle_timeout_ms?: number
+          connection_timeout_ms?: number
+          status?: 'active' | 'inactive' | 'error'
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      database_transactions: {
+        Row: {
+          id: string
+          connection_id: string
+          transaction_type: 'read' | 'write' | 'mixed'
+          start_time: string
+          end_time: string | null
+          duration_ms: number | null
+          status: 'in_progress' | 'committed' | 'rolled_back' | 'failed'
+          query_count: number
+          error: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          connection_id: string
+          transaction_type: 'read' | 'write' | 'mixed'
+          start_time: string
+          end_time?: string | null
+          duration_ms?: number | null
+          status?: 'in_progress' | 'committed' | 'rolled_back' | 'failed'
+          query_count?: number
+          error?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          connection_id?: string
+          transaction_type?: 'read' | 'write' | 'mixed'
+          start_time?: string
+          end_time?: string | null
+          duration_ms?: number | null
+          status?: 'in_progress' | 'committed' | 'rolled_back' | 'failed'
+          query_count?: number
+          error?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      database_queries: {
+        Row: {
+          id: string
+          transaction_id: string
+          query_text: string
+          query_type: 'select' | 'insert' | 'update' | 'delete' | 'other'
+          execution_time_ms: number | null
+          row_count: number | null
+          status: 'pending' | 'executing' | 'completed' | 'failed'
+          error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          transaction_id: string
+          query_text: string
+          query_type: 'select' | 'insert' | 'update' | 'delete' | 'other'
+          execution_time_ms?: number | null
+          row_count?: number | null
+          status: 'pending' | 'executing' | 'completed' | 'failed'
+          error?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          transaction_id?: string
+          query_text?: string
+          query_type?: 'select' | 'insert' | 'update' | 'delete' | 'other'
+          execution_time_ms?: number | null
+          row_count?: number | null
+          status?: 'pending' | 'executing' | 'completed' | 'failed'
+          error?: string | null
+          created_at?: string
+        }
+      }
+      scheduled_tasks: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          cron_expression: string
+          job_name: string
+          sql_command: string
+          is_active: boolean
+          last_run_at: string | null
+          next_run_at: string | null
+          run_count: number
+          error_count: number
+          last_error: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          cron_expression: string
+          job_name: string
+          sql_command: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          run_count?: number
+          error_count?: number
+          last_error?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          cron_expression?: string
+          job_name?: string
+          sql_command?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          run_count?: number
+          error_count?: number
+          last_error?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      scheduled_task_runs: {
+        Row: {
+          id: string
+          task_id: string
+          start_time: string
+          end_time: string | null
+          duration_ms: number | null
+          status: 'running' | 'completed' | 'failed'
+          result: string | null
+          error: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          start_time: string
+          end_time?: string | null
+          duration_ms?: number | null
+          status: 'running' | 'completed' | 'failed'
+          result?: string | null
+          error?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          start_time?: string
+          end_time?: string | null
+          duration_ms?: number | null
+          status?: 'running' | 'completed' | 'failed'
+          result?: string | null
+          error?: string | null
+          metadata?: Json
+          created_at?: string
         }
       }
     }

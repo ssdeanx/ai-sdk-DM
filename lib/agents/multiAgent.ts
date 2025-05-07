@@ -1,6 +1,6 @@
 /**
  * Multi-Agent Orchestration System
- * 
+ *
  * @module lib/agents/multiAgent
  * @description Implements agent-to-agent communication and workflow orchestration
  * for complex multi-agent scenarios. Allows agents to delegate tasks, share context,
@@ -9,9 +9,9 @@
 
 import { BaseAgent } from "./baseAgent";
 import { agentRegistry } from "./registry";
-import { getLibSQLClient } from "../memory/db";
-import { Message } from "../memory/supabase";
+import { loadMessages, saveMessage } from "../memory/memory";
 import { v4 as uuidv4 } from "uuid";
+import { toolRegistry } from "../tools/toolRegistry";
 
 /**
  * Represents a step in a multi-agent workflow
@@ -85,6 +85,8 @@ export interface CreateWorkflowOptions {
 export interface AgentCommunicationOptions {
   /** Whether to share the full thread history */
   shareFullHistory?: boolean;
+  /** Source thread ID to copy messages from */
+  sourceThreadId?: string;
   /** Custom message to send along with the request */
   message?: string;
   /** Whether to wait for the target agent to complete */
@@ -197,11 +199,14 @@ export class MultiAgentOrchestrator {
     this.workflows.set(workflowId, workflow);
 
     try {
+      // Ensure tool registry is initialized
+      await toolRegistry.initialize();
+
       // Execute steps starting from the current index
       for (let i = workflow.currentStepIndex; i < workflow.steps.length; i++) {
         const step = workflow.steps[i];
         workflow.currentStepIndex = i;
-        
+
         // Update step status
         step.status = "running";
         step.updatedAt = new Date();
@@ -209,26 +214,26 @@ export class MultiAgentOrchestrator {
 
         try {
           // Get the agent for this step
-          const agent = agentRegistry.getAgent(step.agentId);
-          
+          const agent = await agentRegistry.getAgent(step.agentId);
+
           // Execute the agent with the step input
           const result = await agent.run(step.input, step.threadId);
-          
+
           // Update step with result
           step.status = "completed";
-          step.result = result;
+          step.result = result.output;
           step.updatedAt = new Date();
         } catch (error) {
           // Handle step execution error
           step.status = "failed";
           step.error = error instanceof Error ? error.message : String(error);
           step.updatedAt = new Date();
-          
+
           // Mark workflow as failed
           workflow.status = "failed";
           workflow.updatedAt = new Date();
           this.workflows.set(workflowId, workflow);
-          
+
           throw error;
         }
       }
@@ -237,7 +242,7 @@ export class MultiAgentOrchestrator {
       workflow.status = "completed";
       workflow.updatedAt = new Date();
       this.workflows.set(workflowId, workflow);
-      
+
       return workflow;
     } catch (error) {
       // Workflow execution failed
@@ -320,48 +325,40 @@ export class MultiAgentOrchestrator {
     input: string,
     options: AgentCommunicationOptions = {}
   ): Promise<string> {
-    const sourceAgent = agentRegistry.getAgent(sourceAgentId);
-    const targetAgent = agentRegistry.getAgent(targetAgentId);
+    // Ensure tool registry is initialized
+    await toolRegistry.initialize();
+
+    // Get the agents
+    const sourceAgent = await agentRegistry.getAgent(sourceAgentId);
+    const targetAgent = await agentRegistry.getAgent(targetAgentId);
 
     // Create a new thread for this communication
     const threadId = uuidv4();
-    const db = await getLibSQLClient();
 
-    // If sharing full history is enabled and source agent has a thread
-    if (options.shareFullHistory && sourceAgent.currentThreadId) {
-      // Get messages from source agent's thread
-      const messages = await db.getMessages(sourceAgent.currentThreadId);
-      
+    // If sharing full history is enabled and we have a source thread ID
+    if (options.shareFullHistory && options.sourceThreadId) {
+      // Get messages from source thread
+      const messages = await loadMessages(options.sourceThreadId);
+
       // Save these messages to the new thread
       for (const message of messages) {
-        await db.saveMessage(threadId, {
-          role: message.role,
-          content: message.content,
-          name: message.name,
-          function_call: message.function_call,
-        });
+        await saveMessage(threadId, message.role, message.content);
       }
     }
 
     // Add custom message if provided
     if (options.message) {
-      await db.saveMessage(threadId, {
-        role: "system",
-        content: options.message,
-      });
+      await saveMessage(threadId, "system", options.message);
     }
 
     // Add the input as a user message
-    await db.saveMessage(threadId, {
-      role: "user",
-      content: `[From Agent: ${sourceAgent.config.name}] ${input}`,
-    });
+    await saveMessage(threadId, "user", `[From Agent: ${sourceAgent.name}] ${input}`);
 
     // Run the target agent with the prepared thread
-    const response = await targetAgent.run(undefined, threadId);
+    const result = await targetAgent.run(undefined, threadId);
 
     // Return the response
-    return response;
+    return result.output;
   }
 
   /**
@@ -400,11 +397,11 @@ export class MultiAgentOrchestrator {
     }
 
     const context = this.sharedContexts.get(workflowId) || {};
-    
+
     if (key) {
       return context[key];
     }
-    
+
     return context;
   }
 }

@@ -20,6 +20,7 @@ import {
 import { createTrace, logEvent } from "./langfuse-integration";
 import { getAllBuiltInTools, loadCustomTools } from "./tools";
 import { agenticTools } from "./tools/agentic";
+import { personaManager } from "./agents/personas/persona-manager";
 // Import model configs with fallbacks
 let getModelConfig: (modelId: string) => { api_key?: string; base_url?: string } | undefined;
 let getOpenAIConfig: (modelId: string) => { api_key?: string; base_url?: string } | undefined;
@@ -96,6 +97,10 @@ export async function getAllAISDKTools({
  * @param options.traceName - Optional trace name
  * @param options.userId - Optional user ID
  * @param options.metadata - Optional additional metadata
+ * @param options.useSearchGrounding - Optional flag to enable search grounding (Google only)
+ * @param options.dynamicRetrievalConfig - Optional configuration for dynamic retrieval (Google only)
+ * @param options.responseModalities - Optional response modalities (Google only)
+ * @param options.cachedContent - Optional cached content name (Google only)
  * @returns The streaming result
  */
 export async function streamWithAISDK({
@@ -109,20 +114,31 @@ export async function streamWithAISDK({
   baseURL,
   traceName,
   userId,
-  metadata = {}
+  metadata = {},
+  useSearchGrounding,
+  dynamicRetrievalConfig,
+  responseModalities,
+  cachedContent
 }: {
-  provider: "google" | "openai" | "anthropic"
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-}) {
+  provider: "google" | "openai" | "anthropic";
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  useSearchGrounding?: boolean;
+  dynamicRetrievalConfig?: {
+    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<"TEXT" | "IMAGE">;
+  cachedContent?: string;
+} {
   // Create a trace for this operation
   const traceObj = await createTrace({
     name: traceName || `${provider}_stream`,
@@ -141,10 +157,15 @@ export async function streamWithAISDK({
   const traceId = traceObj?.id;
 
   try {
+    // Extract persona ID from metadata if available
+    const personaId = metadata?.personaId || metadata?.persona_id;
+    let startTime = Date.now();
+
     // Stream based on provider
+    let result;
     switch (provider) {
       case "google":
-        return await streamGoogleAIWithTracing({
+        result = await streamGoogleAIWithTracing({
           modelId,
           messages,
           temperature,
@@ -157,11 +178,16 @@ export async function streamWithAISDK({
           metadata: {
             ...metadata,
             parentTraceId: traceId
-          }
+          },
+          useSearchGrounding,
+          dynamicRetrievalConfig,
+          responseModalities,
+          cachedContent
         });
+        break;
 
       case "openai":
-        return await streamOpenAIWithTracing({
+        result = await streamOpenAIWithTracing({
           modelId,
           messages,
           temperature,
@@ -176,9 +202,10 @@ export async function streamWithAISDK({
             parentTraceId: traceId
           }
         });
+        break;
 
       case "anthropic":
-        return await streamAnthropicWithTracing({
+        result = await streamAnthropicWithTracing({
           modelId,
           messages,
           temperature,
@@ -193,10 +220,38 @@ export async function streamWithAISDK({
             parentTraceId: traceId
           }
         });
+        break;
 
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
+
+    // Update persona score if a persona ID was provided
+    if (personaId) {
+      try {
+        const endTime = Date.now();
+        const latency = endTime - startTime;
+
+        // Update persona score asynchronously (don't await)
+        personaManager.recordPersonaUsage(personaId, {
+          success: true,
+          latency,
+          metadata: {
+            provider,
+            modelId,
+            traceId,
+            operation: 'stream'
+          }
+        }).catch(error => {
+          console.error(`Error updating persona score for ${personaId}:`, error);
+        });
+      } catch (scoreError) {
+        // Log but don't throw - we don't want to fail the main operation
+        console.error(`Error updating persona score:`, scoreError);
+      }
+    }
+
+    return result;
   } catch (error) {
     // Log the error
     if (traceId) {
@@ -274,10 +329,15 @@ export async function generateWithAISDK({
   const traceId = traceObj?.id;
 
   try {
+    // Extract persona ID from metadata if available
+    const personaId = metadata?.personaId || metadata?.persona_id;
+    let startTime = Date.now();
+
     // Generate based on provider
+    let result;
     switch (provider) {
       case "google":
-        return await generateGoogleAIWithTracing({
+        result = await generateGoogleAIWithTracing({
           modelId,
           messages,
           temperature,
@@ -292,9 +352,10 @@ export async function generateWithAISDK({
             parentTraceId: traceId
           }
         });
+        break;
 
       case "openai":
-        return await generateOpenAIWithTracing({
+        result = await generateOpenAIWithTracing({
           modelId,
           messages,
           temperature,
@@ -309,9 +370,10 @@ export async function generateWithAISDK({
             parentTraceId: traceId
           }
         });
+        break;
 
       case "anthropic":
-        return await generateAnthropicWithTracing({
+        result = await generateAnthropicWithTracing({
           modelId,
           messages,
           temperature,
@@ -326,10 +388,38 @@ export async function generateWithAISDK({
             parentTraceId: traceId
           }
         });
+        break;
 
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
+
+    // Update persona score if a persona ID was provided
+    if (personaId) {
+      try {
+        const endTime = Date.now();
+        const latency = endTime - startTime;
+
+        // Update persona score asynchronously (don't await)
+        personaManager.recordPersonaUsage(personaId, {
+          success: true,
+          latency,
+          metadata: {
+            provider,
+            modelId,
+            traceId,
+            operation: 'generate'
+          }
+        }).catch(error => {
+          console.error(`Error updating persona score for ${personaId}:`, error);
+        });
+      } catch (scoreError) {
+        // Log but don't throw - we don't want to fail the main operation
+        console.error(`Error updating persona score:`, scoreError);
+      }
+    }
+
+    return result;
   } catch (error) {
     // Log the error
     if (traceId) {

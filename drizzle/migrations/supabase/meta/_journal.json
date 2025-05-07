@@ -36,6 +36,34 @@
       "when": 1746609619725,
       "tag": "0004_gql",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746628728984,
+      "tag": "0005_persona_upgraded_gemini",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746633236918,
+      "tag": "0006_auth_github_callback_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1746637548709,
+      "tag": "0007_agents",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1746638475157,
+      "tag": "0008_pg_cron_tasks",
+      "breakpoints": true
     }
   ]
 }

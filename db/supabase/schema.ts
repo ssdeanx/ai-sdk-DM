@@ -11,6 +11,17 @@ import {
   foreignKey
 } from 'drizzle-orm/pg-core'
 
+// Users table for authentication
+export const users = pgTable('users', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  avatar_url: text('avatar_url'),
+  role: text('role').notNull().default('user'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
 // Workflows table for storing workflows
 export const workflows = pgTable('workflows', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -67,11 +78,16 @@ export const models = pgTable('models', {
     fine_tuning: false,
     thinking: false,
     search_grounding: false,
+    dynamic_retrieval: false,
+    hybrid_grounding: false,
+    cached_content: false,
     code_execution: false,
     structured_output: false,
     image_generation: false,
     video_generation: false,
-    audio_generation: false
+    audio_generation: false,
+    response_modalities: false,
+    file_inputs: false
   }),
   metadata: jsonb('metadata'),
   base_url: text('base_url'),
@@ -93,6 +109,38 @@ export const tools = pgTable('tools', {
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
 
+export const agent_personas = pgTable('agent_personas', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  system_prompt_template: text('system_prompt_template').notNull(),
+  model_settings: jsonb('model_settings').default({}),
+  capabilities: jsonb('capabilities').default({
+    text: true,
+    vision: false,
+    audio: false,
+    video: false,
+    functions: true,
+    streaming: true,
+    json_mode: false,
+    fine_tuning: false,
+    thinking: false,
+    search_grounding: false,
+    dynamic_retrieval: false,
+    hybrid_grounding: false,
+    cached_content: false,
+    code_execution: false,
+    structured_output: false,
+    image_generation: false,
+    video_generation: false,
+    audio_generation: false,
+    response_modalities: false,
+    file_inputs: false
+  }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
 export const agents = pgTable('agents', {
   id: varchar('id', { length: 36 }).primaryKey(),
   name: text('name').notNull(),
@@ -100,6 +148,7 @@ export const agents = pgTable('agents', {
   model_id: varchar('model_id', { length: 36 }).notNull(),
   tool_ids: jsonb('tool_ids').default([]),
   system_prompt: text('system_prompt'),
+  persona_id: varchar('persona_id', { length: 36 }).references(() => agent_personas.id),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
@@ -269,6 +318,21 @@ export const evaluation_metrics = pgTable('evaluation_metrics', {
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
 
+export const persona_scores = pgTable('persona_scores', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  persona_id: varchar('persona_id', { length: 36 }).notNull().references(() => agent_personas.id, { onDelete: 'cascade' }),
+  usage_count: integer('usage_count').notNull().default(0),
+  success_rate: numeric('success_rate').notNull().default('0'),
+  average_latency: numeric('average_latency').notNull().default('0'),
+  user_satisfaction: numeric('user_satisfaction').notNull().default('0'),
+  adaptability_score: numeric('adaptability_score').notNull().default('0'),
+  overall_score: numeric('overall_score').notNull().default('0'),
+  last_used: timestamp('last_used', { withTimezone: true }).defaultNow(),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
 export const evaluation_examples = pgTable('evaluation_examples', {
   id: varchar('id', { length: 36 }).primaryKey(),
   evaluationId: varchar('evaluationId', { length: 36 }).notNull().references(() => model_evaluations.id, { onDelete: 'cascade' }),
@@ -288,4 +352,81 @@ export const gqlCache = pgTable('gql_cache', {
   createdAt: timestamp('created_at', { withTimezone: false })
     .defaultNow()
     .notNull(),
+})
+
+// Database connections table for tracking connection pools
+export const database_connections = pgTable('database_connections', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  connection_type: text('connection_type').notNull(), // 'session', 'transaction', 'direct'
+  pool_name: text('pool_name').notNull(),
+  connection_url: text('connection_url').notNull(),
+  max_connections: integer('max_connections').notNull().default(10),
+  idle_timeout_ms: integer('idle_timeout_ms').notNull().default(10000),
+  connection_timeout_ms: integer('connection_timeout_ms').notNull().default(30000),
+  status: text('status').notNull().default('active'),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// Database transactions table for logging transactions
+export const database_transactions = pgTable('database_transactions', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  connection_id: varchar('connection_id', { length: 36 }).notNull().references(() => database_connections.id),
+  transaction_type: text('transaction_type').notNull(), // 'read', 'write', 'mixed'
+  start_time: timestamp('start_time', { withTimezone: true }).notNull(),
+  end_time: timestamp('end_time', { withTimezone: true }),
+  duration_ms: integer('duration_ms'),
+  status: text('status').notNull().default('in_progress'), // 'in_progress', 'committed', 'rolled_back', 'failed'
+  query_count: integer('query_count').notNull().default(0),
+  error: text('error'),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// Database queries table for logging individual queries within transactions
+export const database_queries = pgTable('database_queries', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  transaction_id: varchar('transaction_id', { length: 36 }).references(() => database_transactions.id),
+  query_text: text('query_text').notNull(),
+  query_type: text('query_type').notNull(), // 'select', 'insert', 'update', 'delete', 'other'
+  execution_time_ms: integer('execution_time_ms'),
+  row_count: integer('row_count'),
+  status: text('status').notNull(),
+  error: text('error'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// Scheduled tasks table for pg_cron jobs
+export const scheduled_tasks = pgTable('scheduled_tasks', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  cron_expression: text('cron_expression').notNull(), // e.g., '0 0 * * *' for daily at midnight
+  job_name: text('job_name').notNull().unique(), // Unique name for the pg_cron job
+  sql_command: text('sql_command').notNull(), // SQL command to execute
+  is_active: boolean('is_active').notNull().default(true),
+  last_run_at: timestamp('last_run_at', { withTimezone: true }),
+  next_run_at: timestamp('next_run_at', { withTimezone: true }),
+  run_count: integer('run_count').notNull().default(0),
+  error_count: integer('error_count').notNull().default(0),
+  last_error: text('last_error'),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// Scheduled task runs table for logging execution history
+export const scheduled_task_runs = pgTable('scheduled_task_runs', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  task_id: varchar('task_id', { length: 36 }).notNull().references(() => scheduled_tasks.id, { onDelete: 'cascade' }),
+  start_time: timestamp('start_time', { withTimezone: true }).notNull(),
+  end_time: timestamp('end_time', { withTimezone: true }),
+  duration_ms: integer('duration_ms'),
+  status: text('status').notNull(), // 'running', 'completed', 'failed'
+  result: text('result'),
+  error: text('error'),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
