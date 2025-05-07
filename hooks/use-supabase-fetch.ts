@@ -1,8 +1,11 @@
 "use client"
 
 /**
- * Enhanced hook for fetching data from Supabase via API routes
- * Supports real-time subscriptions, pagination, sorting, and filtering
+ * Enhanced hook for fetching data from a Next.js API route that, in turn,
+ * talks to Supabase (or any backend).  Supports:
+ * – cursor or page-based pagination
+ * – retries with exponential back-off
+ * – optional in-memory LRU caching
  *
  * @module hooks/use-supabase-fetch
  */
@@ -11,359 +14,300 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { LRUCache } from "lru-cache"
 
-/**
- * Options for the useSupabaseFetch hook
- */
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
 interface UseSupabaseFetchOptions<T> {
-  /** API endpoint to fetch data from */
-  endpoint: string
+  endpoint: string                              // API route   (e.g. /api/content/hero)
+  resourceName: string                          // Human readable – used in toasts
+  dataKey: string                               // Key containing the array in the response JSON
 
-  /** Name of the resource being fetched (for error messages) */
-  resourceName: string
-
-  /** Key in the response object that contains the data array */
-  dataKey: string
-
-  /** Initial data to use before fetching */
   initialData?: T[]
-
-  /** Query parameters to include in the request */
   queryParams?: Record<string, string>
 
-  /** Whether the fetch is enabled */
   enabled?: boolean
 
-  /** Maximum number of retries for failed requests */
+  /* retry behaviour */
   maxRetries?: number
+  retryDelay?: number                           // base delay in ms (exponential back-off)
 
-  /** Base delay between retries (will be multiplied by 2^retryCount) */
-  retryDelay?: number
-
-  /** Whether to subscribe to real-time updates */
+  /* realtime subscriptions – currently unused but reserved for future use */
   realtime?: boolean
 
-  /** Pagination options */
   pagination?: {
-    /** Page size */
     pageSize?: number
-
-    /** Whether to use cursor-based pagination */
     useCursor?: boolean
-
-    /** Initial cursor value */
     initialCursor?: string
   }
 
-  /** Sorting options */
   sort?: {
-    /** Column to sort by */
     column: string
-
-    /** Sort direction */
     ascending?: boolean
   }[]
 
-  /** Cache options */
   cache?: {
-    /** Whether to enable caching */
     enabled?: boolean
-
-    /** Time to live for cache entries in milliseconds */
     ttl?: number
-
-    /** Maximum number of items to store in the cache */
     maxSize?: number
   }
 
-  /** Callback when data is successfully fetched */
   onSuccess?: (data: T[]) => void
-
-  /** Callback when fetch fails */
   onError?: (error: Error) => void
 }
 
-/**
- * Hook for fetching data from Supabase via API routes with advanced features
- */
+/* -------------------------------------------------------------------------- */
+/* Hook                                                                        */
+/* -------------------------------------------------------------------------- */
+
 export function useSupabaseFetch<T>({
   endpoint,
   resourceName,
   dataKey,
   initialData = [],
   queryParams = {},
+
+  /* control */
   enabled = true,
+
+  /* retry */
   maxRetries = 3,
-  retryDelay = 1000,
-  realtime = false,
-  pagination = {
-    pageSize: 20,
-    useCursor: false,
-  },
+  retryDelay = 1_000,
+
+  /* pagination */
+  pagination = { pageSize: 20, useCursor: false },
   sort,
-  cache = {
-    enabled: true,
-    ttl: 60000, // 1 minute
-    maxSize: 100,
-  },
+
+  /* cache */
+  cache = { enabled: true, ttl: 60_000, maxSize: 100 },
+
   onSuccess,
   onError,
 }: UseSupabaseFetchOptions<T>) {
   const { toast } = useToast()
-  const [data, setData] = useState<T[]>(initialData)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const [connectionError, setConnectionError] = useState<boolean>(false)
-  const [totalCount, setTotalCount] = useState<number | null>(null)
-  const [hasMore, setHasMore] = useState<boolean>(true)
-  const [cursor, setCursor] = useState<string | null>(pagination.useCursor ? pagination.initialCursor || null : null)
-  const [page, setPage] = useState<number>(1)
 
-  // Initialize LRU cache
-  const cacheRef = useRef<LRUCache<string, any>>(new LRUCache({
-    max: cache.maxSize || 100,
-    ttl: cache.ttl || 60000, // 1 minute default TTL
-    updateAgeOnGet: true,
-  }))
+  /* ---------------------------------------------------------------------- */
+  /* State                                                                  */
+  /* ---------------------------------------------------------------------- */
 
-  // Track subscription
-  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
+  const [data, setData]               = useState<T[]>(initialData)
+  const [isLoading, setIsLoading]     = useState(true)
+  const [error, setError]             = useState<Error | null>(null)
+  const [connectionError, setConnErr] = useState(false)
 
-  const fetchData = async (retryCount = 0) => {
-    if (!enabled) {
-      setIsLoading(false)
-      return
-    }
+  /* pagination helpers */
+  const [totalCount, setTotalCount]   = useState<number | null>(null)
+  const [hasMore, setHasMore]         = useState(true)
+  const [cursor, setCursor]           = useState<string | null>(
+    pagination.useCursor ? pagination.initialCursor ?? null : null
+  )
+  const [page, setPage]               = useState(1)
 
-    setIsLoading(true)
-    setError(null)
-    setConnectionError(false)
+  /* LRU cache */
+  const cacheRef = useRef(
+    new LRUCache<string, {
+      data: T[]
+      totalCount: number | null
+      hasMore: boolean
+      nextCursor: string | null
+    }>({
+      max:   cache.maxSize ?? 100,
+      ttl:   cache.ttl     ?? 60_000,
+      updateAgeOnGet: true,
+    })
+  )
 
-    try {
-      // Build URL with query parameters
-      const url = new URL(endpoint, window.location.origin)
-      Object.entries(queryParams).forEach(([key, value]) => {
-        url.searchParams.append(key, value)
-      })
+  /* ---------------------------------------------------------------------- */
+  /* Main fetch function (memoised)                                         */
+  /* ---------------------------------------------------------------------- */
 
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }))
-        throw new Error(errorData.error || `Failed to fetch ${resourceName.toLowerCase()}`)
-      }
-
-      const result = await response.json()
-
-      // Check if we have the expected data structure
-      if (result && dataKey in result) {
-        setData(result[dataKey])
-      } else {
-        console.error(`Data key "${dataKey}" not found in response:`, result)
-        setData([])
-        throw new Error(`Invalid response format for ${resourceName.toLowerCase()}`)
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(`Failed to fetch ${resourceName.toLowerCase()}`)
-      console.error(`Error fetching ${resourceName.toLowerCase()}:`, error)
-
-      // Implement retry logic for network errors or server errors
-      const isNetworkError = error.message.includes('fetch') ||
-                             error.message.includes('network') ||
-                             error.message.includes('HTTP error 5');
-
-      if (retryCount < maxRetries && isNetworkError) {
-        console.log(`Retrying fetch for ${resourceName} (${retryCount + 1}/${maxRetries})...`)
-        // Exponential backoff: delay increases with each retry
-        const delay = retryDelay * Math.pow(2, retryCount)
-        setTimeout(() => fetchData(retryCount + 1), delay)
+  const fetchData = useCallback(
+    async (retryCount = 0, loadMore = false): Promise<void> => {
+      if (!enabled) {
+        setIsLoading(false)
         return
       }
 
-      setError(error)
-      setConnectionError(true)
+      /* for infinite scroll we don’t want a global spinner */
+      if (!loadMore) setIsLoading(true)
 
-      // Show a more specific error message
-      const errorMessage = isNetworkError
-        ? `Could not connect to the backend. Please check your connection and ensure the backend is running.`
-        : error.message;
+      setError(null)
+      setConnErr(false)
 
-      toast({
-        title: `Failed to fetch ${resourceName.toLowerCase()}`,
-        description: errorMessage,
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  /**
-   * Fetch data with advanced options
-   */
-  const fetchData = useCallback(async (retryCount = 0, loadMore = false) => {
-    if (!enabled) {
-      setIsLoading(false)
-      return
-    }
-
-    // Don't set loading state for loadMore to avoid UI flicker
-    if (!loadMore) {
-      setIsLoading(true)
-    }
-
-    setError(null)
-    setConnectionError(false)
-
-    try {
-      // Build cache key
+      /* build cache key */
       const cacheKey = `${endpoint}_${JSON.stringify(queryParams)}_${page}_${cursor}`
 
-      // Check cache first
-      if (cache.enabled) {
-        const cachedData = cacheRef.current.get(cacheKey)
-        if (cachedData) {
-          if (!loadMore) {
-            setData(cachedData.data)
-            setTotalCount(cachedData.totalCount)
-            setHasMore(cachedData.hasMore)
-            setCursor(cachedData.nextCursor)
-          } else {
-            setData(prev => [...prev, ...cachedData.data])
-            setHasMore(cachedData.hasMore)
-            setCursor(cachedData.nextCursor)
+      try {
+        /* ---------------------------- 1. cache hit ----------------------- */
+        if (cache.enabled) {
+          const cached = cacheRef.current.get(cacheKey)
+          if (cached) {
+            if (loadMore) {
+              setData(prev => [...prev, ...cached.data])
+            } else {
+              setData(cached.data)
+            }
+
+            setTotalCount(cached.totalCount)
+            setHasMore(cached.hasMore)
+            setCursor(cached.nextCursor)
+            setIsLoading(false)
+            return
           }
-          setIsLoading(false)
-          return
-        }
-      }
-
-      // Build URL with query parameters
-      const url = new URL(endpoint, window.location.origin)
-
-      // Add base query parameters
-      Object.entries(queryParams).forEach(([key, value]) => {
-        url.searchParams.append(key, value)
-      })
-
-      // Add pagination parameters
-      if (pagination.pageSize) {
-        url.searchParams.append('pageSize', pagination.pageSize.toString())
-      }
-
-      if (pagination.useCursor && cursor) {
-        url.searchParams.append('cursor', cursor)
-      } else if (!pagination.useCursor) {
-        url.searchParams.append('page', page.toString())
-      }
-
-      // Add sorting parameters
-      if (sort && sort.length > 0) {
-        const sortParams = sort.map(s => `${s.column}:${s.ascending ? 'asc' : 'desc'}`).join(',')
-        url.searchParams.append('sort', sortParams)
-      }
-
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }))
-        throw new Error(errorData.error || `Failed to fetch ${resourceName.toLowerCase()}`)
-      }
-
-      const result = await response.json()
-
-      // Check if we have the expected data structure
-      if (result && dataKey in result) {
-        const newData = result[dataKey]
-        const totalCount = result.totalCount || null
-        const nextCursor = result.nextCursor || null
-        const hasMore = result.hasMore || false
-
-        // Update state based on whether we're loading more or not
-        if (!loadMore) {
-          setData(newData)
-        } else {
-          setData(prev => [...prev, ...newData])
         }
 
-        setTotalCount(totalCount)
-        setHasMore(hasMore)
+        /* ------------------------- 2. build URL -------------------------- */
+        const url = new URL(endpoint, window.location.origin)
 
-        if (pagination.useCursor) {
-          setCursor(nextCursor)
+        /* base params */
+        Object.entries(queryParams).forEach(([k, v]) =>
+          url.searchParams.append(k, v)
+        )
+
+        /* pagination */
+        if (pagination.pageSize)
+          url.searchParams.append("pageSize", String(pagination.pageSize))
+
+        if (pagination.useCursor && cursor) {
+          url.searchParams.append("cursor", cursor)
+        } else if (!pagination.useCursor) {
+          url.searchParams.append("page", String(page))
         }
 
-        // Cache the result
+        /* sorting */
+        if (sort?.length) {
+          const s = sort.map(({ column, ascending = true }) =>
+            `${column}:${ascending ? "asc" : "desc"}`
+          ).join(",")
+          url.searchParams.append("sort", s)
+        }
+
+        /* ---------------------- 3. perform request ----------------------- */
+        const response = await fetch(url)
+
+        if (!response.ok) {
+          const { error: msg } = await response.json().catch(() => ({}))
+          throw new Error(msg ?? `Failed to fetch ${resourceName.toLowerCase()}`)
+        }
+
+        const result = await response.json()
+
+        /* ---------------------- 4. parse / validate ---------------------- */
+        if (!(dataKey in result)) {
+          throw new Error(
+            `Invalid response format: missing "${dataKey}" in ${resourceName}`
+          )
+        }
+
+        const newData: T[]          = result[dataKey]
+        const total: number | null  = result.totalCount ?? null
+        const nextCursor            = result.nextCursor ?? null
+        const more                  = result.hasMore ?? false
+
+        /* update state */
+        setData(prev => (loadMore ? [...prev, ...newData] : newData))
+        setTotalCount(total)
+        setHasMore(more)
+        if (pagination.useCursor) setCursor(nextCursor)
+
+        /* cache */
         if (cache.enabled) {
           cacheRef.current.set(cacheKey, {
             data: newData,
-            totalCount,
-            hasMore,
-            nextCursor
+            totalCount: total,
+            hasMore: more,
+            nextCursor,
           })
         }
 
-        // Call onSuccess callback
-        if (onSuccess) {
-          onSuccess(newData)
+        onSuccess?.(newData)
+      } catch (err) {
+        const e = err instanceof Error
+          ? err
+          : new Error(`Failed to fetch ${resourceName.toLowerCase()}`)
+
+        const isNetworkErr =
+          e.message.includes("fetch")    ||
+          e.message.includes("network")  ||
+          e.message.includes("HTTP error 5")
+
+        /* retry with exponential back-off */
+        if (isNetworkErr && retryCount < maxRetries) {
+          const delay = retryDelay * 2 ** retryCount
+          setTimeout(() => fetchData(retryCount + 1, loadMore), delay)
+          return
         }
-      } else {
-        console.error(`Data key "${dataKey}" not found in response:`, result)
-        setData([])
-        throw new Error(`Invalid response format for ${resourceName.toLowerCase()}`)
+
+        setError(e)
+        setConnErr(true)
+        toast({
+          title:   `Failed to fetch ${resourceName.toLowerCase()}`,
+          description: isNetworkErr
+            ? "Could not connect to the backend. Check your connection."
+            : e.message,
+          variant: "destructive",
+        })
+
+        onError?.(e)
+      } finally {
+        setIsLoading(false)
       }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(`Failed to fetch ${resourceName.toLowerCase()}`)
-      console.error(`Error fetching ${resourceName.toLowerCase()}:`, error)
+    },
+    [
+      /* deps */
+      enabled,
+      endpoint,
+      resourceName,
+      dataKey,
+      JSON.stringify(queryParams),   // safe because queryParams is shallow
+      maxRetries,
+      retryDelay,
+      page,
+      cursor,
+      pagination.pageSize,
+      pagination.useCursor,
+      JSON.stringify(sort),
+      cache.enabled,
+      toast,
+      onSuccess,
+      onError,
+    ]
+  )
 
-      // Implement retry logic for network errors or server errors
-      const isNetworkError = error.message.includes('fetch') ||
-                             error.message.includes('network') ||
-                             error.message.includes('HTTP error 5');
+  /* -------------------------------------------------------------- */
+  /* Effects                                                        */
+  /* -------------------------------------------------------------- */
 
-      if (retryCount < maxRetries && isNetworkError) {
-        console.log(`Retrying fetch for ${resourceName} (${retryCount + 1}/${maxRetries})...`)
-        // Exponential backoff: delay increases with each retry
-        const delay = retryDelay * Math.pow(2, retryCount)
-        setTimeout(() => fetchData(retryCount + 1, loadMore), delay)
-        return
-      }
+  /* initial + reactive fetch */
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-      setError(error)
-      setConnectionError(true)
+  /* -------------------------------------------------------------- */
+  /* Public API                                                     */
+  /* -------------------------------------------------------------- */
 
-      // Show a more specific error message
-      const errorMessage = isNetworkError
-        ? `Could not connect to the backend. Please check your connection and ensure the backend is running.`
-        : error.message;
-
-      toast({
-        title: `Failed to fetch ${resourceName.toLowerCase()}`,
-        description: errorMessage,
-        variant: "destructive",
-      })
-
-      // Call onError callback
-      if (onError) {
-        onError(error)
-      }
-    } finally {
-      setIsLoading(false)
+  const fetchMore = () => {
+    if (pagination.useCursor) {
+      fetchData(0, true)
+    } else {
+      setPage(p => p + 1)
+      fetchData(0, true)
     }
-  }, [
-    enabled,
-    endpoint,
-    resourceName,
-    dataKey,
-    queryParams,
-    maxRetries,
-    retryDelay,
-    page,
-    cursor,
-    pagination.pageSize,
-    pagination.useCursor,
-    sort,
-    cache.enabled,
-    onSuccess,
-    onError,
-    toast
-  ])
+  }
+
+  const refetch = () => fetchData()
+
+  return {
+    data,
+    isLoading,
+    error,
+    connectionError,
+
+    totalCount,
+    hasMore,
+
+    fetchMore,
+    refetch,
+  }
+}

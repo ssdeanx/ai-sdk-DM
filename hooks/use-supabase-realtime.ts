@@ -2,201 +2,222 @@
 
 /**
  * Hook for Supabase real-time subscriptions
- * Provides real-time updates for Supabase tables with automatic reconnection
- * and optimized performance
+ * Provides real-time updates for Supabase tables with automatic reconnection,
+ * Zod validation, and optimized performance
  *
  * @module hooks/use-supabase-realtime
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
+import {
+  SupabaseClient,
+  RealtimeChannel,
+  REALTIME_LISTEN_TYPES,
+  REALTIME_PRESENCE_LISTEN_EVENTS,
+  REALTIME_SUBSCRIBE_STATES,
+  RealtimePostgresChangesPayload,
+  RealtimePostgresInsertPayload,
+  RealtimePostgresUpdatePayload,
+  RealtimePostgresDeletePayload,
+  RealtimePresenceJoinPayload,
+  RealtimePresenceLeavePayload,
+} from '@supabase/supabase-js'
+import { z } from 'zod'
 import type { Database } from '@/types/supabase'
+import { getSupabaseClient } from '@/lib/memory/supabase'
 import { useToast } from '@/hooks/use-toast'
 
-/**
- * Channel type for Supabase Realtime
- */
 export type ChannelType = 'postgres' | 'presence' | 'broadcast'
+export type SubscriptionStatus =
+  typeof REALTIME_SUBSCRIBE_STATES[keyof typeof REALTIME_SUBSCRIBE_STATES]
+export type PostgresChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*'
+export type FilterOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in'
 
-/**
- * Options for the useSupabaseRealtime hook
- */
-interface UseSupabaseRealtimeOptions {
-  /**
-   * Channel type (default: 'postgres')
-   * - 'postgres': Subscribe to database changes
-   * - 'presence': Track online users and their state
-   * - 'broadcast': Send and receive messages between clients
-   */
+interface UseSupabaseRealtimeOptions<T extends z.ZodType<any, any>> {
+  /* ------------------------ channel selection ----------------------- */
   channelType?: ChannelType
-
-  /**
-   * Channel name for presence or broadcast channels
-   * Required when channelType is 'presence' or 'broadcast'
-   */
   channelName?: string
-
-  /**
-   * Table to subscribe to
-   * Required when channelType is 'postgres'
-   */
   table?: string
+  
+  /** database schema (public, private, etc.) */
+  tableSchema?: string
 
-  /**
-   * Schema of the table (default: 'public')
-   * Only used when channelType is 'postgres'
-   */
-  schema?: string
+  event?: PostgresChangeEvent
+  filter?: { column: string; value: any; operator?: FilterOperator }
 
-  /**
-   * Event to listen for (default: '*' for all events)
-   * Only used when channelType is 'postgres'
-   */
-  event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*'
-
-  /**
-   * Filter condition for the subscription
-   * Only used when channelType is 'postgres'
-   */
-  filter?: {
-    column: string
-    value: any
-    operator?: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in'
-  }
-
-  /**
-   * Whether the subscription is enabled
-   */
   enabled?: boolean
-
-  /**
-   * Maximum number of reconnection attempts
-   */
   maxReconnectAttempts?: number
-
-  /**
-   * Base delay between reconnection attempts (will be multiplied by 2^retryCount)
-   */
   reconnectDelay?: number
 
-  /**
-   * Callback when a record is inserted
-   * Only used when channelType is 'postgres'
-   */
-  onInsert?: (payload: any) => void
+  /** Zod schema for validating row payloads */
+  zodSchema?: T
+  logValidationErrors?: boolean
 
-  /**
-   * Callback when a record is updated
-   * Only used when channelType is 'postgres'
-   */
-  onUpdate?: (payload: any) => void
+  onInsert?: (row: z.infer<T>) => void
+  onUpdate?: (row: z.infer<T>) => void
+  onDelete?: (row: z.infer<T>) => void
+  onChange?: (payload: RealtimePostgresChangesPayload<z.infer<T>>) => void
 
-  /**
-   * Callback when a record is deleted
-   * Only used when channelType is 'postgres'
-   */
-  onDelete?: (payload: any) => void
-
-  /**
-   * Callback when a broadcast message is received
-   * Only used when channelType is 'broadcast'
-   */
   onBroadcast?: (payload: any) => void
 
-  /**
-   * Callback when presence state changes
-   * Only used when channelType is 'presence'
-   */
-  onPresenceSync?: (state: any) => void
-
-  /**
-   * Callback when a user joins
-   * Only used when channelType is 'presence'
-   */
-  onPresenceJoin?: (key: string, currentPresence: any) => void
-
-  /**
-   * Callback when a user leaves
-   * Only used when channelType is 'presence'
-   */
-  onPresenceLeave?: (key: string, currentPresence: any) => void
-
-  /**
-   * Initial presence state to track
-   * Only used when channelType is 'presence'
-   */
+  onPresenceSync?: (state: Record<string, any[]>) => void
+  onPresenceJoin?: (
+    key: string,
+    newPresences: RealtimePresenceJoinPayload<any>['newPresences']
+  ) => void
+  onPresenceLeave?: (
+    key: string,
+    leftPresences: RealtimePresenceLeavePayload<any>['leftPresences']
+  ) => void
   initialPresence?: Record<string, any>
 
-  /**
-   * Callback when an error occurs
-   */
-  onError?: (error: Error) => void
+  broadcastEventName?: string
+  onStatusChange?: (status: SubscriptionStatus) => void
+  onValidationError?: (err: z.ZodError) => void
+  onError?: (err: Error) => void
 }
 
-/**
- * Hook for Supabase real-time subscriptions
- */
-export function useSupabaseRealtime({
-  table,
-  schema = 'public',
-  event = '*',
-  filter,
-  enabled = true,
-  maxReconnectAttempts = 5,
-  reconnectDelay = 1000,
-  onInsert,
-  onUpdate,
-  onDelete,
-  onError
-}: UseSupabaseRealtimeOptions) {
+interface UseSupabaseRealtimeReturn {
+  isConnected: boolean
+  error: Error | null
+  lastEventTimestamp: number | null
+  connectionStatus: 'connecting' | 'connected' | 'disconnected'
+  reconnect: () => void
+  channel: RealtimeChannel | null
+  broadcast?: (event: string, payload: any) => void
+  track?: (presence: Record<string, any>) => Promise<void>
+  untrack?: () => Promise<void>
+  validationStats: { success: number; errors: number }
+}
+
+export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
+  {
+    channelType = 'postgres',
+    channelName,
+    table,
+    tableSchema = 'public',
+    event = '*',
+    filter,
+    enabled = true,
+    maxReconnectAttempts = 5,
+    reconnectDelay = 1000,
+
+    /** renamed to avoid collision */
+    zodSchema,
+    logValidationErrors = true,
+    onInsert,
+    onUpdate,
+    onDelete,
+    onChange,
+
+    onBroadcast,
+
+    onPresenceSync,
+    onPresenceJoin,
+    onPresenceLeave,
+    initialPresence,
+
+    broadcastEventName = 'message',
+    onStatusChange,
+    onValidationError,
+    onError,
+  }: UseSupabaseRealtimeOptions<T>
+): UseSupabaseRealtimeReturn {
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [lastEventTimestamp, setLastEventTimestamp] = useState<number | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected')
+  const [connectionStatus, setConnectionStatus] = useState<
+    'connecting' | 'connected' | 'disconnected'
+  >('disconnected')
+  const [validationStats, setValidationStats] = useState({ success: 0, errors: 0 })
 
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const supabaseRef = useRef<SupabaseClient<Database> | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const supabaseRef = useRef<SupabaseClient<Database> | null>(null)
 
   const { toast } = useToast()
 
-  /**
-   * Initialize Supabase client
-   * Uses the session pooler URL for better performance with real-time subscriptions
-   */
   const initSupabase = useCallback(() => {
     if (!supabaseRef.current) {
-      supabaseRef.current = createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-        {
-          realtime: {
-            params: {
-              eventsPerSecond: 10
-            }
-          },
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-          },
-          global: {
-            headers: {
-              'x-client-info': 'SupabaseRealtime-Hook'
-            }
-          },
-          db: {
-            schema: 'public',
-          }
-        }
-      )
+      supabaseRef.current = getSupabaseClient()
     }
     return supabaseRef.current
   }, [])
 
-  /**
-   * Subscribe to real-time updates
-   */
+  const validateData = useCallback(
+    (data: any) => {
+      if (!zodSchema) return { success: true as const, data }
+      try {
+        const d = zodSchema.parse(data)
+        setValidationStats((s) => ({ ...s, success: s.success + 1 }))
+        return { success: true as const, data: d }
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          setValidationStats((s) => ({ ...s, errors: s.errors + 1 }))
+          if (logValidationErrors) console.error(err.errors)
+          onValidationError?.(err)
+          return { success: false as const, error: err }
+        }
+        throw err
+      }
+    },
+    [zodSchema, logValidationErrors, onValidationError]
+  )
+
+  const handleStatus = useCallback(
+    (status: SubscriptionStatus) => {
+      onStatusChange?.(status)
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+        setIsConnected(true)
+        setConnectionStatus('connected')
+        reconnectAttemptsRef.current = 0
+      } else if (
+        status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT ||
+        status === REALTIME_SUBSCRIBE_STATES.CLOSED ||
+        status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR
+      ) {
+        setIsConnected(false)
+        setConnectionStatus('disconnected')
+
+        // auto–reconnect
+        if (enabled && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          const delay = reconnectDelay * 2 ** reconnectAttemptsRef.current
+          clearTimeout(reconnectTimeoutRef.current!)
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttemptsRef.current++
+            subscribe()
+          }, delay)
+        }
+      }
+    },
+    [enabled, maxReconnectAttempts, reconnectDelay, onStatusChange]
+  )
+
+  const broadcast = useCallback(
+    (ev: string, payload: any) => {
+      if (channelType !== 'broadcast' || !channelRef.current) return
+      channelRef.current.send({ type: 'broadcast', event: ev, payload })
+    },
+    [channelType]
+  )
+
+  const track = useCallback(
+    async (presence: Record<string, any>) => {
+      if (channelType !== 'presence' || !channelRef.current) return
+      await channelRef.current.track(presence)
+    },
+    [channelType]
+  )
+
+  const untrack = useCallback(
+    async () => {
+      if (channelType !== 'presence' || !channelRef.current) return
+      await channelRef.current.untrack()
+    },
+    [channelType]
+  )
+
   const subscribe = useCallback(() => {
     if (!enabled) {
       setConnectionStatus('disconnected')
@@ -206,153 +227,141 @@ export function useSupabaseRealtime({
     try {
       setConnectionStatus('connecting')
       setError(null)
-
       const supabase = initSupabase()
 
-      // Build channel name with table and filter for better debugging
-      const filterString = filter ? `${filter.column}_${filter.operator || 'eq'}_${filter.value}` : 'all'
-      const channelName = `${schema}_${table}_${filterString}_${Date.now()}`
+      if (channelType === 'postgres' && !table) {
+        throw new Error('`table` is required for postgres channel')
+      }
+      if ((channelType === 'broadcast' || channelType === 'presence') && !channelName) {
+        throw new Error('`channelName` is required for this channel type')
+      }
 
-      // Create channel
-      let channel = supabase.channel(channelName)
+      // unique channel name
+      const name =
+        channelType === 'postgres'
+          ? `${tableSchema}_${table}_${filter ? `${filter.column}_${filter.operator}_${filter.value}` : 'all'}_${Date.now()}`
+          : `${channelName}_${channelType}_${Date.now()}`
 
-      // Build filter
-      let filterBuilder = channel.on(
-        'postgres_changes',
-        {
-          event,
-          schema,
-          table
-        },
-        (payload) => {
-          // Update last event timestamp
-          setLastEventTimestamp(Date.now())
+      const ch = supabase.channel(name)
 
-          // Call appropriate callback based on event type
-          switch (payload.eventType) {
-            case 'INSERT':
-              if (onInsert) onInsert(payload.new)
-              break
-            case 'UPDATE':
-              if (onUpdate) onUpdate({ old: payload.old, new: payload.new })
-              break
-            case 'DELETE':
-              if (onDelete) onDelete(payload.old)
-              break
-          }
+      if (channelType === 'postgres') {
+        const params: any = { event, schema: tableSchema, table }
+        if (filter) {
+          params.filter = `${filter.column}=${filter.operator || 'eq'}.${filter.value}`
         }
-      )
-
-      // Apply filter if provided
-      if (filter) {
-        const { column, value, operator = 'eq' } = filter
-
-        // Convert filter to Postgres format
-        filterBuilder = channel.filter(
-          'postgres_changes',
-          {
-            event,
-            schema,
-            table,
-            filter: `${column}=${operator}.${value}`
-          },
-          (payload) => {
-            // Same event handling as above
-            setLastEventTimestamp(Date.now())
-
-            switch (payload.eventType) {
-              case 'INSERT':
-                if (onInsert) onInsert(payload.new)
-                break
-              case 'UPDATE':
-                if (onUpdate) onUpdate({ old: payload.old, new: payload.new })
-                break
-              case 'DELETE':
-                if (onDelete) onDelete(payload.old)
-                break
+        const onPayload = (p: RealtimePostgresChangesPayload<any>) => {
+          setLastEventTimestamp(Date.now())
+          onChange?.(p)
+          switch (p.eventType) {
+            case 'INSERT': {
+              const v = validateData((p as RealtimePostgresInsertPayload<any>).new)
+              if (v.success) onInsert?.(v.data)
+              break
+            }
+            case 'UPDATE': {
+              const v = validateData((p as RealtimePostgresUpdatePayload<any>).new)
+              if (v.success) onUpdate?.(v.data)
+              break
+            }
+            case 'DELETE': {
+              const v = validateData((p as RealtimePostgresDeletePayload<any>).old)
+              if (v.success) onDelete?.(v.data)
+              break
             }
           }
-        )
-      }
-
-      // Subscribe to channel
-      channel
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            setIsConnected(true)
-            setConnectionStatus('connected')
-            reconnectAttemptsRef.current = 0
-          } else {
-            setIsConnected(false)
-            setConnectionStatus('disconnected')
-          }
-        })
-
-      // Store channel reference
-      channelRef.current = channel
-
-      return () => {
-        channel.unsubscribe()
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to subscribe to real-time updates')
-      setError(error)
-      setConnectionStatus('disconnected')
-
-      if (onError) {
-        onError(error)
-      }
-
-      // Attempt to reconnect
-      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-        const delay = reconnectDelay * Math.pow(2, reconnectAttemptsRef.current)
-
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current)
         }
 
-        reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectAttemptsRef.current++
-          subscribe()
-        }, delay)
+        ch.on(REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, params, onPayload).subscribe(handleStatus)
+      } else if (channelType === 'broadcast') {
+        ch
+          .on(REALTIME_LISTEN_TYPES.BROADCAST, { event: broadcastEventName }, (p) => {
+            setLastEventTimestamp(Date.now())
+            onBroadcast?.(p)
+          })
+          .subscribe(handleStatus)
       } else {
-        toast({
-          title: 'Connection failed',
-          description: `Failed to connect to real-time updates after ${maxReconnectAttempts} attempts.`,
-          variant: 'destructive'
-        })
+        // presence
+        ch
+          .on(
+            REALTIME_LISTEN_TYPES.PRESENCE,
+            { event: REALTIME_PRESENCE_LISTEN_EVENTS.SYNC },
+            () => {
+              setLastEventTimestamp(Date.now())
+              onPresenceSync?.(ch.presenceState())
+            }
+          )
+          .on(
+            REALTIME_LISTEN_TYPES.PRESENCE,
+            { event: REALTIME_PRESENCE_LISTEN_EVENTS.JOIN },
+            (p: RealtimePresenceJoinPayload<any>) => {
+              setLastEventTimestamp(Date.now())
+              onPresenceJoin?.(p.key, p.newPresences)
+            }
+          )
+          .on(
+            REALTIME_LISTEN_TYPES.PRESENCE,
+            { event: REALTIME_PRESENCE_LISTEN_EVENTS.LEAVE },
+            (p: RealtimePresenceLeavePayload<any>) => {
+              setLastEventTimestamp(Date.now())
+              onPresenceLeave?.(p.key, p.leftPresences)
+            }
+          )
+          .subscribe(async (status) => {
+            if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && initialPresence) {
+              await ch.track(initialPresence)
+            }
+            handleStatus(status)
+          })
       }
+
+      channelRef.current = ch
+      return () => {
+        ch.unsubscribe()
+      }
+    } catch (err: any) {
+      const e = err instanceof Error ? err : new Error('Subscription failed')
+      setError(e)
+      setConnectionStatus('disconnected')
+      onError?.(e)
+      toast({
+        title: 'Realtime error',
+        description: e.message,
+        variant: 'destructive',
+      })
     }
   }, [
-    enabled,
+    channelType,
     table,
-    schema,
+    tableSchema,
     event,
     filter,
-    maxReconnectAttempts,
+    channelName,
+    enabled,
     reconnectDelay,
+    maxReconnectAttempts,
+    initSupabase,
     onInsert,
     onUpdate,
     onDelete,
+    onChange,
+    onBroadcast,
+    onPresenceSync,
+    onPresenceJoin,
+    onPresenceLeave,
+    initialPresence,
+    broadcastEventName,
+    handleStatus,
+    validateData,
+    toast,
     onError,
-    initSupabase,
-    toast
   ])
 
-  // Subscribe on mount and when dependencies change
   useEffect(() => {
     const cleanup = subscribe()
-
     return () => {
-      if (cleanup) cleanup()
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-
-      if (channelRef.current) {
-        channelRef.current.unsubscribe()
-      }
+      cleanup?.()
+      clearTimeout(reconnectTimeoutRef.current!)
+      channelRef.current?.unsubscribe()
     }
   }, [subscribe])
 
@@ -361,6 +370,11 @@ export function useSupabaseRealtime({
     error,
     lastEventTimestamp,
     connectionStatus,
-    reconnect: subscribe
+    reconnect: subscribe,
+    channel: channelRef.current,
+    broadcast,
+    track,
+    untrack,
+    validationStats,
   }
 }

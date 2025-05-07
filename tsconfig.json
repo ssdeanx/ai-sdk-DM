@@ -16,6 +16,30 @@
     "plugins": [
       {
         "name": "next"
+      },
+      {
+        "name":  "eslint"
+      },
+      {
+        "name":  "typescript-eslint"
+      },
+      {
+        "name":  "tailwindcss"
+      },
+      {
+        "name":  "drizzle-kit"
+      },
+      {
+        "name":  "plotly.js-dist"
+      },
+      {
+        "name":  "postcss"
+      },
+      {
+        "name":  "typescript"
+      },
+      {
+        "name":  "typescript-eslint-parser"
       }
     ],
     "paths": {
