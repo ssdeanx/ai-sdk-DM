@@ -279,3 +279,13 @@ export const evaluation_examples = pgTable('evaluation_examples', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
+
+export const gqlCache = pgTable('gql_cache', {
+  id: text('id').primaryKey(),
+  query: text('query').notNull(),
+  variables: text('variables'),
+  response: text('response').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: false })
+    .defaultNow()
+    .notNull(),
+})

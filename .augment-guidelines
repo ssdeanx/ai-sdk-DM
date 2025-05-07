@@ -67,7 +67,9 @@ This project implements a modular, extensible AI chat application using the Verc
 - **Backend**: Next.js API Routes, Edge Runtime
 - **AI SDK**: Vercel AI SDK (`@ai-sdk/core`, `@ai-sdk/react`)
 - **Providers**: Google AI (`@ai-sdk/google`), OpenAI (`@ai-sdk/openai`), Anthropic (`@ai-sdk/anthropic`)
-- **Database**: LibSQL (for memory), Supabase (for configuration)
+- **Database**:
+  - **LibSQL/Turso**: For conversational history, embeddings storage, and thread state
+  - **Supabase**: For configuration, vector search (pgvector with HNSW indexes), and workflow management
 - **Observability**: OpenTelemetry, Langfuse
 - **Tools Framework**: Custom agentic tools system with AI SDK compatibility
 
@@ -1981,6 +1983,122 @@ export default function Page() {
     </div>
   );
 }
+```
+
+## Supabase Integration
+
+### Vector Database Capabilities
+
+Supabase provides powerful vector database capabilities through pgvector, enabling semantic search and AI-powered features:
+
+- **pgvector Extension**: Stores and queries vector embeddings with up to 2,000 dimensions
+- **HNSW Indexes**: Hierarchical Navigable Small World indexes for efficient approximate nearest neighbor search
+- **Distance Operators**: Support for Euclidean (L2), Inner Product, and Cosine distance metrics
+- **Automatic Embeddings**: Automated generation and updates of embeddings using Edge Functions, pgmq, pg_net, and pg_cron
+
+#### HNSW Index Creation
+
+```sql
+-- For Euclidean distance
+CREATE INDEX ON items USING hnsw (column_name vector_l2_ops);
+
+-- For inner product
+CREATE INDEX ON items USING hnsw (column_name vector_ip_ops);
+
+-- For cosine distance
+CREATE INDEX ON items USING hnsw (column_name vector_cosine_ops);
+```
+
+#### Automatic Embedding Generation
+
+The project implements an automated system for embedding generation and updates:
+
+1. **Triggers**: Detect content changes and enqueue embedding generation requests
+2. **Queues**: Use pgmq for reliable job processing and retries
+3. **Edge Functions**: Generate embeddings via external APIs (OpenAI, Google)
+4. **Scheduled Tasks**: Process embedding jobs automatically with pg_cron
+
+### Engineering for Scale
+
+For production vector workloads, the application follows these best practices:
+
+1. **Separate Databases**: Split vector collections into separate projects for independent scaling
+2. **Foreign Data Wrappers**: Connect primary and secondary databases for unified queries
+3. **View Abstractions**: Expose collections through views for application access
+4. **Compute Sizing**: Select appropriate compute add-ons based on vector dimensions and dataset size
+
+#### Foreign Data Wrapper Example
+
+```sql
+-- Connect to remote database
+CREATE EXTENSION postgres_fdw;
+CREATE SERVER docs_server
+FOREIGN DATA WRAPPER postgres_fdw
+OPTIONS (host 'db.xxx.supabase.co', port '5432', dbname 'postgres');
+
+CREATE USER MAPPING FOR docs_user
+SERVER docs_server
+OPTIONS (user 'postgres', password 'password');
+
+-- Create foreign table
+CREATE FOREIGN TABLE docs (
+  id text NOT NULL,
+  embedding vector(384),
+  metadata jsonb,
+  url text
+)
+SERVER docs_server
+OPTIONS (schema_name 'public', table_name 'docs');
+```
+
+### Supabase Client Integration
+
+The project includes three custom hooks for Supabase integration:
+
+1. **`useSupabaseFetch`**: Data fetching from API routes with error handling and retries
+2. **`useSupabaseCrud`**: CRUD operations via API routes with toast notifications
+3. **`useSupabaseDirect`**: Direct Supabase client operations with transformation support
+
+#### useSupabaseDirect Example
+
+```typescript
+const { loading, error, items, getAll, getById, create, update, remove } = useSupabaseDirect({
+  tableName: 'documents',
+  transformBeforeSave: (data) => ({
+    ...data,
+    updated_at: new Date().toISOString()
+  }),
+  transformAfterFetch: (data) => ({
+    ...data,
+    formattedDate: new Date(data.created_at).toLocaleDateString()
+  }),
+  onSuccess: (operation, data) => {
+    toast({
+      title: 'Success',
+      description: `Document ${operation} successful`,
+    })
+  }
+});
+```
+
+### Workflow Integration
+
+The project includes a Supabase workflow provider for managing multi-step AI processes:
+
+```typescript
+// Create a new workflow
+const workflow = await workflowProvider.createWorkflow({
+  name: 'Document Processing',
+  description: 'Process and analyze documents',
+  metadata: { priority: 'high' }
+});
+
+// Add steps to the workflow
+await workflowProvider.addWorkflowStep(workflow.id, {
+  agentId: 'document-analyzer',
+  input: { documentId: '123' },
+  metadata: { requiresApproval: true }
+});
 ```
 
 ## User Preferences

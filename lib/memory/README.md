@@ -6,7 +6,7 @@ When you (AI assistant) join a new chat about `/lib/memory`, use this prompt-enr
 
 1. **Background**: This folder implements the memory and persistence layer for AI agents:
    - **LibSQL/Turso** for conversational history, embeddings storage, HNSW vector indexing, and thread state.
-   - **Supabase** for loading model, agent, and tool configurations that drive memory behavior.
+   - **Supabase** for configuration, vector search (pgvector with HNSW indexes), workflow management, and loading model, agent, and tool configurations that drive memory behavior.
 2. **Your Role**: Provide code examples, debugging steps, and performance suggestions for memory operations and database interactions, considering both DBs:
    - Supabase: reference API routes under `app/api/*` (e.g. `/api/threads`, `/api/agents`) and TypeScript definitions in `types/supabase.ts` for schema generation and type safety.
    - LibSQL: low-latency memory reads/writes, caching (LRU), and vector search via HNSW indices.
@@ -100,14 +100,20 @@ lib/
   - Throws if the credentials are not configured.
 - Exports `getDrizzleClient()`:
   - Initializes a Drizzle ORM client for Supabase.
+  - Uses `DATABASE_URL` environment variable for direct Postgres connection.
+  - Integrates with schema definitions in `db/supabase/schema.ts`.
+- Exports `isSupabaseAvailable()`:
+  - Checks connectivity by executing a simple query.
 - Exports `getData()`, `getItemById()`, `createItem()`, `updateItem()`, `deleteItem()`:
-  - Generic CRUD operations for Supabase tables.
+  - Generic CRUD operations for Supabase tables with filtering, sorting, and pagination.
+  - Supports transaction safety and error handling.
 - Exports `getModelConfig()`, `getModels()`:
   - Model-specific operations with Drizzle integration.
+  - Caches results for performance optimization.
 - Exports `getAgentConfig()`, `getAgents()`, `getAgentTools()`:
-  - Agent-specific operations.
+  - Agent-specific operations with relationship handling.
 - Exports `getSetting()`:
-  - Retrieves a setting by category and key.
+  - Retrieves a setting by category and key with default value support.
 
 ### 2.5 memory.ts
 
@@ -207,12 +213,24 @@ lib/
 - [x] Advanced observability components with d3, recharts, and plotly visualizations
 - [x] Comprehensive tracing system with spans, events, and metrics
 - [ ] Refactor and enhance `db.ts`, `libsql.ts`, and `memory.ts` for consistency, error isolation, and testing
-- [ ] Provide API route templates and examples for CRUD operations in `hooks/use-supabase-*` and `app/api/*`
+- [x] Provide API route templates and examples for CRUD operations in `hooks/use-supabase-*` and `app/api/*`
 - [ ] Add cursor-based pagination to `loadMessages()` and `listMemoryThreads()`
 - [ ] Automated pruning of old threads and embeddings based on TTL or threshold
 - [ ] Incremental summarization and real-time update webhooks for long threads
 - [ ] End-to-end tests covering memory helpers, vector store, and Supabase integrations
 - [ ] Comprehensive documentation examples showing Supabase + LibSQL workflows
+- [x] Implement Supabase pgvector integration with HNSW indexes for efficient vector search
+- [x] Create workflow management system using Supabase for multi-step AI processes
+- [ ] Enhance Supabase Redis wrapper integration with caching strategies
+- [ ] Implement bidirectional sync between Supabase and LibSQL using webhooks
+- [ ] Create admin dashboard for managing Supabase-Redis connections
+- [ ] Update drizzle.ts to support direct Redis operations via Supabase
+- [ ] Implement rate limiting and quota management using Redis counters
+- [ ] Create migration scripts for Redis schema changes
+- [ ] Set up Supabase Edge Functions for serverless processing
+- [x] Configure local development environment with Supabase CLI
+- [ ] Create Supabase migrations for database schema changes
+- [ ] Implement type generation from Supabase schema
 
 ---
 
@@ -279,6 +297,50 @@ To enable Drizzle for database operations, set the environment variable:
 USE_DRIZZLE=true
 ```
 
+### 8.5 Supabase CLI Integration
+
+The project has been initialized with Supabase CLI, which provides local development capabilities and deployment tools:
+
+```bash
+# Initialize Supabase in the project
+supabase init
+
+# Generate VS Code settings for Deno
+# This enables proper support for Supabase Edge Functions
+```
+
+The VS Code extension for Supabase has been installed, providing:
+
+- Syntax highlighting for Supabase SQL files
+- IntelliSense for Supabase API methods
+- Edge Function development support
+- Database schema visualization
+- SQL query execution directly from VS Code
+
+The project has a local Supabase instance running for development:
+
+```bash
+# Start local Supabase services (already done)
+supabase start
+
+# Generate types from your database schema
+supabase gen types typescript --local > types/supabase.ts
+```
+
+The local Supabase instance provides:
+
+- A PostgreSQL database with all extensions enabled (pgvector, pg_cron, etc.)
+- A local Studio UI for database management (`http://localhost:54323`)
+- Authentication services
+- Storage services
+- Edge Functions runtime
+- Real-time subscriptions
+
+You can access the local Supabase Studio at `http://localhost:54323` with the following credentials:
+
+- Email: `admin@example.com`
+- Password: Check the terminal output after running `supabase start`
+
 ---
 
 ## 9. Setup LibSQL Vector DB (Embeddings)
@@ -312,11 +374,315 @@ To optimize embeddings storage and similarity search using LibSQL/Turso:
 
 ---
 
-## 10. Observability System
+## 10. Supabase Vector Integration
+
+The project leverages Supabase's pgvector capabilities for advanced vector search and embedding management:
+
+### 10.1 Vector Database Capabilities
+
+Supabase provides powerful vector database capabilities through pgvector:
+
+- **pgvector Extension**: Stores and queries vector embeddings with up to 2,000 dimensions
+- **HNSW Indexes**: Hierarchical Navigable Small World indexes for efficient approximate nearest neighbor search
+- **Distance Operators**: Support for Euclidean (L2), Inner Product, and Cosine distance metrics
+- **Automatic Embeddings**: Automated generation and updates of embeddings
+
+### 10.2 HNSW Index Creation
+
+To create HNSW indexes for different distance metrics:
+
+```sql
+-- For Euclidean distance
+CREATE INDEX ON embeddings USING hnsw (embedding vector_l2_ops);
+
+-- For inner product
+CREATE INDEX ON embeddings USING hnsw (embedding vector_ip_ops);
+
+-- For cosine distance
+CREATE INDEX ON embeddings USING hnsw (embedding vector_cosine_ops);
+```
+
+### 10.3 Automatic Embedding Generation
+
+The project implements an automated system for embedding generation and updates using Supabase's capabilities:
+
+1. **Triggers**: Detect content changes and enqueue embedding generation requests
+
+   ```sql
+   -- Trigger for insert events
+   CREATE TRIGGER embed_documents_on_insert
+     AFTER INSERT
+     ON documents
+     FOR EACH ROW
+     EXECUTE FUNCTION util.queue_embeddings('embedding_input', 'embedding');
+
+   -- Trigger for update events
+   CREATE TRIGGER embed_documents_on_update
+     AFTER UPDATE OF title, content
+     ON documents
+     FOR EACH ROW
+     EXECUTE FUNCTION util.queue_embeddings('embedding_input', 'embedding');
+   ```
+
+2. **Queues**: Use pgmq for reliable job processing and retries
+
+   ```sql
+   -- Queue embedding generation requests
+   SELECT pgmq.create_queue('embedding_jobs');
+   ```
+
+3. **Edge Functions**: Generate embeddings via external APIs (OpenAI, Google)
+
+   ```typescript
+   // Edge Function to generate embeddings
+   async function generateEmbedding(text: string) {
+     const response = await openai.embeddings.create({
+       model: 'text-embedding-3-small',
+       input: text,
+     });
+     return response.data[0].embedding;
+   }
+   ```
+
+4. **Scheduled Tasks**: Process embedding jobs automatically with pg_cron
+
+   ```sql
+   -- Schedule embedding processing every minute
+   SELECT cron.schedule(
+     'process-embedding-jobs',
+     '* * * * *',
+     $$SELECT util.process_embedding_jobs()$$
+   );
+   ```
+
+This system ensures that embeddings are always kept in sync with content changes, with automatic retries for failed jobs.
+
+The project leverages several advanced Supabase features:
+
+1. **pg_cron Extension**: Already enabled for scheduled tasks and automated maintenance
+2. **Webhooks**: Configured to trigger LibSQL updates when Supabase data changes
+3. **Redis Wrapper**: Direct connection to Upstash Redis database for caching and real-time data
+
+### 10.4 Engineering for Scale
+
+For production vector workloads, the application follows these best practices:
+
+1. **Separate Databases**: Split vector collections into separate projects for independent scaling
+2. **Foreign Data Wrappers**: Connect primary and secondary databases for unified queries
+3. **View Abstractions**: Expose collections through views for application access
+4. **Compute Sizing**: Select appropriate compute add-ons based on vector dimensions and dataset size
+
+#### Compute Add-on Selection
+
+The project provides guidance for selecting the appropriate compute add-on based on your vector workload:
+
+| Compute Add-on | Max Vectors (1536d) | QPS (1536d) | RAM Usage | Total RAM |
+|---------------|-------------------|------------|-----------|----------|
+| Small         | 100,000           | 25         | 1.5 GB    | 2 GB     |
+| Medium        | 250,000           | 60         | 3.5 GB    | 4 GB     |
+| Large         | 500,000           | 120        | 7 GB      | 8 GB     |
+| XL            | 1,000,000         | 250        | 13 GB     | 16 GB    |
+| 2XL           | 1,000,000         | 350        | 15 GB     | 32 GB    |
+| 4XL           | 1,000,000         | 500        | 15 GB     | 64 GB    |
+
+For optimal performance, ensure your vector database fits in RAM to avoid disk I/O bottlenecks.
+
+### 10.5 Security and Access Control
+
+Supabase provides Row Level Security (RLS) for fine-grained access control to vector data:
+
+```sql
+-- Enable RLS on the documents table
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy that only allows users to access their own documents
+CREATE POLICY "Users can only access their own documents"
+ON documents
+FOR ALL
+USING (auth.uid() = owner_id);
+```
+
+This can be combined with Foreign Data Wrappers when user and document data live outside of Supabase:
+
+```sql
+-- Create foreign tables that link to external tables
+CREATE SCHEMA external;
+CREATE EXTENSION postgres_fdw WITH SCHEMA extensions;
+
+-- Setup the foreign server
+CREATE SERVER foreign_server
+  FOREIGN DATA WRAPPER postgres_fdw
+  OPTIONS (host '<db-host>', port '<db-port>', dbname '<db-name>');
+
+-- Map local 'authenticated' role to external 'postgres' user
+CREATE USER MAPPING FOR authenticated
+  SERVER foreign_server
+  OPTIONS (user 'postgres', password '<user-password>');
+```
+
+This approach allows for secure vector search that respects user permissions, even when those permissions are defined in external systems.
+
+### 10.6 Redis Integration with Supabase
+
+The project includes a Redis wrapper in Supabase that connects directly to an Upstash Redis database:
+
+```sql
+-- Enable the Redis wrapper extension
+CREATE EXTENSION IF NOT EXISTS redis_fdw;
+
+-- Create a server connection to Upstash Redis
+CREATE SERVER redis_server
+  FOREIGN DATA WRAPPER redis_fdw
+  OPTIONS (address 'redis://default:[PASSWORD]@[HOST].upstash.io:[PORT]');
+
+-- Create a user mapping
+CREATE USER MAPPING FOR postgres
+  SERVER redis_server
+  OPTIONS (password '[PASSWORD]');
+
+-- Create a foreign table for Redis data
+CREATE FOREIGN TABLE redis_cache (
+  key text,
+  value text
+)
+SERVER redis_server
+OPTIONS (database '0');
+```
+
+This integration enables:
+
+1. **Caching**: Store frequently accessed data in Redis for faster retrieval
+2. **Real-time Data**: Use Redis pub/sub for real-time updates across services
+3. **Session Management**: Store session data in Redis for stateless API routes
+4. **Rate Limiting**: Implement rate limiting using Redis counters
+
+The Redis wrapper can be accessed directly from SQL queries or through the Supabase client:
+
+```typescript
+// Example of using Redis from Supabase
+const { data, error } = await supabase.from('redis_cache')
+  .select('value')
+  .eq('key', 'cached_data');
+
+// Example of setting Redis data
+const { error } = await supabase.from('redis_cache')
+  .insert({ key: 'cached_data', value: JSON.stringify(data) });
+```
+
+### 10.7 Supabase Webhooks
+
+The project uses Supabase webhooks to synchronize data between Supabase and LibSQL:
+
+```typescript
+// Example webhook handler in Next.js API route
+export async function POST(req: Request) {
+  const payload = await req.json();
+  const { type, table, record, old_record } = payload;
+
+  // Verify webhook signature
+  const signature = req.headers.get('x-supabase-signature');
+  if (!verifySignature(payload, signature)) {
+    return new Response('Invalid signature', { status: 401 });
+  }
+
+  // Process the webhook event
+  if (table === 'documents' && type === 'INSERT') {
+    // Sync new document to LibSQL
+    await syncDocumentToLibSQL(record);
+  } else if (table === 'documents' && type === 'UPDATE') {
+    // Update document in LibSQL
+    await updateDocumentInLibSQL(record, old_record);
+  }
+
+  return new Response('Webhook processed', { status: 200 });
+}
+```
+
+Webhooks are configured in the Supabase dashboard to trigger on specific database events (INSERT, UPDATE, DELETE) for selected tables.
+
+### 10.8 Supabase Client Hooks
+
+The project includes three custom hooks for Supabase integration:
+
+1. **`useSupabaseFetch`**: Data fetching from API routes with error handling and retries
+
+   ```typescript
+   const { data, isLoading, error, refetch } = useSupabaseFetch({
+     endpoint: '/api/documents',
+     resourceName: 'documents',
+     dataKey: 'documents',
+     queryParams: { category: 'technical' },
+     enabled: true,
+     maxRetries: 3
+   });
+   ```
+
+2. **`useSupabaseCrud`**: CRUD operations via API routes with toast notifications
+
+   ```typescript
+   const { create, update, remove, isLoading, error } = useSupabaseCrud({
+     resourceName: 'documents',
+     endpoint: '/api/documents',
+     onSuccess: () => toast({ title: 'Success', description: 'Operation completed' })
+   });
+   ```
+
+3. **`useSupabaseDirect`**: Direct Supabase client operations with transformation support
+
+   ```typescript
+   const { loading, error, items, getAll, getById, create, update, remove } = useSupabaseDirect({
+     tableName: 'documents',
+     transformBeforeSave: (data) => ({
+       ...data,
+       updated_at: new Date().toISOString()
+     }),
+     transformAfterFetch: (data) => ({
+       ...data,
+       formattedDate: new Date(data.created_at).toLocaleDateString()
+     })
+   });
+   ```
+
+### 10.9 Workflow Integration
+
+The project includes a Supabase workflow provider for managing multi-step AI processes. This implementation uses Supabase tables to store workflow state and steps, providing persistence and scalability:
+
+```typescript
+// Create a new workflow
+const workflow = await workflowProvider.createWorkflow({
+  name: 'Document Processing',
+  description: 'Process and analyze documents',
+  metadata: { priority: 'high' }
+});
+
+// Add steps to the workflow
+await workflowProvider.addWorkflowStep(workflow.id, {
+  agentId: 'document-analyzer',
+  input: { documentId: '123' },
+  metadata: { requiresApproval: true }
+});
+```
+
+The workflow system supports:
+
+- **Workflow Management**: Create, retrieve, list, and delete workflows
+- **Step Management**: Add steps to workflows and track their execution
+- **Execution Control**: Execute, pause, and resume workflows
+- **Integration with Memory**: Each step has its own thread for conversation history
+- **AI Model Integration**: Specialized AI providers for workflow contexts
+
+The Supabase implementation uses the following tables:
+
+- `workflows`: Stores workflow metadata and status
+- `workflow_steps`: Stores individual steps with their agent, input, and status
+
+---
+
+## 11. Observability System
 
 The project includes a comprehensive observability system for monitoring AI model performance, system health, costs, and evaluations. This system is built on top of the memory layer and provides insights into the behavior of AI models and the overall system.
 
-### 10.1 Observability Tables
+### 11.1 Observability Tables
 
 The following tables have been added to the Supabase schema to support observability:
 
@@ -337,7 +703,7 @@ The following tables have been added to the Supabase schema to support observabi
   - `evaluation_metrics`: Stores detailed metrics for model evaluations
   - `evaluation_examples`: Stores example inputs and outputs for model evaluations
 
-### 10.2 Observability Components
+### 11.2 Observability Components
 
 The project includes advanced visualization components for the observability dashboard:
 
@@ -349,7 +715,7 @@ The project includes advanced visualization components for the observability das
 - **CostEstimation**: Analyzes and projects costs for AI model usage
 - **ModelEvaluation**: Evaluates model quality with radar charts for metrics
 
-### 10.3 Tracing Integration
+### 11.3 Tracing Integration
 
 The tracing system is integrated with the memory layer to provide insights into AI model interactions:
 
@@ -358,7 +724,7 @@ The tracing system is integrated with the memory layer to provide insights into 
 - **Event Logging**: Discrete events like user messages, tool calls, and errors are logged
 - **Metadata Capture**: Relevant metadata like model ID, temperature, and token counts are captured
 
-### 10.4 Usage
+### 11.4 Usage
 
 To use the observability system:
 
@@ -368,7 +734,7 @@ To use the observability system:
 4. **Track Costs**: Monitor and project costs for AI model usage
 5. **Evaluate Models**: Compare model quality across different metrics
 
-### 10.5 API Routes
+### 11.5 API Routes
 
 The following API routes are available for the observability system:
 

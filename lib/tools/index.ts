@@ -1,5 +1,15 @@
-import { tool } from "ai"
+/**
+ * AI SDK Tools - Main Barrel File
+ *
+ * This is the main entry point for all tools in the AI SDK.
+ * It exports all tool modules, categories, and utility functions.
+ *
+ * @module tools
+ */
+
 import { z } from "zod"
+
+// Import all tool modules
 import * as webTools from "./web-tools"
 import * as codeTools from "./code-tools"
 import * as dataTools from "./data-tools"
@@ -7,11 +17,17 @@ import * as fileTools from "./file-tools"
 import * as apiTools from "./api-tools"
 import * as ragTools from "./rag-tools"
 import * as agenticTools from "./agentic"
-import { getLibSQLClient } from "../memory/db"
-import { getData, getItemById } from "../memory/supabase"
+
+// Import tool initialization and registry
+import { initializeTools, initializeBuiltInTools, initializeCustomTools, initializeAgenticTools } from "./toolInitializer"
+import { ToolRegistry, toolRegistry } from "./toolRegistry"
 
 // Export all tool modules
 export { webTools, codeTools, dataTools, fileTools, apiTools, ragTools, agenticTools }
+
+// Export tool initialization and registry
+export { initializeTools, initializeBuiltInTools, initializeCustomTools, initializeAgenticTools }
+export { ToolRegistry, toolRegistry }
 
 // Tool categories
 export const toolCategories = [
@@ -25,7 +41,11 @@ export const toolCategories = [
   { id: "custom", name: "Custom Tools", description: "User-defined custom tools" },
 ]
 
-// Get all built-in tools
+/**
+ * Get all built-in tools
+ *
+ * @returns Object containing all built-in tools
+ */
 export function getAllBuiltInTools() {
   return {
     ...webTools.tools,
@@ -38,68 +58,21 @@ export function getAllBuiltInTools() {
   }
 }
 
-// Load custom tools from Supabase
+/**
+ * Load custom tools from Supabase
+ *
+ * @returns Object containing all custom tools
+ */
 export async function loadCustomTools() {
-  try {
-    // Fetch custom tools from Supabase
-    const tools = await getData<any>("tools", {
-      filters: { type: "custom" },
-    })
-
-    // Optionally join with implementation code from an "apps" table if needed
-    // For now, assume implementation is stored in a column (e.g., implementation or code)
-
-    const customTools: Record<string, any> = {}
-
-    for (const tool of tools) {
-      try {
-        const name = tool.name as string
-        const description = tool.description as string
-        const parametersSchema = JSON.parse(tool.parameters_schema as string)
-        // If implementation is in a separate table, fetch it here
-        let implementation = tool.implementation as string | undefined
-        if (!implementation && tool.app_id) {
-          // Example: fetch from apps table if needed
-          const app = await getItemById<any>("apps", tool.app_id)
-          implementation = app?.code
-        }
-        if (!implementation) continue
-
-        // Convert JSON schema to Zod schema
-        const zodSchema = jsonSchemaToZod(parametersSchema)
-
-        // Create a safe execution environment for the custom tool
-        const executeTool = new Function("params", implementation)
-
-        customTools[name] = tool({
-          description,
-          parameters: zodSchema, // Assuming zodSchema is of type z.ZodTypeAny
-          execute: async (params: z.infer<typeof zodSchema>): Promise<any | { error: string }> => {
-            try {
-              // Assuming executeTool is typed as:
-              // const executeTool: (params: z.infer<typeof zodSchema>) => Promise<any> | any;
-              const executionResult: any = await executeTool(params);
-              return executionResult;
-            } catch (error: unknown) {
-              console.error(`Error executing custom tool ${name}:`, error);
-              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-              return { error: `Tool execution failed: ${errorMessage}` } as { error: string };
-            }
-          },
-        });
-      } catch (error) {
-        console.error(`Error loading custom tool ${tool.name}:`, error)
-      }
-    }
-
-    return customTools
-  } catch (error) {
-    console.error("Error loading custom tools from Supabase:", error)
-    return {}
-  }
+  return await initializeCustomTools()
 }
 
-// Helper to convert JSON schema to Zod schema
+/**
+ * Helper to convert JSON schema to Zod schema
+ *
+ * @param schema - JSON schema to convert
+ * @returns Zod schema
+ */
 export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
   if (!schema || typeof schema !== "object") {
     throw new Error("Invalid schema")

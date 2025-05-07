@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, blob, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 
 export const memory_threads = sqliteTable('memory_threads', {
   id: text('id').primaryKey(),
@@ -71,3 +72,11 @@ export const workflow_steps = sqliteTable('workflow_steps', {
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
 })
+
+export const gqlCache = sqliteTable('gql_cache', {
+  id: text('id').primaryKey(),           // key = query + variables JSON
+  query: text('query').notNull(),
+  variables: text('variables'),          // JSON string
+  response: text('response').notNull(),  // JSON string
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});

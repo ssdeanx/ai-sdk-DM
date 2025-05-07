@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { useToast } from '@/components/ui/use-toast'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { PostgrestError } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
@@ -54,7 +54,10 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
   const [error, setError] = useState<PostgrestError | null>(null)
   const [items, setItems] = useState<T[]>([])
   const [item, setItem] = useState<T | null>(null)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_KEY!
+  )
   const { toast } = useToast()
 
   /**
