@@ -142,13 +142,19 @@ export function AiSdkChat({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [threadName, setThreadName] = useState('New Chat');
-  const [selectedSystemPrompt, setSelectedSystemPrompt] = useState(systemPrompt || '');
+
+  const [selectedSystemPrompt,
+
+    setSelectedSystemPrompt
+  ] = useState(systemPrompt || '');
+
   const [selectedPersonaId, setSelectedPersonaId] = useState(personaId || '');
 
   // Critical state variables
   const [isConnected, setIsConnected] = useState(true);
   const [connectionRetries, setConnectionRetries] = useState(0);
   const [lastSuccessfulResponse, setLastSuccessfulResponse] = useState<Date | null>(null);
+
   const [modelAvailability, setModelAvailability] = useState<Record<string, boolean>>({});
   const [fallbackModelId, setFallbackModelId] = useState<string>('gemini-2.0-flash');
   const [isUsingFallbackModel, setIsUsingFallbackModel] = useState(false);
@@ -302,7 +308,7 @@ export function AiSdkChat({
   }, []);
 
   const [selectedModel, setSelectedModel] = useState(modelId);
-  const [selectedProvider, setSelectedProvider] = useState<string>('all');
+  const [selectedProvider, setSelectedProvider] = useState<string>(provider);
   const [selectedTemperature, setSelectedTemperature] = useState(temperature);
   const [selectedMaxTokens, setSelectedMaxTokens] = useState(maxTokens);
   const [enabledTools, setEnabledTools] = useState<string[]>(tools);
@@ -756,6 +762,14 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     fetchThreads();
   }, []);
 
+  // Create a new message using CreateMessage type
+  const createNewMessage = (role: 'user' | 'assistant' | 'system', content: string): CreateMessage => {
+    return {
+      role,
+      content
+    };
+  };
+
   // Create a new thread
   const createThread = async (name: string = 'New Chat') => {
     try {
@@ -990,7 +1004,8 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
 
         // Use fallback model
         if (!isUsingFallbackModel && connectionRetries >= maxRetries) {
-          const fallbackModel = handleModelFallback(error);
+          // Apply fallback model and store the result
+          handleModelFallback(error);
 
           // Retry with fallback model
           setTimeout(() => {
@@ -1025,13 +1040,15 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
       const data = await response.json();
 
       if (data.messages) {
-        // Format messages for AI SDK
-        const formattedMessages = data.messages.map((msg: any) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          createdAt: msg.createdAt
-        }));
+        // Format messages for AI SDK using createNewMessage
+        const formattedMessages = data.messages.map((msg: any) => {
+          if (msg.role === 'user' || msg.role === 'assistant' || msg.role === 'system') {
+            return createNewMessage(msg.role, msg.content);
+          } else {
+            // Handle other roles like 'tool' by converting to system messages
+            return createNewMessage('system', `${msg.role}: ${msg.content}`);
+          }
+        });
 
         // Set messages in the chat
         setMessages(formattedMessages);
@@ -1112,6 +1129,35 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
       });
     }
   }, [isUsingFallbackModel, fallbackModelId, selectedModel]);
+
+  // Update model availability status when connection status changes
+  useEffect(() => {
+    if (isConnected && lastError) {
+      // Record the successful connection time
+      setLastSuccessfulResponse(new Date());
+
+      // If we have a model that was previously marked as unavailable, mark it as available again
+      if (modelAvailability[selectedModel] === false) {
+        setModelAvailability(prev => ({
+          ...prev,
+          [selectedModel]: true
+        }));
+      }
+    }
+  }, [isConnected, lastError, modelAvailability, selectedModel]);
+
+  // Apply system prompt and persona settings
+  useEffect(() => {
+    // Update system prompt if changed externally
+    if (systemPrompt !== selectedSystemPrompt) {
+      setSelectedSystemPrompt(systemPrompt || '');
+    }
+
+    // Update persona ID if changed externally
+    if (personaId !== selectedPersonaId) {
+      setSelectedPersonaId(personaId || '');
+    }
+  }, [systemPrompt, personaId, selectedSystemPrompt, selectedPersonaId]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -1660,57 +1706,55 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     return parts.length > 0 ? parts : <p className="whitespace-pre-wrap">{content}</p>;
   };
 
+  // Handle tool toggle
+  const handleToolToggle = (toolId: string) => {
+    setEnabledTools(prev =>
+      prev.includes(toolId)
+        ? prev.filter(t => t !== toolId)
+        : [...prev, toolId]
+    );
+  };
+
+  // Handle thread change
+  const handleThreadChange = (threadId: string) => {
+    setCurrentThreadId(threadId);
+    loadThread(threadId);
+  };
+
+  // Convert available functions to tools format for sidebar
+  const availableTools = Object.entries(availableFunctions).map(([id, fn]) => ({
+    id,
+    name: id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+    description: fn.description
+  }));
+
+  // Convert threads to format for sidebar
+  const formattedThreads = threads.map(thread => ({
+    id: thread.id,
+    name: thread.name,
+    updated_at: thread.updatedAt
+  }));
+
   return (
     <div className={cn('flex h-full', className, isFullScreen && 'fixed inset-0 z-50 bg-background')}>
-      {/* Thread Sidebar */}
-      <div className="w-64 border-r h-full flex flex-col bg-muted/30">
-        <div className="p-3 border-b flex justify-between items-center">
-          <h3 className="font-medium text-sm">Chat History</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => createThread('New Chat').then(id => {
-              if (id) {
-                setMessages([]);
-                setThreadName('New Chat');
-                const url = new URL(window.location.href);
-                url.searchParams.set('thread', id);
-                window.history.pushState({}, '', url.toString());
-              }
-            })}
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {isLoadingThreads ? (
-            <div className="flex justify-center p-4">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : threads.length > 0 ? (
-            threads.map(thread => (
-              <Button
-                key={thread.id}
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start text-left font-normal truncate h-auto py-2",
-                  initialThreadId === thread.id && "bg-accent"
-                )}
-                onClick={() => loadThread(thread.id)}
-              >
-                <MessageSquare className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="truncate">{thread.name}</span>
-              </Button>
-            ))
-          ) : (
-            <div className="text-center p-4 text-sm text-muted-foreground">
-              No chat history
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Use ChatSidebar component */}
+      <ChatSidebar
+        className="hidden md:block"
+        models={allModels}
+        tools={availableTools}
+        threads={formattedThreads}
+        selectedModelId={selectedModel}
+        selectedThreadId={currentThreadId || ''}
+        selectedTools={enabledTools}
+        temperature={selectedTemperature}
+        maxTokens={selectedMaxTokens}
+        onModelChange={setSelectedModel}
+        onThreadChange={handleThreadChange}
+        onToolToggle={handleToolToggle}
+        onTemperatureChange={setSelectedTemperature}
+        onMaxTokensChange={setSelectedMaxTokens}
+        onCreateThread={() => createThread()}
+      />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-full">
@@ -2173,47 +2217,50 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
 
             <div className="space-y-2">
               <Label htmlFor="model">Model</Label>
-              <select
-                id="model"
-                className="w-full p-2 border rounded-md"
-                value={selectedModel}
-                onChange={(e) => {
-                  setSelectedModel(e.target.value);
+              {isLoadingModels ? (
+                <div className="flex items-center justify-center p-2 border rounded-md bg-gray-50">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading models...</span>
+                </div>
+              ) : (
+                <select
+                  id="model"
+                  className="w-full p-2 border rounded-md"
+                  value={selectedModel}
+                  onChange={(e) => {
+                    setSelectedModel(e.target.value);
 
-                  // Update max tokens based on model settings
-                  if (modelSettings[e.target.value]?.max_tokens) {
-                    // Set max tokens to either the current value or the model's max, whichever is smaller
-                    const modelMaxTokens = modelSettings[e.target.value].max_tokens;
-                    if (selectedMaxTokens > modelMaxTokens) {
-                      setSelectedMaxTokens(modelMaxTokens);
+                    // Update max tokens based on model settings
+                    if (modelSettings[e.target.value]?.max_tokens) {
+                      // Set max tokens to either the current value or the model's max, whichever is smaller
+                      const modelMaxTokens = modelSettings[e.target.value].max_tokens;
+                      if (selectedMaxTokens > modelMaxTokens) {
+                        setSelectedMaxTokens(modelMaxTokens);
+                      }
                     }
-                  }
-                }}
-              >
-                {selectedProvider === 'all' ? (
-                  // Show all models grouped by provider
-                  Object.entries(modelsByProvider).map(([provider, models]) => (
-                    <optgroup key={provider} label={provider.charAt(0).toUpperCase() + provider.slice(1)}>
-                      {models.map(model => (
-                        <option key={model.id} value={model.id}>
-                          {model.name}
-                          {modelSettings[model.id]?.supports_vision && " (Vision)"}
-                          {modelSettings[model.id]?.supports_functions && " (Functions)"}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))
-                ) : (
-                  // Show only models for the selected provider
-                  modelsByProvider[selectedProvider as keyof typeof modelsByProvider]?.map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                      {modelSettings[model.id]?.supports_vision && " (Vision)"}
-                      {modelSettings[model.id]?.supports_functions && " (Functions)"}
-                    </option>
-                  ))
-                )}
-              </select>
+                  }}
+                >
+                  {selectedProvider === 'all' ? (
+                    // Show all models from the allModels list
+                    allModels.map(model => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                        {modelSettings[model.id]?.supports_vision && " (Vision)"}
+                        {modelSettings[model.id]?.supports_functions && " (Functions)"}
+                      </option>
+                    ))
+                  ) : (
+                    // Show only models for the selected provider
+                    modelsByProvider[selectedProvider as keyof typeof modelsByProvider]?.map(model => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                        {modelSettings[model.id]?.supports_vision && " (Vision)"}
+                        {modelSettings[model.id]?.supports_functions && " (Functions)"}
+                      </option>
+                    ))
+                  )}
+                </select>
+              )}
 
               {/* Model capabilities */}
               {modelSettings[selectedModel] && (
@@ -2276,8 +2323,86 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label>Tools</Label>
+            {/* Error Recovery Settings */}
+            <div className="space-y-2 border-t pt-4">
+              <Label className="font-medium">Error Recovery Settings</Label>
+
+              <div className="space-y-4 mt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="fallbackModel">Fallback Model</Label>
+                  <select
+                    id="fallbackModel"
+                    className="w-full p-2 border rounded-md"
+                    value={fallbackModelId}
+                    onChange={(e) => setFallbackModelId(e.target.value)}
+                  >
+                    {selectedProvider === 'google' || selectedProvider === 'all' ? (
+                      <>
+                        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                        <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                      </>
+                    ) : null}
+
+                    {selectedProvider === 'openai' || selectedProvider === 'all' ? (
+                      <>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                      </>
+                    ) : null}
+
+                    {selectedProvider === 'anthropic' || selectedProvider === 'all' ? (
+                      <>
+                        <option value="claude-3-haiku">Claude 3 Haiku</option>
+                      </>
+                    ) : null}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Model to use if the primary model fails
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label htmlFor="max-retries">Max Retries: {maxRetries}</Label>
+                  </div>
+                  <input
+                    id="max-retries"
+                    type="range"
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={maxRetries}
+                    onChange={(e) => setMaxRetries(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of times to retry before using fallback model
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label htmlFor="retry-delay">Retry Delay (ms): {retryDelay}</Label>
+                  </div>
+                  <input
+                    id="retry-delay"
+                    type="range"
+                    min={500}
+                    max={10000}
+                    step={500}
+                    value={retryDelay}
+                    onChange={(e) => setRetryDelay(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Delay between retry attempts (milliseconds)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-4">
+              <Label className="font-medium">Tools</Label>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="web-search" className="cursor-pointer">Web Search</Label>
