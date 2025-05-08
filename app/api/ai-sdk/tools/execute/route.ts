@@ -6,7 +6,7 @@ import { agenticTools } from "@/lib/tools/agentic";
 import { getAllAISDKTools } from "@/lib/ai-sdk-integration";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
-import * as toolExecutors from "@/lib/tools/tool-execution";
+
 
 /**
  * POST /api/ai-sdk/tools/execute
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     });
 
     // Check if tool exists
-    if (!allTools[toolName] && !toolExecutors[`execute${toolName}`]) {
+    if (!allTools[toolName]) {
       return NextResponse.json({ error: `Tool '${toolName}' not found` }, { status: 404 });
     }
 
@@ -56,13 +56,7 @@ export async function POST(request: Request) {
       let result;
 
       // Execute the tool
-      if (allTools[toolName]) {
-        // Use the tool from the registry
-        result = await allTools[toolName].execute(parameters);
-      } else {
-        // Use the tool executor
-        result = await toolExecutors[`execute${toolName}`](parameters);
-      }
+      result = await allTools[toolName].execute(parameters);
 
       // Calculate execution time
       const executionTime = Date.now() - startTime;

@@ -159,17 +159,4 @@ export function ModelViewer({
   )
 }
 
-// Placeholder for the ThreeViewer component
-// In a real implementation, this would be a separate file with Three.js code
-function ThreeViewer({ modelUrl, format, backgroundColor, autoRotate }: {
-  modelUrl: string
-  format: string
-  backgroundColor: string
-  autoRotate: boolean
-}) {
-  return (
-    <div className="w-full h-full flex items-center justify-center">
-      <p>Three.js viewer would render here</p>
-    </div>
-  )
-}
+

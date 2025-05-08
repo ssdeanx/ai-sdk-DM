@@ -68,7 +68,7 @@ async function codeExecute(
   /* ---------------------------  JS via worker thread  --------------------------- */
   return new Promise<ExecuteResult>((resolve) => {
     /* eslint-disable @typescript-eslint/no-var-requires */
-    const worker = new Worker(require.resolve('./execute-worker'), {
+    const worker = new Worker(require.resolve('./code/execute-worker'), {
       workerData: { code },
     });
     /* eslint-enable @typescript-eslint/no-var-requires */

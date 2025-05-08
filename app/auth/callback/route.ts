@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 // The client you created from the Server-Side Auth instructions
-import { createClient } from '@/utils/supabase/server'
+import { getSupabaseClient } from '@/lib/memory/supabase'
 
 /**
  * Handles the OAuth callback from Supabase Auth
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/'
 
   if (code) {
-    const supabase = await createClient()
+    const supabase = getSupabaseClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {

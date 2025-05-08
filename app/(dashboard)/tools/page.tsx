@@ -712,4 +712,9 @@ export default function ToolsPage() {
                 </DialogContent>
               </Dialog>
             </div>
-          </div>\
+          </div>
+</ErrorBoundary>
+);
+}
+
+export default ToolsPage;

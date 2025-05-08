@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { StreamingTextResponse } from '@ai-sdk/core'
+import { StreamingTextResponse } from 'ai'
 import { GoogleAIStream } from '@ai-sdk/google'
 import { streamGoogleAI } from "@/lib/google-ai"
 import { streamGoogleAIWithTracing } from "@/lib/ai-sdk-tracing"
