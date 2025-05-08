@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { StreamingTextResponse } from 'ai';
+import { streamText, CoreMessage } from 'ai';
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
 import { agentRegistry } from "@/lib/agents/registry";
+import { runAgent } from "@/lib/agents/agent-service";
+import { AgentRunOptions } from "@/lib/agents/agent.types";
+import { saveMessage, loadAgentState, saveAgentState } from "@/lib/memory/memory";
+// personaManager and createMemoryThread/loadMessages might not be directly needed here if runAgent handles them
 import { runAgent } from "@/lib/agents/agent-service";
 import { personaManager } from "@/lib/agents/personas/persona-manager";
 import { createMemoryThread, saveMessage, loadMessages } from "@/lib/memory/memory";

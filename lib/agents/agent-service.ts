@@ -1,4 +1,4 @@
-import { streamText, CoreMessage } from "ai"
+import { streamText, CoreMessage, StreamTextResult } from "ai";
 import { getProviderByName } from "../ai"
 import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
 import { jsonSchemaToZod } from "../tools"
@@ -6,7 +6,7 @@ import { toolRegistry } from "../tools/toolRegistry"
 import { getLibSQLClient } from "../memory/db"
 import { getItemById, getData } from "../memory/supabase"
 import { v4 as uuidv4 } from "uuid"
-import { Agent, ToolConfig, RunResult } from "./agent.types"
+import { Agent, ToolConfig, RunResult, AgentRunOptions } from "./agent.types"
 import { personaManager } from "./personas/persona-manager"
 
 /**
@@ -20,7 +20,8 @@ import { personaManager } from "./personas/persona-manager"
 export async function runAgent(
   agentId: string,
   memoryThreadId?: string,
-  initialInput?: string
+  initialInput?: string,
+  options?: AgentRunOptions
 ): Promise<RunResult> {
   // Generate thread ID if not provided
   const threadId = memoryThreadId || uuidv4()
@@ -59,7 +60,6 @@ export async function runAgent(
       // If agent has a persona, use it to generate system prompt
       if (agent.persona_id) {
         try {
-          await personaManager.init();
           systemMessage = await personaManager.generateSystemPrompt(agent.persona_id, {
             agentName: agent.name,
             agentDescription: agent.description,
@@ -154,26 +154,41 @@ export async function runAgent(
       messages: messages as CoreMessage[],
       tools: aiTools,
       maxSteps: 5, // Allow multiple tool calls in a single request
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+      toolChoice: options?.toolChoice,
+      onFinish: options?.onFinish, // Pass the onFinish callback
     })
 
-    // Get the text response
-    const responseText = await result.text
+    // streamOutput handling
+    const streamOutput = options?.streamOutput ?? false;
 
-    // Save the assistant's response
-    await saveMessage(threadId, "assistant", responseText)
+    if (streamOutput) {
+      // Caller is responsible for consuming the stream.
+      // If message saving and state updates are needed, caller should use onFinish or similar.
+      return {
+        streamResult: result, // The raw StreamTextResult object
+        memoryThreadId: threadId,
+      };
+    } else {
+      // Original behavior: resolve text, save messages and state.
+      const responseText = await result.text;
+      await saveMessage(threadId, "assistant", responseText);
 
-    // Update agent state
-    const newState = {
-      ...agentState,
-      lastRun: new Date().toISOString(),
-      runCount: (agentState.runCount || 0) + 1,
-    }
-    await saveAgentState(threadId, agentId, newState)
+      // Update agent state (agentState was loaded earlier)
+      const newState = {
+        ...agentState, // agentState was loaded around line 83
+        lastRun: new Date().toISOString(),
+        runCount: (agentState?.runCount || 0) + 1,
+      };
+      await saveAgentState(threadId, agentId, newState);
 
-    // Return the result
-    return {
-      output: responseText,
-      memoryThreadId: threadId,
+      // TODO: Consider Langfuse logEvent if traceId is in options
+
+      return {
+        output: responseText,
+        memoryThreadId: threadId,
+      };
     }
   } catch (error) {
     console.error(`Error running agent ${agentId}:`, error)

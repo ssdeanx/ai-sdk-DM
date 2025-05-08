@@ -1,3 +1,4 @@
+import { StreamTextResult } from 'ai';
 /**
  * TypeScript interfaces for Agent configuration rows in Supabase
  */
@@ -47,8 +48,24 @@ export interface AgentState {
  * Result of an agent run
  */
 export interface RunResult {
-  output: string
-  memoryThreadId: string
+  output?: string; // Make optional
+  streamResult?: StreamTextResult<any>; // Add this
+  memoryThreadId: string;
+}
+/**
+ * Options for running an agent
+ */
+export interface AgentRunOptions {
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
+  toolChoice?: any; // Based on Vercel SDK, this can be complex
+  traceId?: string;
+  streamOutput?: boolean;
+  onFinish?: (data: {
+    text: string;
+    // TODO: Define more complete type for onFinish data based on AI SDK
+  }) => Promise<void>;
 }
 
 /**
