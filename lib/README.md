@@ -164,7 +164,7 @@ lib/
 - [x] **Error Handling**: `api-error-handler.ts`
 - [x] **Utilities**: `utils.ts`, placeholder mock data in `mock-data/`
 - [x] **Drizzle Migrations**: Separate config and schema for Supabase and LibSQL
-- [ ] **Advanced Middleware**: Implement language model and request-response middleware for AI SDK
+- [x] **Advanced Middleware**: Implement language model and request-response middleware for AI SDK
   - Transform parameters before they're passed to language models
   - Wrap generate and stream methods for pre/post processing
   - Implement caching, simulation, and default settings middleware
@@ -202,7 +202,7 @@ lib/
 
 ### 5.1 Middleware System
 
-The AI SDK supports middleware for intercepting and modifying requests and responses:
+The AI SDK supports middleware for intercepting and modifying requests and responses. Our implementation provides a comprehensive middleware system with both language model middleware and request-response middleware.
 
 #### Language Model Middleware
 
@@ -223,24 +223,36 @@ You can implement any of these functions to modify behavior:
 2. **`wrapGenerate`**: Wraps the `doGenerate` method of the language model
 3. **`wrapStream`**: Wraps the `doStream` method of the language model
 
-Example of a caching middleware:
+Our middleware implementation in `lib/middleware.ts` provides several ready-to-use middleware factories:
 
 ```typescript
-import type { LanguageModelV1Middleware } from 'ai';
+import { createMiddlewareFromOptions } from '@/lib/middleware';
 
-const cache = new Map<string, any>();
-
-export const cacheMiddleware: LanguageModelV1Middleware = {
-  wrapGenerate: async ({ doGenerate, params }) => {
-    const cacheKey = JSON.stringify(params);
-    if (cache.has(cacheKey)) {
-      return cache.get(cacheKey);
-    }
-    const result = await doGenerate();
-    cache.set(cacheKey, result);
-    return result;
+// Create middleware array with multiple capabilities
+const middlewares = createMiddlewareFromOptions({
+  caching: {
+    enabled: true,
+    ttl: 60_000, // 1 minute cache TTL
+    maxSize: 100 // Maximum cache size
+  },
+  logging: {
+    enabled: true,
+    logParams: true,
+    logResults: true
+  },
+  reasoning: {
+    enabled: true,
+    tagName: 'think',
+    startWithReasoning: false
+  },
+  simulation: {
+    enabled: false
+  },
+  defaultSettings: {
+    temperature: 0.7,
+    maxTokens: 1000
   }
-};
+});
 ```
 
 #### Request-Response Middleware
@@ -248,7 +260,10 @@ export const cacheMiddleware: LanguageModelV1Middleware = {
 This middleware intercepts and modifies requests and responses at the API level:
 
 ```typescript
-const middleware = createMiddleware({
+import { createMiddleware } from 'ai';
+
+// Context injection middleware
+const contextMiddleware = createMiddleware({
   name: 'context-injection',
   beforeRequest: async ({ messages }) => {
     // Add context to the first message
@@ -258,6 +273,73 @@ const middleware = createMiddleware({
         ...messages
       ]
     };
+  }
+});
+
+// Response filtering middleware
+const filterMiddleware = createMiddleware({
+  name: 'response-filter',
+  afterResponse: async ({ response }) => {
+    // Filter or modify the response
+    return {
+      response: {
+        ...response,
+        text: response.text().replace(/sensitive/g, '[redacted]')
+      }
+    };
+  }
+});
+
+// Error handling middleware
+const errorMiddleware = createMiddleware({
+  name: 'error-handler',
+  onError: async ({ error, runAgain }) => {
+    console.error('Model error:', error);
+    if (error.message.includes('rate limit')) {
+      // Wait and retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return runAgain();
+    }
+    // Let the error propagate
+    return { error };
+  }
+});
+
+// Use middleware in streamText or generateText
+const result = await streamText({
+  model,
+  messages,
+  middleware: [contextMiddleware, filterMiddleware, errorMiddleware]
+});
+```
+
+#### Middleware Composition
+
+You can compose multiple middleware together for complex behavior:
+
+```typescript
+// Combine language model middleware
+const combinedLMMiddleware = [
+  createCachingMiddleware({ enabled: true }),
+  createLoggingMiddleware({ enabled: true }),
+  createReasoningMiddleware({ enabled: true })
+];
+
+// Combine request-response middleware
+const combinedRRMiddleware = [
+  contextMiddleware,
+  filterMiddleware,
+  errorMiddleware
+];
+
+// Use in AI SDK integration
+const result = await streamWithAISDK({
+  provider: 'google',
+  modelId: 'gemini-1.5-pro',
+  messages,
+  middleware: {
+    languageModel: combinedLMMiddleware,
+    request: combinedRRMiddleware
   }
 });
 ```

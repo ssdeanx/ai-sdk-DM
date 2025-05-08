@@ -76,7 +76,8 @@ export function EnhancedChat({
     attachments,
     setAttachments,
     sendMessage,
-    fetchMessages
+    fetchMessages,
+    runSequentialGenerations,
   } = useChat({
     initialMessages,
     initialThreadId,
@@ -122,7 +123,7 @@ export function EnhancedChat({
   const {
     data: threadsData,
     isLoading: isLoadingThreads,
-    refresh: refreshThreads,
+    refetch: refreshThreads,
   } = useSupabaseFetch({
     endpoint: "/api/threads",
     resourceName: "Threads",

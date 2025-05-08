@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { StreamingTextResponse, createDataStreamResponse } from '@ai-sdk/core';
-import { streamWithAISDK, getAllAISDKTools } from "@/lib/ai-sdk-integration";
-import { getLibSQLClient } from "@/lib/memory/db";
+import { StreamingTextResponse, createDataStreamResponse, generateId, type LanguageModelV1Middleware } from 'ai';
+import { streamWithAISDK, getAllAISDKTools, generateWithAISDK } from "@/lib/ai-sdk-integration";
 import { memory } from "@/lib/memory/factory";
 import { createMemoryThread, saveMessage, loadMessages } from "@/lib/memory/memory";
 import { v4 as uuidv4 } from "uuid";
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
-import { getModelConfig } from "@/lib/openai-ai";
-import { generateId } from "ai";
+import { getModelConfig, getAgentConfig } from "@/lib/memory/supabase";
+import { createMiddlewareFromOptions, createRequestResponseMiddlewareFromOptions, createCompleteMiddleware } from "@/lib/middleware";
+import { personaManager } from "@/lib/agents/personas/persona-manager";
+import { toolRegistry } from "@/lib/tools/toolRegistry";
+import { agentRegistry } from "@/lib/agents/registry";
+import { RequestMiddleware, ResponseMiddleware } from "@/lib/middleware";
+
 
 export async function POST(request: Request) {
   try {
@@ -16,17 +20,18 @@ export async function POST(request: Request) {
     const {
       messages,
       threadId,
-      model = 'gemini-1.5-pro',
+      model = 'models/gemini-2.0-flash',
       temperature = 0.7,
       maxTokens = 2048,
       tools = [],
       attachments = [],
       images = [],
-      provider,
+      provider = 'google',
       systemPrompt,
       streamProtocol = 'data',
       toolChoice = 'auto',
-      maxSteps = 5
+      maxSteps = 5,
+      middleware = {}
     } = body;
 
     // Validate request
@@ -145,7 +150,7 @@ export async function POST(request: Request) {
     // Load built-in tools if needed
     if (tools && tools.length > 0) {
       // Get all available tools
-      const allTools = await getAllAISDKTools({
+      const allTools: Record<string, any> = await getAllAISDKTools({
         includeBuiltIn: true,
         includeCustom: true,
         includeAgentic: true
@@ -163,6 +168,12 @@ export async function POST(request: Request) {
           acc[tool.function.name] = {
             description: tool.function.description,
             parameters: tool.function.parameters
+          };
+        } else if (typeof tool === 'object' && tool.name) {
+          // Handle tool objects with name property
+          acc[tool.name] = {
+            description: tool.description || '',
+            parameters: tool.parameters || {}
           };
         }
         return acc;
@@ -225,10 +236,103 @@ export async function POST(request: Request) {
       }
     }
 
+    // Configure middleware
+    let languageModelMiddleware: LanguageModelV1Middleware[] = [];
+    let requestResponseMiddleware: (RequestMiddleware | ResponseMiddleware)[] = [];
+
+    if (middleware) {
+      // Handle language model middleware
+      if (typeof middleware === 'object') {
+        // Check if it's a middleware options object
+        if ('caching' in middleware || 'reasoning' in middleware ||
+            'simulation' in middleware || 'logging' in middleware ||
+            'defaultSettings' in middleware) {
+          // It's middleware options
+          const middlewareOptions = {
+            caching: middleware.caching || { enabled: false },
+            reasoning: middleware.reasoning || { enabled: false },
+            simulation: middleware.simulation || { enabled: false },
+            logging: middleware.logging || { enabled: false },
+            defaultSettings: middleware.defaultSettings
+          };
+
+          // Create middleware array using our middleware module
+          languageModelMiddleware = createMiddlewareFromOptions(middlewareOptions);
+
+          // Log middleware creation
+          console.log(`Created ${languageModelMiddleware.length} language model middleware from options`);
+        } else if (middleware.languageModel || middleware.request || middleware.response) {
+          // It's a structured middleware object with separate types
+          if (middleware.languageModel) {
+            languageModelMiddleware = Array.isArray(middleware.languageModel)
+              ? middleware.languageModel
+              : [middleware.languageModel];
+
+            console.log(`Using ${languageModelMiddleware.length} provided language model middleware`);
+          }
+
+          // Store request/response middleware for future use
+          if (middleware.request || middleware.response) {
+            requestResponseMiddleware = [
+              ...(Array.isArray(middleware.request) ? middleware.request :
+                middleware.request ? [middleware.request] : []),
+              ...(Array.isArray(middleware.response) ? middleware.response :
+                middleware.response ? [middleware.response] : [])
+            ];
+
+            console.log(`Using ${requestResponseMiddleware.length} provided request/response middleware`);
+          }
+        }
+      } else if (Array.isArray(middleware)) {
+        // It's an array of middleware
+        languageModelMiddleware = middleware;
+        console.log(`Using ${languageModelMiddleware.length} middleware from array`);
+      }
+    }
+
+    // Initialize tool registry if needed
+    await toolRegistry.initialize();
+
+    // Check if any persona is specified
+    const personaId = body.personaId || body.persona_id;
+    let personaSystemPrompt: string | undefined;
+
+    if (personaId) {
+      try {
+        const persona = await personaManager.getPersona(personaId);
+        if (persona && persona.systemPromptTemplate) {
+          // Extract system prompt from persona
+          personaSystemPrompt = persona.systemPromptTemplate;
+          console.log(`Using persona ${persona.name} with system prompt template`);
+
+          // Generate system prompt with context if needed
+          try {
+            personaSystemPrompt = await personaManager.generateSystemPrompt(personaId, {
+              model: modelConfig.model_id,
+              provider: modelProvider,
+              temperature,
+              maxTokens
+            });
+          } catch (promptError) {
+            console.warn(`Error generating system prompt from template:`, promptError);
+            // Fall back to template
+          }
+
+          // If no system prompt was provided but we have a persona, use it
+          if (!systemPrompt && personaSystemPrompt) {
+            // Add persona system prompt to the beginning of messages
+            processedMessages.unshift({ role: 'system', content: personaSystemPrompt });
+          }
+        }
+      } catch (error) {
+        console.warn(`Error loading persona ${personaId}:`, error);
+      }
+    }
+
     // Use the AI SDK integration for enhanced capabilities
     const streamOptions = {
       provider: modelProvider as "google" | "openai" | "anthropic",
-      modelId: modelConfig.model_id,
+      modelId: modelConfig.model_id || model,
       messages: processedMessages,
       temperature: temperature || modelSettings.default_temperature,
       maxTokens: effectiveMaxTokens,
@@ -241,8 +345,21 @@ export async function POST(request: Request) {
         parentTraceId: trace?.id,
         threadId: chatThreadId,
         source: 'ai-sdk-ui',
-        modelSettings
-      }
+        modelSettings,
+        personaId: personaId || undefined,
+        hasSystemPrompt: !!systemPrompt || !!personaSystemPrompt,
+        toolCount: Object.keys(toolConfigs).length,
+        messageCount: processedMessages.length,
+        hasImages: images && images.length > 0,
+        hasAttachments: attachments && attachments.length > 0,
+        toolChoice
+      },
+      middleware: languageModelMiddleware.length > 0 ? languageModelMiddleware : undefined,
+      toolChoice,
+      useSearchGrounding: body.useSearchGrounding,
+      dynamicRetrievalConfig: body.dynamicRetrievalConfig,
+      responseModalities: body.responseModalities,
+      cachedContent: body.cachedContent
     };
 
     // Use Data Stream Protocol for enhanced features
@@ -250,148 +367,286 @@ export async function POST(request: Request) {
       return createDataStreamResponse({
         execute: async (dataStream) => {
           // Send initial status
-          dataStream.writeData({ status: 'initialized', threadId: chatThreadId });
+          dataStream.writeData({
+            status: 'initialized',
+            threadId: chatThreadId,
+            timestamp: new Date().toISOString()
+          });
 
           try {
+            // Ensure tool registry is initialized
+            if (Object.keys(toolConfigs).length > 0) {
+              try {
+                await toolRegistry.initialize();
+                dataStream.writeData({
+                  status: 'tools_initialized',
+                  toolCount: Object.keys(toolConfigs).length,
+                  timestamp: new Date().toISOString()
+                });
+              } catch (toolError) {
+                console.error('Error initializing tool registry:', toolError);
+                dataStream.writeData({
+                  status: 'tools_initialization_error',
+                  error: toolError instanceof Error ? toolError.message : String(toolError),
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+
+            // Add middleware information to data stream
+            if (languageModelMiddleware.length > 0) {
+              dataStream.writeData({
+                status: 'middleware_applied',
+                middlewareCount: languageModelMiddleware.length,
+                middlewareTypes: 'language_model_middleware',
+                timestamp: new Date().toISOString()
+              });
+            }
+
+            if (requestResponseMiddleware.length > 0) {
+              dataStream.writeData({
+                status: 'request_response_middleware_applied',
+                middlewareCount: requestResponseMiddleware.length,
+                timestamp: new Date().toISOString()
+              });
+            }
+
             // Stream with AI SDK
             const result = await streamWithAISDK(streamOptions);
 
             // Merge the stream into the data stream
             result.mergeIntoDataStream(dataStream);
 
-            // Handle completion
-            result.then(async (completedResult) => {
-              try {
-                const assistantMessage = completedResult.response.text();
+            // Save the assistant message asynchronously
+            const assistantMessageId = generateId();
 
-                // Save the assistant message
-                const messageId = await saveMessage(
+            // Add message annotation with the ID
+            dataStream.writeMessageAnnotation({
+              id: assistantMessageId,
+              threadId: chatThreadId,
+              createdAt: new Date().toISOString()
+            });
+
+            // Add call completion annotation
+            dataStream.writeData({
+              status: 'message_started',
+              threadId: chatThreadId,
+              messageId: assistantMessageId,
+              timestamp: new Date().toISOString()
+            });
+
+            // Set up a listener to save the message when the stream completes
+            setTimeout(async () => {
+              try {
+                // Save the message with a placeholder
+                // The actual content will be captured by the client
+                await saveMessage(
                   chatThreadId,
                   'assistant',
-                  assistantMessage,
+                  '[Response from AI model - saved asynchronously]',
                   {
                     count_tokens: true,
-                    generate_embeddings: true,
+                    generate_embeddings: true, // Enable embeddings for assistant messages
                     metadata: {
+                      id: assistantMessageId,
                       source: 'ai-sdk-ui',
                       timestamp: new Date().toISOString(),
                       model: modelConfig.model_id,
                       provider: modelProvider,
-                      toolCalls: completedResult.toolCalls?.length > 0 ? completedResult.toolCalls : undefined
+                      personaId: personaId || undefined,
+                      temperature,
+                      maxTokens: effectiveMaxTokens,
+                      toolChoice
                     }
                   }
                 );
-
-                // Add message annotation with the saved ID
-                dataStream.writeMessageAnnotation({
-                  id: messageId,
-                  threadId: chatThreadId,
-                  createdAt: new Date().toISOString()
-                });
-
-                // Add call completion annotation
-                dataStream.writeData({
-                  status: 'completed',
-                  threadId: chatThreadId,
-                  messageId
-                });
 
                 // Log the assistant message event
                 if (trace?.id) {
                   await logEvent({
                     traceId: trace.id,
-                    name: "assistant_message",
+                    name: "assistant_message_saved",
                     metadata: {
                       role: "assistant",
-                      content: assistantMessage,
+                      messageId: assistantMessageId,
                       timestamp: new Date().toISOString(),
                       model: modelConfig.model_id,
                       provider: modelProvider,
-                      hasToolCalls: completedResult.toolCalls?.length > 0
+                      personaId: personaId || undefined
                     }
                   });
                 }
+
+                // Add completion annotation
+                dataStream.writeData({
+                  status: 'message_saved',
+                  threadId: chatThreadId,
+                  messageId: assistantMessageId,
+                  timestamp: new Date().toISOString()
+                });
               } catch (error) {
                 console.error('Error saving assistant message:', error);
                 dataStream.writeData({
                   status: 'error',
-                  error: 'Failed to save assistant message',
-                  threadId: chatThreadId
+                  error: error instanceof Error ? error.message : 'Failed to save assistant message',
+                  threadId: chatThreadId,
+                  timestamp: new Date().toISOString()
                 });
               }
-            }).catch(error => {
-              console.error('Error processing assistant response:', error);
-              dataStream.writeData({
-                status: 'error',
-                error: 'Failed to process assistant response',
-                threadId: chatThreadId
-              });
-            });
+            }, 100);
           } catch (error) {
             console.error('Error streaming AI response:', error);
+
+            // Log the error to trace
+            if (trace?.id) {
+              await logEvent({
+                traceId: trace.id,
+                name: "stream_error",
+                metadata: {
+                  error: error instanceof Error ? error.message : String(error),
+                  stack: error instanceof Error ? error.stack : undefined,
+                  timestamp: new Date().toISOString()
+                }
+              });
+            }
+
             dataStream.writeData({
               status: 'error',
-              error: 'Failed to stream AI response',
-              threadId: chatThreadId
+              error: error instanceof Error ? error.message : 'Failed to stream AI response',
+              threadId: chatThreadId,
+              timestamp: new Date().toISOString()
             });
           }
         }
       });
     } else {
       // Use Text Stream Protocol (simpler)
-      const response = await streamWithAISDK(streamOptions);
+      // Add middleware information to response headers
+      const headers: Record<string, string> = {
+        'x-thread-id': chatThreadId,
+        'x-timestamp': new Date().toISOString()
+      };
 
-      // Save the assistant's response to memory after streaming
-      response.then(async (result) => {
+      // Ensure tool registry is initialized if tools are used
+      if (Object.keys(toolConfigs).length > 0) {
         try {
-          const assistantMessage = result.response.text();
+          await toolRegistry.initialize();
+          headers['x-tools-initialized'] = 'true';
+          headers['x-tool-count'] = Object.keys(toolConfigs).length.toString();
+        } catch (toolError) {
+          console.error('Error initializing tool registry:', toolError);
+          headers['x-tools-initialized'] = 'false';
+          headers['x-tools-error'] = toolError instanceof Error ? toolError.message : String(toolError);
+        }
+      }
 
-          // Save the assistant message
-          await saveMessage(
-            chatThreadId,
-            'assistant',
-            assistantMessage,
-            {
-              count_tokens: true,
-              generate_embeddings: true,
-              metadata: {
-                source: 'ai-sdk-ui',
-                timestamp: new Date().toISOString(),
-                model: modelConfig.model_id,
-                provider: modelProvider,
-                toolCalls: result.toolCalls?.length > 0 ? result.toolCalls : undefined
+      if (languageModelMiddleware.length > 0) {
+        headers['x-middleware-count'] = languageModelMiddleware.length.toString();
+        headers['x-middleware-types'] = 'language_model_middleware';
+      }
+
+      if (requestResponseMiddleware.length > 0) {
+        headers['x-request-response-middleware-count'] = requestResponseMiddleware.length.toString();
+      }
+
+      // Add persona information if available
+      if (personaId) {
+        headers['x-persona-id'] = personaId;
+      }
+
+      try {
+        const response = await streamWithAISDK(streamOptions);
+
+        // Set up a listener for when the response is complete
+        // This is handled asynchronously to not block the response
+        setTimeout(async () => {
+          try {
+            // We can't directly await the response, so we'll save the message after a delay
+            // This is a workaround since we can't easily get the final text from the stream
+            const assistantMessageId = generateId();
+
+            // Save a placeholder message that will be updated later if needed
+            await saveMessage(
+              chatThreadId,
+              'assistant',
+              '[Response from AI model - saved asynchronously]',
+              {
+                count_tokens: true,
+                generate_embeddings: true, // Enable embeddings for assistant messages
+                metadata: {
+                  id: assistantMessageId,
+                  source: 'ai-sdk-ui',
+                  timestamp: new Date().toISOString(),
+                  model: modelConfig.model_id,
+                  provider: modelProvider,
+                  personaId: personaId || undefined,
+                  temperature,
+                  maxTokens: effectiveMaxTokens,
+                  toolChoice
+                }
               }
+            );
+
+            // Log the assistant message event
+            if (trace?.id) {
+              await logEvent({
+                traceId: trace.id,
+                name: "assistant_message_saved",
+                metadata: {
+                  role: "assistant",
+                  messageId: assistantMessageId,
+                  timestamp: new Date().toISOString(),
+                  model: modelConfig.model_id,
+                  provider: modelProvider,
+                  personaId: personaId || undefined
+                }
+              });
             }
-          );
+          } catch (error) {
+            console.error('Error saving assistant message:', error);
 
-          // Log the assistant message event
-          if (trace?.id) {
-            await logEvent({
-              traceId: trace.id,
-              name: "assistant_message",
-              metadata: {
-                role: "assistant",
-                content: assistantMessage,
-                timestamp: new Date().toISOString(),
-                model: modelConfig.model_id,
-                provider: modelProvider,
-                hasToolCalls: result.toolCalls?.length > 0
-              }
-            });
+            // Log the error to trace
+            if (trace?.id) {
+              await logEvent({
+                traceId: trace.id,
+                name: "message_save_error",
+                metadata: {
+                  error: error instanceof Error ? error.message : String(error),
+                  timestamp: new Date().toISOString()
+                }
+              });
+            }
           }
-        } catch (error) {
-          console.error('Error saving assistant message:', error);
-        }
-      }).catch(error => {
-        console.error('Error processing assistant response:', error);
-      });
+        }, 100);
 
-      // Return the stream as a streaming text response
-      return new StreamingTextResponse(response, {
-        headers: {
-          'x-thread-id': chatThreadId
+        // Return the stream as a streaming text response
+        return new StreamingTextResponse(response, { headers });
+      } catch (error) {
+        console.error('Error streaming AI response:', error);
+
+        // Log the error to trace
+        if (trace?.id) {
+          await logEvent({
+            traceId: trace.id,
+            name: "stream_error",
+            metadata: {
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              timestamp: new Date().toISOString()
+            }
+          });
         }
-      });
+
+        // Return error response
+        return NextResponse.json(
+          {
+            error: error instanceof Error ? error.message : 'Failed to stream AI response',
+            timestamp: new Date().toISOString(),
+            threadId: chatThreadId
+          },
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     return handleApiError(error);

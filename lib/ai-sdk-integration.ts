@@ -5,7 +5,14 @@
  * integrating with various AI providers, tools, and tracing systems.
  */
 
-import { streamText, generateText } from "ai";
+import {
+  streamText,
+  generateText,
+  wrapLanguageModel,
+  type LanguageModelV1Middleware,
+  type StreamTextResult,
+  type GenerateTextResult
+} from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -118,7 +125,8 @@ export async function streamWithAISDK({
   useSearchGrounding,
   dynamicRetrievalConfig,
   responseModalities,
-  cachedContent
+  cachedContent,
+  middleware
 }: {
   provider: "google" | "openai" | "anthropic";
   modelId: string;
@@ -131,6 +139,7 @@ export async function streamWithAISDK({
   traceName?: string;
   userId?: string;
   metadata?: any;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
     mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
@@ -138,7 +147,7 @@ export async function streamWithAISDK({
   };
   responseModalities?: Array<"TEXT" | "IMAGE">;
   cachedContent?: string;
-} {
+}): Promise<StreamTextResult<Record<string, any>, never>> {
   // Create a trace for this operation
   const traceObj = await createTrace({
     name: traceName || `${provider}_stream`,
@@ -177,12 +186,14 @@ export async function streamWithAISDK({
           userId,
           metadata: {
             ...metadata,
-            parentTraceId: traceId
+            parentTraceId: traceId,
+            middlewareApplied: !!middleware
           },
           useSearchGrounding,
           dynamicRetrievalConfig,
           responseModalities,
-          cachedContent
+          cachedContent,
+          middleware
         });
         break;
 
@@ -199,8 +210,10 @@ export async function streamWithAISDK({
           userId,
           metadata: {
             ...metadata,
-            parentTraceId: traceId
-          }
+            parentTraceId: traceId,
+            middlewareApplied: !!middleware
+          },
+          middleware
         });
         break;
 
@@ -217,8 +230,10 @@ export async function streamWithAISDK({
           userId,
           metadata: {
             ...metadata,
-            parentTraceId: traceId
-          }
+            parentTraceId: traceId,
+            middlewareApplied: !!middleware
+          },
+          middleware
         });
         break;
 
@@ -297,7 +312,8 @@ export async function generateWithAISDK({
   baseURL,
   traceName,
   userId,
-  metadata = {}
+  metadata = {},
+  middleware
 }: {
   provider: "google" | "openai" | "anthropic"
   modelId: string
@@ -310,7 +326,8 @@ export async function generateWithAISDK({
   traceName?: string
   userId?: string
   metadata?: any
-}) {
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
+}): Promise<GenerateTextResult<Record<string, any>, never>> {
   // Create a trace for this operation
   const traceObj = await createTrace({
     name: traceName || `${provider}_generate`,
@@ -349,8 +366,10 @@ export async function generateWithAISDK({
           userId,
           metadata: {
             ...metadata,
-            parentTraceId: traceId
-          }
+            parentTraceId: traceId,
+            middlewareApplied: !!middleware
+          },
+          middleware
         });
         break;
 

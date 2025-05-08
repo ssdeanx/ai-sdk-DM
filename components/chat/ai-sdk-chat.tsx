@@ -1,7 +1,10 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useChat, Message } from '@ai-sdk/react';
+// Import from the AI SDK
+import { useChat } from '@ai-sdk/react';
+import type { Message, CreateMessage } from '@ai-sdk/react';
 import {
   Bot, User, Send, Loader2, RefreshCw, XCircle, Paperclip,
   FileText, Code, Mic, Copy, Check, Eraser,
@@ -16,7 +19,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from '@/components/ui/use-toast';
 // Import components
+import { ChatSidebar } from './chat-sidebar';
 import { ImageDisplay } from './image-display';
 import { AIImageGenerator } from './ai-image-generator';
 import { ComputerUse } from './computer-use';
@@ -24,7 +29,6 @@ import { DataVisualization } from './data-visualization';
 import { VisualizationWithTracing } from './visualization-with-tracing';
 import { DataTable } from './data-table';
 import { BrowserDisplay } from './browser-display';
-import { ChatSidebar } from './chat-sidebar';
 import { ScreenShare } from './screen-share';
 import { InteractiveMap } from './interactive-map';
 import { InteractiveForm } from './interactive-form';
@@ -49,9 +53,35 @@ interface AiSdkChatProps {
   className?: string;
   provider?: string;
   systemPrompt?: string;
+  personaId?: string;
   streamProtocol?: 'text' | 'data';
   toolChoice?: 'auto' | 'none' | string;
   maxSteps?: number;
+  middleware?: {
+    caching?: {
+      enabled?: boolean
+      ttl?: number
+      maxSize?: number
+    }
+    reasoning?: {
+      enabled?: boolean
+      tagName?: string
+      startWithReasoning?: boolean
+    }
+    simulation?: {
+      enabled?: boolean
+    }
+    logging?: {
+      enabled?: boolean
+      logParams?: boolean
+      logResults?: boolean
+    }
+    defaultSettings?: {
+      temperature?: number
+      maxTokens?: number
+      providerMetadata?: Record<string, any>
+    }
+  }
 }
 
 interface FileAttachment {
@@ -84,16 +114,18 @@ export function AiSdkChat({
   apiEndpoint = '/api/chat/ai-sdk',
   initialMessages = [],
   initialThreadId,
-  modelId = 'gemini-1.5-pro',
+  modelId = 'gemini-2.0-flash-exp',
   temperature = 0.7,
   maxTokens = 8192,
   tools = [],
   className,
-  provider,
+  provider = 'google',
   systemPrompt,
+  personaId,
   streamProtocol = 'data',
   toolChoice = 'auto',
-  maxSteps = 5
+  maxSteps = 5,
+  middleware
 }: AiSdkChatProps) {
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -111,6 +143,21 @@ export function AiSdkChat({
   const [showSettings, setShowSettings] = useState(false);
   const [threadName, setThreadName] = useState('New Chat');
   const [selectedSystemPrompt, setSelectedSystemPrompt] = useState(systemPrompt || '');
+  const [selectedPersonaId, setSelectedPersonaId] = useState(personaId || '');
+
+  // Critical state variables
+  const [isConnected, setIsConnected] = useState(true);
+  const [connectionRetries, setConnectionRetries] = useState(0);
+  const [lastSuccessfulResponse, setLastSuccessfulResponse] = useState<Date | null>(null);
+  const [modelAvailability, setModelAvailability] = useState<Record<string, boolean>>({});
+  const [fallbackModelId, setFallbackModelId] = useState<string>('gemini-2.0-flash');
+  const [isUsingFallbackModel, setIsUsingFallbackModel] = useState(false);
+  const [errorRecoveryMode, setErrorRecoveryMode] = useState<'none' | 'retry' | 'fallback'>('none');
+  const [maxRetries, setMaxRetries] = useState(3);
+  const [retryDelay, setRetryDelay] = useState(1000);
+  const [streamInterrupted, setStreamInterrupted] = useState(false);
+  const [lastError, setLastError] = useState<Error | null>(null);
+
   // Fetch models from Supabase with fallback to registry
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, { id: string, name: string }[]>>({});
   const [providers, setProviders] = useState<{ id: string, name: string }[]>([]);
@@ -185,16 +232,21 @@ export function AiSdkChat({
         // This would be imported from the registry in a real implementation
         const fallbackModelsByProvider = {
           'google': [
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-            { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro' },
-            { id: 'gemini-1.0-pro-vision', name: 'Gemini 1.0 Pro Vision' }
+            { id: 'gemini-2.5-pro-preview-05-06', name: 'Gemini 2.5 Pro Preview' },
+            { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash Preview' },
+            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+            { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite' },
+            { id: 'gemini-2.0-flash-live-001', name: 'Gemini 2.0 Flash Live' }
           ],
           'openai': [
+            { id: 'gpt-4.1', name: 'GPT-4.1' },
+            { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+            { id: 'o4-mini', name: 'o4-mini' },
+            { id: 'o3', name: 'o3' },
+            { id: 'o3-mini', name: 'o3-mini' },
             { id: 'gpt-4o', name: 'GPT-4o' },
-            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
-            { id: 'gpt-4', name: 'GPT-4' },
-            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
           ],
           'anthropic': [
             { id: 'claude-3-opus', name: 'Claude 3 Opus' },
@@ -212,17 +264,29 @@ export function AiSdkChat({
 
         // Fallback model settings
         const fallbackModelSettings: Record<string, any> = {
-          'gemini-1.5-pro': { max_tokens: 65536, context_window: 1048576 },
-          'gemini-1.5-flash': { max_tokens: 65536, context_window: 1048576 },
-          'gemini-1.0-pro': { max_tokens: 8192, context_window: 32768 },
-          'gemini-1.0-pro-vision': { max_tokens: 8192, context_window: 32768 },
-          'gpt-4o': { max_tokens: 8192, context_window: 128000 },
-          'gpt-4-turbo': { max_tokens: 4096, context_window: 128000 },
-          'gpt-4': { max_tokens: 8192, context_window: 8192 },
-          'gpt-3.5-turbo': { max_tokens: 4096, context_window: 16385 },
-          'claude-3-opus': { max_tokens: 4096, context_window: 200000 },
-          'claude-3-sonnet': { max_tokens: 4096, context_window: 200000 },
-          'claude-3-haiku': { max_tokens: 4096, context_window: 200000 }
+          // Gemini models
+          'gemini-2.5-pro-preview-05-06': { max_tokens: 65536, context_window: 1048576, supports_vision: true, supports_functions: true },
+          'gemini-2.5-flash-preview-04-17': { max_tokens: 65536, context_window: 1048576, supports_vision: true, supports_functions: true },
+          'gemini-2.0-flash-exp': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
+          'gemini-2.0-flash': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
+          'gemini-2.0-flash-lite': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
+          'gemini-2.0-flash-live-001': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
+          'gemini-1.5-pro': { max_tokens: 8192, context_window: 2097152, supports_vision: true, supports_functions: true },
+          'gemini-1.5-flash': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
+
+          // OpenAI models
+          'gpt-4.1': { max_tokens: 32768, context_window: 1047576, supports_vision: true, supports_functions: true },
+          'gpt-4.1-mini': { max_tokens: 32768, context_window: 1047576, supports_vision: true, supports_functions: true },
+          'o4-mini': { max_tokens: 100000, context_window: 200000, supports_vision: true, supports_functions: true },
+          'o3': { max_tokens: 100000, context_window: 200000, supports_vision: true, supports_functions: true },
+          'o3-mini': { max_tokens: 100000, context_window: 200000, supports_vision: false, supports_functions: true },
+          'gpt-4o': { max_tokens: 16384, context_window: 128000, supports_vision: true, supports_functions: true },
+          'gpt-4o-mini': { max_tokens: 16384, context_window: 128000, supports_vision: true, supports_functions: true },
+
+          // Anthropic models
+          'claude-3-opus': { max_tokens: 4096, context_window: 200000, supports_vision: true, supports_functions: true },
+          'claude-3-sonnet': { max_tokens: 4096, context_window: 200000, supports_vision: true, supports_functions: true },
+          'claude-3-haiku': { max_tokens: 4096, context_window: 200000, supports_vision: true, supports_functions: true }
         };
 
         setModelsByProvider(fallbackModelsByProvider);
@@ -710,7 +774,54 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     }
   };
 
+  // Track current thread ID
+  const [currentThreadId, setCurrentThreadId] = useState<string | undefined>(initialThreadId);
+
   // Use the AI SDK useChat hook
+  // Function to handle model fallback
+  const handleModelFallback = (error: Error) => {
+    setLastError(error);
+    setIsUsingFallbackModel(true);
+    setErrorRecoveryMode('fallback');
+
+    // Set fallback model based on provider
+    let fallbackModel = 'gemini-2.0-flash';
+    if (selectedProvider === 'openai') {
+      fallbackModel = 'gpt-4o-mini';
+    } else if (selectedProvider === 'anthropic') {
+      fallbackModel = 'claude-3-haiku';
+    }
+
+    setFallbackModelId(fallbackModel);
+
+    toast({
+      title: 'Using Fallback Model',
+      description: `Switched to ${fallbackModel} due to an error with ${selectedModel}`,
+      variant: 'default'
+    });
+
+    return fallbackModel;
+  };
+
+  // Function to handle connection issues
+  const handleConnectionIssue = () => {
+    setIsConnected(false);
+    setConnectionRetries(prev => prev + 1);
+    setStreamInterrupted(true);
+
+    toast({
+      title: 'Connection Issue',
+      description: 'Attempting to reconnect...',
+      variant: 'default'
+    });
+
+    // Attempt to reconnect after delay
+    setTimeout(() => {
+      setIsConnected(true);
+      reload();
+    }, retryDelay);
+  };
+
   const {
     messages,
     input,
@@ -726,32 +837,66 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
   } = useChat({
     api: apiEndpoint,
     initialMessages,
-    id: initialThreadId,
+    id: currentThreadId,
     body: {
-      model: selectedModel,
+      model: isUsingFallbackModel ? fallbackModelId : selectedModel,
       temperature: selectedTemperature,
       maxTokens: selectedMaxTokens,
-      threadId: initialThreadId,
-      provider: provider,
+      provider: selectedProvider,
       systemPrompt: selectedSystemPrompt,
+      personaId: selectedPersonaId,
       streamProtocol: streamProtocol,
       toolChoice: toolChoice,
       maxSteps: maxSteps,
       images: imageAttachments,
-      tools: enabledTools.map(toolName => ({
-        type: 'function',
-        function: {
-          name: toolName,
-          description: availableFunctions[toolName as keyof typeof availableFunctions]?.description || '',
-          parameters: availableFunctions[toolName as keyof typeof availableFunctions]?.parameters || {}
-        }
-      }))
+      tools: enabledTools.length > 0 ? enabledTools.map(toolName => {
+        const tool = availableFunctions[toolName as keyof typeof availableFunctions];
+        return {
+          type: 'function',
+          function: {
+            name: toolName,
+            description: tool?.description || '',
+            parameters: tool?.parameters || {}
+          }
+        };
+      }) : undefined,
+      middleware: middleware
     },
-    maxSteps: maxSteps,
     onResponse: (response) => {
+      // Reset error recovery state on successful response
+      if (response.ok) {
+        setIsConnected(true);
+        setConnectionRetries(0);
+        setLastSuccessfulResponse(new Date());
+        setErrorRecoveryMode('none');
+        setStreamInterrupted(false);
+
+        // If we were using a fallback model but the primary is now working, switch back
+        if (isUsingFallbackModel) {
+          // Update model availability
+          setModelAvailability(prev => ({
+            ...prev,
+            [selectedModel]: true
+          }));
+
+          // Only switch back on the next request to avoid disrupting current response
+          if (messages.length === 0) {
+            setIsUsingFallbackModel(false);
+            toast({
+              title: 'Model Restored',
+              description: `Switched back to ${selectedModel}`,
+              variant: 'default'
+            });
+          }
+        }
+      }
+
       // Extract thread ID from response headers
       const threadId = response.headers.get('x-thread-id');
-      if (threadId && !initialThreadId) {
+      if (threadId && !currentThreadId) {
+        // Update current thread ID
+        setCurrentThreadId(threadId);
+
         // Update URL with thread ID
         const url = new URL(window.location.href);
         url.searchParams.set('thread', threadId);
@@ -813,6 +958,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
                 );
 
                 console.error('Tool execution error:', error);
+                setLastError(error);
               });
           }
         });
@@ -820,6 +966,55 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     },
     onError: (error) => {
       console.error('Chat error:', error);
+      setLastError(error);
+
+      // Check if it's a model-related error
+      const errorMessage = error.message?.toLowerCase() || '';
+      const isModelError = errorMessage.includes('model') ||
+                          errorMessage.includes('capacity') ||
+                          errorMessage.includes('unavailable') ||
+                          errorMessage.includes('overloaded');
+
+      // Check if it's a connection error
+      const isConnectionError = errorMessage.includes('network') ||
+                               errorMessage.includes('connection') ||
+                               errorMessage.includes('timeout') ||
+                               error.name === 'AbortError';
+
+      if (isModelError) {
+        // Mark model as unavailable
+        setModelAvailability(prev => ({
+          ...prev,
+          [selectedModel]: false
+        }));
+
+        // Use fallback model
+        if (!isUsingFallbackModel && connectionRetries >= maxRetries) {
+          const fallbackModel = handleModelFallback(error);
+
+          // Retry with fallback model
+          setTimeout(() => {
+            reload();
+          }, 1000);
+        } else if (connectionRetries < maxRetries) {
+          // Try again with same model
+          setErrorRecoveryMode('retry');
+          setConnectionRetries(prev => prev + 1);
+
+          setTimeout(() => {
+            reload();
+          }, retryDelay * (connectionRetries + 1)); // Exponential backoff
+        }
+      } else if (isConnectionError) {
+        handleConnectionIssue();
+      } else {
+        // Generic error handling
+        toast({
+          title: 'Error',
+          description: error.message || 'An error occurred during the chat',
+          variant: 'destructive'
+        });
+      }
     }
   });
 
@@ -905,6 +1100,18 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
 
   // Derived state
   const isLoading = status === 'streaming' || status === 'submitted';
+
+  // Show fallback model indicator when using fallback
+  useEffect(() => {
+    if (isUsingFallbackModel) {
+      toast({
+        title: 'Using Fallback Model',
+        description: `Using ${fallbackModelId} instead of ${selectedModel}`,
+        variant: 'default',
+        duration: 5000
+      });
+    }
+  }, [isUsingFallbackModel, fallbackModelId, selectedModel]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -1531,9 +1738,39 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
               }
             }}>
               <h3 className="font-medium hover:underline">{threadName}</h3>
-              <p className="text-xs text-muted-foreground">
-                {selectedModel} • {selectedTemperature.toFixed(1)} temperature
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {isUsingFallbackModel ? fallbackModelId : selectedModel} • {selectedTemperature.toFixed(1)} temperature
+                </p>
+
+                {/* Connection status indicator */}
+                {!isConnected && (
+                  <Badge variant="destructive" className="text-xs animate-pulse">
+                    Reconnecting...
+                  </Badge>
+                )}
+
+                {/* Fallback model indicator */}
+                {isUsingFallbackModel && (
+                  <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                    Fallback
+                  </Badge>
+                )}
+
+                {/* Stream interrupted indicator */}
+                {streamInterrupted && (
+                  <Badge variant="outline" className="text-xs bg-orange-100 text-orange-800 border-orange-300">
+                    Interrupted
+                  </Badge>
+                )}
+
+                {/* Error recovery mode indicator */}
+                {errorRecoveryMode !== 'none' && (
+                  <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                    {errorRecoveryMode === 'retry' ? 'Retrying' : 'Fallback'}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -1679,12 +1916,35 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
             </Avatar>
             <Card className="flex-1 p-3 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
               <CardContent className="p-0 space-y-2">
-                <p className="font-medium text-red-600 dark:text-red-400">Error</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-red-600 dark:text-red-400">Error</p>
+                  {errorRecoveryMode !== 'none' && (
+                    <Badge variant={errorRecoveryMode === 'retry' ? 'outline' : 'secondary'} className="text-xs">
+                      {errorRecoveryMode === 'retry' ? `Retry ${connectionRetries}/${maxRetries}` : 'Using Fallback Model'}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm">{error.message || 'Something went wrong. Please try again.'}</p>
-                <Button variant="outline" size="sm" onClick={() => reload()} className="mt-2">
-                  <RefreshCw className="h-3 w-3 mr-2" />
-                  Retry
-                </Button>
+                <div className="flex gap-2 mt-2">
+                  <Button variant="outline" size="sm" onClick={() => reload()}>
+                    <RefreshCw className="h-3 w-3 mr-2" />
+                    Retry
+                  </Button>
+
+                  {!isUsingFallbackModel && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleModelFallback(error);
+                        setTimeout(() => reload(), 1000);
+                      }}
+                    >
+                      <Zap className="h-3 w-3 mr-2" />
+                      Use Fallback Model
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -2161,3 +2421,4 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     </div>
   );
 }
+

@@ -6,7 +6,15 @@
  * allowing for better observability and monitoring of AI interactions.
  */
 
-import { streamText, generateText } from "ai"
+import {
+  streamText,
+  generateText,
+  wrapLanguageModel,
+  extractReasoningMiddleware,
+  simulateStreamingMiddleware,
+  defaultSettingsMiddleware,
+  type LanguageModelV1Middleware
+} from "ai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createAnthropic } from "@ai-sdk/anthropic"
@@ -96,7 +104,8 @@ export async function streamAIWithTracing({
   useSearchGrounding,
   dynamicRetrievalConfig,
   responseModalities,
-  cachedContent
+  cachedContent,
+  middleware
 }: {
   provider: string
   modelId: string
@@ -109,6 +118,7 @@ export async function streamAIWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
   useSearchGrounding?: boolean
   dynamicRetrievalConfig?: {
     mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
@@ -134,7 +144,8 @@ export async function streamAIWithTracing({
         useSearchGrounding,
         dynamicRetrievalConfig,
         responseModalities,
-        cachedContent
+        cachedContent,
+        middleware
       });
     case 'openai':
       if (!apiKey) {
@@ -721,7 +732,8 @@ export async function streamGoogleAIWithTracing({
   useSearchGrounding,
   dynamicRetrievalConfig,
   responseModalities,
-  cachedContent
+  cachedContent,
+  middleware
 }: {
   modelId: string
   messages: any[]
@@ -740,6 +752,7 @@ export async function streamGoogleAIWithTracing({
   }
   responseModalities?: Array<"TEXT" | "IMAGE">
   cachedContent?: string
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -774,7 +787,28 @@ export async function streamGoogleAIWithTracing({
   try {
     // Initialize Google AI
     const googleAI = getGoogleAIWithTracing(apiKey, baseURL, `google_ai_provider_${modelId}`)
-    const model = googleAI(modelId)
+    let model = googleAI(modelId)
+
+    // Apply middleware if provided
+    if (middleware) {
+      model = wrapLanguageModel({
+        model,
+        middleware
+      })
+
+      // Log middleware application
+      if (traceId) {
+        await event({
+          traceId,
+          name: "middleware_applied",
+          metadata: {
+            modelId,
+            timestamp: new Date().toISOString(),
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
+          }
+        });
+      }
+    }
 
     // Add event for model initialization
     if (traceId) {
@@ -860,6 +894,7 @@ export async function streamOpenAIWithTracing({
   traceName,
   userId,
   metadata,
+  middleware
 }: {
   modelId: string
   messages: any[]
@@ -871,6 +906,7 @@ export async function streamOpenAIWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -905,7 +941,29 @@ export async function streamOpenAIWithTracing({
   try {
     // Initialize OpenAI
     const openAI = getOpenAIWithTracing(apiKey, baseURL, `openai_provider_${modelId}`)
-    const model = openAI(modelId)
+    let model = openAI(modelId)
+
+    // Apply middleware if provided
+    if (middleware) {
+      model = wrapLanguageModel({
+        model,
+        middleware
+      })
+
+      // Log middleware application
+      if (traceId) {
+        await event({
+          traceId,
+          name: "middleware_applied",
+          metadata: {
+            modelId,
+            provider: "openai",
+            timestamp: new Date().toISOString(),
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
+          }
+        });
+      }
+    }
 
     // Add event for model initialization
     if (traceId) {
@@ -983,6 +1041,7 @@ export async function streamAnthropicWithTracing({
   traceName,
   userId,
   metadata,
+  middleware
 }: {
   modelId: string
   messages: any[]
@@ -994,6 +1053,7 @@ export async function streamAnthropicWithTracing({
   traceName?: string
   userId?: string
   metadata?: any
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -1028,7 +1088,29 @@ export async function streamAnthropicWithTracing({
   try {
     // Initialize Anthropic
     const anthropic = getAnthropicWithTracing(apiKey, baseURL, `anthropic_provider_${modelId}`)
-    const model = anthropic(modelId)
+    let model = anthropic(modelId)
+
+    // Apply middleware if provided
+    if (middleware) {
+      model = wrapLanguageModel({
+        model,
+        middleware
+      })
+
+      // Log middleware application
+      if (traceId) {
+        await event({
+          traceId,
+          name: "middleware_applied",
+          metadata: {
+            modelId,
+            provider: "anthropic",
+            timestamp: new Date().toISOString(),
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
+          }
+        });
+      }
+    }
 
     // Add event for model initialization
     if (traceId) {
@@ -1109,7 +1191,8 @@ export async function generateGoogleAIWithTracing({
   useSearchGrounding,
   dynamicRetrievalConfig,
   responseModalities,
-  cachedContent
+  cachedContent,
+  middleware
 }: {
   modelId: string
   messages: any[]
@@ -1128,6 +1211,7 @@ export async function generateGoogleAIWithTracing({
   }
   responseModalities?: Array<"TEXT" | "IMAGE">
   cachedContent?: string
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -1162,7 +1246,28 @@ export async function generateGoogleAIWithTracing({
   try {
     // Initialize Google AI
     const googleAI = getGoogleAIWithTracing(apiKey, baseURL, `google_ai_provider_${modelId}`)
-    const model = googleAI(modelId)
+    let model = googleAI(modelId)
+
+    // Apply middleware if provided
+    if (middleware) {
+      model = wrapLanguageModel({
+        model,
+        middleware
+      })
+
+      // Log middleware application
+      if (traceId) {
+        await event({
+          traceId,
+          name: "middleware_applied",
+          metadata: {
+            modelId,
+            timestamp: new Date().toISOString(),
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
+          }
+        });
+      }
+    }
 
     // Add event for model initialization
     if (traceId) {
