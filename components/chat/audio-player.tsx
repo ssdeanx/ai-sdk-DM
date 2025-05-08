@@ -33,7 +33,7 @@ export function AudioPlayer({
   
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | null>(null)
   
   // Initialize audio context and analyser
   useEffect(() => {

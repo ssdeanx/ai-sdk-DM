@@ -59,6 +59,7 @@ export async function runAgent(
       // If agent has a persona, use it to generate system prompt
       if (agent.persona_id) {
         try {
+          await personaManager.init();
           systemMessage = await personaManager.generateSystemPrompt(agent.persona_id, {
             agentName: agent.name,
             agentDescription: agent.description,

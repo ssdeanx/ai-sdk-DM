@@ -1,7 +1,7 @@
 import { createVertex } from "@ai-sdk/google-vertex"
 import { streamText, generateText } from "ai"
 import { getSupabaseClient } from "./memory/supabase"
-import { ModelConfig, GOOGLE_MODEL_CONFIGS } from "./google-ai"
+import { GOOGLE_MODEL_CONFIGS } from "./google-ai"
 
 // Initialize Google Vertex AI provider
 export function getGoogleVertex(project?: string, location?: string) {

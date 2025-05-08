@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listMemoryThreads, getMemoryThread, deleteMemoryThread } from "@/lib/memory/memory";
+import { listMemoryThreads } from "@/lib/memory/memory";
 import { memory } from "@/lib/memory/factory";
 import { handleApiError } from "@/lib/api-error-handler";
 
@@ -16,16 +16,22 @@ export async function GET(request: Request) {
     
     // Get threads with AI SDK UI metadata
     const threads = await listMemoryThreads({
-      filters: {
-        metadata: { source: 'ai-sdk-ui' }
-      },
       limit,
-      offset,
-      orderBy: { column: 'updated_at', ascending: false }
+      offset
     });
-    
+
+    // Filter and sort threads in code
+    const filteredThreads = threads
+      .filter(thread => {
+        const metadata = typeof thread.metadata === 'string'
+          ? JSON.parse(thread.metadata)
+          : thread.metadata || {};
+        return metadata.source === 'ai-sdk-ui';
+      })
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
     // Format threads for the client
-    const formattedThreads = threads.map(thread => ({
+    const formattedThreads = filteredThreads.map(thread => ({
       id: thread.id,
       name: thread.name,
       createdAt: thread.created_at,
@@ -34,7 +40,7 @@ export async function GET(request: Request) {
         (typeof thread.metadata === 'string' ? JSON.parse(thread.metadata) : thread.metadata) 
         : {}
     }));
-    
+
     return NextResponse.json({
       threads: formattedThreads,
       count: formattedThreads.length,

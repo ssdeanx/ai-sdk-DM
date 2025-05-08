@@ -354,6 +354,13 @@ export const gqlCache = pgTable('gql_cache', {
     .notNull(),
 })
 
+// Memory threads table for chat persistence
+export const memory_threads = pgTable('memory_threads', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: text('name').notNull(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
 // Database connections table for tracking connection pools
 export const database_connections = pgTable('database_connections', {
   id: varchar('id', { length: 36 }).primaryKey(),

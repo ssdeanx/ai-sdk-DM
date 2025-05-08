@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getAllBuiltInTools } from "@/lib/tools";
 import { streamGoogleAIWithTracing } from "@/lib/ai-sdk-tracing";
 import { getModelConfig } from "@/lib/google-ai";
-
+import { getSupabaseClient } from "@/lib/memory/supabase";
 /**
  * GET /api/ai-sdk/agents
  * 

@@ -40,6 +40,7 @@ import { AudioPlayer } from "./audio-player"
 import { FileUpload } from "./file-upload"
 import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
 import { useChat, type Message } from "@/hooks/use-chat"
+import { renderContent } from "./ai-sdk-chatHelper"
 
 interface EnhancedChatProps {
   initialThreadId?: string
@@ -125,7 +126,7 @@ export function EnhancedChat({
     isLoading: isLoadingThreads,
     refetch: refreshThreads,
   } = useSupabaseFetch({
-    endpoint: "/api/threads",
+    endpoint: "/api/memory_threads",
     resourceName: "Threads",
     dataKey: "threads",
   })

@@ -454,3 +454,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
  * ```
  */
 export const memory = createMemory()
+
+// Re-export memory and persistence utilities
+export * from './supabase'
+export * from './db'

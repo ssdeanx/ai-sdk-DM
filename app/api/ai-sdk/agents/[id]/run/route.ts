@@ -43,22 +43,22 @@ export async function POST(
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    // Initialize persona manager if agent has a persona
-    if (agent.config.persona_id) {
+    // Initialize persona manager if agent has a persona_id
+    if ((agent as any).persona_id) {
       await personaManager.init();
     }
-
+    // If agent has a persona_id, ensure persona manager is initialized
     // Create trace for this run
     const trace = await createTrace({
       name: "agent_run",
       userId: threadId,
       metadata: {
         agentId: id,
-        agentName: agent.config.name,
+        agentName: agent.name,
         threadId,
-        modelId: agent.config.model_id,
+        modelId: agent.modelId,
         messageCount: input ? 1 : 0,
-        hasPersona: !!agent.config.persona_id
+        hasPersona: !!(agent as any).persona_id
       }
     });
 
@@ -72,7 +72,7 @@ export async function POST(
     };
 
     // Run the agent
-    const response = await runAgent(id, threadId, input, options);
+    const response = await runAgent(id, threadId, input);
 
     // Return the stream as a streaming text response
     return new StreamingTextResponse(response, {

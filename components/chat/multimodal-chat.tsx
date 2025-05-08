@@ -338,7 +338,7 @@ export function MultimodalChat({
             <Textarea
               ref={textareaRef}
               value={input}
-              onChange={handleInputChange}
+              onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message or upload an image..."
               className="min-h-[60px] max-h-[200px] resize-none"

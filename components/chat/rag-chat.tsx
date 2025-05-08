@@ -41,7 +41,7 @@ export function RagChat({
   const {
     messages,
     input,
-    handleInputChange,
+    // handleInputChange,
     handleSubmit,
     status,
     error,
@@ -346,7 +346,7 @@ export function RagChat({
               <Textarea
                 ref={textareaRef}
                 value={input}
-                onChange={handleInputChange}
+                onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message..."
                 className="min-h-[60px] max-h-[200px] resize-none"

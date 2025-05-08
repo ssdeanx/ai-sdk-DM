@@ -1,10 +1,9 @@
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Dispatch, ReactNode, SetStateAction, useCallback } from 'react';
 // Import from the AI SDK
 import { useChat } from '@ai-sdk/react';
-import type { Message, CreateMessage } from '@ai-sdk/react';
+import type { Message as AiSdkMessage, CreateMessage, UseChatHelpers } from '@ai-sdk/react';
 import {
   Bot, User, Send, Loader2, RefreshCw, XCircle, Paperclip,
   FileText, Code, Mic, Copy, Check, Eraser,
@@ -22,25 +21,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from '@/components/ui/use-toast';
 // Import components
 import { ChatSidebar } from './chat-sidebar';
-import { ImageDisplay } from './image-display';
-import { AIImageGenerator } from './ai-image-generator';
-import { ComputerUse } from './computer-use';
-import { DataVisualization } from './data-visualization';
-import { VisualizationWithTracing } from './visualization-with-tracing';
-import { DataTable } from './data-table';
-import { BrowserDisplay } from './browser-display';
-import { ScreenShare } from './screen-share';
-import { InteractiveMap } from './interactive-map';
-import { InteractiveForm } from './interactive-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { CodeBlock } from './code-block';
-import { MermaidDiagram } from './mermaid-diagram';
 import { nanoid } from 'nanoid';
+import { renderContent } from './ai-sdk-chatHelper';
+// Import your custom hooks
+import { Message, useChat as useCustomChat } from '@/hooks/use-chat';
+import { useExecutor } from '@/hooks/use-executor';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { RequestMiddleware, ResponseMiddleware } from '@/lib/middleware';
+import { LanguageModelV1Middleware } from 'ai';
+import { MODEL_REGISTRY } from '@/lib/model-registry';
 
 interface AiSdkChatProps {
   apiEndpoint?: string;
@@ -82,6 +78,9 @@ interface AiSdkChatProps {
       providerMetadata?: Record<string, any>
     }
   }
+  useCustomHooks?: boolean;
+  agentId?: string;
+  onThreadChange?: (threadId: string) => void;
 }
 
 interface FileAttachment {
@@ -125,7 +124,10 @@ export function AiSdkChat({
   streamProtocol = 'data',
   toolChoice = 'auto',
   maxSteps = 5,
-  middleware
+  middleware,
+  useCustomHooks = false,
+  agentId,
+  onThreadChange
 }: AiSdkChatProps) {
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -164,148 +166,15 @@ export function AiSdkChat({
   const [streamInterrupted, setStreamInterrupted] = useState(false);
   const [lastError, setLastError] = useState<Error | null>(null);
 
-  // Fetch models from Supabase with fallback to registry
-  const [modelsByProvider, setModelsByProvider] = useState<Record<string, { id: string, name: string }[]>>({});
-  const [providers, setProviders] = useState<{ id: string, name: string }[]>([]);
-  const [allModels, setAllModels] = useState<{ id: string, name: string }[]>([]);
-  const [modelSettings, setModelSettings] = useState<Record<string, any>>({});
-  const [isLoadingModels, setIsLoadingModels] = useState(true);
-
-  // Fetch models on mount
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        setIsLoadingModels(true);
-
-        // Fetch models from API
-        const response = await fetch('/api/models');
-        const data = await response.json();
-
-        if (!data.models || !Array.isArray(data.models)) {
-          throw new Error('Invalid response format');
-        }
-
-        // Group models by provider
-        const modelsByProviderMap: Record<string, { id: string, name: string }[]> = {};
-        const modelSettingsMap: Record<string, any> = {};
-
-        data.models.forEach((model: any) => {
-          // Add to models by provider
-          if (!modelsByProviderMap[model.provider]) {
-            modelsByProviderMap[model.provider] = [];
-          }
-
-          modelsByProviderMap[model.provider].push({
-            id: model.model_id,
-            name: model.name
-          });
-
-          // Add to model settings
-          modelSettingsMap[model.model_id] = {
-            id: model.id,
-            name: model.name,
-            provider: model.provider,
-            model_id: model.model_id,
-            max_tokens: model.max_tokens || 4096,
-            context_window: model.context_window || 8192,
-            supports_vision: model.supports_vision || false,
-            supports_functions: model.supports_functions || false,
-            supports_streaming: model.supports_streaming || true,
-            default_temperature: model.default_temperature || 0.7,
-            default_top_p: model.default_top_p || 1.0,
-            default_frequency_penalty: model.default_frequency_penalty || 0,
-            default_presence_penalty: model.default_presence_penalty || 0,
-          };
-        });
-
-        // Get providers
-        const providersArray = Object.keys(modelsByProviderMap).map(key => ({
-          id: key,
-          name: key.charAt(0).toUpperCase() + key.slice(1) // Capitalize first letter
-        }));
-
-        // Get all models
-        const allModelsArray = Object.values(modelsByProviderMap).flat();
-
-        setModelsByProvider(modelsByProviderMap);
-        setProviders(providersArray);
-        setAllModels(allModelsArray);
-        setModelSettings(modelSettingsMap);
-      } catch (error) {
-        console.error('Error fetching models:', error);
-
-        // Fallback to hardcoded models from model-registry.ts
-        // This would be imported from the registry in a real implementation
-        const fallbackModelsByProvider = {
-          'google': [
-            { id: 'gemini-2.5-pro-preview-05-06', name: 'Gemini 2.5 Pro Preview' },
-            { id: 'gemini-2.5-flash-preview-04-17', name: 'Gemini 2.5 Flash Preview' },
-            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
-            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-            { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite' },
-            { id: 'gemini-2.0-flash-live-001', name: 'Gemini 2.0 Flash Live' }
-          ],
-          'openai': [
-            { id: 'gpt-4.1', name: 'GPT-4.1' },
-            { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
-            { id: 'o4-mini', name: 'o4-mini' },
-            { id: 'o3', name: 'o3' },
-            { id: 'o3-mini', name: 'o3-mini' },
-            { id: 'gpt-4o', name: 'GPT-4o' },
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
-          ],
-          'anthropic': [
-            { id: 'claude-3-opus', name: 'Claude 3 Opus' },
-            { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet' },
-            { id: 'claude-3-haiku', name: 'Claude 3 Haiku' }
-          ]
-        };
-
-        const fallbackProviders = Object.keys(fallbackModelsByProvider).map(key => ({
-          id: key,
-          name: key.charAt(0).toUpperCase() + key.slice(1)
-        }));
-
-        const fallbackAllModels = Object.values(fallbackModelsByProvider).flat();
-
-        // Fallback model settings
-        const fallbackModelSettings: Record<string, any> = {
-          // Gemini models
-          'gemini-2.5-pro-preview-05-06': { max_tokens: 65536, context_window: 1048576, supports_vision: true, supports_functions: true },
-          'gemini-2.5-flash-preview-04-17': { max_tokens: 65536, context_window: 1048576, supports_vision: true, supports_functions: true },
-          'gemini-2.0-flash-exp': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
-          'gemini-2.0-flash': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
-          'gemini-2.0-flash-lite': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
-          'gemini-2.0-flash-live-001': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
-          'gemini-1.5-pro': { max_tokens: 8192, context_window: 2097152, supports_vision: true, supports_functions: true },
-          'gemini-1.5-flash': { max_tokens: 8192, context_window: 1048576, supports_vision: true, supports_functions: true },
-
-          // OpenAI models
-          'gpt-4.1': { max_tokens: 32768, context_window: 1047576, supports_vision: true, supports_functions: true },
-          'gpt-4.1-mini': { max_tokens: 32768, context_window: 1047576, supports_vision: true, supports_functions: true },
-          'o4-mini': { max_tokens: 100000, context_window: 200000, supports_vision: true, supports_functions: true },
-          'o3': { max_tokens: 100000, context_window: 200000, supports_vision: true, supports_functions: true },
-          'o3-mini': { max_tokens: 100000, context_window: 200000, supports_vision: false, supports_functions: true },
-          'gpt-4o': { max_tokens: 16384, context_window: 128000, supports_vision: true, supports_functions: true },
-          'gpt-4o-mini': { max_tokens: 16384, context_window: 128000, supports_vision: true, supports_functions: true },
-
-          // Anthropic models
-          'claude-3-opus': { max_tokens: 4096, context_window: 200000, supports_vision: true, supports_functions: true },
-          'claude-3-sonnet': { max_tokens: 4096, context_window: 200000, supports_vision: true, supports_functions: true },
-          'claude-3-haiku': { max_tokens: 4096, context_window: 200000, supports_vision: true, supports_functions: true }
-        };
-
-        setModelsByProvider(fallbackModelsByProvider);
-        setProviders(fallbackProviders);
-        setAllModels(fallbackAllModels);
-        setModelSettings(fallbackModelSettings);
-      } finally {
-        setIsLoadingModels(false);
-      }
-    };
-
-    fetchModels();
-  }, []);
+  // Use model registry for providers, allModels, and modelSettings
+  const providers = Object.entries(MODEL_REGISTRY).map(([id]) => ({ id, name: id.charAt(0).toUpperCase() + id.slice(1) }));
+  const allModels = Object.values(MODEL_REGISTRY).flatMap(models => Object.entries(models).map(([id, cfg]: any) => ({ id, name: cfg.name })));
+  const modelSettings = Object.values(MODEL_REGISTRY).reduce((acc, models) => {
+    for (const [id, cfg] of Object.entries(models)) {
+      acc[id] = cfg;
+    }
+    return acc;
+  }, {} as Record<string, any>);
 
   const [selectedModel, setSelectedModel] = useState(modelId);
   const [selectedProvider, setSelectedProvider] = useState<string>(provider);
@@ -781,7 +650,6 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
 
       const thread = await response.json();
       setThreads(prev => [thread, ...prev]);
-      return thread.id;
     } catch (error) {
       console.error('Error creating thread:', error);
       return null;
@@ -832,206 +700,339 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     // Attempt to reconnect after delay
     setTimeout(() => {
       setIsConnected(true);
-      reload();
+      if (reload) reload();
     }, retryDelay);
   };
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-    error,
-    reload,
-    stop,
-    setInput,
-    setMessages,
-    addToolResult
-  } = useChat({
-    api: apiEndpoint,
-    initialMessages,
-    id: currentThreadId,
-    body: {
-      model: isUsingFallbackModel ? fallbackModelId : selectedModel,
-      temperature: selectedTemperature,
-      maxTokens: selectedMaxTokens,
-      provider: selectedProvider,
-      systemPrompt: selectedSystemPrompt,
-      personaId: selectedPersonaId,
-      streamProtocol: streamProtocol,
-      toolChoice: toolChoice,
-      maxSteps: maxSteps,
-      images: imageAttachments,
-      tools: enabledTools.length > 0 ? enabledTools.map(toolName => {
-        const tool = availableFunctions[toolName as keyof typeof availableFunctions];
-        return {
-          type: 'function',
-          function: {
-            name: toolName,
-            description: tool?.description || '',
-            parameters: tool?.parameters || {}
+  const useAiSdkChat = (): UseChatHelpers & { addToolResult: ({ toolCallId, result }: { toolCallId: string; result: any }) => void } => {
+    const chat = useChat({
+      api: apiEndpoint,
+      initialMessages: initialMessages.filter(
+        (m) => m.role === 'user' || m.role === 'assistant' || m.role === 'system'
+      ) as import('@/hooks/use-chat').Message[],
+      id: currentThreadId,
+      body: {
+        model: isUsingFallbackModel ? fallbackModelId : selectedModel,
+        temperature: selectedTemperature,
+        maxTokens: selectedMaxTokens,
+        provider: selectedProvider,
+        systemPrompt: selectedSystemPrompt,
+        personaId: selectedPersonaId,
+        streamProtocol: streamProtocol,
+        toolChoice: toolChoice,
+        maxSteps: maxSteps,
+        images: imageAttachments,
+        tools: enabledTools.length > 0 ? enabledTools.map(toolName => {
+          const tool = availableFunctions[toolName as keyof typeof availableFunctions];
+          return {
+            type: 'function',
+            function: {
+              name: toolName,
+              description: tool?.description || '',
+              parameters: tool?.parameters || {}
+            }
+          };
+        }) : undefined,
+        middleware: middleware
+      },
+      onResponse: (response) => {
+        // Reset error recovery state on successful response
+        if (response.ok) {
+          setIsConnected(true);
+          setConnectionRetries(0);
+          setLastSuccessfulResponse(new Date());
+          setErrorRecoveryMode('none');
+          setStreamInterrupted(false);
+  
+          // If we were using a fallback model but the primary is now working, switch back
+          if (isUsingFallbackModel) {
+            // Update model availability
+            setModelAvailability(prev => ({
+              ...prev,
+              [selectedModel]: true
+            }));
+  
+            // Only switch back on the next request to avoid disrupting current response
+            if (messages.length === 0) {
+              setIsUsingFallbackModel(false);
+              toast({
+                title: 'Model Restored',
+                description: `Switched back to ${selectedModel}`,
+                variant: 'default'
+              });
+            }
           }
-        };
-      }) : undefined,
-      middleware: middleware
-    },
-    onResponse: (response) => {
-      // Reset error recovery state on successful response
-      if (response.ok) {
-        setIsConnected(true);
-        setConnectionRetries(0);
-        setLastSuccessfulResponse(new Date());
-        setErrorRecoveryMode('none');
-        setStreamInterrupted(false);
-
-        // If we were using a fallback model but the primary is now working, switch back
-        if (isUsingFallbackModel) {
-          // Update model availability
+        }
+  
+        // Extract thread ID from response headers
+        const threadId = response.headers.get('x-thread-id');
+        if (threadId && !currentThreadId) {
+          // Update current thread ID
+          setCurrentThreadId(threadId);
+  
+          // Update URL with thread ID
+          const url = new URL(window.location.href);
+          url.searchParams.set('thread', threadId);
+          window.history.pushState({}, '', url.toString());
+        }
+      },
+      onFinish: (message) => {
+        // Handle any post-completion actions
+        console.log('Chat completed:', message);
+  
+        // Refresh threads list to update last activity
+        fetch('/api/chat/ai-sdk/threads')
+          .then(res => res.json())
+          .then(data => setThreads(data.threads))
+          .catch(err => console.error('Error refreshing threads:', err));
+  
+        // Process tool calls if any
+        if ((message as any).toolCalls && (message as any).toolCalls.length > 0) {
+          (message as any).toolCalls.forEach((toolCall: any) => {
+            // Track this tool call
+            const callId = toolCall.id || nanoid();
+            const newToolCall: ToolCall = {
+              id: callId,
+              name: toolCall.name,
+              args: toolCall.args || {},
+              status: 'pending'
+            };
+  
+            setFunctionCalls(prev => [...prev, newToolCall]);
+  
+            // Execute the tool if available
+            const fn = availableFunctions[toolCall.name as keyof typeof availableFunctions];
+            if (fn) {
+              fn.execute(toolCall.args)
+                .then(result => {
+                  // Update the function call with the result
+                  setFunctionCalls(prev =>
+                    prev.map(call =>
+                      call.id === callId
+                        ? { ...call, result, status: 'completed' as const }
+                        : call
+                    )
+                  );
+  
+                  // Add the tool result to the chat
+                  if (addToolResult) {
+                    addToolResult({
+                      toolCallId: callId,
+                      result
+                    });
+                  }
+                })
+                .catch(error => {
+                  // Update the function call with the error
+                  setFunctionCalls(prev =>
+                    prev.map(call =>
+                      call.id === callId
+                        ? { ...call, result: String(error), status: 'error' as const }
+                        : call
+                    )
+                  );
+  
+                  console.error('Tool execution error:', error);
+                  setLastError(error);
+                });
+            }
+          });
+        }
+      },
+      onError: (error) => {
+        console.error('Chat error:', error);
+        setLastError(error);
+  
+        // Check if it's a model-related error
+        const errorMessage = error.message?.toLowerCase() || '';
+        const isModelError = errorMessage.includes('model') ||
+                            errorMessage.includes('capacity') ||
+                            errorMessage.includes('unavailable') ||
+                            errorMessage.includes('overloaded');
+  
+        // Check if it's a connection error
+        const isConnectionError = errorMessage.includes('network') ||
+                                errorMessage.includes('connection') ||
+                                errorMessage.includes('timeout') ||
+                                error.name === 'AbortError';
+  
+        if (isModelError) {
+          // Mark model as unavailable
           setModelAvailability(prev => ({
             ...prev,
-            [selectedModel]: true
+            [selectedModel]: false
           }));
-
-          // Only switch back on the next request to avoid disrupting current response
-          if (messages.length === 0) {
-            setIsUsingFallbackModel(false);
-            toast({
-              title: 'Model Restored',
-              description: `Switched back to ${selectedModel}`,
-              variant: 'default'
-            });
+  
+          // Use fallback model
+          if (!isUsingFallbackModel && connectionRetries >= maxRetries) {
+            // Apply fallback model and store the result
+            handleModelFallback(error);
+  
+            // Retry with fallback model
+            setTimeout(() => {
+              if (reload) reload();
+            }, 1000);
+          } else if (connectionRetries < maxRetries) {
+            // Try again with same model
+            setErrorRecoveryMode('retry');
+            setConnectionRetries(prev => prev + 1);
+  
+            setTimeout(() => {
+              if (reload) reload();
+            }, retryDelay * (connectionRetries + 1)); // Exponential backoff
           }
+        } else if (isConnectionError) {
+          handleConnectionIssue();
+        } else {
+          // Generic error handling
+          toast({
+            title: 'Error',
+            description: error.message || 'An error occurred during the chat',
+            variant: 'destructive'
+          });
         }
       }
+    });
+  
+    // Always provide addToolResult, even if undefined in chat
+    return {
+      ...chat,
+      addToolResult: chat.addToolResult ?? (() => {})
+    };
+  };
 
-      // Extract thread ID from response headers
-      const threadId = response.headers.get('x-thread-id');
-      if (threadId && !currentThreadId) {
-        // Update current thread ID
-        setCurrentThreadId(threadId);
+  type CustomChatReturnType = {
+    messages: Message[];
+    input: string;
+    setInput: Dispatch<SetStateAction<string>>;
+    isLoading: boolean;
+    threadId: string;
+    setThreadId: Dispatch<SetStateAction<string>>;
+    attachments: any[];
+    setAttachments: Dispatch<SetStateAction<any[]>>;
+    sendMessage: (options?: { message?: string; attachments?: any[]; modelId?: string; tools?: string[]; temperature?: number; maxTokens?: number; agentId?: string; middleware?: { languageModel?: LanguageModelV1Middleware | LanguageModelV1Middleware[]; request?: RequestMiddleware | RequestMiddleware[]; response?: ResponseMiddleware | ResponseMiddleware[]; }; }) => Promise<any>;
+    fetchMessages: (threadId: string) => Promise<void>;
+    stop: () => void;
+    streamableValues: Record<string, ReactNode>;
+    currentStep: number;
+    steps: { id: string; name: string; status: "pending" | "in_progress" | "completed" | "error"; result?: any; }[];
+    addStep: (name: string) => string;
+    updateStepStatus: (stepId: string, status: "pending" | "in_progress" | "completed" | "error", result?: any) => void;
+    goToNextStep: () => void;
+    goToPreviousStep: () => void;
+    runSequentialGenerations: (prompts: string[], options?: { modelId?: string; temperature?: number; maxTokens?: number; tools?: string[]; onProgress?: (index: number, result: string) => void; }) => Promise<string[]>;
+    setMessages?: Dispatch<SetStateAction<Message[]>>;
+    addToolResult?: ({ toolCallId, result }: { toolCallId: string; result: any }) => void;
+  };
 
-        // Update URL with thread ID
-        const url = new URL(window.location.href);
-        url.searchParams.set('thread', threadId);
-        window.history.pushState({}, '', url.toString());
+  const useCustomChatHook = (): CustomChatReturnType => {
+    return useCustomChat({
+      initialMessages: initialMessages.filter(
+        (m) => m.role === 'user' || m.role === 'assistant' || m.role === 'system'
+      ) as import('@/hooks/use-chat').Message[],
+      initialThreadId: currentThreadId,
+      apiEndpoint: agentId ? `/api/agents/${agentId}/run` : apiEndpoint,
+      onFinish: () => {
+        // Refresh threads to update the list
+        fetchThreads();
       }
-    },
-    onFinish: (message) => {
-      // Handle any post-completion actions
-      console.log('Chat completed:', message);
+    });
+  };
 
-      // Refresh threads list to update last activity
-      fetch('/api/chat/ai-sdk/threads')
-        .then(res => res.json())
-        .then(data => setThreads(data.threads))
-        .catch(err => console.error('Error refreshing threads:', err));
+  // Use either AI SDK hooks or custom hooks based on the prop
+  const chatHook: ReturnType<typeof useAiSdkChat> | CustomChatReturnType = useCustomHooks
+    ? (useCustomChatHook() as CustomChatReturnType)
+    : useAiSdkChat();
 
-      // Process tool calls if any
-      if ((message as any).toolCalls && (message as any).toolCalls.length > 0) {
-        (message as any).toolCalls.forEach((toolCall: any) => {
-          // Track this tool call
-          const callId = toolCall.id || nanoid();
-          const newToolCall: ToolCall = {
-            id: callId,
-            name: toolCall.name,
-            args: toolCall.args || {},
-            status: 'pending'
-          };
+  // Extract common properties with proper type handling
+  const messages = chatHook.messages;
+  const input = chatHook.input;
+  const setInput = chatHook.setInput;
+  
+  // Handle properties that might exist in only one of the hooks with proper fallbacks
+  const status = 'status' in chatHook ? chatHook.status : 'idle';
+  const error = 'error' in chatHook ? chatHook.error : undefined;
+  const reload = 'reload' in chatHook ? chatHook.reload : undefined;
+  const stop = 'stop' in chatHook ? chatHook.stop : undefined;
+  const submit = 'submit' in chatHook ? chatHook.submit : undefined;
+  
+  // Custom hook specific properties
+  const isLoading = 'isLoading' in chatHook 
+    ? chatHook.isLoading 
+    : (status === 'streaming' || status === 'submitted');
+  const threadId = 'threadId' in chatHook ? chatHook.threadId : currentThreadId;
+  const setThreadId = 'setThreadId' in chatHook 
+    ? chatHook.setThreadId 
+    : ((id: string) => setCurrentThreadId(id));
+  const setMessages = 'setMessages' in chatHook ? chatHook.setMessages : undefined;
+  // Always provide a fallback no-op function for addToolResult
+  const addToolResult = 'addToolResult' in chatHook && chatHook.addToolResult
+    ? chatHook.addToolResult
+    : (() => {});
+  const fetchMessages = 'fetchMessages' in chatHook ? chatHook.fetchMessages : undefined;
+  const runSequentialGenerations = 'runSequentialGenerations' in chatHook 
+    ? chatHook.runSequentialGenerations 
+    : undefined;
+  
+  // Handle the sendMessage function which exists in both hooks but with different signatures
+  const handleSendMessage = useCallback((message?: string, options?: any) => {
+    if ('sendMessage' in chatHook) {
+      return chatHook.sendMessage({ message, ...options });
+    } else if (typeof submit === 'function') {
+      return submit(message);
+    }
+    return Promise.resolve('');
+  }, [chatHook, submit]);
 
-          setFunctionCalls(prev => [...prev, newToolCall]);
-
-          // Execute the tool if available
-          const fn = availableFunctions[toolCall.name as keyof typeof availableFunctions];
-          if (fn) {
-            fn.execute(toolCall.args)
-              .then(result => {
-                // Update the function call with the result
-                setFunctionCalls(prev =>
-                  prev.map(call =>
-                    call.id === callId
-                      ? { ...call, result, status: 'completed' as const }
-                      : call
-                  )
-                );
-
-                // Add the tool result to the chat
-                addToolResult({
-                  toolCallId: callId,
-                  result
-                });
-              })
-              .catch(error => {
-                // Update the function call with the error
-                setFunctionCalls(prev =>
-                  prev.map(call =>
-                    call.id === callId
-                      ? { ...call, result: String(error), status: 'error' as const }
-                      : call
-                  )
-                );
-
-                console.error('Tool execution error:', error);
-                setLastError(error);
-              });
-          }
-        });
+  // Use Supabase CRUD for thread operations
+  const {
+    create: createThreadInDb,
+    update: updateThreadInDb,
+    remove: deleteThreadInDb,
+    loading: threadsLoading
+  } = useSupabaseCrud({
+    table: "memory_threads",
+    onSuccess: (operation, data) => {
+      if (
+        operation === 'create' &&
+        typeof data === 'object' &&
+        data !== null &&
+        'id' in data
+      ) {
+        setCurrentThreadId((data as { id: string }).id);
+        if (onThreadChange) onThreadChange((data as { id: string }).id);
       }
-    },
-    onError: (error) => {
-      console.error('Chat error:', error);
-      setLastError(error);
-
-      // Check if it's a model-related error
-      const errorMessage = error.message?.toLowerCase() || '';
-      const isModelError = errorMessage.includes('model') ||
-                          errorMessage.includes('capacity') ||
-                          errorMessage.includes('unavailable') ||
-                          errorMessage.includes('overloaded');
-
-      // Check if it's a connection error
-      const isConnectionError = errorMessage.includes('network') ||
-                               errorMessage.includes('connection') ||
-                               errorMessage.includes('timeout') ||
-                               error.name === 'AbortError';
-
-      if (isModelError) {
-        // Mark model as unavailable
-        setModelAvailability(prev => ({
-          ...prev,
-          [selectedModel]: false
-        }));
-
-        // Use fallback model
-        if (!isUsingFallbackModel && connectionRetries >= maxRetries) {
-          // Apply fallback model and store the result
-          handleModelFallback(error);
-
-          // Retry with fallback model
-          setTimeout(() => {
-            reload();
-          }, 1000);
-        } else if (connectionRetries < maxRetries) {
-          // Try again with same model
-          setErrorRecoveryMode('retry');
-          setConnectionRetries(prev => prev + 1);
-
-          setTimeout(() => {
-            reload();
-          }, retryDelay * (connectionRetries + 1)); // Exponential backoff
-        }
-      } else if (isConnectionError) {
-        handleConnectionIssue();
-      } else {
-        // Generic error handling
-        toast({
-          title: 'Error',
-          description: error.message || 'An error occurred during the chat',
-          variant: 'destructive'
-        });
-      }
+      fetchThreads();
     }
   });
+
+  // Update fetchThreads to use Supabase fetch
+  const fetchThreads = async () => {
+    try {
+      setIsLoadingThreads(true);
+      const response = await fetch('/api/chat/ai-sdk/threads');
+      const data = await response.json();
+      setThreads(data.threads);
+    } catch (error) {
+      console.error('Error fetching threads:', error);
+    } finally {
+      setIsLoadingThreads(false);
+    }
+  };
+
+  // Update createThread to use Supabase CRUD
+  const createThreadSupabase = async (name = 'New Chat') => {
+    try {
+      await createThreadInDb({ name });
+    } catch (error) {
+      console.error('Error creating thread:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create new chat thread',
+        variant: 'destructive'
+      });
+    }
+  };
 
   // Load thread messages
   const loadThread = async (threadId: string) => {
@@ -1051,7 +1052,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
         });
 
         // Set messages in the chat
-        setMessages(formattedMessages);
+        if (setMessages) setMessages(formattedMessages);
 
         // Update thread name
         setThreadName(data.name);
@@ -1067,7 +1068,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
   };
 
   // Handle function calls
-  const handleFunctionCall = async (functionCall: any) => {
+  const handleFunctionCall = useCallback(async (functionCall: any) => {
     // Track this function call
     const callId = nanoid();
     const newFunctionCall = {
@@ -1097,9 +1098,6 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
         )
       );
 
-      // In a real implementation, you would send the result back to continue the conversation
-      console.log('Function result:', result);
-
       return result;
     } catch (error) {
       // Update the function call with the error
@@ -1112,11 +1110,9 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
       );
 
       console.error('Function error:', error);
+      throw error;
     }
-  };
-
-  // Derived state
-  const isLoading = status === 'streaming' || status === 'submitted';
+  }, [availableFunctions]);
 
   // Show fallback model indicator when using fallback
   useEffect(() => {
@@ -1287,20 +1283,17 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
           setThreads(data.threads);
 
           // Clear messages and create a new thread
-          setMessages([]);
+          if (setMessages) setMessages([]);
           const newThreadId = await createThread('New Chat');
-          if (newThreadId) {
-            setThreadName('New Chat');
-            const url = new URL(window.location.href);
-            url.searchParams.set('thread', newThreadId);
-            window.history.pushState({}, '', url.toString());
-          }
+          setThreadName('New Chat');
+          // Optionally, you may want to handle updating the URL after thread creation
+          // if createThreadSupabase is updated to return the new thread ID in the future.
         } catch (error) {
           console.error('Error deleting thread:', error);
         }
       } else {
         // Just clear the messages if no thread ID
-        setMessages([]);
+        if (setMessages) setMessages([]);
       }
     }
   };
@@ -1320,7 +1313,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     setAttachments([]);
 
     // Submit the form
-    handleSubmit(e);
+    handleSendMessage(input);
   };
 
   // Handle keyboard shortcuts
@@ -1329,381 +1322,6 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
       e.preventDefault();
       formRef.current?.requestSubmit();
     }
-  };
-
-  // Render content with special components
-  const renderContent = (content: string) => {
-    // Check for special components and code blocks
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-
-    // Special component regex patterns
-    const imageDisplayRegex = /<ImageDisplay\s+src="([^"]+)"(?:\s+alt="([^"]+)")?(?:\s+width="([^"]+)")?(?:\s+height="([^"]+)")?\s*\/>/g;
-    const aiImageGeneratorRegex = /<AIImageGenerator\s+prompt="([^"]+)"(?:\s+style="([^"]+)")?\s*\/>/g;
-    const computerUseRegex = /<ComputerUse\s+task="([^"]+)"(?:\s+showSteps="(true|false)")?\s*\/>/g;
-    const dataVisualizationRegex = /<DataVisualization\s+data="([^"]+)"(?:\s+type="([^"]+)")?\s*\/>/g;
-    const visualizationWithTracingRegex = /<VisualizationWithTracing\s+data="([^"]+)"(?:\s+type="([^"]+)")?\s*\/>/g;
-    const dataTableRegex = /<DataTable\s+data="([^"]+)"(?:\s+columns="([^"]+)")?\s*\/>/g;
-    const browserDisplayRegex = /<BrowserDisplay\s+url="([^"]+)"(?:\s+height="([^"]+)")?\s*\/>/g;
-    const screenShareRegex = /<ScreenShare\s+src="([^"]+)"(?:\s+title="([^"]+)")?(?:\s+isVideo="(true|false)")?\s*\/>/g;
-    const interactiveMapRegex = /<InteractiveMap\s+center="\[([^,]+),([^,]+)\]"(?:\s+zoom="([^"]+)")?(?:\s+locations="([^"]+)")?\s*\/>/g;
-    const interactiveFormRegex = /<InteractiveForm\s+title="([^"]+)"(?:\s+fields="([^"]+)")?(?:\s+submitLabel="([^"]+)")?\s*\/>/g;
-
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    // Helper function to process text before a match
-    const processTextBeforeMatch = (matchIndex: number) => {
-      if (matchIndex > lastIndex) {
-        // Process the text segment for code blocks
-        const textSegment = content.slice(lastIndex, matchIndex);
-        const codeMatches = [...textSegment.matchAll(codeBlockRegex)];
-
-        if (codeMatches.length > 0) {
-          let textLastIndex = 0;
-
-          for (const codeMatch of codeMatches) {
-            const codeMatchIndex = codeMatch.index || 0;
-
-            // Add text before code block
-            if (codeMatchIndex > textLastIndex) {
-              parts.push(
-                <p key={`text-${lastIndex + textLastIndex}`} className="whitespace-pre-wrap">
-                  {textSegment.slice(textLastIndex, codeMatchIndex)}
-                </p>
-              );
-            }
-
-            const language = codeMatch[1] || 'plaintext';
-            const code = codeMatch[2];
-
-            // Handle special code blocks
-            if (language === 'mermaid') {
-              parts.push(<MermaidDiagram key={`mermaid-${lastIndex + codeMatchIndex}`} code={code} />);
-            } else {
-              parts.push(
-                <CodeBlock key={`code-${lastIndex + codeMatchIndex}`} language={language} code={code} />
-              );
-            }
-
-            textLastIndex = codeMatchIndex + codeMatch[0].length;
-          }
-
-          // Add remaining text
-          if (textLastIndex < textSegment.length) {
-            parts.push(
-              <p key={`text-${lastIndex + textLastIndex}`} className="whitespace-pre-wrap">
-                {textSegment.slice(textLastIndex)}
-              </p>
-            );
-          }
-        } else {
-          // No code blocks, just add the text
-          parts.push(
-            <p key={`text-${lastIndex}`} className="whitespace-pre-wrap">
-              {textSegment}
-            </p>
-          );
-        }
-      }
-    };
-
-    // Process ImageDisplay components
-    while ((match = imageDisplayRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const src = match[1];
-      const alt = match[2] || '';
-      const width = match[3] || 'auto';
-      const height = match[4] || 'auto';
-
-      parts.push(
-        <ImageDisplay
-          key={`image-${match.index}`}
-          src={src}
-          alt={alt}
-          className={`max-w-full ${width !== 'auto' ? `w-[${width}]` : ''} ${height !== 'auto' ? `h-[${height}]` : ''}`}
-        />
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process AIImageGenerator components
-    while ((match = aiImageGeneratorRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const prompt = match[1];
-      // Style is not used in the current component implementation
-      // const style = match[2] || 'vivid';
-
-      parts.push(
-        <AIImageGenerator
-          key={`ai-image-${match.index}`}
-          initialPrompt={prompt}
-          title={`Generated Image: ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`}
-        />
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process ComputerUse components
-    while ((match = computerUseRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const task = match[1];
-      const showSteps = match[2] === 'true';
-
-      parts.push(
-        <ComputerUse
-          key={`computer-${match.index}`}
-          title={`Computer Task: ${task.substring(0, 30)}${task.length > 30 ? '...' : ''}`}
-          content={task}
-          isTerminal={true}
-          isRunnable={showSteps}
-        />
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process DataVisualization components
-    while ((match = dataVisualizationRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const data = match[1];
-      const type = match[2] || 'bar';
-
-      try {
-        const parsedData = JSON.parse(data);
-        parts.push(
-          <DataVisualization
-            key={`viz-${match.index}`}
-            data={parsedData}
-            type={type as any}
-          />
-        );
-      } catch (e) {
-        parts.push(
-          <p key={`viz-error-${match.index}`} className="text-red-500">
-            Error parsing data visualization: {String(e)}
-          </p>
-        );
-      }
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process VisualizationWithTracing components
-    while ((match = visualizationWithTracingRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const data = match[1];
-      const type = match[2] || 'bar';
-
-      try {
-        const parsedData = JSON.parse(data);
-        parts.push(
-          <VisualizationWithTracing
-            key={`viz-trace-${match.index}`}
-            data={parsedData}
-            type={type as any}
-          />
-        );
-      } catch (e) {
-        parts.push(
-          <p key={`viz-trace-error-${match.index}`} className="text-red-500">
-            Error parsing visualization with tracing: {String(e)}
-          </p>
-        );
-      }
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process DataTable components
-    while ((match = dataTableRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const data = match[1];
-      const columns = match[2] || '';
-
-      try {
-        const parsedData = JSON.parse(data);
-        const parsedColumns = columns ? JSON.parse(columns) : null;
-        parts.push(
-          <DataTable
-            key={`table-${match.index}`}
-            data={parsedData}
-            columns={parsedColumns}
-          />
-        );
-      } catch (e) {
-        parts.push(
-          <p key={`table-error-${match.index}`} className="text-red-500">
-            Error parsing data table: {String(e)}
-          </p>
-        );
-      }
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process BrowserDisplay components
-    while ((match = browserDisplayRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const url = match[1];
-      const height = match[2] || '400px';
-
-      parts.push(
-        <BrowserDisplay
-          key={`browser-${match.index}`}
-          url={url}
-          title={`Browser: ${url}`}
-          className={`h-[${height}]`}
-        />
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process ScreenShare components
-    while ((match = screenShareRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const src = match[1];
-      const title = match[2] || 'Screen Recording';
-      const isVideo = match[3] !== 'false'; // Default to true
-
-      parts.push(
-        <ScreenShare
-          key={`screen-${match.index}`}
-          src={src}
-          title={title}
-          isVideo={isVideo}
-        />
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process InteractiveMap components
-    while ((match = interactiveMapRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
-      const zoom = match[3] ? parseInt(match[3]) : 13;
-      const locationsStr = match[4] || '[]';
-
-      try {
-        const locations = JSON.parse(locationsStr);
-        parts.push(
-          <InteractiveMap
-            key={`map-${match.index}`}
-            center={[lat, lng]}
-            zoom={zoom}
-            locations={locations}
-            title={`Map: ${lat}, ${lng}`}
-          />
-        );
-      } catch (e) {
-        parts.push(
-          <p key={`map-error-${match.index}`} className="text-red-500">
-            Error parsing map data: {String(e)}
-          </p>
-        );
-      }
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process InteractiveForm components
-    while ((match = interactiveFormRegex.exec(content)) !== null) {
-      processTextBeforeMatch(match.index);
-
-      const title = match[1];
-      const fieldsStr = match[2] || '[]';
-      const submitLabel = match[3] || 'Submit';
-
-      try {
-        const fields = JSON.parse(fieldsStr);
-        parts.push(
-          <InteractiveForm
-            key={`form-${match.index}`}
-            title={title}
-            fields={fields}
-            submitLabel={submitLabel}
-            onSubmit={(data) => console.log('Form submitted:', data)}
-          />
-        );
-      } catch (e) {
-        parts.push(
-          <p key={`form-error-${match.index}`} className="text-red-500">
-            Error parsing form data: {String(e)}
-          </p>
-        );
-      }
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Process remaining content
-    if (lastIndex < content.length) {
-      const remainingContent = content.slice(lastIndex);
-      const codeMatches = [...remainingContent.matchAll(codeBlockRegex)];
-
-      if (codeMatches.length > 0) {
-        let textLastIndex = 0;
-
-        for (const codeMatch of codeMatches) {
-          const codeMatchIndex = codeMatch.index || 0;
-
-          // Add text before code block
-          if (codeMatchIndex > textLastIndex) {
-            parts.push(
-              <p key={`text-${lastIndex + textLastIndex}`} className="whitespace-pre-wrap">
-                {remainingContent.slice(textLastIndex, codeMatchIndex)}
-              </p>
-            );
-          }
-
-          const language = codeMatch[1] || 'plaintext';
-          const code = codeMatch[2];
-
-          // Handle special code blocks
-          if (language === 'mermaid') {
-            parts.push(<MermaidDiagram key={`mermaid-${lastIndex + codeMatchIndex}`} code={code} />);
-          } else {
-            parts.push(
-              <CodeBlock key={`code-${lastIndex + codeMatchIndex}`} language={language} code={code} />
-            );
-          }
-
-          textLastIndex = codeMatchIndex + codeMatch[0].length;
-        }
-
-        // Add remaining text
-        if (textLastIndex < remainingContent.length) {
-          parts.push(
-            <p key={`text-${lastIndex + textLastIndex}`} className="whitespace-pre-wrap">
-              {remainingContent.slice(textLastIndex)}
-            </p>
-          );
-        }
-      } else {
-        // No code blocks, just add the text
-        parts.push(
-          <p key={`text-${lastIndex}`} className="whitespace-pre-wrap">
-            {remainingContent}
-          </p>
-        );
-      }
-    }
-
-    return parts.length > 0 ? parts : <p className="whitespace-pre-wrap">{content}</p>;
   };
 
   // Handle tool toggle
@@ -1736,7 +1354,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
   }));
 
   return (
-    <div className={cn('flex h-full', className, isFullScreen && 'fixed inset-0 z-50 bg-background')}>
+    <div className={cn('flex h-full', className, isFullScreen ? 'fixed inset-0 z-50 bg-background' : '')}>
       {/* Use ChatSidebar component */}
       <ChatSidebar
         className="hidden md:block"
@@ -1753,7 +1371,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
         onToolToggle={handleToolToggle}
         onTemperatureChange={setSelectedTemperature}
         onMaxTokensChange={setSelectedMaxTokens}
-        onCreateThread={() => createThread()}
+        onCreateThread={() => createThread('New Chat')}
       />
 
       {/* Main Chat Area */}
@@ -1970,7 +1588,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
                 </div>
                 <p className="text-sm">{error.message || 'Something went wrong. Please try again.'}</p>
                 <div className="flex gap-2 mt-2">
-                  <Button variant="outline" size="sm" onClick={() => reload()}>
+                  <Button variant="outline" size="sm" onClick={() => { if (reload) reload(); }}>
                     <RefreshCw className="h-3 w-3 mr-2" />
                     Retry
                   </Button>
@@ -1981,7 +1599,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
                       size="sm"
                       onClick={() => {
                         handleModelFallback(error);
-                        setTimeout(() => reload(), 1000);
+                        setTimeout(() => { if (reload) reload(); }, 1000);
                       }}
                     >
                       <Zap className="h-3 w-3 mr-2" />
@@ -2085,7 +1703,7 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
             <Textarea
               ref={textareaRef}
               value={input}
-              onChange={handleInputChange}
+              onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               className="min-h-[60px] max-h-[200px] resize-none"
@@ -2217,50 +1835,45 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
 
             <div className="space-y-2">
               <Label htmlFor="model">Model</Label>
-              {isLoadingModels ? (
-                <div className="flex items-center justify-center p-2 border rounded-md bg-gray-50">
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading models...</span>
-                </div>
-              ) : (
-                <select
-                  id="model"
-                  className="w-full p-2 border rounded-md"
-                  value={selectedModel}
-                  onChange={(e) => {
-                    setSelectedModel(e.target.value);
+              <select
+                id="model"
+                className="w-full p-2 border rounded-md"
+                value={selectedModel}
+                onChange={(e) => {
+                  setSelectedModel(e.target.value);
 
-                    // Update max tokens based on model settings
-                    if (modelSettings[e.target.value]?.max_tokens) {
-                      // Set max tokens to either the current value or the model's max, whichever is smaller
-                      const modelMaxTokens = modelSettings[e.target.value].max_tokens;
-                      if (selectedMaxTokens > modelMaxTokens) {
-                        setSelectedMaxTokens(modelMaxTokens);
-                      }
+                  // Update max tokens based on model settings
+                  if (modelSettings[e.target.value]?.max_tokens) {
+                    // Set max tokens to either the current value or the model's max, whichever is smaller
+                    const modelMaxTokens = modelSettings[e.target.value].max_tokens;
+                    if (selectedMaxTokens > modelMaxTokens) {
+                      setSelectedMaxTokens(modelMaxTokens);
                     }
-                  }}
-                >
-                  {selectedProvider === 'all' ? (
-                    // Show all models from the allModels list
-                    allModels.map(model => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                        {modelSettings[model.id]?.supports_vision && " (Vision)"}
-                        {modelSettings[model.id]?.supports_functions && " (Functions)"}
-                      </option>
-                    ))
-                  ) : (
-                    // Show only models for the selected provider
-                    modelsByProvider[selectedProvider as keyof typeof modelsByProvider]?.map(model => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                        {modelSettings[model.id]?.supports_vision && " (Vision)"}
-                        {modelSettings[model.id]?.supports_functions && " (Functions)"}
-                      </option>
-                    ))
-                  )}
-                </select>
-              )}
+                  }
+                }}
+              >
+                {selectedProvider === 'all' ? (
+                  // Show all models from the allModels list
+                  allModels.map(model => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                      {modelSettings[model.id]?.supports_vision && " (Vision)"}
+                      {modelSettings[model.id]?.supports_functions && " (Functions)"}
+                    </option>
+                  ))
+                ) : (
+                  // Show only models for the selected provider
+                  Object.entries(
+                    MODEL_REGISTRY[selectedProvider as keyof typeof MODEL_REGISTRY] || {}
+                  ).map(([id, cfg]: [string, any]) => (
+                    <option key={id} value={id}>
+                      {cfg.name}
+                      {cfg.supports_vision && " (Vision)"}
+                      {cfg.supports_functions && " (Functions)"}
+                    </option>
+                  ))
+                )}
+              </select>
 
               {/* Model capabilities */}
               {modelSettings[selectedModel] && (
@@ -2546,4 +2159,10 @@ Wind: ${data.windSpeed} ${data.windUnit || 'mph'} ${data.windDirection || ''}`;
     </div>
   );
 }
+
+
+
+
+
+
 

@@ -4,6 +4,7 @@ import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { agentRegistry } from "@/lib/agents/registry";
 import { personaManager } from "@/lib/agents/personas/persona-manager";
 import { getSupabaseClient } from "@/lib/memory/supabase";
+import { getLibSQLClient } from "@/lib/memory/db";
 
 /**
  * GET /api/ai-sdk/agents/[id]
@@ -15,12 +16,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Import required files
+    await import("@/lib/agents/registry");
+    await import("@/lib/memory/supabase");
+    await import("@/lib/agents/registry");
+    await import("@/lib/agents/personas/persona-manager");
+    await import("@/lib/langfuse-integration");
+    await import("@/lib/api-error-handler");
+    await import("@/lib/memory/db");
+
+
     const { id } = params;
     
-    // Initialize agent registry if needed
-    if (!agentRegistry.isInitialized()) {
-      await agentRegistry.init();
-    }
+    // Initialize agent registry
+    await agentRegistry.init();
     
     // Get agent from registry
     const agent = await agentRegistry.getAgent(id);
@@ -31,10 +40,10 @@ export async function GET(
     
     // Get persona information if available
     let persona = null;
-    if (agent.config.persona_id) {
+    if ((agent as any).persona_id) {
       try {
         await personaManager.init();
-        persona = await personaManager.getPersona(agent.config.persona_id);
+        persona = await personaManager.getPersona((agent as any).persona_id);
       } catch (error) {
         console.error("Error fetching persona:", error);
       }
@@ -42,16 +51,16 @@ export async function GET(
     
     // Format response
     return NextResponse.json({
-      id: agent.config.id,
-      name: agent.config.name,
-      description: agent.config.description,
-      modelId: agent.config.model_id,
-      systemPrompt: agent.config.system_prompt,
-      toolIds: agent.config.tool_ids || [],
-      personaId: agent.config.persona_id,
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      modelId: agent.modelId,
+      systemPrompt: agent.description, // or use the correct property if available
+      toolIds: (agent as any).tool_ids || [],
+      personaId: (agent as any).persona_id,
       persona: persona,
-      createdAt: agent.config.created_at,
-      updatedAt: agent.config.updated_at
+      // createdAt: agent.createdAt,
+      // updatedAt: agent.updatedAt
     });
   } catch (error) {
     return handleApiError(error);
@@ -117,7 +126,11 @@ export async function PATCH(
       
       // Add new tool associations
       if (toolIds.length > 0) {
-        const toolAssociations = toolIds.map(toolId => ({
+        interface ToolAssociation {
+          agent_id: string;
+          tool_id: string;
+        }
+        const toolAssociations: ToolAssociation[] = toolIds.map((toolId: string) => ({
           agent_id: id,
           tool_id: toolId
         }));
@@ -185,6 +198,7 @@ export async function DELETE(
     
     // Log deletion
     await logEvent({
+      traceId: id,
       name: "agent_deleted",
       metadata: {
         agentId: id,

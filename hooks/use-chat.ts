@@ -1,10 +1,8 @@
-
 "use client"
-
-import { useState, useCallback, useEffect, useRef } from "react"
-import { nanoid } from "nanoid"
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { nanoid } from 'nanoid'
 import { toast } from "sonner"
-import { LRUCache } from "lru-cache"
+import { LRUCache } from 'lru-cache'
 import { LanguageModelV1Middleware } from "ai";
 import { RequestMiddleware, ResponseMiddleware } from "@/lib/middleware";
 
@@ -111,7 +109,7 @@ export function useChat({
   // Fetch messages for a thread
   const fetchMessages = async (threadId: string) => {
     try {
-      const response = await fetch(`/api/threads/${threadId}/messages`)
+      const response = await fetch(`/api/memory_threads/${threadId}/messages`)
       if (!response.ok) throw new Error("Failed to fetch messages")
 
       const data = await response.json()

@@ -9,6 +9,7 @@ import { GradientCard } from "@/components/ui/gradient-card"
 import { CodeBlock } from "./code-block"
 import { MermaidDiagram } from "./mermaid-diagram"
 import { ImageDisplay } from "./image-display"
+import { renderContent } from "./ai-sdk-chatHelper"
 
 interface ChatMessageProps {
   message: {
@@ -146,7 +147,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               ) : (
                 <>
                   <div className="prose dark:prose-invert max-w-none">
-                    {renderMessageContent(message.content)}
+                    {renderContent(message.content)}
                   </div>
 
                   {/* Render attachments if any */}
