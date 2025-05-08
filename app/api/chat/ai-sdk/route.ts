@@ -1,18 +1,27 @@
 import { NextResponse } from "next/server";
-import { StreamingTextResponse, createDataStreamResponse, generateId, type LanguageModelV1Middleware } from 'ai';
+/**
+ * Checks if a thread exists, and creates a new thread if not.
+ * 
+ * This method is part of the chat thread management process, ensuring
+ * that a valid thread ID is available for tracking conversation context.
+ * If no thread ID is provided, a new unique thread will be generated.
+ * 
+ * @remarks
+ * Used in the AI SDK chat route to manage conversation state and persistence.
+ */
+import { streamText, CoreMessage, createDataStreamResponse, generateId, type LanguageModelV1Middleware } from 'ai';
 import { streamWithAISDK, getAllAISDKTools, generateWithAISDK } from "@/lib/ai-sdk-integration";
 import { memory } from "@/lib/memory/factory";
-import { createMemoryThread, saveMessage, loadMessages } from "@/lib/memory/memory";
+import { createMemoryThread, saveMessage } from "@/lib/memory/memory";
 import { v4 as uuidv4 } from "uuid";
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
-import { getModelConfig, getAgentConfig } from "@/lib/memory/supabase";
+import { getModelConfig } from "@/lib/memory/supabase";
 import { createMiddlewareFromOptions, createRequestResponseMiddlewareFromOptions, createCompleteMiddleware } from "@/lib/middleware";
 import { personaManager } from "@/lib/agents/personas/persona-manager";
 import { toolRegistry } from "@/lib/tools/toolRegistry";
-import { agentRegistry } from "@/lib/agents/registry";
 import { RequestMiddleware, ResponseMiddleware } from "@/lib/middleware";
-
+import { DataStreamWriter } from "ai";
 
 export async function POST(request: Request) {
   try {
@@ -22,8 +31,7 @@ export async function POST(request: Request) {
       threadId,
       model = 'models/gemini-2.0-flash',
       temperature = 0.7,
-      maxTokens = 8192,
-      contextWindow = 1000000,
+      maxTokens = 2048,
       tools = [],
       attachments = [],
       images = [],
@@ -34,6 +42,9 @@ export async function POST(request: Request) {
       maxSteps = 5,
       middleware = {}
     } = body;
+
+    // Build language model middleware from options
+    const { languageModel } = createCompleteMiddleware({ languageModel: middleware });
 
     // Validate request
     if (!messages || !Array.isArray(messages)) {
@@ -337,7 +348,7 @@ export async function POST(request: Request) {
       messages: processedMessages,
       temperature: temperature || modelSettings.default_temperature,
       maxTokens: effectiveMaxTokens,
-      contextWindow,
+      contextWindow: modelSettings.context_window,
       tools: Object.keys(toolConfigs).length > 0 ? toolConfigs : undefined,
       apiKey: modelConfig.api_key,
       baseURL: modelConfig.base_url,
@@ -356,7 +367,7 @@ export async function POST(request: Request) {
         hasAttachments: attachments && attachments.length > 0,
         toolChoice
       },
-      middleware: languageModelMiddleware.length > 0 ? languageModelMiddleware : undefined,
+      middleware: languageModelMiddleware,
       toolChoice,
       useSearchGrounding: body.useSearchGrounding,
       dynamicRetrievalConfig: body.dynamicRetrievalConfig,
@@ -367,7 +378,7 @@ export async function POST(request: Request) {
     // Use Data Stream Protocol for enhanced features
     if (streamProtocol === 'data') {
       return createDataStreamResponse({
-        execute: async (dataStream) => {
+        execute: async (dataStream: DataStreamWriter) => {
           // Send initial status
           dataStream.writeData({
             status: 'initialized',
@@ -622,7 +633,7 @@ export async function POST(request: Request) {
         }, 100);
 
         // Return the stream as a streaming text response
-        return new StreamingTextResponse(response, { headers });
+        return response.toTextStreamResponse({ headers });
       } catch (error) {
         console.error('Error streaming AI response:', error);
 

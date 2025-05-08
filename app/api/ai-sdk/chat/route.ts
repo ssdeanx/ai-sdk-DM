@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { StreamingTextResponse, createDataStreamResponse, generateId } from 'ai';
+import { generateId } from 'ai';
 import { streamWithAISDK, getAllAISDKTools } from "@/lib/ai-sdk-integration";
 import { memory } from "@/lib/memory/factory";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -15,8 +15,10 @@ import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { getModelConfig, getAgentConfig } from "@/lib/memory/supabase";
 import { createCompleteMiddleware } from "@/lib/middleware";
 import { personaManager } from "@/lib/agents/personas/persona-manager";
+import { agentManager } from "@/lib/agents/agent-manager";
 import { toolRegistry } from "@/lib/tools/toolRegistry";
 import { agentRegistry } from "@/lib/agents/registry";
+import { DataStreamWriter } from "ai";
 
 /**
  * POST /api/ai-sdk/chat
@@ -99,7 +101,10 @@ export async function POST(request: Request) {
       default_max_tokens: 2048,
       supports_tools: true,
       supports_images: modelProvider === 'google' || (modelProvider === 'openai' && model.includes('vision')),
-      supports_system_prompt: true
+      supports_system_prompt: true,
+      context_window: 1000000,
+      model_id: modelConfig.model_id || model,
+      api_key: modelConfig.api_key || process.env[`${modelProvider.toUpperCase()}_API_KEY`],
     };
 
     // Process messages and handle attachments/images
@@ -122,8 +127,8 @@ export async function POST(request: Request) {
         personaId = firstMessage.metadata.personaId;
         try {
           const persona = await personaManager.getPersona(personaId);
-          if (persona?.systemPrompt) {
-            personaSystemPrompt = persona.systemPrompt;
+          if (persona?.systemPromptTemplate) {
+            personaSystemPrompt = persona.systemPromptTemplate;
             processedMessages.unshift({
               role: 'system',
               content: personaSystemPrompt
@@ -162,7 +167,7 @@ export async function POST(request: Request) {
     if (tools && tools.length > 0 && modelSettings.supports_tools) {
       try {
         // Get all available tools
-        const allTools = await getAllAISDKTools();
+        const allTools: { [key: string]: any } = await getAllAISDKTools();
         
         // Filter tools based on provided tool IDs or names
         toolConfigs = tools.reduce((acc: Record<string, any>, tool: string) => {
@@ -205,13 +210,14 @@ export async function POST(request: Request) {
     // Use the AI SDK integration for enhanced capabilities
     const streamOptions = {
       provider: modelProvider as "google" | "openai" | "anthropic",
-      modelId: modelConfig.model_id || model,
+      modelId: modelSettings.model_id,
       messages: processedMessages,
       temperature: temperature || modelSettings.default_temperature,
       maxTokens: effectiveMaxTokens,
+      contextWindow: modelSettings.context_window,
       tools: Object.keys(toolConfigs).length > 0 ? toolConfigs : undefined,
-      apiKey: modelConfig.api_key,
-      baseURL: modelConfig.base_url,
+      apiKey: modelSettings.api_key,
+      baseURL: modelSettings.base_url,
       traceName: "ai_sdk_chat_stream",
       userId: chatThreadId,
       metadata: {
@@ -223,8 +229,11 @@ export async function POST(request: Request) {
         hasSystemPrompt: !!systemPrompt || !!personaSystemPrompt,
         toolCount: Object.keys(toolConfigs).length,
         messageCount: processedMessages.length,
+        hasImages: images && images.length > 0,
+        hasAttachments: attachments && attachments.length > 0,
+        toolChoice
       },
-      middleware: middlewareConfig
+      middleware: middlewareConfig.languageModel // Pass only the language model middleware
     };
 
     // Save user message to memory
@@ -252,10 +261,10 @@ export async function POST(request: Request) {
 
     // Return the appropriate response based on the stream protocol
     if (streamProtocol === 'text') {
-      return new StreamingTextResponse(result.stream);
+      return result.toTextStreamResponse();
     } else {
       return result.toDataStreamResponse({
-        onCompletion: async (completion) => {
+        onCompletion: async (completion: string) => {
           // Save assistant message to memory
           await memory.saveMessage(
             chatThreadId,
@@ -275,7 +284,7 @@ export async function POST(request: Request) {
           // Log completion event
           await logEvent({
             name: "message_completion",
-            traceId: trace?.id,
+            traceId: trace?.id ?? "",
             metadata: {
               threadId: chatThreadId,
               model,

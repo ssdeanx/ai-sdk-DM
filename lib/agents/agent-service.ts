@@ -6,8 +6,13 @@ import { toolRegistry } from "../tools/toolRegistry"
 import { getLibSQLClient } from "../memory/db"
 import { getItemById, getData } from "../memory/supabase"
 import { v4 as uuidv4 } from "uuid"
-import { Agent, ToolConfig, RunResult, AgentRunOptions } from "./agent.types"
+import { Agent, ToolConfig, RunResult, AgentRunOptions, AgentRunFinishData, AgentRunFinishReason } from "./agent.types"
 import { personaManager } from "./personas/persona-manager"
+
+interface ProviderOptions {
+  traceId?: string;
+  // other provider options
+}
 
 /**
  * Run an agent with a specific memory thread
@@ -149,7 +154,7 @@ export async function runAgent(
     }
 
     // Make AI SDK call
-    const result = await streamText({
+    const result = streamText({
       model: aiModel,
       messages: messages as CoreMessage[],
       tools: aiTools,
@@ -157,7 +162,45 @@ export async function runAgent(
       temperature: options?.temperature,
       maxTokens: options?.maxTokens,
       toolChoice: options?.toolChoice,
-      onFinish: options?.onFinish, // Pass the onFinish callback
+      onFinish: options?.onFinish
+        ? async (event) => {
+          // Adapt the event data to AgentRunFinishData
+          const assistantMessage = event.response.messages.find(
+            (m): m is CoreMessage & { id: string; role: 'assistant'; toolCalls?: Array<{ toolCallId: string; toolName: string; args: any; }>; } => m.role === 'assistant'
+          );
+
+          if (assistantMessage) {
+            // Extract text content from CoreMessage content parts
+            let content = "";
+            if (Array.isArray(assistantMessage.content)) {
+              content = assistantMessage.content
+                .filter(part => part.type === 'text')
+                .map(part => (part as { type: 'text'; text: string; }).text)
+                .join('');
+            } else if (typeof assistantMessage.content === 'string') {
+              content = assistantMessage.content;
+            }
+
+            const finishData: AgentRunFinishData = {
+              message: {
+                id: assistantMessage.id || uuidv4(), // Ensure id is present
+                role: 'assistant',
+                content: content,
+                toolInvocations: assistantMessage.toolCalls?.map(tc => ({
+                  toolCallId: tc.toolCallId,
+                  toolName: tc.toolName,
+                  args: tc.args,
+                })),
+                createdAt: new Date(),
+              },
+              usage: event.usage,
+              finishReason: event.finishReason === 'unknown' ? undefined : (event.finishReason as AgentRunFinishReason),
+            };
+            await options.onFinish!(finishData);
+          }
+        }
+        : undefined,
+      providerOptions: options?.traceId ? { traceId: { value: options.traceId } } : undefined, // Optional, as per integration notes above
     })
 
     // streamOutput handling

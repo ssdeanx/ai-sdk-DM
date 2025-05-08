@@ -49,23 +49,73 @@ export interface AgentState {
  */
 export interface RunResult {
   output?: string; // Make optional
-  streamResult?: StreamTextResult<any>; // Add this
+  streamResult?: StreamTextResult<any, any>; // Add this
   memoryThreadId: string;
 }
 /**
  * Options for running an agent
  */
+
+export type AgentRunTokenUsage = {
+  /** Number of tokens in the prompt. */
+  promptTokens: number;
+  /** Number of tokens in the completion. */
+  completionTokens: number;
+  /** Total number of tokens. */
+  totalTokens: number;
+};
+
+export type AgentRunFinishReason =
+  | 'stop'
+  | 'length'
+  | 'tool-calls'
+  | 'content-filter'
+  | 'error'
+  | 'unknown';
+
+export type AgentRunToolInvocation = {
+  /** The ID of the tool call. */
+  toolCallId: string;
+  /** The name of the tool being called. */
+  toolName: string;
+  /** The arguments for the tool call. */
+  args: any;
+};
+
+/**
+ * Data structure for the `onFinish` callback in `AgentRunOptions`,
+ * providing details about the completed generation step, based on AI SDK patterns.
+ */
+export interface AgentRunFinishData {
+  /**
+   * The final assistant message generated.
+   */
+  message: {
+    /** Unique identifier for the message. */
+    id: string;
+    /** Role of the message sender, typically 'assistant'. */
+    role: 'assistant';
+    /** The textual content of the message. */
+    content: string;
+    /** Tool invocations requested by the assistant in this message, if any. */
+    toolInvocations?: AgentRunToolInvocation[];
+    /** Optional: timestamp of when the message was created. */
+    createdAt?: Date;
+  };
+  /** Optional: Token usage statistics for the generation. */
+  usage?: AgentRunTokenUsage;
+  /** Optional: The reason why the generation concluded. */
+  finishReason?: AgentRunFinishReason;
+}
+
 export interface AgentRunOptions {
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
-  toolChoice?: any; // Based on Vercel SDK, this can be complex
-  traceId?: string;
+  toolChoice?: any; // Based on Vercel SDK, this can be complex, but we don't use it
+  traceId?: string; // Optional, as per integration notes above
   streamOutput?: boolean;
-  onFinish?: (data: {
-    text: string;
-    // TODO: Define more complete type for onFinish data based on AI SDK
-  }) => Promise<void>;
+  onFinish?: (data: AgentRunFinishData) => Promise<void>; // Updated onFinish as per integration notes above, traceId is optional
 }
 
 /**

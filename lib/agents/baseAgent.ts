@@ -170,6 +170,7 @@ export class BaseAgent {
 
       // Map local messages to CoreMessages expected by the AI SDK
       const coreMessages = messages.map(msg => ({
+        id: uuidv4(),
         role: msg.role as CoreMessage['role'],
         content: msg.content
       })) as CoreMessage[];

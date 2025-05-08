@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Dispatch, ReactNode, SetStateAction, useCallback } from 'react';
 // Import from the AI SDK
 import { useChat } from '@ai-sdk/react';
-import type { Message as AiSdkMessage, CreateMessage, UseChatHelpers } from '@ai-sdk/react';
+import type { Message, CreateMessage, UseChatHelpers } from '@ai-sdk/react';
 import {
   Bot, User, Send, Loader2, RefreshCw, XCircle, Paperclip,
   FileText, Code, Mic, Copy, Check, Eraser,

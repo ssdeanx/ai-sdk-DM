@@ -8,6 +8,17 @@ import { handleApiError } from "@/lib/api-error-handler";
  * 
  * Fetch all AI SDK chat threads
  */
+/**
+ * GET /api/chat/ai-sdk/threads
+ * 
+ * Retrieves a list of AI SDK chat threads with pagination support
+ * 
+ * @param request - The incoming HTTP request
+ * @returns A JSON response containing:
+ * - threads: Formatted list of AI SDK chat threads
+ * - count: Total number of threads returned
+ * - hasMore: Indicates if more threads are available for pagination
+ */
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
