@@ -1,5 +1,5 @@
 {
-  "name": "ai-sdk-DM",
+  "name": "deanmachinesai",
   "version": "0.1.1",
   "private": true,
   "scripts": {
@@ -15,6 +15,19 @@
     "migrate:down:libsql": "drizzle-kit down --config drizzle.libsql.config.ts",
     "migrate:all": "pnpm migrate:generate:supabase init && pnpm migrate:up:supabase && pnpm migrate:generate:libsql init && pnpm migrate:up:libsql"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "author": "Deanmachines",
+  "description": "DeanMachines AI is a platform that provides a suite of tools and services for building and deploying AI applications. It offers a range of features, including data processing, model training, and deployment capabilities, all designed to streamline the development process and enhance the performance of AI models.",
+  "keywords": [
+    "AI",
+    "Machine Learning",
+    "Data Processing",
+    "Model Training",
+    "Deployment"
+  ],  
   "dependencies": {
     "@agentic/ai-sdk": "^7.6.4",
     "@agentic/arxiv": "^7.6.4",
@@ -129,6 +142,7 @@
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.43.1",
     "embla-carousel-react": "8.6.0",
+    "eslint-plugin-react": "^7.37.5",
     "exit-hook": "^4.0.0",
     "fast-xml-parser": "^5.2.2",
     "framer-motion": "^12.10.5",
@@ -195,6 +209,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@postgrestools/postgrestools": "^0.6.1",
+    "@types/eslint": "^9.6.1",
     "@types/fs-extra": "^11.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/jsdom": "^21.1.7",
@@ -209,10 +224,17 @@
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
     "drizzle-kit": "^0.31.1",
+    "eslint": "^9.26.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "plotly.js-dist": "^3.0.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "jiti": "^2.4.2"
+    }
   }
 }

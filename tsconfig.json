@@ -20,28 +20,16 @@
         "name": "next"
       },
       {
-        "name":  "eslint"
+        "name": "eslint-plugin-react"
       },
       {
-        "name":  "typescript-eslint"
+        "name": "typescript-eslint-parser"
       },
       {
-        "name":  "tailwindcss"
+        "name": "tailwindcss"
       },
       {
-        "name":  "drizzle-kit"
-      },
-      {
-        "name":  "plotly.js-dist"
-      },
-      {
-        "name":  "postcss"
-      },
-      {
-        "name":  "typescript"
-      },
-      {
-        "name":  "typescript-eslint-parser"
+        "name": "drizzle-kit"
       }
     ],
     "paths": {

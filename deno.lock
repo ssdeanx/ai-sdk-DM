@@ -10357,6 +10357,7 @@
         "npm:drizzle-kit@~0.31.1",
         "npm:drizzle-orm@~0.43.1",
         "npm:embla-carousel-react@8.6.0",
+        "npm:eslint-plugin-react@7.37.5",
         "npm:exit-hook@4",
         "npm:fast-xml-parser@^5.2.2",
         "npm:framer-motion@^12.10.0",
