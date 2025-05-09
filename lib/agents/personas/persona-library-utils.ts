@@ -42,8 +42,6 @@ export async function initializePersonaLibrary(options: {
 
   // Initialize persona manager
   await personaManager.init();
-  
-  // Initialize persona score manager
   await personaScoreManager.init();
   
   const result: {
@@ -60,19 +58,14 @@ export async function initializePersonaLibrary(options: {
       result.base = await updateOrCreatePersonas(baseLibrary.basePersonas);
     } else {
       // Just register new personas
-      result.base = await baseLibrary.registerBasePersonas();
+      result.base = await updateOrCreatePersonas(baseLibrary.basePersonas);
     }
   }
   
   // Register specialized personas if requested
   if (registerSpecialized) {
-    if (forceUpdate) {
-      // Update existing personas or create new ones
-      result.specialized = await updateOrCreatePersonas(baseLibrary.specializedPersonas);
-    } else {
-      // Just register new personas
-      result.specialized = await baseLibrary.registerSpecializedPersonas();
-    }
+    // Update existing personas or create new ones
+    result.specialized = await updateOrCreatePersonas(baseLibrary.specializedPersonas);
   }
   
   // Register domain personas if requested
@@ -128,15 +121,15 @@ async function updateOrCreatePersonas(personas: Record<string, PersonaDefinition
         console.log(`Updated persona: ${persona.name} with ID: ${existingPersona.id}`);
       } else {
         // Create new persona
-        const id = await personaManager.createPersona({
+        const createdPersona = await personaManager.createPersona({
           name: persona.name,
           description: persona.description,
           systemPromptTemplate: persona.systemPromptTemplate,
           modelSettings: persona.modelSettings
         });
         
-        personaIds[key] = id;
-        console.log(`Created persona: ${persona.name} with ID: ${id}`);
+        personaIds[key] = createdPersona.id;
+        console.log(`Created persona: ${persona.name} with ID: ${createdPersona.id}`);
       }
     } catch (error) {
       console.error(`Error updating/creating persona ${key}:`, error);
@@ -188,11 +181,7 @@ export async function createTaskProvider(
       apiKey: process.env.GOOGLE_API_KEY,
     });
     
-    return googleAI('models/gemini-1.5-pro', {
-      temperature: options.temperature || 0.7,
-      topP: options.topP || 0.95,
-      maxOutputTokens: options.maxOutputTokens || 8192,
-    });
+    return googleAI('models/gemini-2.0-flash', {});
   }
   
   // Get the persona
@@ -214,13 +203,36 @@ export async function createTaskProvider(
   // Create custom provider
   return customProvider({
     languageModels: {
-      [persona.name]: googleAI(persona.modelSettings?.modelId || 'models/gemini-1.5-pro', {
-        temperature: options.temperature || persona.modelSettings?.temperature || 0.7,
-        topP: options.topP || persona.modelSettings?.topP || 0.95,
-        maxOutputTokens: options.maxOutputTokens || persona.modelSettings?.maxOutputTokens || 8192,
-        system: systemPrompt,
+      [persona.name]: googleAI(persona.modelSettings?.modelId || 'models/gemini-2.0-flash-exp', {
+        // temperature, topP, maxOutputTokens are not part of GoogleGenerativeAISettings
+        // These should be applied during the generation call (e.g., generateText)
       }),
-    },
+      'models/gemini-2.5-flash-exp': googleAI('models/gemini-2.5-flash-exp', {
+        // system is not part of GoogleGenerativeAISettings for model initialization
+        // It should be applied during the generation call (e.g., generateText)
+      }),
+      'models/gemini-2.5-flash-pro': googleAI('models/gemini-2.5-flash-pro', {
+        // system is not part of GoogleGenerativeAISettings for model initialization
+        // It should be applied during the generation call (e.g., generateText)
+      }),
+      'models/gemini-2.5-flash-pro-128k': googleAI('models/gemini-2.5-flash-pro-128k', {
+        // system is not part of GoogleGenerativeAISettings for model initialization
+        // It should be applied during the generation call (e.g., generateText)
+      }),
+      'models/gemini-2.0-flash': googleAI('models/gemini-2.0-flash', {
+        // system is not part of GoogleGenerativeAISettings for model initialization
+        // It should be applied during the generation call (e.g., generateText)
+      }),
+      'models/gemini-2.0-flashlite': googleAI('models/gemini-2.0-flash-lite', {
+        // system is not part of GoogleGenerativeAISettings for model initialization
+        // It should be applied during the generation call (e.g., generateText)
+      }),
+      'gemini-2.0-flash-live-001': googleAI('models/gemini-2.0-flash-live-001', {
+        // system is not part of GoogleGenerativeAISettings for model initialization
+        // It should be applied during the generation call (e.g., generateText)
+      })
+
+    }, // This closes the languageModels object
     fallbackProvider: googleAI,
   });
 }
@@ -238,7 +250,10 @@ export async function getPersonaByTaskType(taskType: string): Promise<AgentPerso
     requiredCapabilities: []
   });
   
-  return recommendation?.persona;
+  if (recommendation?.persona) {
+    return personaManager.getAgentPersona(recommendation.persona, recommendation.microPersona);
+  }
+  return undefined;
 }
 
 /**

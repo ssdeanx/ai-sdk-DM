@@ -6,656 +6,488 @@
  * tailored for specific use cases.
  *
  * The library can be used with the PersonaManager to create and manage agent personas.
- *
- * Gemini models supported:
- * - Gemini 2.5 Pro: Our most powerful thinking model with maximum response accuracy and state-of-the-art performance
- * - Gemini 2.5 Flash: Our best model in terms of price-performance, offering well-rounded capabilities
- * - Gemini 2.0 Flash: Our newest multimodal model, with next generation features and improved capabilities
- * - Gemini 1.5 Pro: Optimized for complex reasoning tasks requiring more intelligence
- * - Gemini 1.5 Flash: Fast and versatile performance across a diverse variety of tasks
  */
 
-import { customProvider } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { personaManager } from './persona-manager';
-import { AgentPersona } from '../agent.types';
-import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid'; // For generating unique IDs if needed
 
-// Import Google AI integration
-import { getGoogleAI } from '../../google-ai';
-import { GOOGLE_MODEL_CONFIGS } from '../../google-ai';
+// --- Enums ---
 
 /**
  * Gemini model safety category types
  */
-export type GeminiSafetyCategory =
-  | "HARM_CATEGORY_UNSPECIFIED"
-  | "HARM_CATEGORY_HATE_SPEECH"
-  | "HARM_CATEGORY_DANGEROUS_CONTENT"
-  | "HARM_CATEGORY_HARASSMENT"
-  | "HARM_CATEGORY_SEXUALLY_EXPLICIT"
-  | "HARM_CATEGORY_CIVIC_INTEGRITY";
+export enum GeminiSafetyCategory {
+  HARM_CATEGORY_UNSPECIFIED = "HARM_CATEGORY_UNSPECIFIED",
+  HARM_CATEGORY_HATE_SPEECH = "HARM_CATEGORY_HATE_SPEECH",
+  HARM_CATEGORY_DANGEROUS_CONTENT = "HARM_CATEGORY_DANGEROUS_CONTENT",
+  HARM_CATEGORY_HARASSMENT = "HARM_CATEGORY_HARASSMENT",
+  HARM_CATEGORY_SEXUALLY_EXPLICIT = "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+  HARM_CATEGORY_CIVIC_INTEGRITY = "HARM_CATEGORY_CIVIC_INTEGRITY",
+}
 
 /**
  * Gemini model safety threshold types
  */
-export type GeminiSafetyThreshold =
-  | "HARM_BLOCK_THRESHOLD_UNSPECIFIED"
-  | "BLOCK_LOW_AND_ABOVE"
-  | "BLOCK_MEDIUM_AND_ABOVE"
-  | "BLOCK_ONLY_HIGH"
-  | "OFF";
+export enum GeminiSafetyThreshold {
+  HARM_BLOCK_THRESHOLD_UNSPECIFIED = "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
+  BLOCK_LOW_AND_ABOVE = "BLOCK_LOW_AND_ABOVE",
+  BLOCK_MEDIUM_AND_ABOVE = "BLOCK_MEDIUM_AND_ABOVE",
+  BLOCK_ONLY_HIGH = "BLOCK_ONLY_HIGH",
+  BLOCK_NONE = "BLOCK_NONE", // Changed from OFF to BLOCK_NONE for clarity with some APIs
+}
 
 /**
  * Gemini model capabilities
- *
- * This includes both official Gemini capabilities and domain-specific capabilities
- * used to categorize personas in our system.
  */
-export type GeminiCapability =
+export enum GeminiCapability {
   // Official Gemini capabilities
-  | "structured-outputs"
-  | "caching"
-  | "tuning"
-  | "function-calling"
-  | "code-execution"
-  | "search-grounding"
-  | "image-generation"
-  | "audio-generation"
-  | "live-api"
-  | "thinking"
+  STRUCTURED_OUTPUTS = "structured-outputs",
+  CACHING = "caching",
+  TUNING = "tuning",
+  FUNCTION_CALLING = "function-calling",
+  CODE_EXECUTION = "code-execution",
+  SEARCH_GROUNDING = "search-grounding",
+  IMAGE_GENERATION = "image-generation",
+  AUDIO_GENERATION = "audio-generation",
+  LIVE_API = "live-api",
+  THINKING = "thinking",
+  SYSTEM_INSTRUCTIONS = "system-instructions",
+  JSON_MODE = "json-mode",
+  JSON_SCHEMA = "json-schema",
 
   // General capabilities
-  | "text-generation"
-  | "tool-use"
-  | "reasoning"
-  | "advanced-reasoning"
-  | "multimodal-understanding"
-  | "explanation"
+  TEXT_GENERATION = "text-generation",
+  TOOL_USE = "tool-use", // Alias for function-calling
+  REASONING = "reasoning",
+  ADVANCED_REASONING = "advanced-reasoning",
+  MULTIMODAL_UNDERSTANDING = "multimodal-understanding",
+  EXPLANATION = "explanation",
 
   // Code and technical capabilities
-  | "code-generation"
-  | "debugging"
-  | "technical-explanation"
-  | "technical-writing"
-  | "technical-planning"
-  | "system-design"
-  | "architecture"
-  | "organization"
-  | "secure-coding"
-  | "security"
-  | "vulnerability-assessment"
-  | "devops"
-  | "infrastructure"
-  | "automation"
+  CODE_GENERATION = "code-generation",
+  DEBUGGING = "debugging",
+  TECHNICAL_EXPLANATION = "technical-explanation",
+  TECHNICAL_WRITING = "technical-writing",
+  TECHNICAL_PLANNING = "technical-planning",
+  SYSTEM_DESIGN = "system-design",
+  ARCHITECTURE = "architecture",
+  ORGANIZATION = "organization",
+  SECURE_CODING = "secure-coding",
+  SECURITY = "security",
+  VULNERABILITY_ASSESSMENT = "vulnerability-assessment",
+  DEVOPS = "devops",
+  INFRASTRUCTURE = "infrastructure",
+  AUTOMATION = "automation",
 
   // Creative capabilities
-  | "creative-writing"
-  | "storytelling"
-  | "content-generation"
+  CREATIVE_WRITING = "creative-writing",
+  STORYTELLING = "storytelling",
+  CONTENT_GENERATION = "content-generation",
 
   // Analytical capabilities
-  | "research"
-  | "analysis"
-  | "critical-thinking"
-  | "data-analysis"
-  | "statistics"
-  | "visualization"
-  | "machine-learning"
-  | "deep-learning"
-  | "ai-development";
+  RESEARCH = "research",
+  ANALYSIS = "analysis",
+  CRITICAL_THINKING = "critical-thinking",
+  DATA_ANALYSIS = "data-analysis",
+  STATISTICS = "statistics",
+  VISUALIZATION = "visualization",
+  MACHINE_LEARNING = "machine-learning",
+  DEEP_LEARNING = "deep-learning",
+  AI_DEVELOPMENT = "ai-development",
+
+  // Business & Domain Specific
+  FINANCIAL_ANALYSIS = "financial-analysis",
+  LEGAL_ASSISTANCE = "legal-assistance",
+  MEDICAL_INFORMATION = "medical-information", // Use with caution
+  EDUCATIONAL_TUTORING = "educational-tutoring",
+  PROJECT_MANAGEMENT = "project-management",
+}
 
 /**
  * Gemini model ID types with their capabilities and token limits
  */
 export type GeminiModelId =
   // Gemini 2.5 Pro Preview (May 2025)
-  | "models/gemini-2.5-pro-preview-05-06"  // Input: 1,048,576 tokens, Output: 65,536 tokens
-                                          // Capabilities: structured outputs, function calling, code execution, search grounding, thinking
-
+  | "models/gemini-2.5-pro-preview-05-06"
   // Gemini 2.5 Flash Preview (April 2025)
-  | "models/gemini-2.5-flash-preview-04-17" // Input: 1,048,576 tokens, Output: 65,536 tokens
-                                           // Capabilities: code execution, function calling, search grounding, thinking
-
+  | "models/gemini-2.5-flash-preview-04-17"
   // Gemini 2.0 Flash (February 2025)
-  | "models/gemini-2.0-flash" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                             // Capabilities: structured outputs, caching, function calling, code execution, search, thinking (experimental)
-
+  | "models/gemini-2.0-flash"
   // Gemini 2.0 Flash Experimental (Image Generation)
-  | "models/gemini-2.0-flash-exp" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                                 // Capabilities: same as gemini-2.0-flash plus enhanced image generation
-
+  | "models/gemini-2.0-flash-exp"
   // Gemini 2.0 Flash Experimental (Image Generation - explicit name)
-  | "models/gemini-2.0-flash-exp-image-generation" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                                                  // Same as gemini-2.0-flash-exp, points to the same underlying model
-
+  | "models/gemini-2.0-flash-exp-image-generation"
   // Gemini 2.0 Flash Thinking Experimental
-  | "models/gemini-2.0-flash-thinking-exp-01-21" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                                                // Enhanced thinking capabilities
-
+  | "models/gemini-2.0-flash-thinking-exp-01-21"
   // Gemini 2.0 Flash-Lite (February 2025)
-  | "models/gemini-2.0-flash-lite" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                                  // Capabilities: structured outputs, caching, function calling
-
+  | "models/gemini-2.0-flash-lite"
   // Gemini 1.5 Flash (September 2024)
-  | "models/gemini-1.5-flash" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                             // Capabilities: system instructions, JSON mode, JSON schema, function calling, code execution
-
+  | "models/gemini-1.5-flash"
   // Gemini 1.5 Flash-8B (October 2024)
-  | "models/gemini-1.5-flash-8b" // Input: 1,048,576 tokens, Output: 8,192 tokens
-                                // Capabilities: system instructions, JSON mode, JSON schema, function calling, code execution
-
+  | "models/gemini-1.5-flash-8b"
   // Gemini 1.5 Pro (September 2024)
-  | "models/gemini-1.5-pro" // Input: 2,097,152 tokens, Output: 8,192 tokens
-                           // Capabilities: system instructions, JSON mode, JSON schema, function calling, code execution
-
+  | "models/gemini-1.5-pro"
   | string; // Allow custom model IDs
 
+export const GeminiModelIdSchema = z.string().describe("A valid Gemini Model ID, e.g., 'models/gemini-1.5-pro'");
+
+// --- Zod Schemas for Persona Definitions ---
+
 /**
- * Interface for persona definition
+ * Zod schema for individual safety settings
  */
-export interface PersonaDefinition {
-  id?: string;
-  name: string;
-  description: string;
-  systemPromptTemplate: string;
-  modelSettings: {
-    modelId: GeminiModelId;
-    temperature?: number;
-    topP?: number;
-    topK?: number;
-    maxOutputTokens?: number;
-    stopSequences?: string[];
-    safetySettings?: Array<{
-      category: GeminiSafetyCategory;
-      threshold: GeminiSafetyThreshold;
-    }>;
-    preferredTasks?: string[];
-    capabilities?: GeminiCapability[];
-    contextWindow?: number;
-    inputTokenLimit?: number;
-    outputTokenLimit?: number;
-    supportedFeatures?: {
-      structuredOutputs?: boolean;
-      caching?: boolean;
-      tuning?: boolean;
-      functionCalling?: boolean;
-      codeExecution?: boolean;
-      searchGrounding?: boolean;
-      imageGeneration?: boolean;
-      audioGeneration?: boolean;
-      liveApi?: boolean;
-      thinking?: boolean;
-    };
-    [key: string]: any;
-  };
+export const SafetySettingSchema = z.object({
+  category: z.nativeEnum(GeminiSafetyCategory),
+  threshold: z.nativeEnum(GeminiSafetyThreshold),
+});
+export type SafetySetting = z.infer<typeof SafetySettingSchema>;
+
+/**
+ * Zod schema for example dialogues
+ */
+export const ExampleDialogueSchema = z.object({
+  user: z.string().min(1),
+  assistant: z.string().min(1),
+});
+export type ExampleDialogue = z.infer<typeof ExampleDialogueSchema>;
+
+/**
+ * Zod schema for base persona definition
+ */
+export const PersonaDefinitionSchema = z.object({
+  id: z.string().min(1, "ID is required").default(() => uuidv4()),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  systemPromptTemplate: z.string().min(1, "System prompt template is required"),
+  modelSettings: z.record(z.any()).optional().describe("e.g., { temperature: 0.7, topP: 0.9 }"),
+  traits: z.array(z.string()).optional().describe("e.g., ['concise', 'empathetic', 'technical']"),
+  capabilities: z.array(z.nativeEnum(GeminiCapability)).optional(),
+  safetySettings: z.array(SafetySettingSchema).optional(),
+  version: z.string().optional().describe("e.g., '1.0.0'"),
+  tags: z.array(z.string()).optional().describe("e.g., ['customer-support', 'developer-tool']"),
+  exampleDialogues: z.array(ExampleDialogueSchema).optional(),
+  knowledgeBaseIds: z.array(z.string()).optional().describe("IDs of knowledge bases to use"),
+  preferredModels: z.array(GeminiModelIdSchema).optional().describe("Ordered list of preferred model IDs"),
+  metadata: z.record(z.any()).optional().describe("Any other custom metadata"),
+  compatibleMicroPersonas: z.array(z.string()).optional().describe("IDs of compatible micro-personas"),
+  lastUpdatedAt: z.string().datetime().optional().default(() => new Date().toISOString()),
+  createdAt: z.string().datetime().optional().default(() => new Date().toISOString()),
+});
+export type PersonaDefinition = z.infer<typeof PersonaDefinitionSchema>;
+
+/**
+ * Zod schema for micro-persona definition
+ */
+export const MicroPersonaDefinitionSchema = z.object({
+  id: z.string().min(1, "ID is required").default(() => `micro-${uuidv4()}`),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  parentPersonaId: z.string().min(1, "Parent Persona ID is required").optional(),
+  promptFragment: z.string().min(1, "Prompt fragment is required to augment or replace parts of the base prompt"),
+  modelSettingsOverrides: z.record(z.any()).optional().describe("e.g., { temperature: 0.5 }"),
+  tags: z.array(z.string()).optional().describe("e.g., ['humor', 'conciseness']"),
+  microTraits: z.array(z.string()).optional().describe("Specific traits for this micro-persona, e.g., ['sarcastic', 'formal']"),
+  conflictingMicroPersonaIds: z.array(z.string()).optional().describe("IDs of micro-personas that should not be used with this one"),
+  requiredCapabilities: z.array(z.nativeEnum(GeminiCapability)).optional().describe("Capabilities specifically required or enhanced by this micro-persona"),
+  metadata: z.record(z.any()).optional().describe("Any other custom metadata for the micro-persona"),
+  version: z.string().optional().describe("e.g., '1.0.0'"), // Added version field
+  // Overrides for specific fields of the base persona
+  overrides: z.object({
+    systemPromptTemplate: z.string().optional().describe("Completely replaces the base system prompt if provided"),
+    modelSettings: z.record(z.any()).optional().describe("Merges with and overrides base model settings"),
+    traits: z.array(z.string()).optional().describe("Adds to or replaces base traits"),
+    capabilities: z.array(z.nativeEnum(GeminiCapability)).optional().describe("Adds to or replaces base capabilities"),
+    safetySettings: z.array(SafetySettingSchema).optional().describe("Replaces base safety settings"),
+    tags: z.array(z.string()).optional().describe("Adds to or replaces base tags"),
+    exampleDialogues: z.array(ExampleDialogueSchema).optional().describe("Replaces base example dialogues"),
+    knowledgeBaseIds: z.array(z.string()).optional().describe("Adds to or replaces base knowledge base IDs"),
+    preferredModels: z.array(GeminiModelIdSchema).optional().describe("Replaces base preferred models"),
+    metadata: z.record(z.any()).optional().describe("Merges with and overrides base metadata"),
+  }).optional(),
+  lastUpdatedAt: z.string().datetime().optional().default(() => new Date().toISOString()),
+  createdAt: z.string().datetime().optional().default(() => new Date().toISOString()),
+});
+export type MicroPersonaDefinition = z.infer<typeof MicroPersonaDefinitionSchema>;
+
+// --- Validation Functions ---
+
+/**
+ * Validates persona definition data.
+ * @param data - The data to validate.
+ * @returns The validated persona definition.
+ * @throws ZodError if validation fails.
+ */
+export function validatePersonaDefinition(data: unknown): PersonaDefinition {
+  const result = PersonaDefinitionSchema.safeParse(data);
+  if (!result.success) {
+    console.error("PersonaDefinition validation failed:", result.error.flatten().fieldErrors);
+    throw result.error;
+  }
+  return result.data;
 }
 
 /**
- * Create a custom provider for a persona
+ * Validates micro-persona definition data.
+ * @param data - The data to validate.
+ * @returns The validated micro-persona definition.
+ * @throws ZodError if validation fails.
+ */
+export function validateMicroPersonaDefinition(data: unknown): MicroPersonaDefinition {
+  const result = MicroPersonaDefinitionSchema.safeParse(data);
+  if (!result.success) {
+    console.error("MicroPersonaDefinition validation failed:", result.error.flatten().fieldErrors);
+    throw result.error;
+  }
+  return result.data;
+}
+
+// --- Composition Function ---
+
+/**
+ * Composes a full persona from a base persona and an optional micro-persona.
+ * If a micro-persona is provided, its overrides and specific fields are merged
+ * with the base persona to create a new, specialized persona definition.
  *
- * @param persona - Persona definition
- * @returns Custom provider with the persona configuration
+ * @param basePersona - The base persona definition.
+ * @param microPersona - The micro-persona definition (optional).
+ * @returns The composed PersonaDefinition.
  */
-export function createPersonaProvider(persona: PersonaDefinition) {
-  const googleAI = createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_API_KEY,
-  });
+export function composePersona(
+  basePersonaInput: PersonaDefinition,
+  microPersonaInput?: MicroPersonaDefinition,
+): PersonaDefinition {
+  // Ensure inputs are validated copies to prevent accidental mutation of original library objects
+  const basePersona = validatePersonaDefinition(JSON.parse(JSON.stringify(basePersonaInput)));
+  
+  if (!microPersonaInput) {
+    return basePersona;
+  }
+  const microPersona = validateMicroPersonaDefinition(JSON.parse(JSON.stringify(microPersonaInput)));
 
-  // Map our persona settings to Google AI SDK settings
-  const settings: any = {
-    generationConfig: {
-      maxOutputTokens: persona.modelSettings.maxOutputTokens,
-      stopSequences: persona.modelSettings.stopSequences,
-    },
-    safetySettings: persona.modelSettings.safetySettings,
-    system: persona.systemPromptTemplate,
+  const composed: PersonaDefinition = { ...basePersona };
+
+  // ID and Name composition
+  composed.id = microPersona.id; // Micro-persona ID becomes the composed ID
+  composed.name = `${basePersona.name} (${microPersona.name})`;
+
+  // Description composition
+  let microDesc = microPersona.description ? `\nMicro-Context: ${microPersona.description}` : '';
+  composed.description = `${basePersona.description || ''}${microDesc}`;
+
+
+  // Apply overrides first
+  if (microPersona.overrides) {
+    if (microPersona.overrides.systemPromptTemplate) {
+      composed.systemPromptTemplate = microPersona.overrides.systemPromptTemplate;
+    } else if (microPersona.promptFragment) {
+      // Append fragment if no full override
+      composed.systemPromptTemplate = `${composed.systemPromptTemplate}\n\n${microPersona.promptFragment}`;
+    }
+    composed.modelSettings = { ...composed.modelSettings, ...microPersona.overrides.modelSettings };
+    composed.traits = microPersona.overrides.traits ? Array.from(new Set([...(composed.traits || []), ...microPersona.overrides.traits])) : composed.traits;
+    composed.capabilities = microPersona.overrides.capabilities ? Array.from(new Set([...(composed.capabilities || []), ...microPersona.overrides.capabilities])) : composed.capabilities;
+    composed.safetySettings = microPersona.overrides.safetySettings || composed.safetySettings;
+    composed.tags = microPersona.overrides.tags ? Array.from(new Set([...(composed.tags || []), ...microPersona.overrides.tags])) : composed.tags;
+    composed.exampleDialogues = microPersona.overrides.exampleDialogues || composed.exampleDialogues;
+    composed.knowledgeBaseIds = microPersona.overrides.knowledgeBaseIds ? Array.from(new Set([...(composed.knowledgeBaseIds || []), ...microPersona.overrides.knowledgeBaseIds])) : composed.knowledgeBaseIds;
+    composed.preferredModels = microPersona.overrides.preferredModels || composed.preferredModels;
+    composed.metadata = { ...composed.metadata, ...microPersona.overrides.metadata };
+  } else if (microPersona.promptFragment) {
+    // If no overrides object, but promptFragment exists, append it.
+     composed.systemPromptTemplate = `${composed.systemPromptTemplate}\n\n${microPersona.promptFragment}`;
+  }
+  
+  // Apply direct micro-persona fields (if not handled by overrides or if overrides don't exist)
+  if (microPersona.modelSettingsOverrides && (!microPersona.overrides || !microPersona.overrides.modelSettings)) {
+     composed.modelSettings = { ...composed.modelSettings, ...microPersona.modelSettingsOverrides };
+  }
+  if (microPersona.microTraits) {
+    composed.traits = Array.from(new Set([...(composed.traits || []), ...microPersona.microTraits]));
+  }
+  if (microPersona.tags && (!microPersona.overrides || !microPersona.overrides.tags)) {
+     composed.tags = Array.from(new Set([...(composed.tags || []), ...microPersona.tags]));
+  }
+   if (microPersona.requiredCapabilities && (!microPersona.overrides || !microPersona.overrides.capabilities)) {
+    composed.capabilities = Array.from(new Set([...(composed.capabilities || []), ...microPersona.requiredCapabilities]));
+  }
+
+
+  // Update metadata
+  composed.metadata = {
+    ...composed.metadata,
+    basePersonaId: basePersona.id,
+    microPersonaId: microPersona.id,
+    ...(microPersona.metadata || {}),
   };
+  
+  composed.lastUpdatedAt = new Date().toISOString();
 
-  // Add temperature if defined
-  if (persona.modelSettings.temperature !== undefined) {
-    settings.generationConfig.temperature = persona.modelSettings.temperature;
-  }
-
-  // Add topP if defined
-  if (persona.modelSettings.topP !== undefined) {
-    settings.generationConfig.topP = persona.modelSettings.topP;
-  }
-
-  // Add topK if defined
-  if (persona.modelSettings.topK !== undefined) {
-    settings.generationConfig.topK = persona.modelSettings.topK;
-  }
-
-  return customProvider({
-    languageModels: {
-      [persona.name]: googleAI(persona.modelSettings.modelId, settings),
-    },
-    fallbackProvider: googleAI,
-  });
+  return validatePersonaDefinition(composed); // Validate the final composed structure
 }
 
+
+// --- Zod Schemas for Persona Scoring ---
+
 /**
- * Base personas for different task categories
+ * Zod schema for persona score.
+ * This structure would typically be stored in a database.
  */
+export const PersonaScoreSchema = z.object({
+  id: z.string().min(1).default(() => uuidv4()), // Score record ID
+  persona_id: z.string().min(1), // ID of the PersonaDefinition or MicroPersonaDefinition
+  usage_count: z.number().int().min(0).default(0),
+  success_count: z.number().int().min(0).default(0), // Number of successful interactions
+  failure_count: z.number().int().min(0).default(0), // Number of failed interactions
+  success_rate: z.number().min(0).max(1).default(0), // Calculated: success_count / (success_count + failure_count)
+  average_latency_ms: z.number().min(0).default(0).describe("Average response latency in milliseconds"),
+  user_satisfaction_avg: z.number().min(0).max(5).default(0).describe("Average user satisfaction score (e.g., 1-5 scale)"),
+  user_feedback_count: z.number().int().min(0).default(0), // How many times feedback was given
+  adaptability_score: z.number().min(0).max(1).default(0).describe("Score indicating how well persona adapts to different contexts/tasks"),
+  cost_per_interaction_avg: z.number().min(0).default(0).optional().describe("Average cost if token/cost tracking is implemented"),
+  token_usage_avg: z.object({
+    prompt_tokens: z.number().int().min(0).default(0),
+    completion_tokens: z.number().int().min(0).default(0),
+    total_tokens: z.number().int().min(0).default(0),
+  }).optional().default({ prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }),
+  overall_score: z.number().default(0).describe("Calculated overall performance score"),
+  last_used_at: z.string().datetime().optional(),
+  last_scored_at: z.string().datetime().optional(),
+  metadata: z.record(z.any()).optional().describe("Additional metadata for scoring, e.g., version tested"),
+  created_at: z.string().datetime().default(() => new Date().toISOString()),
+  updated_at: z.string().datetime().default(() => new Date().toISOString()),
+});
+export type PersonaScore = z.infer<typeof PersonaScoreSchema>;
+
+/**
+ * Zod schema for score update data.
+ */
+export const ScoreUpdateDataSchema = z.object({
+  successfulInteraction: z.boolean().optional(), // True if the interaction was successful
+  latencyMs: z.number().int().min(0).optional(),
+  userSatisfaction: z.number().min(0).max(5).optional(),
+  adaptabilityFactor: z.number().min(-1).max(1).optional().describe("A factor indicating positive (1) or negative (-1) adaptation, or neutral (0)"),
+  cost: z.number().min(0).optional(),
+  tokens: z.object({
+    prompt: z.number().int().min(0),
+    completion: z.number().int().min(0),
+  }).optional(),
+  metadata: z.record(z.any()).optional(),
+});
+export type ScoreUpdateData = z.infer<typeof ScoreUpdateDataSchema>;
+
+// --- Pre-defined Personas ---
+
 export const basePersonas: Record<string, PersonaDefinition> = {
-  // General Assistant
-  generalAssistant: {
-    name: "General Assistant",
-    description: "A helpful, harmless, and honest assistant for general-purpose tasks",
-    systemPromptTemplate:
-      "You are a helpful, harmless, and honest assistant. You provide accurate, factual information and assistance with a wide range of tasks. You are respectful, polite, and aim to be as helpful as possible while prioritizing user safety and wellbeing.\n\n" +
-      "When you don't know something, you admit it rather than making up information. You can use tools when appropriate to provide better assistance.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.0-flash-exp", // Using experimental model for image generation
-      temperature: 0.7,
-      topP: 0.95,
-      maxOutputTokens: 8192,
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 8192,
-      preferredTasks: ["general", "conversation", "information"],
-      capabilities: ["text-generation", "tool-use", "reasoning", "multimodal-understanding"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        caching: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true,
-        imageGeneration: true,
-        thinking: true
-      },
-      safetySettings: [
-        {
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_HATE_SPEECH",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        },
-        {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        }
-      ]
-    }
-  },
-
-  // Code Assistant
-  codeAssistant: {
-    name: "Code Assistant",
-    description: "A specialized assistant for programming and software development tasks",
-    systemPromptTemplate:
-      "You are a code assistant specializing in software development. You help with writing code, debugging, explaining programming concepts, and providing best practices.\n\n" +
-      "You write clean, efficient, and well-documented code. You explain your reasoning and include comments to help users understand your solutions. You consider edge cases and potential bugs.\n\n" +
-      "You're proficient in multiple programming languages including Python, JavaScript, TypeScript, Java, C++, and more. You can also help with frameworks, libraries, and development tools.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.5-pro-preview-05-06", // Best for complex coding tasks
-      temperature: 0.3,
-      topP: 0.9,
-      maxOutputTokens: 65536, // 65K token output limit
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 65536,
-      preferredTasks: ["code-generation", "debugging", "code-explanation", "code-review"],
-      capabilities: ["code-generation", "debugging", "technical-explanation", "advanced-reasoning"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true,
-        thinking: true
-      },
-      safetySettings: [
-        {
-          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        }
-      ]
-    }
-  },
-
-  // Creative Writer
-  creativeWriter: {
-    name: "Creative Writer",
-    description: "An assistant for creative writing, storytelling, and content creation",
-    systemPromptTemplate:
-      "You are a creative writing assistant with a flair for engaging storytelling and content creation. You help with writing stories, blog posts, marketing copy, poetry, and other creative content.\n\n" +
-      "You have a rich vocabulary and can adapt your writing style to match different tones, genres, and audiences. You provide creative ideas, help overcome writer's block, and offer constructive feedback on writing.\n\n" +
-      "You aim to inspire and enhance the user's creativity while respecting their vision and voice.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.5-flash-preview-04-17", // Adaptive thinking, good for creative tasks
-      temperature: 0.9,
-      topP: 0.98,
-      maxOutputTokens: 65536, // 65K token output limit
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 65536,
-      preferredTasks: ["creative-writing", "storytelling", "content-creation"],
-      capabilities: ["creative-writing", "storytelling", "content-generation"],
-      supportedFeatures: {
-        codeExecution: true,
-        functionCalling: true,
-        searchGrounding: true,
-        thinking: true
-      }
-    }
-  },
-
-  // Research Assistant
-  researchAssistant: {
-    name: "Research Assistant",
-    description: "An assistant for in-depth research, analysis, and information synthesis",
-    systemPromptTemplate:
-      "You are a research assistant specializing in gathering, analyzing, and synthesizing information. You help with literature reviews, data analysis, fact-checking, and exploring complex topics.\n\n" +
-      "You provide well-structured, comprehensive information with proper citations when available. You consider multiple perspectives and present balanced viewpoints on controversial topics.\n\n" +
-      "You're skilled at breaking down complex subjects into understandable components and identifying connections between different pieces of information.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.5-pro-preview-05-06", // Best for complex research and analysis
-      temperature: 0.4,
-      topP: 0.92,
-      maxOutputTokens: 65536, // 65K token output limit
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 65536,
-      preferredTasks: ["research", "analysis", "information-synthesis"],
-      capabilities: ["research", "analysis", "critical-thinking"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true,
-        thinking: true
-      }
-    }
-  },
-
-  // Technical Documentation Writer
-  technicalDocumentationWriter: {
-    name: "Technical Documentation Writer",
-    description: "An assistant for creating clear, comprehensive technical documentation",
-    systemPromptTemplate:
-      "You are a technical documentation writer specializing in creating clear, accurate, and comprehensive documentation for software, APIs, systems, and technical processes.\n\n" +
-      "You excel at explaining complex technical concepts in accessible language while maintaining precision. You structure documentation logically with appropriate headings, examples, and references.\n\n" +
-      "You follow documentation best practices including consistent terminology, clear instructions, and user-centered explanations. You can create various documentation types including guides, tutorials, reference materials, and API documentation.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.0-flash", // Good for technical writing with structured outputs
-      temperature: 0.3,
-      topP: 0.9,
-      maxOutputTokens: 8192,
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 8192,
-      preferredTasks: ["technical-writing", "documentation", "explanation"],
-      capabilities: ["technical-writing", "explanation", "organization"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        caching: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true
-      }
-    }
-  },
-
-  // Data Analyst
-  dataAnalyst: {
-    name: "Data Analyst",
-    description: "An assistant for data analysis, visualization, and interpretation",
-    systemPromptTemplate:
-      "You are a data analyst specializing in data processing, analysis, visualization, and interpretation. You help with statistical analysis, data cleaning, visualization recommendations, and extracting insights from data.\n\n" +
-      "You're proficient with data analysis tools and languages including SQL, Python (pandas, numpy, matplotlib, seaborn), R, and various visualization libraries. You can suggest appropriate statistical methods and visualization techniques for different data types and analysis goals.\n\n" +
-      "You explain your analysis process clearly and help users understand the implications of data findings.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.0-flash", // Good for data analysis with structured outputs
-      temperature: 0.4,
-      topP: 0.9,
-      maxOutputTokens: 8192,
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 8192,
-      preferredTasks: ["data-analysis", "statistics", "visualization"],
-      capabilities: ["data-analysis", "statistics", "visualization"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        caching: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true
-      }
-    }
-  },
-
-  // System Architect
-  systemArchitect: {
-    name: "System Architect",
-    description: "An assistant for designing software architectures and system designs",
-    systemPromptTemplate:
-      "You are a system architect specializing in designing software architectures, system designs, and technical solutions. You help with architectural decisions, system component design, technology selection, and evaluating trade-offs.\n\n" +
-      "You consider factors like scalability, performance, security, maintainability, and cost when proposing architectures. You're familiar with various architectural patterns, cloud services, databases, and infrastructure components.\n\n" +
-      "You provide clear diagrams and explanations of your architectural recommendations, highlighting the reasoning behind your choices.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.5-pro-preview-05-06", // Best for complex system design tasks
-      temperature: 0.4,
-      topP: 0.9,
-      maxOutputTokens: 65536, // 65K token output limit
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 65536,
-      preferredTasks: ["system-design", "architecture", "technical-planning"],
-      capabilities: ["system-design", "architecture", "technical-planning"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true,
-        thinking: true
-      }
-    }
-  }
+  neutralAssistant: validatePersonaDefinition({
+    id: 'neutral-assistant',
+    name: 'Neutral Assistant',
+    description: 'A general-purpose AI assistant that provides neutral and objective responses.',
+    systemPromptTemplate: 'You are a helpful and neutral AI assistant. Provide clear and concise answers. Respond factually and avoid expressing personal opinions unless explicitly asked for a subjective viewpoint clearly marked as such.',
+    modelSettings: { temperature: 0.7, topP: 0.9 },
+    traits: ['neutral', 'objective', 'clear', 'concise', 'factual'],
+    preferredModels: ['models/gemini-1.5-flash', 'models/gemini-2.0-flash-lite'],
+    version: '1.1.0',
+    tags: ['general', 'assistant', 'factual'],
+    capabilities: [GeminiCapability.TEXT_GENERATION, GeminiCapability.EXPLANATION],
+  }),
+  creativeWriter: validatePersonaDefinition({
+    id: 'creative-writer',
+    name: 'Creative Writer',
+    description: 'An AI assistant specialized in generating creative content, stories, and scripts.',
+    systemPromptTemplate: 'You are a highly creative AI writer. Generate imaginative and engaging content based on the user\'s request. Emphasize storytelling, vivid descriptions, and emotional depth. Feel free to explore unconventional ideas.',
+    modelSettings: { temperature: 0.9, topP: 0.95 },
+    traits: ['creative', 'imaginative', 'storyteller', 'expressive', 'artistic'],
+    preferredModels: ['models/gemini-1.5-pro', 'models/gemini-2.5-pro-preview-05-06'],
+    version: '1.1.0',
+    tags: ['writing', 'creative', 'content-generation', 'storytelling'],
+    capabilities: [GeminiCapability.CREATIVE_WRITING, GeminiCapability.STORYTELLING, GeminiCapability.TEXT_GENERATION],
+    exampleDialogues: [
+      { user: 'Write a short story about a dragon who loves to bake.', assistant: 'In a cozy cavern, warmed by his own gentle flames, lived Ignis, a dragon with a peculiar passion: baking. His massive claws, surprisingly deft, kneaded dough with the rhythm of an ancient song, and his fiery breath was carefully controlled to produce the perfect golden crust on his famous sunberry scones...' }
+    ]
+  }),
+  technicalExpert: validatePersonaDefinition({
+    id: 'technical-expert',
+    name: 'Technical Expert',
+    description: 'An AI assistant providing in-depth technical explanations and analysis.',
+    systemPromptTemplate: 'You are a seasoned technical expert with deep knowledge in your domain. Provide precise, accurate, and detailed explanations. Cite sources or methodologies where appropriate. Break down complex topics into understandable components.',
+    modelSettings: { temperature: 0.5, topP: 0.9 },
+    traits: ['technical', 'analytical', 'precise', 'knowledgeable', 'methodical'],
+    preferredModels: ['models/gemini-1.5-pro', 'models/gemini-2.5-pro-preview-05-06'],
+    version: '1.0.0',
+    tags: ['technical', 'expert', 'analysis', 'explanation'],
+    capabilities: [GeminiCapability.TECHNICAL_EXPLANATION, GeminiCapability.ANALYSIS, GeminiCapability.ADVANCED_REASONING],
+  }),
 };
 
-/**
- * Specialized personas for specific domains
- */
 export const specializedPersonas: Record<string, PersonaDefinition> = {
-  // AI/ML Specialist
-  aiMlSpecialist: {
-    name: "AI/ML Specialist",
-    description: "A specialized assistant for artificial intelligence and machine learning",
-    systemPromptTemplate:
-      "You are an AI/ML specialist with expertise in machine learning, deep learning, and artificial intelligence. You help with model selection, algorithm design, data preprocessing, training strategies, and model evaluation.\n\n" +
-      "You're knowledgeable about various ML frameworks (TensorFlow, PyTorch, scikit-learn), neural network architectures, and AI concepts. You can explain complex AI/ML concepts clearly and provide practical implementation guidance.\n\n" +
-      "You stay current with the latest research and best practices in the field.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.5-pro-preview-05-06", // Best for AI/ML tasks
-      temperature: 0.4,
-      topP: 0.9,
-      maxOutputTokens: 65536, // 65K token output limit
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 65536,
-      preferredTasks: ["machine-learning", "deep-learning", "ai-development"],
-      capabilities: ["machine-learning", "deep-learning", "ai-development"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true,
-        thinking: true
-      }
-    }
-  },
-
-  // DevOps Engineer
-  devOpsEngineer: {
-    name: "DevOps Engineer",
-    description: "A specialized assistant for DevOps, CI/CD, and infrastructure management",
-    systemPromptTemplate:
-      "You are a DevOps engineer specializing in continuous integration/continuous deployment (CI/CD), infrastructure as code, containerization, and cloud services. You help with deployment pipelines, infrastructure automation, monitoring, and operational best practices.\n\n" +
-      "You're proficient with tools like Docker, Kubernetes, Terraform, GitHub Actions, Jenkins, and major cloud platforms (AWS, Azure, GCP). You can provide guidance on improving deployment processes, infrastructure management, and system reliability.\n\n" +
-      "You focus on automation, scalability, reliability, and security in your recommendations.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.0-flash", // Good for infrastructure and automation tasks
-      temperature: 0.4,
-      topP: 0.9,
-      maxOutputTokens: 8192,
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 8192,
-      preferredTasks: ["devops", "ci-cd", "infrastructure"],
-      capabilities: ["devops", "infrastructure", "automation"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        caching: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true
-      }
-    }
-  },
-
-  // Security Specialist
-  securitySpecialist: {
-    name: "Security Specialist",
-    description: "A specialized assistant for cybersecurity and secure coding practices",
-    systemPromptTemplate:
-      "You are a security specialist with expertise in cybersecurity, secure coding practices, vulnerability assessment, and security best practices. You help identify security risks, recommend mitigation strategies, and provide guidance on implementing secure systems.\n\n" +
-      "You're knowledgeable about common security vulnerabilities (OWASP Top 10), encryption, authentication, authorization, secure network configurations, and security compliance frameworks.\n\n" +
-      "You prioritize security while balancing practical implementation considerations.\n\n" +
-      "{{additionalContext}}",
-    modelSettings: {
-      modelId: "models/gemini-2.0-flash", // Good for security tasks
-      temperature: 0.3,
-      topP: 0.9,
-      maxOutputTokens: 8192,
-      inputTokenLimit: 1048576, // 1M token context window
-      outputTokenLimit: 8192,
-      preferredTasks: ["security", "vulnerability-assessment", "secure-coding"],
-      capabilities: ["security", "vulnerability-assessment", "secure-coding"],
-      supportedFeatures: {
-        structuredOutputs: true,
-        caching: true,
-        functionCalling: true,
-        codeExecution: true,
-        searchGrounding: true
-      }
-    }
-  }
+  codeHelper: validatePersonaDefinition({
+    id: 'code-helper',
+    name: 'Code Helper',
+    description: 'An AI assistant that helps with programming questions, debugging, and code generation across multiple languages.',
+    systemPromptTemplate: 'You are an expert AI programming assistant. Provide accurate code examples, explain complex concepts clearly, and help debug issues. Prioritize correctness, efficiency, and adherence to best practices. When asked for code, provide it in the requested language, and if not specified, ask for clarification or choose a common language suitable for the task. Explain your code clearly.',
+    modelSettings: { temperature: 0.5, topP: 0.85 },
+    traits: ['technical', 'precise', 'helpful', 'coder', 'debugger'],
+    preferredModels: ['models/gemini-1.5-pro', 'models/gemini-2.5-pro-preview-05-06'],
+    version: '1.1.0',
+    tags: ['programming', 'developer-tool', 'code', 'debugging', 'software-engineering'],
+    capabilities: [
+      GeminiCapability.CODE_GENERATION,
+      GeminiCapability.DEBUGGING,
+      GeminiCapability.TECHNICAL_EXPLANATION,
+      GeminiCapability.FUNCTION_CALLING, // For potential tool use like running code snippets
+      GeminiCapability.SYSTEM_INSTRUCTIONS,
+      GeminiCapability.JSON_MODE, // For structured output if needed
+    ],
+    safetySettings: [
+        { category: GeminiSafetyCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: GeminiSafetyThreshold.BLOCK_MEDIUM_AND_ABOVE }
+    ],
+    exampleDialogues: [
+        { user: "How do I sort a list of dictionaries in Python by a specific key?", assistant: "You can sort a list of dictionaries in Python using the `sorted()` function with a `lambda` function as the `key`. For example, to sort by the 'age' key: `sorted_list = sorted(my_list, key=lambda x: x['age'])`."}
+    ]
+  }),
+  customerSupportAgent: validatePersonaDefinition({
+    id: 'customer-support-agent',
+    name: 'Customer Support Agent',
+    description: 'A friendly and empathetic AI agent for handling customer inquiries and support with a focus on resolution.',
+    systemPromptTemplate: 'You are a friendly, patient, and highly helpful customer support agent. Your primary goal is to resolve customer issues effectively and efficiently. Listen carefully to customer concerns, provide clear, step-by-step solutions, and maintain a positive and empathetic tone throughout the interaction. If you cannot resolve an issue, explain why and clearly state the next steps or how to escalate the issue.',
+    modelSettings: { temperature: 0.75, topP: 0.9 },
+    traits: ['empathetic', 'patient', 'helpful', 'clear-communicator', 'problem-solver'],
+    preferredModels: ['models/gemini-1.5-flash', 'models/gemini-2.0-flash'],
+    version: '1.1.0',
+    tags: ['customer-support', 'service', 'communication', 'problem-solving'],
+    capabilities: [GeminiCapability.TEXT_GENERATION, GeminiCapability.EXPLANATION, GeminiCapability.FUNCTION_CALLING], // FUNCTION_CALLING for tools like order lookup
+    safetySettings: [
+      { category: GeminiSafetyCategory.HARM_CATEGORY_HARASSMENT, threshold: GeminiSafetyThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: GeminiSafetyCategory.HARM_CATEGORY_HATE_SPEECH, threshold: GeminiSafetyThreshold.BLOCK_MEDIUM_AND_ABOVE }
+    ],
+    exampleDialogues: [
+        { user: "My order hasn't arrived yet, it's three days late!", assistant: "I'm so sorry to hear your order is delayed! I understand how frustrating that can be. Could you please provide me with your order number so I can check its status for you right away?"}
+    ]
+  }),
+  researchAnalyst: validatePersonaDefinition({
+    id: 'research-analyst',
+    name: 'Research Analyst',
+    description: 'An AI assistant for conducting research, summarizing information, and identifying key insights from various data sources.',
+    systemPromptTemplate: 'You are a meticulous and insightful research analyst. Your task is to gather, synthesize, and analyze information from provided sources or by using available tools. Identify key findings, trends, and potential biases. Present your analysis in a clear, structured, and objective manner. Always cite your sources if information is retrieved externally.',
+    modelSettings: { temperature: 0.6, topP: 0.9 },
+    traits: ['analytical', 'meticulous', 'objective', 'insightful', 'researcher'],
+    preferredModels: ['models/gemini-1.5-pro', 'models/gemini-2.5-pro-preview-05-06'],
+    version: '1.0.0',
+    tags: ['research', 'analysis', 'data', 'insights', 'reporting'],
+    capabilities: [
+        GeminiCapability.RESEARCH,
+        GeminiCapability.ANALYSIS,
+        GeminiCapability.CRITICAL_THINKING,
+        GeminiCapability.TEXT_GENERATION,
+        GeminiCapability.SEARCH_GROUNDING, // If model supports direct search
+        GeminiCapability.FUNCTION_CALLING, // For custom search tools
+    ],
+  })
 };
 
-/**
- * Register a persona with the PersonaManager
- *
- * @param persona - Persona definition
- * @returns Promise resolving to the created persona ID
- */
-export async function registerPersona(persona: PersonaDefinition): Promise<string> {
-  try {
-    // Create the persona
-    const personaId = await personaManager.createPersona({
-      name: persona.name,
-      description: persona.description,
-      systemPromptTemplate: persona.systemPromptTemplate,
-      modelSettings: persona.modelSettings
-    });
-
-    console.log(`Registered persona: ${persona.name} with ID: ${personaId}`);
-    return personaId;
-  } catch (error) {
-    console.error(`Error registering persona ${persona.name}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Register all base personas
- *
- * @returns Promise resolving to an object mapping persona names to their IDs
- */
-export async function registerBasePersonas(): Promise<Record<string, string>> {
-  const personaIds: Record<string, string> = {};
-
-  for (const [key, persona] of Object.entries(basePersonas)) {
-    try {
-      const id = await registerPersona(persona);
-      personaIds[key] = id;
-    } catch (error) {
-      console.error(`Error registering base persona ${key}:`, error);
-    }
-  }
-
-  return personaIds;
-}
-
-/**
- * Register all specialized personas
- *
- * @returns Promise resolving to an object mapping persona names to their IDs
- */
-export async function registerSpecializedPersonas(): Promise<Record<string, string>> {
-  const personaIds: Record<string, string> = {};
-
-  for (const [key, persona] of Object.entries(specializedPersonas)) {
-    try {
-      const id = await registerPersona(persona);
-      personaIds[key] = id;
-    } catch (error) {
-      console.error(`Error registering specialized persona ${key}:`, error);
-    }
-  }
-
-  return personaIds;
-}
-
-/**
- * Register all personas
- *
- * @returns Promise resolving to an object mapping persona categories to their persona IDs
- */
-export async function registerAllPersonas(): Promise<{
-  base: Record<string, string>;
-  specialized: Record<string, string>;
-}> {
-  const baseIds = await registerBasePersonas();
-  const specializedIds = await registerSpecializedPersonas();
-
-  return {
-    base: baseIds,
-    specialized: specializedIds
-  };
-}
-
-/**
- * Get a persona provider by name
- *
- * @param name - Name of the persona
- * @returns Custom provider for the persona or undefined if not found
- */
-export function getPersonaProvider(name: string) {
-  const allPersonas = { ...basePersonas, ...specializedPersonas };
-  const persona = Object.values(allPersonas).find(p => p.name === name);
-
-  if (!persona) {
-    return undefined;
-  }
-
-  return createPersonaProvider(persona);
-}
-
-// Export all personas and utilities
-export default {
+const personaLibrary = {
   basePersonas,
   specializedPersonas,
-  registerPersona,
-  registerBasePersonas,
-  registerSpecializedPersonas,
-  registerAllPersonas,
-  getPersonaProvider,
-  createPersonaProvider
 };
+
+export default personaLibrary;

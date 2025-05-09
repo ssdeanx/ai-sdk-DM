@@ -72,7 +72,10 @@ export async function processTraceForScoring(traceId: string): Promise<boolean> 
     }
     
     // Extract persona ID from metadata if available
-    const personaId = trace.metadata?.personaId || trace.metadata?.persona_id;
+    let personaId: string | undefined;
+    if (typeof trace.metadata === 'object' && trace.metadata !== null && !Array.isArray(trace.metadata)) {
+      personaId = (trace.metadata as Record<string, unknown>)['personaId'] as string || (trace.metadata as Record<string, unknown>)['persona_id'] as string;
+    }
     
     if (!personaId) {
       // No persona ID in trace metadata, nothing to update
@@ -80,17 +83,49 @@ export async function processTraceForScoring(traceId: string): Promise<boolean> 
     }
     
     // Check if persona exists
-    const persona = await personaManager.getPersona(personaId);
+    const persona = await personaManager.getPersonaById(personaId);
     if (!persona) {
       console.warn(`Persona ${personaId} not found, cannot update score`);
       return false;
     }
+
+    // Ensure user_id is present and not null, as TraceData.userId expects a string
+    if (trace.user_id === null) {
+      console.warn(`Trace ${trace.id} has a null user_id. Skipping scoring as a valid userId is required.`);
+      return false;
+    }
+
+    // Transform the Supabase trace object to conform to the TraceData interface
+    const traceDataForScoring: TraceData = {
+      id: trace.id,
+      name: trace.name,
+      startTime: trace.start_time,
+      endTime: trace.end_time,
+      duration: parseFloat(trace.duration_ms), // Supabase might store duration as string (e.g., "123.45ms")
+      status: trace.status,
+      userId: trace.user_id, // Already checked for null
+      metadata: trace.metadata as Record<string, any> // Cast metadata
+    };
+
+    // Transform Supabase spans to SpanData[]
+    // Assuming Supabase returns snake_case for spans and duration_ms as string or a numeric string.
+    const mappedSpans: SpanData[] = (spans || []).map((s: any) => ({
+      id: s.id,
+      traceId: s.traceId || s.trace_id, // Handle potential snake_case trace_id
+      name: s.name,
+      startTime: s.start_time || s.startTime, // Be defensive for property names
+      endTime: s.end_time || s.endTime,
+      // Ensure duration is a number, parsing if it's a string like duration_ms or a numeric string.
+      duration: typeof s.duration === 'number' ? s.duration : parseFloat(s.duration_ms || s.duration || '0'),
+      status: s.status,
+      metadata: s.metadata as Record<string, any>
+    }));
     
     // Calculate metrics from trace data
-    const metrics = calculateMetricsFromTrace(trace, spans || []);
+    const metrics = calculateMetricsFromTrace(traceDataForScoring, mappedSpans);
     
-    // Update persona score
-    await personaManager.recordPersonaUsage(personaId, metrics);
+    // Update persona score using personaScoreManager
+    await personaScoreManager.updateScore(personaId, metrics);
     
     return true;
   } catch (error) {
@@ -98,7 +133,6 @@ export async function processTraceForScoring(traceId: string): Promise<boolean> 
     return false;
   }
 }
-
 /**
  * Calculate metrics from trace and span data
  * 

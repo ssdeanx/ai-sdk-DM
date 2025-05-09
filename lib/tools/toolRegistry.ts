@@ -154,9 +154,13 @@ export class ToolRegistry {
       }
 
       this.initialized = true;
-      logEvent('ToolRegistry', 'Initialized', { 
-        toolCount: this.categorizedTools.size,
-        categories: Array.from(new Set(Array.from(this.categorizedTools.values()).map(ct => ct.category)))
+      logEvent({
+        traceId: 'ToolRegistry',
+        name: 'Initialized',
+        metadata: { 
+          toolCount: this.categorizedTools.size,
+          categories: Array.from(new Set(Array.from(this.categorizedTools.values()).map(ct => ct.category)))
+        }
       });
       resolveInit!();
     } catch (error) {

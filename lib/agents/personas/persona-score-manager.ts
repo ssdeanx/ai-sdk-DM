@@ -100,7 +100,7 @@ export class PersonaScoreManager {
 
       // Check if the table exists by querying it
       const { error } = await supabase
-        .from('persona_scores')
+        .from('persona_scores' as any)
         .select('id')
         .limit(1)
 
@@ -137,7 +137,7 @@ export class PersonaScoreManager {
       const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('persona_scores')
+        .from('persona_scores' as any)
         .select('*')
         .eq('persona_id', personaId)
         .single()
@@ -150,7 +150,7 @@ export class PersonaScoreManager {
         throw error
       }
 
-      const score = data as PersonaScore
+      const score = data as unknown as PersonaScore
 
       // Cache the result
       if (score) {
@@ -172,62 +172,31 @@ export class PersonaScoreManager {
    * @returns Array of PersonaScore objects
    */
   public async getAllScores(options?: {
-    sortBy?: 'usage_count' | 'success_rate' | 'overall_score'
-    sortDirection?: 'asc' | 'desc'
+    sortBy?: 'usage_count' | 'success_rate' | 'overall_score',
+    sortDirection?: 'asc' | 'desc',
     limit?: number
   }): Promise<PersonaScore[]> {
     await this.ensureInitialized()
-
-    try {
-      // Build cache key based on options
-      const sortBy = options?.sortBy || 'none'
-      const sortDir = options?.sortDirection || 'none'
-      const limit = options?.limit || 'all'
-      const cacheKey = `all_scores_${sortBy}_${sortDir}_${limit}`
-
-      // Check cache first
-      const cachedScores = this.listCache.get(cacheKey)
-
-      if (cachedScores) {
-        this.cacheStats.hits++
-        return cachedScores
-      }
-
-      this.cacheStats.misses++
-
-      // Not in cache, fetch from database
-      const supabase = getSupabaseClient()
-
-      let query = supabase
-        .from('persona_scores')
-        .select('*')
-
-      // Apply sorting if specified
-      if (options?.sortBy) {
-        const direction = options.sortDirection === 'asc' ? 'asc' : 'desc'
-        query = query.order(options.sortBy, { ascending: direction === 'asc' })
-      }
-
-      // Apply limit if specified
-      if (options?.limit) {
-        query = query.limit(options.limit)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      const scores = data as PersonaScore[]
-
-      // Cache the result with a shorter TTL for lists (30 seconds)
-      this.listCache.set(cacheKey, scores)
-      this.cacheStats.sets++
-
-      return scores
-    } catch (error) {
-      console.error('Error getting all persona scores:', error)
-      return []
+    const cacheKey = `all_scores_${options?.sortBy || 'none'}_${options?.sortDirection || 'none'}_${options?.limit || 'all'}`
+    const cached = this.listCache.get(cacheKey)
+    if (cached) {
+      this.cacheStats.hits++
+      return cached
     }
+    this.cacheStats.misses++
+    const supabase = getSupabaseClient()
+    let query = supabase.from('persona_scores' as any).select('*')
+    if (options?.sortBy) {
+      query = query.order(options.sortBy, { ascending: options.sortDirection === 'asc' })
+    }
+    if (options?.limit) {
+      query = query.limit(options.limit)
+    }
+    const { data, error } = await query
+    if (error || !data) return []
+    const scores = data as unknown as PersonaScore[]
+    this.listCache.set(cacheKey, scores)
+    return scores
   }
 
   /**
@@ -242,109 +211,29 @@ export class PersonaScoreManager {
     updateData: ScoreUpdateData
   ): Promise<PersonaScore | null> {
     await this.ensureInitialized()
-
-    try {
-      // Get current score or create new one
-      let currentScore = await this.getScore(personaId)
-      const now = new Date().toISOString()
-
-      if (!currentScore) {
-        // Create new score record
-        currentScore = {
-          id: uuidv4(),
-          persona_id: personaId,
-          usage_count: 0,
-          success_rate: 0,
-          average_latency: 0,
-          user_satisfaction: 0,
-          adaptability_score: 0,
-          overall_score: 0,
-          last_used: now,
-          metadata: {},
-          created_at: now,
-          updated_at: now
-        }
-      }
-
-      // Update usage count and last_used
-      currentScore.usage_count += 1
-      currentScore.last_used = now
-
-      // Update success rate if provided
-      if (updateData.success !== undefined) {
-        const totalSuccesses = currentScore.success_rate * (currentScore.usage_count - 1) +
-          (updateData.success ? 1 : 0)
-        currentScore.success_rate = totalSuccesses / currentScore.usage_count
-      }
-
-      // Update average latency if provided
-      if (updateData.latency !== undefined) {
-        const totalLatency = currentScore.average_latency * (currentScore.usage_count - 1) +
-          updateData.latency
-        currentScore.average_latency = totalLatency / currentScore.usage_count
-      }
-
-      // Update user satisfaction if provided
-      if (updateData.userSatisfaction !== undefined) {
-        // Weighted average with more weight on recent ratings
-        currentScore.user_satisfaction =
-          (currentScore.user_satisfaction * 0.7) + (updateData.userSatisfaction * 0.3)
-      }
-
-      // Update adaptability score if provided
-      if (updateData.adaptabilityFactor !== undefined) {
-        // Weighted average with more weight on recent adaptability
-        currentScore.adaptability_score =
-          (currentScore.adaptability_score * 0.8) + (updateData.adaptabilityFactor * 0.2)
-      }
-
-      // Update metadata if provided
-      if (updateData.metadata) {
-        currentScore.metadata = {
-          ...currentScore.metadata,
-          ...updateData.metadata
-        }
-      }
-
-      // Calculate overall score
-      currentScore.overall_score = this.calculateOverallScore(currentScore)
-
-      // Update updated_at timestamp
-      currentScore.updated_at = now
-
-      // Save to database
-      const supabase = getSupabaseClient()
-
-      const { data, error } = await supabase
-        .from('persona_scores')
-        .upsert(currentScore)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      const updatedScore = data as PersonaScore
-
-      // Update cache with the new score
-      const cacheKey = `persona_score_${personaId}`
-      this.scoreCache.set(cacheKey, updatedScore)
-      this.cacheStats.sets++
-
-      // Log the score update event
-      await logEvent({
-        name: 'persona_score_updated',
-        metadata: {
-          persona_id: personaId,
-          score: updatedScore.overall_score,
-          usage_count: updatedScore.usage_count
-        }
-      })
-
-      return updatedScore
-    } catch (error) {
-      console.error(`Error updating score for persona ${personaId}:`, error)
-      return null
+    const existing = await this.getScore(personaId)
+    if (!existing) return null
+    // update metrics
+    const updated: PersonaScore = { ...existing,
+      usage_count: existing.usage_count + 1,
+      success_rate: updateData.success !== undefined ? ((existing.success_rate * existing.usage_count + (updateData.success ? 1 : 0)) / (existing.usage_count + 1)) : existing.success_rate,
+      average_latency: updateData.latency !== undefined ? ((existing.average_latency * existing.usage_count + updateData.latency) / (existing.usage_count + 1)) : existing.average_latency,
+      user_satisfaction: updateData.userSatisfaction !== undefined ? updateData.userSatisfaction : existing.user_satisfaction,
+      adaptability_score: updateData.adaptabilityFactor !== undefined ? updateData.adaptabilityFactor : existing.adaptability_score,
+      overall_score: 0,
+      last_used: new Date().toISOString(),
+      metadata: { ...existing.metadata, ...updateData.metadata },
+      updated_at: new Date().toISOString()
     }
+    updated.overall_score = this.calculateOverallScore(updated)
+    const supabase = getSupabaseClient()
+    await supabase.from('persona_scores' as any).upsert({
+      ...updated,
+      persona_id: personaId
+    }, { onConflict: 'persona_id' })
+    this.scoreCache.set(`persona_score_${personaId}`, updated)
+    this.cacheStats.sets++
+    return updated
   }
 
   /**

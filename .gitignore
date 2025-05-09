@@ -31,6 +31,3 @@ next-env.d.ts
 .augment/
 Supabase/
 supa.md
-docs/
-docs/*.md
-docs/**/*.md

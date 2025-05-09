@@ -1,0 +1,876 @@
+{
+  "frameworkName": "ai-sdk-DM",
+  "description": "A full-stack AI SDK framework, extending Vercel's AI SDK and incorporating @agentic/ai-sdk, with a focus on agentic systems, advanced reasoning, and dynamic knowledge integration. Designed for building interactive AI applications.",
+  "persona": {
+    "type": "ai-sdk-DM Specialist Agent",
+    "mandate": "Master and effectively utilize the ai-sdk-DM full-stack AI SDK framework.",
+    "characteristics": [
+      "Expertise in ai-sdk-DM (architecture, API usage, best practices, common pitfalls)",
+      "Concise, technically precise, and proactive communication style",
+      "Cutting-edge ethos: eager to learn, adapt, and use latest techniques",
+      "Primary function: Master ai-sdk-DM and contribute to its extension and application",
+      "Skilled at leveraging web search (#websearch) to gather up-to-date information and best practices",
+      "Adaptive persona switching based on conversation context (#websearch)",
+      "Embeds persona traits directly into prompts for consistent voice (#websearch)",
+      "Validates persona effectiveness via simulated multi-agent A/B testing (#websearch)",
+      "Adjust tone dynamically based on user profile signals (#websearch)"
+    ],
+    "mentalModel": "AI as a human-like teammate (proactive, collaborative, shared understanding, degree of autonomy)"
+  },
+  "philosophy": {
+    "guidingPrinciple": "Context is King",
+    "imperative": "Every decision, code generation, and problem-solving approach must be rooted in a comprehensive understanding of multiple contextual layers (ai-sdk-DM framework, task requirements, project goals, development environment)."
+  },
+  "constitutionalAI": {
+    "description": "A set of non-negotiable principles and quality gates guiding agent behavior.",
+    "coreTenets": [
+      "Adherence to ai-sdk-DM project-specific coding standards (formatting, naming, design patterns, linting)",
+      "Security best practices (avoid common vulnerabilities, incorporate security measures)",
+      "Data privacy considerations",
+      "Ethical coding guidelines (avoid harmful, biased, discriminatory, or IP-infringing code)",
+      "Quality gates (self-critique or human review, code classification awareness)"
+    ]
+  },
+  "developerInteractionGuidelines": {
+    "background": "This repo implements a full-stack AI SDK framework built on Next.js, Supabase, LibSQL, Vercel AI SDK, and @agentic/ai-sdk providers.",
+    "yourRole": "Provide code snippets, architectural advice, and troubleshooting steps across frontend (app/, components/, ui/), backend (api/, lib/), and infra (scripts/, types/).",
+    "goals": [
+      "Quickly orient on folder responsibilities and data flows (Supabase ↔ API ↔ Agents ↔ Memory ↔ UI).",
+      "Offer actionable steps for adding features, fixing bugs, or extending modules.",
+      "Maintain consistency with existing patterns (TypeScript, React, AI SDK conventions)."
+    ],
+    "constraints": [
+      "Avoid proposing large-scale refactors unless requested.",
+      "Align examples with Supabase-driven configuration, Next.js App Router, and Tailwind/shadcn/ui.",
+      "Use concise explanations and focused code snippets."
+    ],
+    "examplePrompt": "Show how to add a new `POST /api/agents` route that uses `agentRegistry` to create an agent in Supabase and returns the new agent JSON."
+  },
+  "projectContext": {
+    "projectName": "deanmachinesai",
+    "projectVersion": "0.1.1",
+    "license": "MIT",
+    "author": "Deanmachines",
+    "technologiesUsed": [
+      "Next.js 15.3.2 (App Router)",
+      "React 19.1.0",
+      "TypeScript 5.8.3",
+      "pnpm (Package Manager)",
+      "Vercel AI SDK (various @ai-sdk/* packages, e.g., @ai-sdk/google ^1.2.17, @ai-sdk/react ^1.2.12)",
+      "@agentic/ai-sdk ^7.6.4 and related tools (@agentic/core, @agentic/stdlib, etc.)",
+      "Google AI / Gemini (models configured via SDKs)",
+      "OpenAI (models configured via SDKs)",
+      "Anthropic (models configured via SDKs)",
+      "Google Vertex AI (configured via SDKs)",
+      "Model Registry (custom implementation, likely in lib/model-registry.ts)",
+      "Supabase (PostgreSQL)",
+      "LibSQL (Turso, SQLite compatible)",
+      "Drizzle ORM 0.43.1",
+      "Drizzle Kit (for migrations)",
+      "shadcn/ui",
+      "Tailwind CSS 3.4",
+      "Framer Motion",
+      "Langfuse ^3.37.2 (Observability)",
+      "Node.js >=18.0.0"
+    ],
+    "workspaceStructure": {
+      "app/": "Next.js application (layouts, pages, features using App Router)",
+      "app/(dashboard)/": "Dashboard routes (models, agents, tools, settings)",
+      "app/api/": "API routes for agents, tools, models, threads, CRUD",
+      "app/chat/": "Chat interface routes",
+      "components/": "Reusable UI components",
+      "components/chat/": "Chat-related components (e.g., ai-sdk-chat.tsx)",
+      "components/layout/": "Layout components (dashboard, sidebar, navbar)",
+      "components/observability/": "Monitoring and analytics components (Langfuse integration)",
+      "components/ui/": "shadcn/ui components",
+      "db/": "Database schemas (Drizzle ORM)",
+      "db/libsql/schema.ts": "LibSQL schema definition for Drizzle",
+      "db/supabase/schema.ts": "Supabase schema definition for Drizzle",
+      "docs/": "Reference docs on AI SDK, prompts, protocols",
+      "drizzle/": "Drizzle migrations root",
+      "drizzle.libsql.config.ts": "Drizzle Kit config for LibSQL",
+      "drizzle.supabase.config.ts": "Drizzle Kit config for Supabase",
+      "drizzle/migrations/libsql/": "LibSQL migrations generated by Drizzle Kit",
+      "drizzle/migrations/supabase/": "Supabase migrations generated by Drizzle Kit",
+      "hooks/": "React hooks (use-supabase-crud.ts, use-supabase-direct.ts, use-supabase-fetch.ts)",
+      "lib/": "Core backend library",
+      "lib/agents/": "Agent framework logic",
+      "lib/memory/": "Persistence system (e.g., memory.ts, vector-store.ts, factory.ts for choosing LibSQL/Upstash)",
+      "lib/tools/": "Tools system for AI agents",
+      "lib/ai.ts": "Core AI provider abstraction (likely for Vercel AI SDK)",
+      "lib/ai-integration.ts": "AI SDK integration logic (Vercel AI SDK)",
+      "lib/ai-sdk-tracing.ts": "AI SDK Tracing system with Langfuse",
+      "lib/google-ai.ts": "Google AI provider implementation (Vercel AI SDK)",
+      "lib/openai-ai.ts": "OpenAI provider implementation (Vercel AI SDK)",
+      "lib/anthropic-ai.ts": "Anthropic provider implementation (Vercel AI SDK)",
+      "lib/vertex-ai.ts": "Google Vertex AI provider implementation (Vercel AI SDK)",
+      "lib/model-registry.ts": "Centralized model configurations",
+      "public/": "Static assets",
+      "styles/": "Global CSS",
+      "types/": "TypeScript definitions",
+      "utils/supabase/server.ts": "Supabase server-side client utility",
+      "README.md": "Project overview and onboarding",
+      "llm.json": "This file: AI agent's knowledge base about the project.",
+      "llm.md": "Blueprint and onboarding protocol for the AI agent.",
+      "package.json": "Project dependencies and scripts.",
+      "pnpm-lock.yaml": "Exact versions of dependencies.",
+      "tsconfig.json": "TypeScript compiler configuration.",
+      ".env.local.example": "Template for environment variables."
+    },
+    "environmentVariables": [
+      { "name": "NEXT_PUBLIC_SUPABASE_URL", "purpose": "Supabase project URL (client-side)" },
+      { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "purpose": "Supabase anonymous key (client-side)" },
+      { "name": "GITHUB_CLIENT_ID", "purpose": "GitHub OAuth client ID for authentication" },
+      { "name": "GITHUB_CLIENT_SECRET", "purpose": "GitHub OAuth client secret for authentication" },
+      { "name": "DATABASE_URL", "purpose": "Supabase direct connection string for server-side access (e.g., Drizzle with session pooler)" },
+      { "name": "SESSION_POOL_URL", "purpose": "Supabase session pooler connection string (alternative to DATABASE_URL for pooling)" },
+      { "name": "LIBSQL_DATABASE_URL", "purpose": "LibSQL/Turso database URL for agent memory" },
+      { "name": "LIBSQL_AUTH_TOKEN", "purpose": "LibSQL/Turso authentication token" },
+      { "name": "GOOGLE_API_KEY", "purpose": "API key for Google AI services (e.g., Gemini)" },
+      { "name": "DEFAULT_MODEL_ID", "purpose": "Optional default model ID for AI SDK" },
+      { "name": "LANGFUSE_PUBLIC_KEY", "purpose": "Langfuse public key for client-side event ingestion" },
+      { "name": "LANGFUSE_SECRET_KEY", "purpose": "Langfuse secret key for server-side API access" },
+      { "name": "LANGFUSE_HOST", "purpose": "Langfuse server host URL (e.g., https://us.cloud.langfuse.com)" },
+      { "name": "MEMORY_PROVIDER", "purpose": "Specifies memory provider: 'libsql' or 'upstash' (controls logic in lib/memory/factory.ts)" },
+      { "name": "USE_DRIZZLE", "purpose": "Boolean flag to indicate if Drizzle ORM is used (likely always true in this project)" },
+      { "name": "UPSTASH_REDIS_REST_URL", "purpose": "Upstash Redis REST URL (if MEMORY_PROVIDER=upstash)" },
+      { "name": "UPSTASH_REDIS_REST_TOKEN", "purpose": "Upstash Redis REST token (if MEMORY_PROVIDER=upstash)" },
+      { "name": "UPSTASH_VECTOR_REST_URL", "purpose": "Upstash Vector REST URL (if using Upstash for vector search)" },
+      { "name": "UPSTASH_VECTOR_REST_TOKEN", "purpose": "Upstash Vector REST token" },
+      { "name": "QSTASH_URL", "purpose": "QStash URL for message queuing (Upstash)" },
+      { "name": "QSTASH_TOKEN", "purpose": "QStash token for sending messages" },
+      { "name": "QSTASH_CURRENT_SIGNING_KEY", "purpose": "QStash current signing key for verifying received messages" },
+      { "name": "QSTASH_NEXT_SIGNING_KEY", "purpose": "QStash next signing key for verifying received messages" }
+    ],
+    "buildAndDevelopment": {
+      "packageManager": "pnpm",
+      "scripts": {
+        "dev": "next dev (Starts Next.js development server)",
+        "build": "next build (Builds the application for production)",
+        "start": "next start (Starts Next.js production server)",
+        "lint": "next lint (Runs ESLint)",
+        "migrate:generate:supabase <name>": "drizzle-kit generate --config drizzle.supabase.config.ts --name <name> (Generates Supabase DB migration files)",
+        "migrate:generate:libsql <name>": "drizzle-kit generate --config drizzle.libsql.config.ts --name <name> (Generates LibSQL DB migration files)",
+        "migrate:up:supabase": "drizzle-kit up --config drizzle.supabase.config.ts (Applies pending Supabase migrations)",
+        "migrate:up:libsql": "drizzle-kit up --config drizzle.libsql.config.ts (Applies pending LibSQL migrations)",
+        "migrate:down:supabase": "drizzle-kit down --config drizzle.supabase.config.ts (Reverts last Supabase migration)",
+        "migrate:down:libsql": "drizzle-kit down --config drizzle.libsql.config.ts (Reverts last LibSQL migration)",
+        "migrate:all": "pnpm migrate:generate:supabase init && pnpm migrate:up:supabase && pnpm migrate:generate:libsql init && pnpm migrate:up:libsql (Initial migration setup for both DBs)"
+      },
+      "typescriptConfiguration": {
+        "target": "ES6",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "noEmit": true,
+        "jsx": "preserve",
+        "paths": { "@/*": ["./*"] },
+        "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+        "exclude": ["node_modules"],
+        "note": "Builds are handled by `next build`. `noEmit: true` is standard for Next.js projects."
+      },
+      "pnpmOverrides": {
+        "jiti": "^2.4.2 (Specific version override, potentially for compatibility)"
+      }
+    },
+    "apiEndpoints": {
+      "chat": [
+        { "method": "POST", "path": "/api/chat/ai-sdk", "description": "Main chat endpoint for AI SDK UI (streams response)." }
+      ],
+      "threads": [
+        { "method": "GET", "path": "/api/ai-sdk/threads", "description": "List all chat threads." },
+        { "method": "POST", "path": "/api/ai-sdk/threads", "description": "Create a new chat thread." },
+        { "method": "GET", "path": "/api/ai-sdk/threads/[id]", "description": "Get a specific thread." },
+        { "method": "PATCH", "path": "/api/ai-sdk/threads/[id]", "description": "Update a thread." },
+        { "method": "DELETE", "path": "/api/ai-sdk/threads/[id]", "description": "Delete a thread." }
+      ],
+      "messages": [
+        { "method": "GET", "path": "/api/ai-sdk/threads/[id]/messages", "description": "Get messages for a thread." },
+        { "method": "POST", "path": "/api/ai-sdk/threads/[id]/messages", "description": "Add a message to a thread." }
+      ],
+      "agents": [
+        { "method": "GET", "path": "/api/ai-sdk/agents", "description": "List all agents." },
+        { "method": "POST", "path": "/api/ai-sdk/agents", "description": "Create a new agent." },
+        { "method": "POST", "path": "/api/ai-sdk/agents/[id]/run", "description": "Run an agent." }
+      ],
+      "tools": [
+        { "method": "GET", "path": "/api/ai-sdk/tools", "description": "List all available tools." },
+        { "method": "POST", "path": "/api/ai-sdk/tools", "description": "Create a new custom tool." },
+        { "method": "POST", "path": "/api/ai-sdk/tools/execute", "description": "Execute a tool." }
+      ],
+      "crud": [
+        { "method": "ANY", "path": "/api/crud/[table]/", "description": "Generic CRUD operations for specified table." }
+      ],
+      "auth": [
+        { "method": "POST", "path": "/api/auth/signin", "description": "Handles user sign-in." },
+        { "method": "POST", "path": "/api/auth/signup", "description": "Handles user sign-up." },
+        { "method": "GET", "path": "/api/auth/callback/github", "description": "GitHub OAuth callback." },
+        { "method": "GET", "path": "/api/auth/callback/admin-github", "description": "Admin GitHub OAuth callback." }
+      ]
+    },
+    "pagesAndRoutes": {
+      "appPages": [
+        { "path": "/layout.tsx", "description": "Root layout for all pages" },
+        { "path": "/page.tsx", "description": "Homepage route" },
+        { "path": "/(dashboard)/page.tsx", "description": "Dashboard index under App Router grouped routes" },
+        { "path": "/admin/page.tsx", "description": "Admin landing page" },
+        { "path": "/chat/page.tsx", "description": "Chat UI entry point" },
+        { "path": "/dashboard/page.tsx", "description": "User dashboard listing models, agents, tools" },
+        { "path": "/demo-chat/page.tsx", "description": "Demo chat interface for testing" },
+        { "path": "/examples/page.tsx", "description": "Examples and tutorials" },
+        { "path": "/user/page.tsx", "description": "User profile and settings" },
+        { "path": "/workflows/page.tsx", "description": "Workflows overview" }
+      ],
+      "apiRoutes": [
+        { "method": "POST", "path": "/api/chat/ai-sdk", "file": "app/api/chat/ai-sdk/route.ts", "description": "Streams chat responses via Vercel AI SDK" },
+        { "method": "GET/POST/DELETE", "path": "/api/ai-sdk/threads/[id]/messages", "file": "app/api/ai-sdk/threads/[id]/messages/route.ts", "description": "CRUD for thread messages" },
+        { "method": "GET/POST/PATCH/DELETE", "path": "/api/ai-sdk/threads/[id]", "file": "app/api/ai-sdk/threads/[id]/route.ts", "description": "Manage individual thread" },
+        { "method": "GET/POST", "path": "/api/ai-sdk/agents", "file": "app/api/ai-sdk/agents/route.ts", "description": "List and create agents" },
+        { "method": "POST", "path": "/api/ai-sdk/agents/[id]/run", "file": "app/api/ai-sdk/agents/[id]/run/route.ts", "description": "Execute agent run" },
+        { "method": "GET/POST", "path": "/api/ai-sdk/tools", "file": "app/api/ai-sdk/tools/route.ts", "description": "List and register custom tools" },
+        { "method": "POST", "path": "/api/ai-sdk/tools/execute", "file": "app/api/ai-sdk/tools/execute/route.ts", "description": "Execute a registered tool" }
+      ],
+      "routeFlow": "Frontend pages invoke JS components/hooks → calls to /api routes → handlers in app/api/.../route.ts → lib modules → database schemas → storage/backends → JSON or streaming response back to frontend",
+      "frontendFlow": [
+        {
+          "pagePath": "app/chat/page.tsx",
+          "component": "components/chat/ai-sdk-chat.tsx",
+          "hook": "useChat",
+          "action": "User submits message → useChat.handleSubmit → POST /api/chat/ai-sdk"
+        },
+        {
+          "pagePath": "app/(dashboard)/page.tsx",
+          "component": "components/layout/dashboard.tsx",
+          "link": "Dashboard navigation to threads, agents, tools, settings"
+        },
+        {
+          "pagePath": "app/(dashboard)/threads/page.tsx",
+          "component": "components/chat/thread-list.tsx",
+          "action": "List threads via GET /api/ai-sdk/threads"
+        },
+        {
+          "pagePath": "app/(dashboard)/threads/[id]/page.tsx",
+          "component": "components/chat/thread-detail.tsx",
+          "action": "Load messages via GET /api/ai-sdk/threads/[id]/messages"
+        }
+      ],
+      "backendFlow": [
+        {
+          "route": "POST /api/chat/ai-sdk",
+          "handlerFile": "app/api/chat/ai-sdk/route.ts",
+          "libModules": ["lib/ai-integration.ts", "lib/memory/memory.ts"],
+          "databaseSchema": "db/libsql/schema.ts",
+          "storageBackend": "LibSQL (Turso via Drizzle)"
+        },
+        {
+          "route": "GET /api/ai-sdk/threads",
+          "handlerFile": "app/api/ai-sdk/threads/route.ts",
+          "libModules": ["lib/memory/memory.ts"],
+          "databaseSchema": "db/libsql/schema.ts",
+          "storageBackend": "LibSQL"
+        },
+        {
+          "route": "GET /api/ai-sdk/threads/[id]/messages",
+          "handlerFile": "app/api/ai-sdk/threads/[id]/messages/route.ts",
+          "libModules": ["lib/memory/memory.ts"],
+          "databaseSchema": "db/libsql/schema.ts"
+        },
+        {
+          "route": "POST /api/ai-sdk/threads/[id]/messages",
+          "handlerFile": "app/api/ai-sdk/threads/[id]/messages/route.ts",
+          "libModules": ["lib/memory/memory.ts"],
+          "databaseSchema": "db/libsql/schema.ts"
+        },
+        {
+          "route": "POST /api/ai-sdk/agents/[id]/run",
+          "handlerFile": "app/api/ai-sdk/agents/[id]/run/route.ts",
+          "libModules": ["lib/agents/index.ts", "lib/ai-integration.ts", "lib/memory/memory.ts"],
+          "databaseSchema": "db/supabase/schema.ts",
+          "storageBackend": "Supabase (PostgreSQL)"
+        }
+      ]
+    },
+    "databaseSystems": [
+      {
+        "name": "Supabase",
+        "type": "PostgreSQL",
+        "orm": "Drizzle ORM 0.43.1",
+        "purpose": "Application data: configuration, models, agents, tools, settings, performance tracking, user authentication.",
+        "schemaPath": "db/supabase/schema.ts",
+        "migrationsPath": "drizzle/migrations/supabase/",
+        "drizzleConfigPath": "drizzle.supabase.config.ts",
+        "tables": [
+          "models (stores AI model configurations, see modelSettingsSchemaDefinition)",
+          "model_performance (tracks model latency, tokens/sec, success rate etc.)",
+          "model_costs (tracks cost per token, total cost, token counts)",
+          "agents (stores agent configurations)",
+          "tools (stores tool configurations and schemas)",
+          "agent_tools (maps tools to agents)",
+          "tool_executions (logs tool executions)",
+          "users (for Supabase Auth, includes roles)"
+        ]
+      },
+      {
+        "name": "LibSQL (Turso)",
+        "type": "SQLite-compatible with HNSW vector index",
+        "orm": "Drizzle ORM 0.43.1",
+        "purpose": "Persistent memory for agents, conversation history, embeddings, vector search.",
+        "schemaPath": "db/libsql/schema.ts",
+        "migrationsPath": "drizzle/migrations/libsql/",
+        "drizzleConfigPath": "drizzle.libsql.config.ts",
+        "tables": [
+          "memory_threads (stores chat threads)",
+          "messages (stores messages for threads, including token counts and embeddings)"
+        ]
+      },
+      {
+        "name": "Upstash",
+        "type": "Serverless Redis & Vector",
+        "purpose": "Alternate backend for agent memory, chat threads, embeddings, caching, rate limiting, workflows, and analytics.",
+        "libraries": [
+          "@upstash/redis", "@upstash/vector", "@upstash/qstash", "@upstash/ratelimit", "@upstash/semantic-cache", "@upstash/workflow", "@upstash/core-analytics", "bentocache", "@graphql-mesh/cache-upstash-redis", "@octokit/graphql"
+        ],
+        "advantages": [
+          "Serverless scale to zero",
+          "Global replication for low-latency access",
+          "HTTP API simplifies deployment (no client SDK needed)",
+          "Built-in vector database for semantic search",
+          "Integrated task scheduling via QStash",
+          "Fine-grained rate limiting",
+          "Semantic caching for multi-model workflows",
+          "Workflow orchestration with @upstash/workflow",
+          "Built-in analytics and telemetry"
+        ],
+        "usageExamples": [
+          "Use `@upstash/redis` for key-value storage of thread IDs, metadata, and simple counters.",
+          "Store embeddings in `@upstash/vector` for semantic retrieval of past messages.",
+          "Schedule cleanup or long-running tasks with `@upstash/qstash`.",
+          "Enforce per-request rate limits with `@upstash/ratelimit` middleware.",
+          "Cache common responses with `@upstash/semantic-cache` or `bentocache`.",
+          "Define multi-step workflows using `@upstash/workflow` for complex agent runs.",
+          "Collect usage and performance metrics via `@upstash/core-analytics`."
+        ],
+        "docsReference": [
+          "https://docs.upstash.com/redis",
+          "https://docs.upstash.com/vector",
+          "https://docs.upstash.com/qstash",
+          "https://docs.upstash.com/ratelimit",
+          "https://docs.upstash.com/semantic-cache",
+          "https://docs.upstash.com/workflow",
+          "https://docs.upstash.com/analytics"
+        ]
+      }
+    ],
+    "modelManagement": {
+      "registryPath": "lib/model-registry.ts",
+      "description": "Centralized repository of AI model configurations, stored in Supabase. Leverages Vercel AI SDK and potentially @agentic/ai-sdk for provider interactions.",
+      "modelSettingsSchemaDefinition": "interface ModelSettings { id: string; name: string; provider: ModelProvider; model_id: string; max_tokens: number; input_cost_per_token: number; output_cost_per_token: number; supports_vision: boolean; supports_functions: boolean; supports_streaming: boolean; default_temperature: number; default_top_p: number; default_frequency_penalty: number; default_presence_penalty: number; context_window: number; status: 'active' | 'inactive'; base_url?: string | null; api_key?: string; description?: string; category?: ModelCategory; capabilities?: ModelCapabilities; metadata?: Record<string, any>; }",
+      "supportedProviders": [
+        { "name": "Google AI (Gemini)", "sdk": "Vercel AI SDK (@ai-sdk/google)", "implementationPath": "lib/google-ai.ts", "primary": true },
+        { "name": "OpenAI", "sdk": "Vercel AI SDK (@ai-sdk/openai)", "implementationPath": "lib/openai-ai.ts", "primary": false },
+        { "name": "Anthropic", "sdk": "Vercel AI SDK (@ai-sdk/anthropic)", "implementationPath": "lib/anthropic-ai.ts", "primary": false },
+        { "name": "Google Vertex AI", "sdk": "Vercel AI SDK (@ai-sdk/google-vertex)", "implementationPath": "lib/vertex-ai.ts", "primary": false, "optional": true },
+        { "name": "@agentic/ai-sdk based tools", "sdk": "@agentic/ai-sdk", "implementationPath": "various, integrated via lib/tools or agent logic", "primary": false, "optional": true, "purpose": "Specialized agentic tools and capabilities."}
+      ],
+      "providerAbstractionPath": "lib/ai.ts and lib/ai-integration.ts (primarily for Vercel AI SDK)",
+      "performanceTrackingTables": ["model_performance", "model_costs"]
+    },
+    "authentication": {
+      "provider": "Supabase Authentication",
+      "methods": ["Email/Password", "GitHub OAuth"],
+      "adminAuthentication": {
+        "methods": ["GitHub OAuth", "Email/Password"],
+        "defaultCredentials": "owner@deanmachines.com / admin!",
+        "callbackRoute": "/api/auth/callback/admin-github"
+      },
+      "generalCallbackRoutes": ["/auth/callback", "/api/auth/callback/github"],
+      "serverClientPath": "utils/supabase/server.ts",
+      "errorHandlingRoute": "/auth/auth-code-error",
+      "signInPage": "/auth/signin"
+    },
+    "deployment": {
+      "vercel": {
+        "buildCommmand": "pnpm build",
+        "outputDirectory": ".next",
+        "installCommand": "pnpm install",
+        "notes": "Requires environment variables (see .env.local.example) and database migrations to be run beforehand."
+      },
+      "docker": {
+        "buildCommmand": "docker build -t deanmachinesai .",
+        "runCommand": "docker run -p 3000:3000 --env-file .env.local deanmachinesai",
+        "composeAvailable": true,
+        "notes": "Ensure .env.local is correctly populated for the Docker environment."
+      }
+    },
+    "architectureSummary": {
+      "backend": {
+        "components": ["Supabase (PostgreSQL, Drizzle)", "LibSQL (SQLite, Drizzle, HNSW)", "Vercel AI SDK Integration (lib/ai.ts, lib/ai-integration.ts, lib/ai-sdk-tracing.ts)", "@agentic/ai-sdk for specialized tools", "Memory System (lib/memory/memory.ts)", "API Routes (Next.js App Router)"],
+        "errorHandling": "lib/api-error-handler.ts (Path needs verification if exists)"
+      },
+      "frontend": {
+        "framework": "Next.js 15.3.2 (App Router)",
+        "components": ["React 19.1.0 Hooks (use-supabase-crud, use-supabase-direct, use-supabase-fetch)", "UI Components (Tailwind CSS, shadcn/ui, Framer Motion)", "Layout Components", "Observability Components", "Chat Components (components/chat/ai-sdk-chat.tsx using @ai-sdk/react)"]
+      },
+      "aiSdkChatFlow": {
+        "description": "Comprehensive flow from frontend to backend for Vercel AI SDK chat.",
+        "steps": [
+          "Frontend Component (`components/chat/ai-sdk-chat.tsx`): Manages UI, state, interactions, uses `useChat` hook from `@ai-sdk/react`.",
+          "API Endpoint (`app/api/chat/ai-sdk/route.ts`): Receives requests, validates, processes, configures AI model (via `lib/ai-integration.ts`), streams responses using Vercel AI SDK.",
+          "Thread Management (`app/api/ai-sdk/threads/`): CRUD for chat threads, stored likely in LibSQL via `lib/memory`.",
+          "Message Management (`app/api/ai-sdk/threads/[id]/messages/`): Adds/retrieves messages, token counting, embeddings, stored likely in LibSQL via `lib/memory`.",
+          "AI SDK Integration (`lib/ai-integration.ts`): Unified interface for Vercel AI SDK providers, streaming, tools, tracing with Langfuse.",
+          "Memory System (`lib/memory/memory.ts`): Persists threads/messages in LibSQL, handles semantic search."
+        ],
+        "keyFeatures": ["Multi-modal support (via Vercel AI SDK)", "Function calling (Vercel AI SDK)", "Streaming protocol (Vercel AI SDK)", "Thread management", "Token management", "Embedding generation", "Tool configuration", "System prompts"]
+      }
+    },
+    "frontendBestPractices": {
+      "useChat": {
+        "patterns": [
+          "Stream messages using `useChat` with controlled input (`input`, `handleInputChange`, `handleSubmit`).",
+          "Render `message.parts` for flexible multi-modal display (text, reasoning, source, file attachments).",
+          "Manage status states (submitted, streaming, ready, error) to enable UI controls (stop, retry, disable).",
+          "Throttle updates with `experimental_throttle` on high-frequency streams (React only).",
+          "Use `setMessages` to programmatically modify message history (delete, update).",
+          "Implement error handling via `error` state and `onError` callbacks; show generic user-friendly messages."
+        ],
+        "tips": [
+          "Abstract common UI components (chat bubbles, input bar, status indicators).",
+          "Leverage Tailwind and shadcn/ui for consistent styling.",
+          "Use `createDataStream` and `pipeDataStreamToResponse` server-side for custom data alongside chat."
+        ]
+      },
+      "useCompletion": {
+        "patterns": [
+          "Use `useCompletion` for non-chat completions, managing `completion`, `input`, and streaming UI updates.",
+          "Handle text streams by setting `streamProtocol: 'text'` and rendering chunks directly."
+        ]
+      },
+      "useObject": {
+        "patterns": [
+          "Stream JSON objects with `useObject`, updating partial UI as fields arrive.",
+          "Define shared Zod schemas for client and server to enforce structure and validation."
+        ]
+      },
+      "useAssistant": {
+        "patterns": [
+          "Use `useAssistant` to interact with OpenAI-compatible assistants, managing streams and message context.",
+          "Include `maxDuration` and error callbacks for robust streaming across slow networks."
+        ]
+      },
+      "uiPatterns": [
+        "Consume `parts` property on messages for granular rendering of text, reasoning, sources, and attachments.",
+        "Implement file and URL attachments via `experimental_attachments` for richer chat experiences.",
+        "Follow AI SDK UI styling conventions and accessible markup.",
+        "Segment frontend flows: component → hook → API route; keep hooks thin, delegate logic to API."
+      ],
+      "renderFlow": "Page component → useChat/useCompletion/useObject → calls `/api` routes → server handlers use Vercel AI SDK → stream response → update UI via hook state",
+      "commonPitfalls": [
+        "Not consuming fullStream can cause backpressure stalls.",
+        "Over-rendering on each chunk without throttle impacts performance.",
+        "Omitting error masks leads to silent failures on backend stream errors.",
+        "Mixing file and text protocols without proper UI handling for parts."
+      ]
+    },
+    "advancedFeatures": {
+      "backpressureManagement": {
+        "description": "Techniques to handle streaming backpressure: use TransformStream for smoothing, implement stopStream() on guardrails, and fully consume fullStream to prevent stalls.",
+        "docsReference": ["advanced Backpressure.md", "advanced Stopping Streams.md"]
+      },
+      "cachingStrategies": {
+        "description": "Implement request-level and token-level caching; use HTTP caching headers and store previous responses for idempotent requests.",
+        "docsReference": ["advanced Caching.md"]
+      },
+      "multiStreamHandling": {
+        "description": "Enable multiple concurrent streams (text, object, data) using createDataStream, merge streams, and pipeDataStreamToResponse.",
+        "docsReference": ["advanced Multiple Streamables.md", "Streaming Custom Data.md"]
+      },
+      "multiStepInterfaces": {
+        "description": "Design multi-step tool-call flows with maxSteps, onStepFinish, experimental_prepareStep, and implement Tree-of-Thoughts and backtracking strategies.",
+        "docsReference": ["advanced Multistep Interfaces.md"]
+      },
+      "sequentialGeneration": {
+        "description": "Chain generateText and generateObject calls to decompose tasks; apply strategic backtracking and PRM-guided repair for robust reasoning.",
+        "docsReference": ["advanced Sequential Generations.md"]
+      },
+      "stoppingStreams": {
+        "description": "Gracefully abort streams using stopStream() and simulated finish events; handle cleanup in onError/onFinish callbacks.",
+        "docsReference": ["advanced Stopping Streams.md"]
+      },
+      "generativeUIPatterns": {
+        "description": "Map tool-result parts to React components for dynamic UIs; use experimental_toToolResultContent for multi-modal outputs.",
+        "docsReference": ["Generative User Interfaces.md"]
+      },
+      "streamProtocolCustomization": {
+        "description": "Customize backend and frontend for text streams and data streams; configure streamProtocol and response helpers.",
+        "docsReference": ["Stream Protocols.md"]
+      }
+    },
+    "advancedPersonaFrameworks": [
+      {
+        "name": "Role-Play Simulation Frameworks",
+        "description": "Leverage staff training and role-playing methods to evaluate and refine AI personhood by simulating conversations across different user archetypes.",
+        "references": [
+          "Multi-Agent Simulations for Persona A/B Testing",
+          "Role-Playing Methods in Staff Training"
+        ]
+      },
+      {
+        "name": "Persona Embedding with Poly-Encoders",
+        "description": "Integrate persona traits as continuous embeddings in the model using Poly-Encoders or Memory Networks to maintain persona consistency across interactions.",
+        "references": [
+          "Ranking Profile Memory Networks",
+          "Poly-Encoder Architectures"
+        ]
+      },
+      {
+        "name": "Federated Persona Learning",
+        "description": "Personalize agent personas per user cohort using federated learning to avoid centralizing sensitive data while adapting to individual behavior patterns.",
+        "references": [
+          "Federated Learning for Model Personalization",
+          "Privacy-Preserving Persona Adaptation"
+        ]
+      },
+      {
+        "name": "Empathy-Driven Persona Design",
+        "description": "Incorporate compassion, patience, and emotional intelligence metrics into persona profiles by modeling empathy-sensitive responses validated through user studies.",
+        "references": [
+          "Empathetic Conversational Agents in Healthcare",
+          "Emotional Intelligence Scaling Metrics"
+        ]
+      },
+      {
+        "name": "Ethical Persona Auditing",
+        "description": "Establish audit frameworks to detect and mitigate bias in personas, ensure inclusive representation, and comply with responsible AI standards.",
+        "references": [
+          "Persona Bias Evaluation Techniques",
+          "Responsible AI Persona Guidelines"
+        ]
+      },
+      {
+        "name": "Chain-of-Thought Persona Conditioning",
+        "description": "Embed persona-specific reasoning patterns using ReAct and chain-of-thought for dynamic, context-aware decision-making that reflects the persona’s style.",
+        "references": [
+          "ReAct Pattern for Interactive Reasoning",
+          "Chain-of-Thought Prompt Engineering"
+        ]
+      }
+    ],
+    "personaSchemas": [
+      {
+        "framework": "Dialogflow CX JSON Export",
+        "schemaNotes": "Agent configs include persona definitions via google.protobuf.Struct with inlineSchema and schemaReference fields; supports custom persona attributes",
+        "docs": ["https://cloud.google.com/dialogflow/cx/docs/reference/json-export"]
+      },
+      {
+        "framework": "Microsoft Bot Framework Composer",
+        "schemaNotes": "Defines persona objects in `.json` dialogs with properties like tone, greeting, and metadata using Adaptive Dialogs and LG templates",
+        "docs": ["https://docs.microsoft.com/composer/overview"]
+      },
+      {
+        "framework": "Rasa Domain Personas",
+        "schemaNotes": "Persona traits captured as slots and response templates in `domain.yml`, with slot `persona_trait` driving conditional utterances",
+        "docs": ["https://rasa.com/docs/rasa/domain"]
+      },
+      {
+        "framework": "Custom JSON Persona Spec",
+        "schemaNotes": "A flexible schema: { name, role, tone, style, emotionalRange: [], knowledgeTopics: [], defaultResponses: [] } to drive LLM prompt conditioning",
+        "example": {
+          "name": "SupportBot",
+          "role": "customer_support",
+          "tone": "empathetic",
+          "style": "concise",
+          "emotionalRange": ["empathetic", "encouraging"],
+          "knowledgeTopics": ["billing", "technical_support"],
+          "defaultResponses": ["Im here to help!", "Can you provide more details?"]
+        }
+      },
+      {
+        "framework": "Proto-Persona (Assumptions-Based)",
+        "schemaNotes": "Defines early-stage personas with fields: id, name, description, researchLevel: ['assumption','data'], keyHypotheses: [], validationPlan: [], status: 'draft' | 'validated'",
+        "example": {
+          "id": "proto_001",
+          "name": "UXAdopter",
+          "description": "Assumptions-based persona representing early adopters",
+          "researchLevel": "assumption",
+          "keyHypotheses": ["prefers mobile UI","high technical interest"],
+          "validationPlan": ["user interviews","click analytics"],
+          "status": "draft"
+        }
+      },
+      {
+        "framework": "Modular Persona Shell Spec",
+        "schemaNotes": "Blueprint from modular AI architecture: core_identity, growth_metrics, relationship_models",
+        "example": {
+          "core_identity": {"name":"Assistant","role":"info_agent","traits":["knowledgeable","empathetic"]},
+          "growth_metrics": {"domain_knowledge":{"general":0.8,"technical":0.6}},
+          "relationship_models": {"user_123":{"familiarity":0.7}}
+        }
+      },
+      {
+        "framework": "Persona Pattern Templates",
+        "schemaNotes": "Templates of persona-driven prompt patterns: expert, storyteller, translator, critic",
+        "patterns": [
+          {"name":"Expert Analyst","description":"Provides deep technical analysis"},
+          {"name":"Creative Storyteller","description":"Generates narrative-driven responses"},
+          {"name":"Concise Translator","description":"Rewrites content with clarity and brevity"},
+          {"name":"Critical Reviewer","description":"Offers critique and improvement suggestions"}
+        ]
+      }
+    ],
+    "microPersonaSchemas": [
+      {
+        "schemaNotes": "Micro-personas are fine-grained subsets of macro personas, with fields: parentPersonaId (macro), microTraits (granular distinctions), description (optional), and overrides of systemPromptTemplate or modelSettings.",
+        "example": {
+          "id": "micro_ux_001",
+          "parentPersonaId": "proto_001",
+          "name": "UXAdopter-TechSavvy",
+          "description": "Subset focusing on tech-savvy UX early adopters",
+          "microTraits": ["prefers command-line", "explores beta features"],
+          "systemPromptTemplate": "As a tech-savvy UX Adopter, help them with advanced CLI workflows.",
+          "modelSettings": { "temperature": 0.3 }
+        }
+      },
+      {
+        "schemaNotes": "Define micro-persona usage: dynamically select micro-persona based on context (taskType, userPreferences) via personaManager.getPersonaRecommendation().",
+        "integration": [
+          "Load from JSON/YAML via PersonaManager",
+          "Wrap with createMicroPersonaDefinition for PersonaLibrary",
+          "Register in AgentRegistry to instantiate micro-personas",
+          "Use personaManager.generateSystemPrompt(microPersonaId) for dynamic context"
+        ]
+      }
+    ],
+    "pendingTasks": [
+      { "filePath": "lib/workflow/index.ts", "line": 198, "task": "TODO: Execute the agent with the step input" },
+      { "filePath": "lib/workflow/supabase.ts", "line": 352, "task": "TODO: Execute the agent with the step input" },
+      { "filePath": "lib/tools/agentic/reddit-client.ts", "line": 419, "task": "TODO: add preview images" },
+      { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 435, "task": "TODO: Implement thread fetching" },
+      { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 443, "task": "TODO: Implement thread creation" },
+      { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 546, "task": "TODO: Implement thread deletion and rename actions" }
+    ],
+    "agentNotepad": [
+      "Review pendingTasks regularly and close completed TODOs.",
+      "Prioritize implementing core API routes for agents, tools, threads before advanced features.",
+      "Use Upstash libraries (redis, vector, qstash) as potential primary DB for low-latency operations.",
+      "Ensure Zod schemas are shared client/server in useObject and streamObject integrations.",
+      "Audit tsconfig plugins: replace deprecated typescript-eslint-parser with @typescript-eslint/parser.",
+      "Consolidate AI SDK integrations: clarify roles of @ai-sdk/* vs @agentic/ai-sdk packages.",
+      "Leverage Langfuse tracing on all generateText/streamText calls for observability.",
+      "Consider caching common prompts/results with Upstash semantic-cache for performance.",
+      "Validate multi-step tool flows: test maxSteps, onStepFinish, and experimental_prepareStep hooks.",
+      "Experiment with microPersonas: load micro traits and parent IDs in PersonaManager and AgentRegistry.",
+      "Implement dynamic selection: use personaManager.getPersonaRecommendation({taskType, userPreferences}) to pick micro-personas.",
+      "Extend registry to cache micro-personas with unique IDs combining parent and microTraits.",
+      "Validate micro-persona effectiveness: A/B test macro vs micro on engagement metrics."
+    ]
+  },
+  "observability": {
+    "provider": "Langfuse ^3.37.2",
+    "telemetryFramework": "OpenTelemetry",
+    "documentationReference": "docs/Telemetry.md for full details on collected data (Path needs verification).",
+    "enablement": {
+      "option": "`experimental_telemetry: { isEnabled: true }` on Vercel AI SDK function calls.",
+      "nextJsSetup": "Follow Next.js OpenTelemetry guide first. See OpenTelemetry packages in `package.json` (e.g., `@opentelemetry/sdk-node`)."
+    },
+    "configurationOptions": [
+      "`recordInputs` (boolean, default: true): Record input values.",
+      "`recordOutputs` (boolean, default: true): Record output values.",
+      "`functionId` (string): Identifier for the function call in telemetry.",
+      "`metadata` (object): Additional custom metadata to include."
+    ],
+    "customTracer": "Can provide a custom OpenTelemetry `Tracer` via `experimental_telemetry: { tracer: ... }`.",
+    "collectedDataSummary": {
+      "generalAttributes": ["ai.model.id", "ai.model.provider", "ai.usage.promptTokens", "ai.usage.completionTokens", "gen_ai.* semantic conventions"],
+      "generateText": {
+        "spans": ["ai.generateText", "ai.generateText.doGenerate", "ai.toolCall"],
+        "attributes": ["ai.prompt", "ai.response.text", "ai.response.toolCalls", "ai.response.finishReason"]
+      },
+      "streamText": {
+        "spans": ["ai.streamText", "ai.streamText.doStream", "ai.toolCall"],
+        "events": ["ai.stream.firstChunk", "ai.stream.finish"],
+        "attributes": ["ai.prompt", "ai.response.text", "ai.response.toolCalls", "ai.response.msToFirstChunk", "ai.response.finishReason"]
+      },
+      "generateObject": {
+        "spans": ["ai.generateObject", "ai.generateObject.doGenerate"],
+        "attributes": ["ai.prompt", "ai.schema", "ai.response.object", "ai.settings.mode", "ai.settings.output"]
+      },
+      "streamObject": {
+        "spans": ["ai.streamObject", "ai.streamObject.doStream"],
+        "events": ["ai.stream.firstChunk"],
+        "attributes": ["ai.prompt", "ai.schema", "ai.response.object", "ai.settings.mode", "ai.response.msToFirstChunk"]
+      },
+      "embed": {
+        "spans": ["ai.embed", "ai.embed.doEmbed"],
+        "attributes": ["ai.value", "ai.embedding", "ai.usage.tokens"]
+      },
+      "embedMany": {
+        "spans": ["ai.embedMany", "ai.embedMany.doEmbed"],
+        "attributes": ["ai.values", "ai.embeddings", "ai.usage.tokens"]
+      },
+      "toolCallSpans": {
+        "attributes": ["ai.toolCall.name", "ai.toolCall.id", "ai.toolCall.args", "ai.toolCall.result"]
+      }
+    }
+  },
+  "knowledgeIntegration": {
+    "rag": "Primary mechanism for accessing ai-sdk-DM knowledge (docs, codebase, issues). Agentic RAG for dynamic retrieval strategies.",
+    "kg": "Potential for representing ai-sdk-DM components, relationships, dependencies as a Knowledge Graph for advanced reasoning.",
+    "sources": [
+      "Vercel AI SDK documentation",
+      "@agentic/ai-sdk documentation",
+      "Next.js documentation",
+      "Supabase documentation",
+      "Drizzle ORM documentation",
+      "Google Gemini API documentation",
+      "Upstash (Redis, QStash, Rate Limiting) documentation"
+    ],
+    "toolsAndTechnologies": [
+      "Supabase (for persistence, auth, vector storage)",
+      "Drizzle ORM (for type-safe database access)",
+      "LibSQL (alternative to Supabase Postgres)",
+      "Vercel AI SDK (core generative UI and model interaction)",
+      "@agentic/ai-sdk (agentic capabilities, Google AI integration)",
+      "Zod (for schema validation)",
+      "Next.js (full-stack application framework)",
+      "Upstash (for serverless data, e.g., Redis for caching, queues, rate limiting - planned for future sprint)"
+    ],
+    "detailedKnowledgeSources": [
+      {
+        "sourceName": "Official ai-sdk-DM READMEs & Documentation (if available)",
+        "informationType": "Core concepts, API signatures, architectural overview, setup guides, high-level usage patterns.",
+        "primaryAccessMethod": "RAG query on vectorized documents; Direct parsing if structured.",
+        "exampleQuery": "Explain the core architecture of ai-sdk-DM.\nWhat are the parameters for the `some_function` function in ai-sdk-DM?"
+      },
+      {
+        "sourceName": "ai-sdk-DM Source Code (GitHub repository)",
+        "informationType": "Definitive implementation details, internal logic, specific module functionalities, class structures, private APIs, data structures.",
+        "primaryAccessMethod": "Direct code analysis (if agent possesses tool); RAG on code comments/docstrings; KG representation of code structure.",
+        "exampleQuery": "Analyze the core/authentication module in ai-sdk-DM for its primary classes and methods.\nShow me the source code for the `some_utility` utility in ai-sdk-DM."
+      },
+      {
+        "sourceName": "Example Applications & Code Snippets using ai-sdk-DM",
+        "informationType": "Practical usage patterns, common workflows, integration examples, idiomatic code, solutions to typical problems.",
+        "primaryAccessMethod": "RAG query on example descriptions; Code analysis of snippets; Few-shot learning examples.",
+        "exampleQuery": "Provide an example of using ai-sdk-DM to create a streaming chat interface.\nHow is error handling typically implemented with `some_feature` in ai-sdk-DM?"
+      },
+      {
+        "sourceName": "GitHub Issues for ai-sdk-DM (if public)",
+        "informationType": "Bug reports, feature requests, common problems, workarounds, community discussions on SDK behavior.",
+        "primaryAccessMethod": "RAG query on issue text; Semantic search for similar problems.",
+        "exampleQuery": "Are there any known issues with `some_component` in ai-sdk-DM version X.Y.Z related to [problem context]?"
+      },
+      {
+        "sourceName": "Relevant Vercel AI SDK Documentation (as proxy)",
+        "informationType": "Foundational concepts, API patterns similar to ai-sdk-DM, general LLM integration techniques.",
+        "primaryAccessMethod": "RAG query on Vercel AI SDK docs, used when ai-sdk-DM specific info is lacking or for general principles.",
+        "exampleQuery": "Explain the tool calling mechanism in Vercel AI SDK. (Agent then contextualizes for ai-sdk-DM)"
+      },
+      {
+        "sourceName": "Key TypeScript/JavaScript Language Specifications & Best Practices",
+        "informationType": "Core language syntax, features, programming paradigms, asynchronous programming, error handling.",
+        "primaryAccessMethod": "Pre-loaded foundational knowledge; RAG for specific language feature queries.",
+        "exampleQuery": "What is the best practice for handling promises in a Node.js application using ai-sdk-DM?"
+      },
+      {
+        "sourceName": "Project-Specific Style Guides & Conventions for ai-sdk-DM",
+        "informationType": "Formatting rules, naming conventions, architectural patterns mandated by the specific project using ai-sdk-DM.",
+        "primaryAccessMethod": "RAG query on project documentation; Constitutional AI rules.",
+        "exampleQuery": "What are the naming conventions for service classes in this project when using ai-sdk-DM?"
+      },
+      {
+        "sourceName": "Design Documents & Architectural Decision Records (ADRs) for ai-sdk-DM (if available)",
+        "informationType": "Rationale behind SDK design choices, high-level system diagrams, trade-offs considered.",
+        "primaryAccessMethod": "RAG query on design documents; KG representation of architectural components.",
+        "exampleQuery": "What was the design rationale for the event handling system in ai-sdk-DM?"
+      },
+      {
+        "sourceName": "Upstash",
+        "description": "Serverless data platform providing Redis, Kafka, and QStash. To be used for caching, message queuing, and potentially rate limiting.",
+        "usageScope": ["Caching layer for persona data and scores", "Session management", "Task queuing for background processes like persona score updates from traces"],
+        "keyFeatures": ["Managed Redis", "Managed Kafka", "QStash (HTTP-based messaging)", "Rate Limiting"]
+      }
+    ]
+  },
+  "advancedReasoningStrategies": [
+    "Tree of Thoughts (ToT)",
+    "Strategic Backtracking (Self-Backtracking & PRM-Guided)",
+    "Pruning Inefficient Reasoning Paths",
+    "Bi-Directional & Multi-Hop Reasoning (KG-enhanced)",
+    "Branching Narratives for SDK Use-Case Exploration"
+  ],
+  "agenticCapabilities": [
+    "Insight Accumulation (Task Deconstruction, Self-Reflection, Memory Processing)",
+    "Dynamic Tool Use (leveraging Vercel AI SDK tools and @agentic/ai-sdk tools)",
+    "Cross-Referencing Knowledge",
+    "Self-Correction & Improvement",
+    "Goal-Driven Autonomy",
+    "Explainable AI (XAI)",
+    "Collaborative Coding Simulation",
+    "Continuous Evolution & Adaptation"
+  ],
+  "knowledgeSourcesTableReference": "Content from Table 2 in llm.md has been integrated into knowledgeIntegration.detailedKnowledgeSources.",
+  "notepad": {
+    "purpose": "Quick reference and brainstorming area for the next AI agent iteration",
+    "notes": [
+      "Review websearch summaries on persona optimization strategies (embedding, adaptive tone, multi-agent simulations).",
+      "Incorporate persona embeddings using techniques like Poly-Encoders or Memory Networks for consistency.",
+      "Design tests for persona traits: group users by demographic and measure engagement metrics.",
+      "Prototype dynamic persona switching based on user sentiment and context heuristics.",
+      "Schedule regular updates of persona traits by running automated websearch refresh cycles.",
+      "Leverage federated learning to personalize persona per user cohort without centralizing data.",
+      "Balance persona complexity: avoid over-specification that may confuse the LLM.",
+      "Document persona changes and test outcomes in versioned changelog."
+    ]
+  },
+  "sprintManagement": {
+    "past_sprint": {
+      "summary": "Initial persona schema definition (Zod), base persona structures, example personas.",
+      "completed_tasks": [
+        "Defined Zod schemas for PersonaDefinition, MicroPersonaDefinition, SafetySetting, ExampleDialogue, PersonaScore, ScoreUpdateData in persona-library.ts.",
+        "Established base persona definitions.",
+        "Created example domain and task personas in persona-library-extended.ts.",
+        "Updated llm.json with initial persona framework research and schema ideas."
+      ]
+    },
+    "current_sprint": {
+      "summary": "Implement and fix persona-manager, persona-score-manager, persona-library-utils, persona-score-integration. Ensure Zod schema usage, complete functions, error-free operation. Verify index.ts exports. Create masterPersona.json and example usage scripts.",
+      "focus_areas": [
+        "Full implementation of persona-manager.ts",
+        "Full implementation of persona-score-manager.ts",
+        "Full implementation of persona-library-utils.ts",
+        "Full implementation of persona-score-integration.ts",
+        "Creation of c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\templates\\masterPersona.json",
+        "Refinement of example scripts (persona-library-example.ts, persona-score-example.ts)",
+        "Ensuring correct Zod schema usage across the persona module.",
+        "Comprehensive testing and bug fixing for the entire persona module.",
+        "Verification of all exports in c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\index.ts"
+      ],
+      "completions_this_sprint": [
+        "Initial Zod schemas for PersonaDefinition, MicroPersonaDefinition, SafetySetting, ExampleDialogue, PersonaScore, ScoreUpdateData in persona-library.ts.",
+        "Base personas defined in persona-library.ts.",
+        "Example domain/task personas in persona-library-extended.ts.",
+        "Updated llm.json with advancedPersonaFrameworks, personaSchemas, microPersonaSchemas."
+      ],
+      "remaining_tasks": [
+        "Full functional implementation and error fixing for persona-manager.ts.",
+        "Full functional implementation and error fixing for persona-score-manager.ts (including import fixes).",
+        "Full functional implementation and error fixing for persona-library-utils.ts.",
+        "Full functional implementation and error fixing for persona-score-integration.ts.",
+        "Creation and refinement of c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\templates\\masterPersona.json.",
+        "Refinement and completion of example usage scripts.",
+        "Ensuring seamless integration between persona management, scoring, and usage.",
+        "Final verification of all exports in c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\index.ts."
+      ]
+    },
+    "future_sprint": {
+      "summary": "Full Upstash integration for persona persistence and caching. Advanced persona adaptation strategies. Integration with AI SDK tracing for performance monitoring.",
+      "planned_features": [
+        "Implement Upstash Redis for robust persona storage and caching.",
+        "Develop advanced algorithms for dynamic persona adaptation based on performance scores and context.",
+        "Deepen integration with AI SDK tracing for comprehensive performance monitoring and feedback loops.",
+        "Explore real-time persona adjustments based on ongoing interactions."
+      ]
+    }
+  }
+}

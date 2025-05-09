@@ -184,7 +184,7 @@ export async function initializeCustomTools(): Promise<Record<string, { instance
   try {
     // Fetch custom tools from Supabase, including their category
     const toolsFromDb = await getData<any>("tools", { // Assuming 'tools' table has a 'category' column
-      filters: { type: "custom" }, // Or however custom tools are identified
+      match: { type: "custom" }, // Or however custom tools are identified
     });
 
     if (!toolsFromDb) {
