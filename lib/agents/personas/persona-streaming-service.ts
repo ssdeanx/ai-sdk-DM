@@ -8,7 +8,7 @@
  */
 
 import { MemoryProcessor } from '../../memory/upstash/memory-processor';
-import { PersonaDefinition, MicroPersonaDefinition } from './persona-library';
+import { GeminiCapability, PersonaDefinition, MicroPersonaDefinition } from './persona-library';
 import { Readable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 
@@ -108,16 +108,12 @@ export class PersonaStreamingService {
     const filter = (persona: PersonaDefinition): boolean => {
       // Apply tag filter if provided
       if (tags && tags.length > 0) {
-        if (!persona.tags || !tags.some(tag => persona.tags.includes(tag))) {
-          return false;
-        }
+        if (!persona.tags?.length || !tags.some(tag => persona.tags?.includes(tag))) {          return false;        }
       }
 
       // Apply capability filter if provided
       if (capabilities && capabilities.length > 0) {
-        if (!persona.capabilities || !capabilities.some(cap => persona.capabilities.includes(cap))) {
-          return false;
-        }
+        if (!persona.capabilities?.length || !capabilities.some(cap => persona.capabilities?.includes(cap as GeminiCapability))) {          return false;        }
       }
 
       // Apply custom filter if provided
@@ -165,8 +161,8 @@ export class PersonaStreamingService {
                 microPersonas.push(microPersona);
               }
 
-              // Attach micro-personas to the persona
-              persona.microPersonas = microPersonas;
+              // Attach micro-personas to the persona using type assertion
+              (persona as any).microPersonas = microPersonas;
             } catch (error) {
               console.error(`Error fetching micro-personas for persona ${persona.id}:`, error);
             }
@@ -177,8 +173,7 @@ export class PersonaStreamingService {
         } catch (error) {
           callback(new PersonaStreamingError('Error processing persona', error));
         }
-      }
-    });
+      }    });
 
     // Pipe the base stream through the transform stream
     return baseStream.pipe(transformStream);

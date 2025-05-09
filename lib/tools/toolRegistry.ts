@@ -49,6 +49,141 @@ interface ToolRegistryOptions {
  * and categorizes them.
  */
 export class ToolRegistry {
+  // Singleton instance for static method access
+  static readonly instance: ToolRegistry = new ToolRegistry();
+
+  /**
+   * Checks if a tool with the given name exists in the registry.
+   *
+   * @param toolName - The name of the tool to check.
+   * @returns A promise that resolves to true if the tool exists, false otherwise.
+   */
+  static async hasTool(toolName: string): Promise<boolean> {
+    const tool = await ToolRegistry.instance.getTool(toolName);
+    return !!tool;
+  }
+
+  /**
+   * Gets a tool by its name.
+   *
+   * @param toolName - The name of the tool to retrieve.
+   * @returns A promise that resolves to the tool instance, or undefined if not found.
+   */
+  static async getTool(toolName: string): Promise<Tool<any, any> | undefined> {
+    return ToolRegistry.instance.getTool(toolName);
+  }
+
+  /**
+   * Executes a tool with the given parameters.
+   *
+   * @param toolName - The name of the tool to execute.
+   * @param params - The parameters to pass to the tool.
+   * @returns A promise that resolves to the result of the tool execution.
+   * @throws Error if the tool is not found or execution fails.
+   */
+  static async executeTool(toolName: string, params: any): Promise<any> {
+    const tool = await ToolRegistry.instance.getTool(toolName) as any;
+    if (!tool) {
+      throw new Error(`Tool '${toolName}' not found in registry.`);
+    }
+
+    try {
+      // Create a trace for tool execution
+      const trace = await createTrace({
+        name: `tool_execution_${toolName}`,
+        metadata: {
+          toolName,
+          params: JSON.stringify(params)
+        }
+      });
+
+      // Execute the tool - AI SDK tools have an execute method that takes params
+      // We need to handle both the AI SDK tool format and any custom formats
+      let result;
+
+      // Handle different tool formats
+      if (typeof tool === 'function') {
+        // Direct function tool
+        result = await tool(params);
+      } else if (tool && typeof (tool as any).execute === 'function') {
+        // AI SDK tool format
+        const executeFn = (tool as any).execute;
+        // AI SDK tools might expect (params, runId) signature
+        result = await executeFn.call(tool, params, `tool_execution_${Date.now()}`);
+      } else if (tool && typeof (tool as any).call === 'function') {
+        // For compatibility with other tool formats
+        result = await (tool as any).call(params);
+      } else {
+        throw new Error(`Tool '${toolName}' does not have a valid execute method.`);
+      }
+
+      // Log successful execution
+      logEvent({
+        traceId: trace ? trace.id : 'ToolRegistry',
+        name: 'ToolExecutionSuccess',
+        metadata: {
+          toolName,
+          result: typeof result === 'object' ? JSON.stringify(result) : String(result)
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`Error executing tool '${toolName}':`, error);
+
+      // Log execution error
+      logEvent({
+        traceId: 'ToolRegistry',
+        name: 'ToolExecutionError',
+        metadata: {
+          toolName,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Registers a new tool in the registry.
+   *
+   * @param toolName - The name of the tool.
+   * @param description - The description of the tool.
+   * @param zodSchema - The Zod schema for the tool parameters.
+   * @param execute - The function to execute when the tool is called.
+   * @returns A promise that resolves when the tool is registered.
+   */
+  static async register(
+    toolName: string,
+    description: string,
+    zodSchema: z.ZodTypeAny,
+    execute: (params: any) => Promise<any>
+  ): Promise<void> {
+    // Create the tool instance
+    const toolInstance = tool({
+      description,
+      parameters: zodSchema,
+      execute
+    });
+
+    // Add the tool to the registry
+    await ToolRegistry.instance.ensureInitialized();
+    ToolRegistry.instance.categorizedTools.set(toolName, {
+      instance: toolInstance,
+      category: 'custom'
+    });
+
+    // Log tool registration
+    logEvent({
+      traceId: 'ToolRegistry',
+      name: 'ToolRegistered',
+      metadata: {
+        toolName,
+        category: 'custom'
+      }
+    });
+  }
   private categorizedTools: Map<string, CategorizedTool> = new Map();
   private initialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
@@ -157,7 +292,7 @@ export class ToolRegistry {
       logEvent({
         traceId: 'ToolRegistry',
         name: 'Initialized',
-        metadata: { 
+        metadata: {
           toolCount: this.categorizedTools.size,
           categories: Array.from(new Set(Array.from(this.categorizedTools.values()).map(ct => ct.category)))
         }
@@ -168,7 +303,7 @@ export class ToolRegistry {
       this.initialized = false;
       rejectInit!(error);
       // No need to set this.initializationPromise to null here, finally block handles it.
-      throw error; 
+      throw error;
     } finally {
         // Whether success or failure, the current attempt is done. Clear the promise
         // to allow future calls to re-attempt if it failed, or to bypass if succeeded.
@@ -274,3 +409,9 @@ export class ToolRegistry {
     return Array.from(categories);
   }
 }
+
+/**
+ * Singleton instance of the ToolRegistry.
+ * Use this instance for direct method access.
+ */
+export const toolRegistry = ToolRegistry.instance;

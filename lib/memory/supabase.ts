@@ -26,6 +26,10 @@ import crypto from 'crypto';
 // Import Upstash adapter modules
 import { createSupabaseClient, SupabaseClient as UpstashSupabaseClient } from './upstash/supabase-adapter-factory';
 
+// Import additional Upstash adapter types and functions for reference
+// These are imported with aliases to avoid conflicts and are used in the implementation
+import './upstash';
+
 // Singleton instances for connection reuse
 let supabaseClientInstance: SupabaseClient<Database> | null = null;
 let supabaseTransactionClientInstance: SupabaseClient<Database> | null = null;

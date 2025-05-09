@@ -86,10 +86,13 @@ export class PersonaManager {
       });
     } else if (personaScoreManager) {
       // Use the existing score manager
-      await personaScoreManager.recordUsage(personaId, data);
+      if (typeof personaScoreManager.recordPersonaUsage === 'function') {
+        await personaScoreManager.recordPersonaUsage(personaId, data);
+      } else {
+        console.warn('PersonaScoreManager does not have recordPersonaUsage method');
+      }
     }
   }
-
   /**   * Records user feedback for a persona
    *
    * @param personaId - The ID of the persona

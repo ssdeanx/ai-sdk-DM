@@ -14,48 +14,73 @@ import { eq, and, desc, asc } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { logEvent } from "../../tracing"
 import { LRUCache } from 'lru-cache'
+import { z } from 'zod'
 
 /**
- * Interface for persona score data
+ * Zod schema for token usage data
  */
-export interface PersonaScore {
-  persona: any
-  score: any
-  success_count: number
-  failure_count: number
-  average_latency_ms: number
-  user_satisfaction_avg: number
-  user_feedback_count: number
-  token_usage_avg: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
-  id: string
-  persona_id: string
-  usage_count: number
-  success_rate: number
-  average_latency: number
-  user_satisfaction: number
-  adaptability_score: number
-  overall_score: number
-  last_used: string
-  metadata: Record<string, any>
-  created_at: string
-  updated_at: string
-}
+export const TokenUsageSchema = z.object({
+  prompt_tokens: z.number().nonnegative(),
+  completion_tokens: z.number().nonnegative(),
+  total_tokens: z.number().nonnegative()
+});
 
 /**
- * Interface for score update data
+ * Zod schema for persona score data
  */
-export interface ScoreUpdateData {
-  success?: boolean
-  latency?: number
-  userSatisfaction?: number
-  adaptabilityFactor?: number
-  metadata?: Record<string, any>
-}
+export const PersonaScoreSchema = z.object({
+  id: z.string().uuid(),
+  persona_id: z.string().uuid(),
+  usage_count: z.number().nonnegative().default(0),
+  success_count: z.number().nonnegative().default(0),
+  failure_count: z.number().nonnegative().default(0),
+  success_rate: z.number().min(0).max(1).default(0),
+  average_latency: z.number().nonnegative().default(0),
+  average_latency_ms: z.number().nonnegative().default(0),
+  user_satisfaction: z.number().min(0).max(1).default(0.5),
+  user_satisfaction_avg: z.number().min(0).max(1).default(0.5),
+  user_feedback_count: z.number().nonnegative().default(0),
+  adaptability_score: z.number().min(0).max(1).default(0.5),
+  overall_score: z.number().min(0).max(1).default(0.5),
+  token_usage_avg: TokenUsageSchema.default({
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    total_tokens: 0
+  }),
+  last_used: z.string().datetime().default(() => new Date().toISOString()),
+  metadata: z.record(z.any()).default({}),
+  created_at: z.string().datetime().default(() => new Date().toISOString()),
+  updated_at: z.string().datetime().default(() => new Date().toISOString()),
+  persona: z.any().optional(),
+  score: z.any().optional()
+});
+
+/**
+ * Type for persona score data
+ */
+export type PersonaScore = z.infer<typeof PersonaScoreSchema>;
+
+/**
+ * Zod schema for score update data
+ */
+export const ScoreUpdateDataSchema = z.object({
+  success: z.boolean().optional(),
+  latency: z.number().nonnegative().optional(),
+  userSatisfaction: z.number().min(0).max(1).optional(),
+  adaptabilityFactor: z.number().min(0).max(1).optional(),
+  metadata: z.record(z.any()).optional()
+});
+
+/**
+ * Type for score update data
+ */
+export type ScoreUpdateData = z.infer<typeof ScoreUpdateDataSchema>;
 
 /**
  * Persona Score Manager for tracking and updating persona performance metrics
  */
 export class PersonaScoreManager {
+  [x: string]: any
   private initialized: boolean = false
   private initPromise: Promise<void> | null = null
 
@@ -127,49 +152,75 @@ export class PersonaScoreManager {
    * @returns PersonaScore or null if not found
    */
   public async getScore(personaId: string): Promise<PersonaScore | null> {
-    await this.ensureInitialized()
+    await this.ensureInitialized();
 
     try {
       // Check cache first
-      const cacheKey = `persona_score_${personaId}`
-      const cachedScore = this.scoreCache.get(cacheKey)
+      const cacheKey = `persona_score_${personaId}`;
+      const cachedScore = this.scoreCache.get(cacheKey);
 
       if (cachedScore) {
-        this.cacheStats.hits++
-        return cachedScore
+        this.cacheStats.hits++;
+        return cachedScore;
       }
 
-      this.cacheStats.misses++
+      this.cacheStats.misses++;
 
       // Not in cache, fetch from database
-      const supabase = getSupabaseClient()
+      const supabase = getSupabaseClient();
 
       const { data, error } = await supabase
         .from('persona_scores' as any)
         .select('*')
         .eq('persona_id', personaId)
-        .single()
+        .single();
 
       if (error) {
         if (error.code === 'PGRST116') {
           // No rows returned - score doesn't exist yet
-          return null
+          return null;
         }
-        throw error
+        throw error;
       }
 
-      const score = data as unknown as PersonaScore
+      // Validate with Zod schema
+      let score: PersonaScore;
+      try {
+        score = PersonaScoreSchema.parse(data);
+      } catch (validationError) {
+        console.error(`Validation error for persona score ${personaId}:`, validationError);
+        if (validationError instanceof z.ZodError) {
+          console.error('Validation details:', JSON.stringify(validationError.errors, null, 2));
+
+          // Try to create a valid score from the data
+          const defaultScore = PersonaScoreSchema.parse({
+            id: uuidv4(),
+            persona_id: personaId,
+            // Default values will be applied by the schema
+          });
+
+          // Merge with the data we have
+          score = {
+            ...defaultScore,
+            ...data,
+            persona_id: personaId // Ensure persona_id is correct
+          };
+        } else {
+          // If not a Zod error, rethrow
+          throw validationError;
+        }
+      }
 
       // Cache the result
       if (score) {
-        this.scoreCache.set(cacheKey, score)
-        this.cacheStats.sets++
+        this.scoreCache.set(cacheKey, score);
+        this.cacheStats.sets++;
       }
 
-      return score
+      return score;
     } catch (error) {
-      console.error(`Error getting score for persona ${personaId}:`, error)
-      return null
+      console.error(`Error getting score for persona ${personaId}:`, error);
+      return null;
     }
   }
 
@@ -184,29 +235,67 @@ export class PersonaScoreManager {
     sortDirection?: 'asc' | 'desc',
     limit?: number
   }): Promise<PersonaScore[]> {
-    await this.ensureInitialized()
-    const cacheKey = `all_scores_${options?.sortBy || 'none'}_${options?.sortDirection || 'none'}_${options?.limit || 'all'}`
-    const cached = this.listCache.get(cacheKey)
-    if (cached) {
-      this.cacheStats.hits++
-      return cached
-    }
-    this.cacheStats.misses++
-    const supabase = getSupabaseClient()
-    let query = supabase.from('persona_scores' as any).select('*')
-    if (options?.sortBy) {
-      query = query.order(options.sortBy, { ascending: options.sortDirection === 'asc' })
-    }
-    if (options?.limit) {
-      query = query.limit(options.limit)
-    }
-    const { data, error } = await query
-    if (error || !data) return []
-    const scores = data as unknown as PersonaScore[]
-    this.listCache.set(cacheKey, scores)
-    return scores
-  }
+    await this.ensureInitialized();
 
+    // Create a cache key based on options
+    const cacheKey = `all_scores_${options?.sortBy || 'none'}_${options?.sortDirection || 'none'}_${options?.limit || 'all'}`;
+
+    // Check cache first
+    const cached = this.listCache.get(cacheKey);
+    if (cached) {
+      this.cacheStats.hits++;
+      return cached;
+    }
+
+    this.cacheStats.misses++;
+
+    try {
+      // Fetch from database
+      const supabase = getSupabaseClient();
+      let query = supabase.from('persona_scores' as any).select('*');
+
+      // Apply sorting if specified
+      if (options?.sortBy) {
+        query = query.order(options.sortBy, { ascending: options.sortDirection === 'asc' });
+      }
+
+      // Apply limit if specified
+      if (options?.limit) {
+        query = query.limit(options.limit);
+      }
+
+      // Execute query
+      const { data, error } = await query;
+
+      if (error || !data) {
+        console.error('Error fetching all scores:', error);
+        return [];
+      }
+
+      // Validate each score with Zod schema
+      const validatedScores: PersonaScore[] = [];
+
+      for (const scoreData of data) {
+        try {
+          const score = PersonaScoreSchema.parse(scoreData);
+          validatedScores.push(score);
+        } catch (validationError) {
+          console.warn(`Skipping invalid score:`, validationError);
+          if (validationError instanceof z.ZodError) {
+            console.warn('Validation details:', JSON.stringify(validationError.errors, null, 2));
+          }
+        }
+      }
+
+      // Cache the results
+      this.listCache.set(cacheKey, validatedScores);
+
+      return validatedScores;
+    } catch (error) {
+      console.error('Error getting all scores:', error);
+      return [];
+    }
+  }
   /**
    * Create or update score for a persona
    *
@@ -218,30 +307,61 @@ export class PersonaScoreManager {
     personaId: string,
     updateData: ScoreUpdateData
   ): Promise<PersonaScore | null> {
-    await this.ensureInitialized()
-    const existing = await this.getScore(personaId)
-    if (!existing) return null
-    // update metrics
-    const updated: PersonaScore = { ...existing,
-      usage_count: existing.usage_count + 1,
-      success_rate: updateData.success !== undefined ? ((existing.success_rate * existing.usage_count + (updateData.success ? 1 : 0)) / (existing.usage_count + 1)) : existing.success_rate,
-      average_latency: updateData.latency !== undefined ? ((existing.average_latency * existing.usage_count + updateData.latency) / (existing.usage_count + 1)) : existing.average_latency,
-      user_satisfaction: updateData.userSatisfaction !== undefined ? updateData.userSatisfaction : existing.user_satisfaction,
-      adaptability_score: updateData.adaptabilityFactor !== undefined ? updateData.adaptabilityFactor : existing.adaptability_score,
-      overall_score: 0,
-      last_used: new Date().toISOString(),
-      metadata: { ...existing.metadata, ...updateData.metadata },
-      updated_at: new Date().toISOString()
+    try {
+      // Validate update data with Zod schema
+      const validatedUpdateData = ScoreUpdateDataSchema.parse(updateData);
+
+      await this.ensureInitialized();
+      const existing = await this.getScore(personaId);
+      if (!existing) return null;
+
+      // Update metrics
+      const updatedData = {
+        ...existing,
+        usage_count: existing.usage_count + 1,
+        success_rate: validatedUpdateData.success !== undefined
+          ? ((existing.success_rate * existing.usage_count + (validatedUpdateData.success ? 1 : 0)) / (existing.usage_count + 1))
+          : existing.success_rate,
+        average_latency: validatedUpdateData.latency !== undefined
+          ? ((existing.average_latency * existing.usage_count + validatedUpdateData.latency) / (existing.usage_count + 1))
+          : existing.average_latency,
+        user_satisfaction: validatedUpdateData.userSatisfaction !== undefined
+          ? validatedUpdateData.userSatisfaction
+          : existing.user_satisfaction,
+        adaptability_score: validatedUpdateData.adaptabilityFactor !== undefined
+          ? validatedUpdateData.adaptabilityFactor
+          : existing.adaptability_score,
+        overall_score: 0,
+        last_used: new Date().toISOString(),
+        metadata: { ...existing.metadata, ...validatedUpdateData.metadata },
+        updated_at: new Date().toISOString()
+      };
+
+      // Validate the updated data with Zod schema
+      const updated = PersonaScoreSchema.parse(updatedData);
+
+      // Calculate overall score
+      updated.overall_score = this.calculateOverallScore(updated);
+
+      // Save to database
+      const supabase = getSupabaseClient();
+      await supabase.from('persona_scores' as any).upsert({
+        ...updated,
+        persona_id: personaId
+      }, { onConflict: 'persona_id' });
+
+      // Update cache
+      this.scoreCache.set(`persona_score_${personaId}`, updated);
+      this.cacheStats.sets++;
+
+      return updated;
+    } catch (error) {
+      console.error(`Error updating score for persona ${personaId}:`, error);
+      if (error instanceof z.ZodError) {
+        console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+      }
+      return null;
     }
-    updated.overall_score = this.calculateOverallScore(updated)
-    const supabase = getSupabaseClient()
-    await supabase.from('persona_scores' as any).upsert({
-      ...updated,
-      persona_id: personaId
-    }, { onConflict: 'persona_id' })
-    this.scoreCache.set(`persona_score_${personaId}`, updated)
-    this.cacheStats.sets++
-    return updated
   }
 
   /**
@@ -315,14 +435,41 @@ export class PersonaScoreManager {
     rating: number,
     feedback?: string
   ): Promise<PersonaScore | null> {
-    // Ensure rating is between 0 and 1
-    const normalizedRating = Math.max(0, Math.min(1, rating))
+    try {
+      // Validate inputs
+      if (typeof personaId !== 'string' || !personaId) {
+        throw new Error('Invalid personaId');
+      }
 
-    // Update score with user satisfaction
-    return this.updateScore(personaId, {
-      userSatisfaction: normalizedRating,
-      metadata: feedback ? { lastFeedback: feedback } : undefined
-    })
+      if (typeof rating !== 'number' || isNaN(rating)) {
+        throw new Error('Rating must be a number');
+      }
+
+      if (feedback !== undefined && typeof feedback !== 'string') {
+        throw new Error('Feedback must be a string if provided');
+      }
+
+      // Ensure rating is between 0 and 1
+      const normalizedRating = Math.max(0, Math.min(1, rating));
+
+      // Create update data
+      const updateData: ScoreUpdateData = {
+        userSatisfaction: normalizedRating,
+        metadata: feedback ? { lastFeedback: feedback } : undefined
+      };
+
+      // Validate update data with Zod schema
+      const validatedUpdateData = ScoreUpdateDataSchema.parse(updateData);
+
+      // Update score with user satisfaction
+      return this.updateScore(personaId, validatedUpdateData);
+    } catch (error) {
+      console.error(`Error recording user feedback for persona ${personaId}:`, error);
+      if (error instanceof z.ZodError) {
+        console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+      }
+      return null;
+    }
   }
 
   /**

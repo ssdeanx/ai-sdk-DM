@@ -89,8 +89,7 @@ export async function runAgent(
       // Load agent's tools from Supabase
       if (agent && Array.isArray(agent.tool_ids) && agent.tool_ids.length > 0) {
         const toolData = await getData("tools", {
-          filters: (query) => query.in('id', agent.tool_ids)
-        }) as unknown as ToolConfig[];
+          filters: (query) => query.in('id', agent?.tool_ids || [])        }) as unknown as ToolConfig[];
         tools = toolData || [];
       }
     }

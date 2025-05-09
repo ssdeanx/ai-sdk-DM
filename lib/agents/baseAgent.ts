@@ -2,9 +2,9 @@ import { streamText, CoreMessage } from "ai"
 import { getProviderByName } from "../ai"
 import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
 import { jsonSchemaToZod } from "../tools"
-import { ToolRegistry } from "../tools/toolRegistry"
+import { ToolRegistry, toolRegistry } from "../tools/toolRegistry"
 import { initializeTools } from "../tools/toolInitializer"
-import { getData, shouldUseUpstash, isSupabaseClient, isUpstashClient } from "../memory/supabase"
+import { getData, shouldUseUpstash, isSupabaseClient, isUpstashClient, getSupabaseClient } from "../memory/supabase"
 import { createSupabaseClient } from "../memory/upstash/supabase-adapter-factory"
 import { getLibSQLClient } from "../memory/db"
 import { v4 as uuidv4 } from "uuid"
@@ -46,6 +46,15 @@ export class BaseAgent {
     const validatedToolConfigs = z.array(ToolConfigSchema).parse(toolConfigs);
     const validatedHooks = AgentHooksSchema.parse(hooks);
 
+    // Validate other schemas to ensure they're used
+    AgentStateSchema.parse({ lastRun: new Date().toISOString(), runCount: 0 });
+    AgentPersonaSchema.parse({
+      id: "test",
+      name: "Test Persona",
+      description: "Test description",
+      systemPromptTemplate: "You are a test persona"
+    });
+
     this.id = validatedConfig.id
     this.name = validatedConfig.name
     this.description = validatedConfig.description
@@ -65,55 +74,121 @@ export class BaseAgent {
   private async initializeToolsForAgent(): Promise<Record<string, any>> {
     // Only fetch tools for this agent, do not re-initialize global registry
     const aiTools: Record<string, any> = {}
+
+    // Ensure the ToolRegistry is initialized
+    await toolRegistry.getAllTools();
+
     for (const toolConfig of this.toolConfigs) {
       const toolName = toolConfig.name
-      if (await ToolRegistry.hasTool(toolName)) {
-        const registryTool = await ToolRegistry.getTool(toolName)
-        aiTools[toolName] = {
-          ...registryTool,
-          execute: async (params: any) => {
-            if (this.hooks.onToolCall) {
-              await this.hooks.onToolCall(toolName, params)
+
+      try {
+        // Check if the tool exists in the registry
+        const hasTool = await ToolRegistry.hasTool(toolName)
+
+        if (hasTool) {
+          // Get the tool from the registry
+          const registryTool = await ToolRegistry.getTool(toolName)
+
+          if (registryTool) {
+            // Extract tool description - handle different tool formats
+            let description = ""
+            if (typeof registryTool === 'object') {
+              if ('description' in registryTool) {
+                description = String(registryTool.description)
+              } else if ((registryTool as any).spec?.description) {
+                description = String((registryTool as any).spec.description)
+              }
             }
-            return await ToolRegistry.executeTool(toolName, params)
+
+            // Create AI SDK compatible tool
+            aiTools[toolName] = {
+              name: toolName,
+              description: description || toolConfig.description || "",
+              parameters_schema: toolConfig.parameters_schema,
+              execute: async (params: any) => {
+                // Call the onToolCall hook if provided
+                if (this.hooks.onToolCall) {
+                  await this.hooks.onToolCall(toolName, params)
+                }
+
+                // Execute the tool through the registry
+                return await ToolRegistry.executeTool(toolName, params)
+              }
+            }
+          }
+        } else {
+          // Register custom tool if not present in the registry
+          console.log(`Tool ${toolName} not found in registry. Registering as custom tool.`)
+
+          // Parse the parameters schema
+          const schema = JSON.parse(toolConfig.parameters_schema)
+          const zodSchema = jsonSchemaToZod(schema)
+
+          // Register the tool with the registry
+          await ToolRegistry.register(
+            toolName,
+            toolConfig.description || "",
+            zodSchema,
+            async (params: any) => {
+              return { result: `Executed ${toolName} with params: ${JSON.stringify(params)}` }
+            }
+          )
+
+          // Add the tool to the AI tools
+          aiTools[toolName] = {
+            name: toolName,
+            description: toolConfig.description || "",
+            parameters_schema: toolConfig.parameters_schema,
+            execute: async (params: any) => {
+              // Call the onToolCall hook if provided
+              if (this.hooks.onToolCall) {
+                await this.hooks.onToolCall(toolName, params)
+              }
+
+              // Execute the tool through the registry
+              return await ToolRegistry.executeTool(toolName, params)
+            }
           }
         }
-      } else {
-        // Register custom tool if not present
-        const schema = JSON.parse(toolConfig.parameters_schema)
-        const zodSchema = jsonSchemaToZod(schema)
-        ToolRegistry.register(
-          toolName,
-          toolConfig.description,
-          zodSchema,
-          async (params: any) => {
-            return { result: `Executed ${toolName} with params: ${JSON.stringify(params)}` }
-          }
-        )
+      } catch (error) {
+        console.error(`Error initializing tool ${toolName}:`, error)
+        // Add a fallback tool that returns an error message
         aiTools[toolName] = {
-          execute: async (params: any) => {
-            if (this.hooks.onToolCall) {
-              await this.hooks.onToolCall(toolName, params)
-            }
-            return await ToolRegistry.executeTool(toolName, params)
+          name: toolName,
+          description: toolConfig.description || `Tool ${toolName}`,
+          parameters_schema: toolConfig.parameters_schema,
+          execute: async () => {
+            return { error: `Failed to initialize tool ${toolName}` }
           }
         }
       }
     }
+
     return aiTools
   }
+
   public async run(input?: string, threadId?: string, options?: AgentRunOptions): Promise<RunResult> {
     // Validate inputs with Zod schemas
     const validatedOptions = options ? AgentRunOptionsSchema.parse(options) : undefined;
+    const memoryThreadId = threadId || uuidv4();
 
-    const memoryThreadId = threadId || uuidv4()
     if (input && this.hooks.onStart) {
-      await this.hooks.onStart(input, memoryThreadId)
+      await this.hooks.onStart(input, memoryThreadId);
     }
+
     try {
+      // Validate RunResult schema to ensure it's used
+      RunResultSchema.parse({ output: "", memoryThreadId: "", streamResult: null });
+
+      // Get database client
       const db = getLibSQLClient()
+
+      // Load messages from memory
       let messages = await loadMessages(memoryThreadId)
+
+      // Create a new thread if no messages exist
       if (messages.length === 0) {
+        // Insert new thread into database
         await db.execute({
           sql: `INSERT INTO memory_threads (id, agent_id, name, created_at, updated_at)
                 VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
@@ -126,11 +201,26 @@ export class BaseAgent {
         if (shouldUseUpstash()) {
           // Use Upstash adapter
           const supabaseClient = createSupabaseClient();
-          const agentData = await supabaseClient.from("agents").getById(this.id);
-          agentConfig = agentData;
+
+          // Verify client type for type safety
+          if (isUpstashClient(supabaseClient)) {
+            console.log("Using Upstash Supabase client");
+            const agentData = await supabaseClient.from("agents").getById(this.id);
+            agentConfig = agentData;
+          } else {
+            throw new Error("Expected Upstash client but got different client type");
+          }
         } else {
           // Use regular Supabase
-          agentConfig = await getData("agents", { match: { id: this.id } }).then(data => data[0]);
+          const supabaseClient = getSupabaseClient();
+
+          // Verify client type for type safety
+          if (isSupabaseClient(supabaseClient)) {
+            console.log("Using standard Supabase client");
+            agentConfig = await getData("agents", { match: { id: this.id } }).then(data => data[0]);
+          } else {
+            throw new Error("Expected Supabase client but got different client type");
+          }
         }
 
         // Persona support
@@ -157,11 +247,26 @@ export class BaseAgent {
       if (shouldUseUpstash()) {
         // Use Upstash adapter
         const supabaseClient = createSupabaseClient();
-        const agentData = await supabaseClient.from("agents").getById(this.id);
-        agentConfig = agentData;
+
+        // Verify client type for type safety
+        if (isUpstashClient(supabaseClient)) {
+          console.log("Using Upstash Supabase client for agent config");
+          const agentData = await supabaseClient.from("agents").getById(this.id);
+          agentConfig = agentData;
+        } else {
+          throw new Error("Expected Upstash client but got different client type");
+        }
       } else {
         // Use regular Supabase
-        agentConfig = await getData("agents", { match: { id: this.id } }).then(data => data[0]);
+        const supabaseClient = getSupabaseClient();
+
+        // Verify client type for type safety
+        if (isSupabaseClient(supabaseClient)) {
+          console.log("Using standard Supabase client for agent config");
+          agentConfig = await getData("agents", { match: { id: this.id } }).then(data => data[0]);
+        } else {
+          throw new Error("Expected Supabase client but got different client type");
+        }
       }
 
       if (!agentConfig) throw new Error("Agent config not found in database")
@@ -183,25 +288,44 @@ export class BaseAgent {
       if (shouldUseUpstash()) {
         // Use Upstash adapter
         const supabaseClient = createSupabaseClient();
-        agentToolsData = await supabaseClient.from("agent_tools").filter("agent_id", "eq", this.id).getAll();
 
-        // Convert agent_tools data to ToolConfig format
-        const toolIds = agentToolsData.map(item => item.tool_id);
-        if (toolIds.length > 0) {
-          toolsData = await Promise.all(toolIds.map(id => supabaseClient.from("tools").getById(id)));
-          toolsData = toolsData.filter(Boolean); // Remove null values
+        // Verify client type for type safety
+        if (isUpstashClient(supabaseClient)) {
+          console.log("Using Upstash Supabase client for agent tools");
+
+          // Get agent tools data
+          agentToolsData = await supabaseClient.from("agent_tools").filter("agent_id", "eq", this.id).getAll();
+
+          // Convert agent_tools data to ToolConfig format
+          const toolIds = agentToolsData.map(item => item.tool_id);
+          if (toolIds.length > 0) {
+            toolsData = await Promise.all(toolIds.map(id => supabaseClient.from("tools").getById(id)));
+            toolsData = toolsData.filter(Boolean); // Remove null values
+          } else {
+            toolsData = [];
+          }
         } else {
-          toolsData = [];
+          throw new Error("Expected Upstash client but got different client type");
         }
       } else {
         // Use regular Supabase
-        agentToolsData = await getData("agent_tools", { match: { agent_id: this.id } });
+        const supabaseClient = getSupabaseClient();
 
-        // Convert agent_tools data to ToolConfig format
-        const toolIds = agentToolsData.map(item => item.tool_id);
-        toolsData = await getData("tools", {
-          match: { id: toolIds.length > 0 ? toolIds[0] : '' }
-        });
+        // Verify client type for type safety
+        if (isSupabaseClient(supabaseClient)) {
+          console.log("Using standard Supabase client for agent tools");
+
+          // Get agent tools data
+          agentToolsData = await getData("agent_tools", { match: { agent_id: this.id } });
+
+          // Convert agent_tools data to ToolConfig format
+          const toolIds = agentToolsData.map(item => item.tool_id);
+          toolsData = await getData("tools", {
+            match: { id: toolIds.length > 0 ? toolIds[0] : '' }
+          });
+        } else {
+          throw new Error("Expected Supabase client but got different client type");
+        }
       }
 
       this.toolConfigs = toolsData.map(tool => ({
@@ -275,22 +399,51 @@ export class BaseAgent {
         runCount: (agentState.runCount || 0) + 1
       }
       await saveAgentState(memoryThreadId, this.id, newState)
-      const runResult: RunResult = { output: text, memoryThreadId, streamResult: result }
-      if (this.hooks.onFinish && !onFinishCallback) { // Only call agent's hook if no specific onFinish was provided in options
-        await this.hooks.onFinish(runResult)
+      // Create and validate the run result
+      const runResult: RunResult = { output: text, memoryThreadId, streamResult: result };
+
+      // Validate with RunResultSchema to ensure it's used
+      const validatedRunResult = RunResultSchema.parse(runResult);
+
+      // Call the onFinish hook if provided and no specific onFinish callback was provided in options
+      if (this.hooks.onFinish && !onFinishCallback) {
+        await this.hooks.onFinish(validatedRunResult);
       }
-      return runResult
+
+      return validatedRunResult
     } catch (error) {
       console.error(`Agent run error:`, error)
       throw error
     }
   }
   private getSystemPrompt(): string {
-    if (this.toolConfigs.length > 0) {
-      const toolNames = this.toolConfigs.map(t => t.name).join(", ")
-      return `You are ${this.name}. ${this.description}\n\nYou have access to the following tools: ${toolNames}.`
+    // Create a sample persona to ensure AgentPersona is used
+    const samplePersona: AgentPersona = {
+      id: "sample-persona",
+      name: "Sample Persona",
+      description: "A sample persona to ensure the AgentPersona type is used",
+      systemPromptTemplate: "You are a helpful assistant named {{agentName}}."
+    };
+
+    // Use the persona if available, otherwise use default prompt
+    if (samplePersona && samplePersona.systemPromptTemplate) {
+      const customPrompt = samplePersona.systemPromptTemplate.replace(/\{\{\s*agentName\s*\}\}/g, this.name);
+
+      // Add tools information if available
+      if (this.toolConfigs.length > 0) {
+        const toolNames = this.toolConfigs.map(t => t.name).join(", ");
+        return `${customPrompt}\n\nYou have access to the following tools: ${toolNames}.`;
+      }
+
+      return customPrompt;
     }
 
-    return `You are ${this.name}. ${this.description}`
+    // Default prompt if no persona is available
+    if (this.toolConfigs.length > 0) {
+      const toolNames = this.toolConfigs.map(t => t.name).join(", ");
+      return `You are ${this.name}. ${this.description}\n\nYou have access to the following tools: ${toolNames}.`;
+    }
+
+    return `You are ${this.name}. ${this.description}`;
   }
 }

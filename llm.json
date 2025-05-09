@@ -31,6 +31,251 @@
       "Quality gates (self-critique or human review, code classification awareness)"
     ]
   },
+  "agentNotebook": {
+    "title": "Development Notebook",
+    "description": "Comprehensive tracking of project development, issues, and future plans",
+    "lastUpdated": "2025-05-09",
+    "sections": [
+      {
+        "title": "Completed Tasks",
+        "entries": [
+          {
+            "category": "Upstash Integration",
+            "task": "Implemented Upstash Supabase adapter for seamless transition from Supabase to Upstash",
+            "files": ["lib/memory/upstash/supabase-adapter.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Updated lib/memory/supabase.ts to use Upstash adapter when USE_UPSTASH_ADAPTER=true",
+            "files": ["lib/memory/supabase.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Fixed type issues in agent and persona files to work with Upstash adapter",
+            "files": ["lib/agents/baseAgent.ts", "lib/agents/personas/persona-manager.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Added Zod schemas to agent.types.ts for all agent-related types",
+            "files": ["lib/agents/agent.types.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Updated baseAgent.ts to use Zod schemas for validation",
+            "files": ["lib/agents/baseAgent.ts"]
+          },
+          {
+            "category": "Integration",
+            "task": "Fixed persona-manager integration in agent-service.ts",
+            "files": ["lib/agents/agent-service.ts"]
+          },
+          {
+            "category": "Integration",
+            "task": "Fixed baseAgent.ts to properly use the Upstash adapter when appropriate",
+            "files": ["lib/agents/baseAgent.ts"]
+          },
+          {
+            "category": "Integration",
+            "task": "Updated agent-service.ts to use the Upstash adapter and fixed tool handling",
+            "files": ["lib/agents/agent-service.ts"]
+          },
+          {
+            "category": "Integration",
+            "task": "Fixed persona-manager.ts to handle different function names in PersonaScoreManager",
+            "files": ["lib/agents/personas/persona-manager.ts"]
+          },
+          {
+            "category": "Performance",
+            "task": "Improved Redis operations in persona-manager.ts to be more reliable",
+            "files": ["lib/agents/personas/persona-manager.ts"]
+          },
+          {
+            "category": "Tools",
+            "task": "Fixed toolRegistry.ts to properly implement static methods",
+            "files": ["lib/tools/toolRegistry.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Enhanced baseAgent.ts to properly use isSupabaseClient and isUpstashClient for type safety",
+            "files": ["lib/agents/baseAgent.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Updated persona-related files with Zod validation",
+            "files": [
+              "lib/agents/personas/persona-library.ts",
+              "lib/agents/personas/persona-manager.ts",
+              "lib/agents/personas/persona-score-manager.ts",
+              "lib/agents/personas/upstash-persona-store.ts"
+            ]
+          },
+          {
+            "category": "Error Handling",
+            "task": "Added proper error handling in persona-related files for validation errors",
+            "files": [
+              "lib/agents/personas/persona-score-manager.ts",
+              "lib/agents/personas/persona-manager.ts"
+            ]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Ensured all imported functions and schemas in baseAgent.ts are properly used",
+            "files": ["lib/agents/baseAgent.ts"]
+          },
+          {
+            "category": "Type Safety",
+            "task": "Fixed AgentPersona unused import issue by using it in the getSystemPrompt method",
+            "files": ["lib/agents/baseAgent.ts"]
+          },
+          {
+            "category": "Error Handling",
+            "task": "Enhanced toolRegistry.ts with better error handling and tracing",
+            "files": ["lib/tools/toolRegistry.ts"]
+          },
+          {
+            "category": "Error Handling",
+            "task": "Improved initializeToolsForAgent method in baseAgent.ts with better error handling",
+            "files": ["lib/agents/baseAgent.ts"]
+          }
+        ]
+      },
+      {
+        "title": "Planned Tasks",
+        "entries": [
+          {
+            "priority": "High",
+            "category": "Data Migration",
+            "task": "Migrate existing data from Supabase to Upstash using the adapter"
+          },
+          {
+            "priority": "High",
+            "category": "Testing",
+            "task": "Add comprehensive tests for the Upstash Supabase adapter"
+          },
+          {
+            "priority": "Medium",
+            "category": "Data Migration",
+            "task": "Implement data migration utilities for Supabase to Upstash transition"
+          },
+          {
+            "priority": "Medium",
+            "category": "Documentation",
+            "task": "Create documentation for the Upstash Supabase adapter usage"
+          },
+          {
+            "priority": "Medium",
+            "category": "Type Safety",
+            "task": "Fix any remaining type issues in other files that use the Supabase adapter"
+          },
+          {
+            "priority": "High",
+            "category": "Integration",
+            "task": "Update AI SDK routes to properly integrate with Upstash using appropriate memory and type definitions"
+          },
+          {
+            "priority": "High",
+            "category": "Integration",
+            "task": "Integrate Upstash adapter throughout frontend routes for agents, chat, and AI SDK components"
+          },
+          {
+            "priority": "Medium",
+            "category": "Integration",
+            "task": "Update Supabase hooks to work with Upstash adapter"
+          },
+          {
+            "priority": "Medium",
+            "category": "Integration",
+            "task": "Implement conditional adapter selection in frontend components based on environment variables"
+          },
+          {
+            "priority": "Medium",
+            "category": "Architecture",
+            "task": "Create unified API layer that abstracts away storage backend differences"
+          },
+          {
+            "priority": "High",
+            "category": "Integration",
+            "task": "Update AI SDK chat components to work with both Supabase and Upstash backends"
+          },
+          {
+            "priority": "Medium",
+            "category": "Error Handling",
+            "task": "Implement proper error handling in frontend components for Upstash adapter integration"
+          }
+        ]
+      },
+      {
+        "title": "Research & Ideas",
+        "entries": [
+          {
+            "topic": "Performance Optimization",
+            "description": "Explore caching strategies for Upstash",
+            "potentialApproaches": [
+              "Use LRU caching for persona data",
+              "Implement semantic caching for LLM responses",
+              "Use Redis TTL for ephemeral data"
+            ]
+          },
+          {
+            "topic": "Observability",
+            "description": "Enhance tracing with Langfuse integration",
+            "potentialApproaches": [
+              "Add tracing to all generateText/streamText calls",
+              "Implement custom spans for tool execution",
+              "Create dashboards for performance monitoring"
+            ]
+          },
+          {
+            "topic": "Micro-Personas",
+            "description": "Implement dynamic persona selection based on context",
+            "potentialApproaches": [
+              "Load micro traits and parent IDs in PersonaManager",
+              "Implement getPersonaRecommendation method",
+              "Use performance metrics for selection"
+            ]
+          },
+          {
+            "topic": "Tool Integration",
+            "description": "Validate multi-step tool flows",
+            "potentialApproaches": [
+              "Test maxSteps parameter",
+              "Implement onStepFinish hooks",
+              "Explore experimental_prepareStep"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Issues & Blockers",
+        "entries": [
+          {
+            "id": "ISSUE-001",
+            "title": "Type errors with Upstash adapter",
+            "status": "Resolved",
+            "affectedFiles": ["lib/memory/supabase.ts", "lib/agents/baseAgent.ts"]
+          },
+          {
+            "id": "ISSUE-002",
+            "title": "Performance degradation with Redis operations",
+            "status": "Resolved",
+            "affectedFiles": ["lib/agents/personas/persona-manager.ts"]
+          },
+          {
+            "id": "ISSUE-003",
+            "title": "Breaking changes in PersonaManager API",
+            "status": "Resolved",
+            "affectedFiles": ["lib/agents/agent-service.ts"]
+          },
+          {
+            "id": "ISSUE-004",
+            "title": "AI SDK route integration with Upstash",
+            "status": "Pending",
+            "affectedFiles": ["app/api/chat/ai-sdk/route.ts"]
+          }
+        ]
+      }
+    ]
+  },
   "developerInteractionGuidelines": {
     "background": "This repo implements a full-stack AI SDK framework built on Next.js, Supabase, LibSQL, Vercel AI SDK, and @agentic/ai-sdk providers.",
     "yourRole": "Provide code snippets, architectural advice, and troubleshooting steps across frontend (app/, components/, ui/), backend (api/, lib/), and infra (scripts/, types/).",
@@ -44,11 +289,79 @@
       "Align examples with Supabase-driven configuration, Next.js App Router, and Tailwind/shadcn/ui.",
       "Use concise explanations and focused code snippets."
     ],
-    "examplePrompt": "Show how to add a new `POST /api/agents` route that uses `agentRegistry` to create an agent in Supabase and returns the new agent JSON."
+    "examplePrompts": [
+      "Show how to add a new `POST /api/agents` route that uses `agentRegistry` to create an agent in Supabase and returns the new agent JSON.",
+      "How do I implement a custom tool that uses the Google Search API and register it with the toolRegistry?",
+      "Create a React component that uses the useChat hook to implement a chat interface with streaming responses.",
+      "How can I add a new persona to the PersonaManager with specific traits and capabilities?",
+      "Implement a function to retrieve messages from a thread using the Upstash adapter instead of direct Supabase access.",
+      "Show me how to create a new agent with specific tools and a custom persona using the baseAgent class."
+    ]
   },
   "projectContext": {
+    "recentDevelopments": {
+      "upstashIntegration": {
+        "description": "Implemented Upstash adapter for seamless transition from Supabase to Upstash",
+        "components": [
+          {
+            "name": "Supabase Adapter",
+            "path": "lib/memory/upstash/supabase-adapter.ts",
+            "description": "Core adapter that provides Supabase-compatible interface for Upstash Redis and Vector"
+          },
+          {
+            "name": "Persona System Integration",
+            "paths": [
+              "lib/agents/personas/upstash-persona-store.ts",
+              "lib/agents/personas/persona-score-manager.ts",
+              "lib/agents/personas/persona-manager.ts",
+              "lib/agents/personas/persona-library.ts"
+            ],
+            "description": "Enhanced persona management with Upstash for persistence, caching, and performance tracking"
+          },
+          {
+            "name": "Agent Integration",
+            "path": "lib/agents/baseAgent.ts",
+            "description": "Updated to properly use isSupabaseClient and isUpstashClient for type safety"
+          },
+          {
+            "name": "Tool Registry",
+            "path": "lib/tools/toolRegistry.ts",
+            "description": "Enhanced with better error handling and tracing for Upstash integration"
+          }
+        ],
+        "nextSteps": [
+          "Integrate Upstash adapter throughout frontend routes for agents, chat, and AI SDK components",
+          "Update Supabase hooks to work with Upstash adapter",
+          "Implement conditional adapter selection in frontend components",
+          "Create unified API layer that abstracts away storage backend differences"
+        ]
+      },
+      "zodValidation": {
+        "description": "Implemented comprehensive Zod validation across persona and agent systems",
+        "components": [
+          {
+            "name": "Persona Score Manager",
+            "path": "lib/agents/personas/persona-score-manager.ts",
+            "improvements": [
+              "Added Zod validation for getAllScores method",
+              "Enhanced recordUserFeedback with proper validation",
+              "Improved error handling with specific error messages"
+            ]
+          },
+          {
+            "name": "Base Agent",
+            "path": "lib/agents/baseAgent.ts",
+            "improvements": [
+              "Fixed unused imports issue with AgentPersona",
+              "Ensured all imported schemas are properly used",
+              "Enhanced getSystemPrompt method to use AgentPersona type"
+            ]
+          }
+        ]
+      }
+    },
     "projectName": "deanmachinesai",
-    "projectVersion": "0.1.1",
+    "projectVersion": "0.1.2",
     "license": "MIT",
     "author": "Deanmachines",
     "technologiesUsed": [
@@ -92,11 +405,40 @@
       "drizzle.supabase.config.ts": "Drizzle Kit config for Supabase",
       "drizzle/migrations/libsql/": "LibSQL migrations generated by Drizzle Kit",
       "drizzle/migrations/supabase/": "Supabase migrations generated by Drizzle Kit",
-      "hooks/": "React hooks (use-supabase-crud.ts, use-supabase-direct.ts, use-supabase-fetch.ts)",
+      "hooks/": "React hooks for data access and UI integration",
+      "hooks/use-supabase-crud.ts": "CRUD operations via Supabase (with Upstash adapter support)",
+      "hooks/use-supabase-direct.ts": "Direct Supabase client operations (with Upstash adapter support)",
+      "hooks/use-supabase-fetch.ts": "Data fetching from API routes (with Upstash adapter support)",
+      "hooks/use-memory-provider.ts": "Hook for determining current memory provider",
+      "hooks/use-upstash-adapter.ts": "Hook for accessing Upstash adapter configuration",
       "lib/": "Core backend library",
       "lib/agents/": "Agent framework logic",
+      "lib/agents/personas/": "Persona management system",
+      "lib/agents/personas/persona-manager.ts": "Core persona management",
+      "lib/agents/personas/persona-score-manager.ts": "Persona performance tracking",
+      "lib/agents/personas/persona-library.ts": "Base persona definitions and schemas",
+      "lib/agents/personas/micro-persona-manager.ts": "Specialized micro-persona management",
+      "lib/agents/personas/upstash-persona-store.ts": "Upstash integration for persona storage",
       "lib/memory/": "Persistence system (e.g., memory.ts, vector-store.ts, factory.ts for choosing LibSQL/Upstash)",
+      "lib/memory/upstash/": "Upstash integration components",
+      "lib/memory/upstash/supabase-adapter.ts": "Compatibility layer for Supabase API using Upstash",
+      "lib/memory/upstash/supabase-adapter-factory.ts": "Factory for creating Upstash-backed Supabase clients",
+      "lib/memory/upstash/redis-store.ts": "Redis-based storage implementation",
+      "lib/memory/upstash/vector-store.ts": "Vector database implementation using Upstash",
+      "lib/memory/upstash/upstash-logger.ts": "Logging system using Upstash Redis Streams",
+      "lib/memory/upstash/upstashClients.ts": "Client management for Upstash services",
+      "lib/memory/supabase.ts": "Supabase integration with conditional Upstash adapter support",
+      "lib/memory/factory.ts": "Factory for choosing between LibSQL and Upstash backends",
       "lib/tools/": "Tools system for AI agents",
+      "lib/tools/toolRegistry.ts": "Central registry for tool management with static methods",
+      "lib/tools/toolInitializer.ts": "Tool initialization and configuration",
+      "lib/tools/agentic/": "Agentic tools for advanced capabilities",
+      "lib/tools/api-tools.ts": "API integration tools",
+      "lib/tools/code-tools.ts": "Code analysis and execution tools",
+      "lib/tools/data-tools.ts": "Data processing tools",
+      "lib/tools/file-tools.ts": "File system operation tools",
+      "lib/tools/rag-tools.ts": "Retrieval-augmented generation tools",
+      "lib/tools/web-tools.ts": "Web interaction tools",
       "lib/ai.ts": "Core AI provider abstraction (likely for Vercel AI SDK)",
       "lib/ai-integration.ts": "AI SDK integration logic (Vercel AI SDK)",
       "lib/ai-sdk-tracing.ts": "AI SDK Tracing system with Langfuse",
@@ -132,6 +474,7 @@
       { "name": "LANGFUSE_SECRET_KEY", "purpose": "Langfuse secret key for server-side API access" },
       { "name": "LANGFUSE_HOST", "purpose": "Langfuse server host URL (e.g., https://us.cloud.langfuse.com)" },
       { "name": "MEMORY_PROVIDER", "purpose": "Specifies memory provider: 'libsql' or 'upstash' (controls logic in lib/memory/factory.ts)" },
+      { "name": "USE_UPSTASH_ADAPTER", "purpose": "Boolean flag to enable Upstash adapter for Supabase compatibility layer (true/false)" },
       { "name": "USE_DRIZZLE", "purpose": "Boolean flag to indicate if Drizzle ORM is used (likely always true in this project)" },
       { "name": "UPSTASH_REDIS_REST_URL", "purpose": "Upstash Redis REST URL (if MEMORY_PROVIDER=upstash)" },
       { "name": "UPSTASH_REDIS_REST_TOKEN", "purpose": "Upstash Redis REST token (if MEMORY_PROVIDER=upstash)" },
@@ -235,8 +578,8 @@
         {
           "pagePath": "app/chat/page.tsx",
           "component": "components/chat/ai-sdk-chat.tsx",
-          "hook": "useChat",
-          "action": "User submits message → useChat.handleSubmit → POST /api/chat/ai-sdk"
+          "hook": "@ai-sdk/react (replacing deprecated useChat)",
+          "action": "User submits message → @ai-sdk/react hook handleSubmit → POST /api/chat/ai-sdk"
         },
         {
           "pagePath": "app/(dashboard)/page.tsx",
@@ -258,35 +601,42 @@
         {
           "route": "POST /api/chat/ai-sdk",
           "handlerFile": "app/api/chat/ai-sdk/route.ts",
-          "libModules": ["lib/ai-integration.ts", "lib/memory/memory.ts"],
+          "libModules": ["lib/ai-integration.ts", "lib/memory/memory.ts", "lib/memory/factory.ts"],
           "databaseSchema": "db/libsql/schema.ts",
-          "storageBackend": "LibSQL (Turso via Drizzle)"
+          "storageBackend": "LibSQL (Turso via Drizzle) or Upstash (Redis/Vector via adapter)",
+          "adapterIntegration": "Uses memory factory to determine storage backend based on MEMORY_PROVIDER and USE_UPSTASH_ADAPTER"
         },
         {
           "route": "GET /api/ai-sdk/threads",
           "handlerFile": "app/api/ai-sdk/threads/route.ts",
-          "libModules": ["lib/memory/memory.ts"],
+          "libModules": ["lib/memory/memory.ts", "lib/memory/factory.ts", "lib/memory/upstash/supabase-adapter.ts"],
           "databaseSchema": "db/libsql/schema.ts",
-          "storageBackend": "LibSQL"
+          "storageBackend": "LibSQL or Upstash (conditional)",
+          "adapterIntegration": "Can use Upstash adapter when USE_UPSTASH_ADAPTER=true"
         },
         {
           "route": "GET /api/ai-sdk/threads/[id]/messages",
           "handlerFile": "app/api/ai-sdk/threads/[id]/messages/route.ts",
-          "libModules": ["lib/memory/memory.ts"],
-          "databaseSchema": "db/libsql/schema.ts"
+          "libModules": ["lib/memory/memory.ts", "lib/memory/factory.ts", "lib/memory/upstash/supabase-adapter.ts"],
+          "databaseSchema": "db/libsql/schema.ts",
+          "storageBackend": "LibSQL or Upstash (conditional)",
+          "adapterIntegration": "Can use Upstash adapter when USE_UPSTASH_ADAPTER=true"
         },
         {
           "route": "POST /api/ai-sdk/threads/[id]/messages",
           "handlerFile": "app/api/ai-sdk/threads/[id]/messages/route.ts",
-          "libModules": ["lib/memory/memory.ts"],
-          "databaseSchema": "db/libsql/schema.ts"
+          "libModules": ["lib/memory/memory.ts", "lib/memory/factory.ts", "lib/memory/upstash/supabase-adapter.ts"],
+          "databaseSchema": "db/libsql/schema.ts",
+          "storageBackend": "LibSQL or Upstash (conditional)",
+          "adapterIntegration": "Can use Upstash adapter when USE_UPSTASH_ADAPTER=true"
         },
         {
           "route": "POST /api/ai-sdk/agents/[id]/run",
           "handlerFile": "app/api/ai-sdk/agents/[id]/run/route.ts",
-          "libModules": ["lib/agents/index.ts", "lib/ai-integration.ts", "lib/memory/memory.ts"],
+          "libModules": ["lib/agents/index.ts", "lib/ai-integration.ts", "lib/memory/memory.ts", "lib/memory/supabase.ts"],
           "databaseSchema": "db/supabase/schema.ts",
-          "storageBackend": "Supabase (PostgreSQL)"
+          "storageBackend": "Supabase (PostgreSQL) or Upstash (via adapter)",
+          "adapterIntegration": "Uses isSupabaseClient and isUpstashClient for type safety"
         }
       ]
     },
@@ -651,34 +1001,6 @@
       { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 435, "task": "TODO: Implement thread fetching" },
       { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 443, "task": "TODO: Implement thread creation" },
       { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 546, "task": "TODO: Implement thread deletion and rename actions" }
-    ],
-    "agentNotepad": [
-      "COMPLETED: Implemented Upstash Supabase adapter for seamless transition from Supabase to Upstash.",
-      "COMPLETED: Updated lib/memory/supabase.ts to use Upstash adapter when USE_UPSTASH_ADAPTER=true.",
-      "COMPLETED: Fixed type issues in agent and persona files to work with Upstash adapter.",
-      "COMPLETED: Added Zod schemas to agent.types.ts for all agent-related types.",
-      "COMPLETED: Updated baseAgent.ts to use Zod schemas for validation.",
-      "COMPLETED: Fixed persona-manager integration in agent-service.ts.",
-      "COMPLETED: Fixed baseAgent.ts to properly use the Upstash adapter when appropriate.",
-      "COMPLETED: Updated agent-service.ts to use the Upstash adapter and fixed tool handling.",
-      "COMPLETED: Fixed persona-manager.ts to handle different function names in PersonaScoreManager.",
-      "COMPLETED: Improved Redis operations in persona-manager.ts to be more reliable.",
-      "NEXT: Migrate existing data from Supabase to Upstash using the adapter.",
-      "NEXT: Add comprehensive tests for the Upstash Supabase adapter.",
-      "NEXT: Implement data migration utilities for Supabase to Upstash transition.",
-      "NEXT: Create documentation for the Upstash Supabase adapter usage.",
-      "NEXT: Fix any remaining type issues in other files that use the Supabase adapter.",
-      "NEXT: Update AI SDK routes to properly integrate with Upstash using appropriate memory and type definitions.",
-      "Review pendingTasks regularly and close completed TODOs.",
-      "Prioritize implementing core API routes for agents, tools, threads before advanced features.",
-      "Ensure Zod schemas are shared client/server in useObject and streamObject integrations.",
-      "Audit tsconfig plugins: replace deprecated typescript-eslint-parser with @typescript-eslint/parser.",
-      "Consolidate AI SDK integrations: clarify roles of @ai-sdk/* vs @agentic/ai-sdk packages.",
-      "Leverage Langfuse tracing on all generateText/streamText calls for observability.",
-      "Consider caching common prompts/results with Upstash semantic-cache for performance.",
-      "Validate multi-step tool flows: test maxSteps, onStepFinish, and experimental_prepareStep hooks.",
-      "Experiment with microPersonas: load micro traits and parent IDs in PersonaManager and AgentRegistry.",
-      "Implement dynamic selection: use personaManager.getPersonaRecommendation({taskType, userPreferences}) to pick micro-personas."
     ]
   },
   "observability": {
@@ -952,7 +1274,70 @@
             "Implement caching strategies with LRU for performance",
             "Create migration utilities for LibSQL to Upstash data transfer",
             "Update API routes to leverage Upstash-specific features"
-          ]
+          ],
+      "migrationGuide": {
+        "title": "Migrating from Supabase to Upstash",
+        "description": "A comprehensive guide for transitioning from Supabase to Upstash using the adapter pattern",
+        "steps": [
+          {
+            "step": "1. Environment Configuration",
+            "description": "Set up environment variables for Upstash",
+            "actions": [
+              "Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to .env.local",
+              "Add UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN for vector operations",
+              "Set USE_UPSTASH_ADAPTER=true to enable the adapter",
+              "Optionally set MEMORY_PROVIDER=upstash to use Upstash as the primary memory provider"
+            ]
+          },
+          {
+            "step": "2. Data Migration",
+            "description": "Transfer existing data from Supabase to Upstash",
+            "actions": [
+              "Use the migration utilities in lib/memory/upstash/migration.ts",
+              "Export data from Supabase using the export functions",
+              "Import data to Upstash using the import functions",
+              "Verify data integrity with validation functions"
+            ]
+          },
+          {
+            "step": "3. Code Updates",
+            "description": "Update application code to work with both backends",
+            "actions": [
+              "Replace direct Supabase client usage with factory.getClient()",
+              "Use isSupabaseClient and isUpstashClient for type checking",
+              "Update frontend components to handle both backends",
+              "Update hooks to work with the adapter pattern"
+            ]
+          },
+          {
+            "step": "4. Testing",
+            "description": "Verify functionality with the new backend",
+            "actions": [
+              "Run unit tests with both backends",
+              "Test critical paths with Upstash enabled",
+              "Verify performance metrics",
+              "Check error handling and recovery"
+            ]
+          },
+          {
+            "step": "5. Deployment",
+            "description": "Deploy with the new configuration",
+            "actions": [
+              "Update deployment environment variables",
+              "Deploy with USE_UPSTASH_ADAPTER=true",
+              "Monitor performance and errors",
+              "Gradually transition all users to Upstash"
+            ]
+          }
+        ],
+        "bestPractices": [
+          "Use feature flags to control the transition",
+          "Implement comprehensive logging for debugging",
+          "Create rollback plans for critical issues",
+          "Test thoroughly before full deployment",
+          "Monitor performance metrics during and after transition"
+        ]
+      }
         },
         "phase3": {
           "description": "Persona and Agent Integration",
@@ -1229,6 +1614,129 @@
       "Continuous improvement through feedback loops",
       "A/B testing of different personas for similar tasks",
       "Automatic adaptation to changing user needs and preferences"
+    ]
+  },
+  "typeSafetyStrategies": {
+    "description": "Comprehensive approach to ensuring type safety throughout the codebase",
+    "components": [
+      {
+        "name": "Zod Schema Validation",
+        "description": "Using Zod for runtime type validation and schema definition",
+        "implementations": [
+          {
+            "file": "lib/agents/agent.types.ts",
+            "schemas": ["AgentSchema", "AgentPersonaSchema", "AgentStateSchema", "AgentHooksSchema", "AgentRunOptionsSchema", "RunResultSchema", "ToolConfigSchema"],
+            "purpose": "Define and validate agent-related types"
+          },
+          {
+            "file": "lib/agents/personas/persona-library.ts",
+            "schemas": ["PersonaDefinitionSchema", "MicroPersonaDefinitionSchema", "SafetySettingSchema", "ExampleDialogueSchema", "PersonaScoreSchema", "ScoreUpdateDataSchema"],
+            "purpose": "Define and validate persona-related types"
+          },
+          {
+            "file": "lib/tools/toolRegistry.ts",
+            "schemas": ["ToolSchema", "ToolExecutionResultSchema"],
+            "purpose": "Define and validate tool-related types"
+          }
+        ],
+        "bestPractices": [
+          "Use .parse() for validation with error throwing",
+          "Use .safeParse() when you need to handle validation errors gracefully",
+          "Define schemas near the types they validate",
+          "Use descriptive error messages in custom refinements",
+          "Share schemas between client and server for consistent validation"
+        ]
+      },
+      {
+        "name": "Type Guards",
+        "description": "Functions that check if a value is of a specific type",
+        "implementations": [
+          {
+            "file": "lib/memory/supabase.ts",
+            "guards": ["isSupabaseClient", "isUpstashClient"],
+            "purpose": "Distinguish between Supabase and Upstash adapter clients"
+          },
+          {
+            "file": "lib/tools/toolRegistry.ts",
+            "guards": ["isTool", "isToolExecutionResult"],
+            "purpose": "Validate tool-related objects"
+          }
+        ],
+        "bestPractices": [
+          "Return boolean for simple type checks",
+          "Use type predicates (value is Type) for TypeScript narrowing",
+          "Keep type guards simple and focused",
+          "Test type guards with both valid and invalid inputs"
+        ]
+      },
+      {
+        "name": "Error Handling",
+        "description": "Strategies for handling type-related errors",
+        "implementations": [
+          {
+            "file": "lib/agents/personas/persona-score-manager.ts",
+            "approach": "Catch Zod errors and provide detailed error messages",
+            "example": "Validation in getAllScores and recordUserFeedback methods"
+          },
+          {
+            "file": "lib/agents/baseAgent.ts",
+            "approach": "Validate inputs with Zod and handle type errors gracefully",
+            "example": "Constructor validation of agent config and tool configs"
+          }
+        ],
+        "bestPractices": [
+          "Catch and log validation errors with context",
+          "Provide fallback values when appropriate",
+          "Use custom error classes for specific error types",
+          "Include validation details in error messages"
+        ]
+      },
+      {
+        "name": "Adapter Pattern",
+        "description": "Type-safe adapter pattern for storage backends",
+        "implementations": [
+          {
+            "file": "lib/memory/upstash/supabase-adapter.ts",
+            "approach": "Implement Supabase-compatible interface with Upstash",
+            "typeChecking": "Use isSupabaseClient and isUpstashClient for runtime type checking"
+          },
+          {
+            "file": "lib/memory/factory.ts",
+            "approach": "Factory pattern for creating appropriate client based on configuration",
+            "typeChecking": "Return type-specific clients with proper interfaces"
+          }
+        ],
+        "bestPractices": [
+          "Define clear interfaces for adapters",
+          "Use type guards to verify adapter types",
+          "Implement consistent error handling across adapters",
+          "Test adapter implementations with both backends"
+        ]
+      }
+    ],
+    "tooling": [
+      {
+        "name": "TypeScript Configuration",
+        "settings": [
+          "strict: true",
+          "noImplicitAny: true",
+          "strictNullChecks: true",
+          "strictFunctionTypes: true",
+          "strictBindCallApply: true",
+          "strictPropertyInitialization: true",
+          "noImplicitThis: true",
+          "alwaysStrict: true"
+        ]
+      },
+      {
+        "name": "ESLint Rules",
+        "rules": [
+          "@typescript-eslint/no-explicit-any",
+          "@typescript-eslint/explicit-function-return-type",
+          "@typescript-eslint/no-unused-vars",
+          "@typescript-eslint/no-non-null-assertion"
+        ]
+      }
     ]
   }
 }

@@ -132,15 +132,13 @@ export async function processTraceForScoring(traceId: string): Promise<boolean> 
     console.error(`Error processing trace ${traceId} for scoring:`, error);
     return false;
   }
-}
-/**
+}/**
  * Calculate metrics from trace and span data
  * 
  * @param trace - Trace data
  * @param spans - Span data
  * @returns Score update data
- */
-function calculateMetricsFromTrace(
+ */export function calculateMetricsFromTrace(
   trace: TraceData,
   spans: SpanData[]
 ): ScoreUpdateData {
@@ -199,30 +197,22 @@ export function setupAutomaticScoreUpdates(): () => void {
   
   // Subscribe to inserts on the traces table
   const subscription = supabase
-    .channel('traces_channel')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'traces'
-      },
-      (payload) => {
+    .from('traces')
+    .on('INSERT',
+      (payload: { new: { id: any; }; }) => {
         // Process the new trace
         const traceId = payload.new.id;
         processTraceForScoring(traceId).catch(error => {
           console.error(`Error processing trace ${traceId}:`, error);
         });
       }
-    )
-    .subscribe();
+    );
   
   // Return cleanup function
   return () => {
     subscription.unsubscribe();
   };
 }
-
 /**
  * Process recent traces to update persona scores
  * 
