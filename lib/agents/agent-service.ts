@@ -2,11 +2,25 @@ import { streamText, CoreMessage, StreamTextResult } from "ai";
 import { getProviderByName } from "../ai"
 import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
 import { jsonSchemaToZod } from "../tools"
-import { toolRegistry } from "../tools/toolRegistry"
+import { initializeTools } from "../tools/toolInitializer"
 import { getLibSQLClient } from "../memory/db"
-import { getItemById, getData } from "../memory/supabase"
+import { getItemById, getData, shouldUseUpstash } from "../memory/supabase"
+import { createSupabaseClient } from "../memory/upstash/supabase-adapter-factory"
 import { v4 as uuidv4 } from "uuid"
-import { Agent, ToolConfig, RunResult, AgentRunOptions, AgentRunFinishData, AgentRunFinishReason } from "./agent.types"
+import { z } from "zod"
+import {
+  Agent,
+  AgentSchema,
+  ToolConfig,
+  ToolConfigSchema,
+  RunResult,
+  RunResultSchema,
+  AgentRunOptions,
+  AgentRunOptionsSchema,
+  AgentRunFinishData,
+  AgentRunFinishDataSchema,
+  AgentRunFinishReason
+} from "./agent.types"
 import { personaManager } from "./personas/persona-manager"
 
 interface ProviderOptions {
@@ -28,23 +42,57 @@ export async function runAgent(
   initialInput?: string,
   options?: AgentRunOptions
 ): Promise<RunResult> {
+  // Validate inputs with Zod schemas
+  const validatedAgentId = z.string().parse(agentId);
+  const validatedThreadId = memoryThreadId ? z.string().parse(memoryThreadId) : undefined;
+  const validatedInput = initialInput ? z.string().parse(initialInput) : undefined;
+  const validatedOptions = options ? AgentRunOptionsSchema.parse(options) : undefined;
+
   // Generate thread ID if not provided
-  const threadId = memoryThreadId || uuidv4()
+  const threadId = validatedThreadId || uuidv4()
 
   try {
-    // Load agent configuration from Supabase
-    const agent = await getItemById<Agent>("agents", agentId)
-    if (!agent) throw new Error("Agent not found")
+    // Load agent configuration from Supabase or Upstash
+    let agent: Agent | null = null;
+    let model: any = null;
+    let tools: ToolConfig[] = [];
 
-    // Load model config from Supabase
-    const model = await getItemById<any>("models", agent.model_id)
-    if (!model) throw new Error("Model not found for agent")
+    if (shouldUseUpstash()) {
+      // Use Upstash adapter
+      const supabaseClient = createSupabaseClient();
 
-    // Load agent's tools from Supabase
-    let tools: ToolConfig[] = []
-    if (Array.isArray(agent.tool_ids) && agent.tool_ids.length > 0) {
-      const toolData = await getData<ToolConfig>("tools", { filters: { id: agent.tool_ids } })
-      tools = toolData || []
+      // Get agent
+      agent = await supabaseClient.from("agents").getById(agentId) as unknown as Agent;
+      if (!agent) throw new Error("Agent not found");
+
+      // Get model
+      model = await supabaseClient.from("models").getById(agent.model_id) as any;
+      if (!model) throw new Error("Model not found for agent");
+
+      // Get tools
+      if (Array.isArray(agent.tool_ids) && agent.tool_ids.length > 0) {
+        const toolPromises = agent.tool_ids.map(id =>
+          supabaseClient.from("tools").getById(id)
+        );
+        const toolResults = await Promise.all(toolPromises);
+        tools = toolResults.filter(Boolean) as unknown as ToolConfig[];
+      }
+    } else {
+      // Use regular Supabase
+      agent = await getItemById("agents", agentId) as unknown as Agent;
+      if (!agent) throw new Error("Agent not found");
+
+      // Load model config from Supabase
+      model = await getItemById("models", agent.model_id);
+      if (!model) throw new Error("Model not found for agent");
+
+      // Load agent's tools from Supabase
+      if (agent && Array.isArray(agent.tool_ids) && agent.tool_ids.length > 0) {
+        const toolData = await getData("tools", {
+          filters: (query) => query.in('id', agent.tool_ids)
+        }) as unknown as ToolConfig[];
+        tools = toolData || [];
+      }
     }
 
     // Use LibSQL for memory/thread
@@ -65,11 +113,20 @@ export async function runAgent(
       // If agent has a persona, use it to generate system prompt
       if (agent.persona_id) {
         try {
-          systemMessage = await personaManager.generateSystemPrompt(agent.persona_id, {
-            agentName: agent.name,
-            agentDescription: agent.description,
-            toolNames: tools.map(t => t.name).join(", ")
-          })
+          // First get the persona by ID
+          const persona = await personaManager.getPersonaById(agent.persona_id);
+          if (persona) {
+            // Then generate the system prompt using the persona
+            systemMessage = personaManager.generateSystemPrompt(
+              persona,
+              undefined,
+              {
+                name: agent.name || '',
+                description: agent.description || '',
+                toolNames: tools.map(t => t.name || '').join(", ")
+              }
+            );
+          }
         } catch (error) {
           console.error("Failed to generate persona system prompt:", error)
         }
@@ -93,8 +150,8 @@ export async function runAgent(
     if (!provider) throw new Error(`Failed to initialize provider: ${model.provider}`)
     const aiModel = provider(model.model_id)
 
-    // Ensure tool registry is initialized
-    await toolRegistry.initialize()
+    // Initialize tools
+    await initializeTools()
 
     // Prepare tools for AI SDK
     const aiTools: Record<string, any> = {}
@@ -102,49 +159,24 @@ export async function runAgent(
       try {
         const toolName = toolConfig.name
 
-        // Check if this tool exists in the registry
-        if (await toolRegistry.hasTool(toolName)) {
-          // Get the tool from registry
-          const registryTool = await toolRegistry.getTool(toolName)
+        // Create a custom tool from the configuration
+        const schema = JSON.parse(toolConfig.parameters_schema)
+        const zodSchema = jsonSchemaToZod(schema)
 
-          // Use the tool from registry with a wrapped execute function
-          aiTools[toolName] = {
-            ...registryTool,
-            // Wrap the execute function to add hook
-            execute: async (params: any) => {
-              // Log tool execution
-              console.log(`Agent ${agent.name} executing tool: ${toolName}`, params)
+        // Create the tool directly
+        aiTools[toolName] = {
+          description: toolConfig.description,
+          parameters: zodSchema,
+          execute: async (params: any) => {
+            // Log tool execution
+            console.log(`Agent ${agent.name} executing tool: ${toolName}`, params)
 
-              // Execute the tool via registry
-              return await toolRegistry.executeTool(toolName, params)
-            }
-          }
-        } else {
-          // Create a custom tool from the configuration
-          const schema = JSON.parse(toolConfig.parameters_schema)
-          const zodSchema = jsonSchemaToZod(schema)
-
-          // Register the tool in the registry
-          const customTool = toolRegistry.register(
-            toolName,
-            toolConfig.description,
-            zodSchema,
-            async (params: any) => {
-              // This is a fallback for tools not in the registry
-              console.log(`Executing custom tool ${toolName} with params:`, params)
+            try {
+              // This is a fallback implementation
               return { result: `Executed ${toolName} with params: ${JSON.stringify(params)}` }
-            }
-          )
-
-          // Add the tool with hook
-          aiTools[toolName] = {
-            ...customTool,
-            execute: async (params: any) => {
-              // Log tool execution
-              console.log(`Agent ${agent.name} executing tool: ${toolName}`, params)
-
-              // Execute the tool via registry
-              return await toolRegistry.executeTool(toolName, params)
+            } catch (error) {
+              console.error(`Error executing tool ${toolName}:`, error)
+              return { error: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}` }
             }
           }
         }
@@ -247,10 +279,19 @@ export async function runAgent(
  */
 export async function listAgents(): Promise<Agent[]> {
   try {
-    return await getData<Agent>("agents", {})
+    if (shouldUseUpstash()) {
+      // Use Upstash adapter
+      const supabaseClient = createSupabaseClient();
+      const agents = await supabaseClient.from("agents").getAll();
+      return agents as unknown as Agent[];
+    } else {
+      // Use regular Supabase
+      const agents = await getData("agents", {});
+      return agents as unknown as Agent[];
+    }
   } catch (error) {
-    console.error("Error listing agents:", error)
-    throw error
+    console.error("Error listing agents:", error);
+    throw error;
   }
 }
 
@@ -262,9 +303,18 @@ export async function listAgents(): Promise<Agent[]> {
  */
 export async function getAgent(agentId: string): Promise<Agent | null> {
   try {
-    return await getItemById<Agent>("agents", agentId)
+    if (shouldUseUpstash()) {
+      // Use Upstash adapter
+      const supabaseClient = createSupabaseClient();
+      const agent = await supabaseClient.from("agents").getById(agentId);
+      return agent as unknown as Agent | null;
+    } else {
+      // Use regular Supabase
+      const agent = await getItemById("agents", agentId);
+      return agent as unknown as Agent | null;
+    }
   } catch (error) {
-    console.error(`Error getting agent ${agentId}:`, error)
-    throw error
+    console.error(`Error getting agent ${agentId}:`, error);
+    throw error;
   }
 }

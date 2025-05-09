@@ -1,3 +1,19 @@
+/**
+ * Supabase Database Integration with Upstash Adapter Support
+ *
+ * This module provides database access through Supabase with the ability to
+ * conditionally use Upstash Redis and Vector as a drop-in replacement.
+ *
+ * To use Upstash instead of Supabase, set the following environment variables:
+ * - USE_UPSTASH_ADAPTER=true
+ * - UPSTASH_REDIS_REST_URL=your_upstash_redis_url
+ * - UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
+ * - UPSTASH_VECTOR_REST_URL=your_upstash_vector_url (optional for vector operations)
+ * - UPSTASH_VECTOR_REST_TOKEN=your_upstash_vector_token (optional for vector operations)
+ *
+ * The module automatically detects which client to use based on these environment variables.
+ */
+
 import { SupabaseClient, createClient, PostgrestError } from '@supabase/supabase-js';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -7,10 +23,24 @@ import * as schema from '@/db/supabase/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
+// Import Upstash adapter modules
+import { createSupabaseClient, SupabaseClient as UpstashSupabaseClient } from './upstash/supabase-adapter-factory';
+
 // Singleton instances for connection reuse
 let supabaseClientInstance: SupabaseClient<Database> | null = null;
 let supabaseTransactionClientInstance: SupabaseClient<Database> | null = null;
 let drizzleClientInstance: PostgresJsDatabase<typeof schema> | null = null;
+let upstashSupabaseClientInstance: UpstashSupabaseClient | null = null;
+
+/**
+ * Determines if Upstash should be used as a Supabase replacement based on environment variables
+ * @returns boolean indicating if Upstash should be used
+ */
+export const shouldUseUpstash = (): boolean => {
+  return process.env.USE_UPSTASH_ADAPTER === 'true' &&
+         process.env.UPSTASH_REDIS_REST_URL !== undefined &&
+         process.env.UPSTASH_REDIS_REST_TOKEN !== undefined;
+};
 
 // Initialize LRU cache for database queries
 const cacheStats = {
@@ -48,7 +78,24 @@ export const clearQueryCache = () => {
 };
 
 // Initialize Supabase client using session pooler
-export const getSupabaseClient = (): SupabaseClient<Database> => {
+export const getSupabaseClient = (): SupabaseClient<Database> | UpstashSupabaseClient => {
+  // Check if we should use Upstash adapter
+  if (shouldUseUpstash()) {
+    if (upstashSupabaseClientInstance) {
+      return upstashSupabaseClientInstance;
+    }
+
+    try {
+      console.log("Using Upstash adapter for Supabase client");
+      upstashSupabaseClientInstance = createSupabaseClient();
+      return upstashSupabaseClientInstance;
+    } catch (error) {
+      console.error("Error creating Upstash adapter for Supabase:", error);
+      throw error;
+    }
+  }
+
+  // Use regular Supabase client
   if (supabaseClientInstance) {
     return supabaseClientInstance;
   }
@@ -79,7 +126,14 @@ export const getSupabaseClient = (): SupabaseClient<Database> => {
 };
 
 // Initialize Supabase transaction client
-export const getSupabaseTransactionClient = (): SupabaseClient<Database> => {
+export const getSupabaseTransactionClient = (): SupabaseClient<Database> | UpstashSupabaseClient => {
+  // Check if we should use Upstash adapter
+  if (shouldUseUpstash()) {
+    // For Upstash, we use the same client for both regular and transaction operations
+    return getSupabaseClient();
+  }
+
+  // Use regular Supabase transaction client
   if (supabaseTransactionClientInstance) {
     return supabaseTransactionClientInstance;
   }
@@ -174,15 +228,43 @@ export async function logDatabaseConnection(
   }
 }
 
+/**
+ * Type guard to check if a client is a Supabase client
+ * @param client The client to check
+ * @returns True if the client is a Supabase client
+ */
+export const isSupabaseClient = (client: any): client is SupabaseClient<Database> => {
+  return client && 'auth' in client && 'rpc' in client;
+};
+
+/**
+ * Type guard to check if a client is an Upstash Supabase client
+ * @param client The client to check
+ * @returns True if the client is an Upstash Supabase client
+ */
+export const isUpstashClient = (client: any): client is UpstashSupabaseClient => {
+  return client && 'from' in client && 'vector' in client && !('auth' in client);
+};
+
 export const isSupabaseAvailable = async (): Promise<boolean> => {
   try {
     const supabase = getSupabaseClient();
-    const { error, count } = await supabase.from('users').select('id', { count: 'exact', head: true });
-    if (error) {
-      return false;
+
+    // Handle different client types
+    if (isSupabaseClient(supabase)) {
+      const { error } = await supabase.from('users').select('id', { count: 'exact', head: true });
+      if (error) {
+        return false;
+      }
+    } else if (isUpstashClient(supabase)) {
+      // For Upstash, we'll just check if we can access the client
+      const tableClient = supabase.from('users');
+      await tableClient.getAll({ limit: 1 });
     }
+
     return true;
   } catch (err) {
+    console.error("Error checking Supabase availability:", err);
     return false;
   }
 };
@@ -216,26 +298,68 @@ export async function getData<T extends TableName>(
   cacheStats.misses++;
 
   try {
-    const supabase = getSupabaseClient();
-    let query = supabase.from(tableName).select(options?.select || "*");
+    const client = getSupabaseClient();
+    let data: any[] = [];
+    let error: any = null;
 
-    if (options?.match) {
-      query = query.match(options.match as any);
-    }
-    if (options?.filters) {
-      query = options.filters(query as any) as any;
-    }
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      let query = client.from(tableName).select(options?.select || "*");
 
-    if (options?.orderBy) {
-      const { column, ascending = true } = options.orderBy;
-      query = query.order(column as string, { ascending });
-    }
+      if (options?.match) {
+        query = query.match(options.match as any);
+      }
+      if (options?.filters) {
+        query = options.filters(query as any) as any;
+      }
 
-    if (options?.limit !== undefined) {
-      query = query.range(options?.offset || 0, (options?.offset || 0) + options.limit - 1);
-    }
+      if (options?.orderBy) {
+        const { column, ascending = true } = options.orderBy;
+        query = query.order(column as string, { ascending });
+      }
 
-    const { data, error } = await query;
+      if (options?.limit !== undefined) {
+        query = query.range(options?.offset || 0, (options?.offset || 0) + options.limit - 1);
+      }
+
+      const result = await query;
+      data = result.data || [];
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      const tableClient = client.from(tableName as string);
+
+      // Apply filters if any
+      if (options?.match) {
+        Object.entries(options.match).forEach(([field, value]) => {
+          tableClient.filter(field, 'eq', value);
+        });
+      }
+
+      // Apply ordering if any
+      if (options?.orderBy) {
+        const { column, ascending = true } = options.orderBy;
+        tableClient.order(column as string, ascending);
+      }
+
+      // Apply limit and offset if any
+      if (options?.limit !== undefined) {
+        tableClient.limit(options.limit);
+      }
+      if (options?.offset !== undefined) {
+        tableClient.offset(options.offset);
+      }
+
+      // Execute query - convert options to compatible format if needed
+      const upstashOptions = options ? {
+        ...(options.select ? { select: Array.isArray(options.select) ? options.select : [options.select] } : {}),
+        limit: options.limit,
+        offset: options.offset
+      } : undefined;
+
+      data = await tableClient.getAll(upstashOptions);
+    }
 
     if (error) {
       console.error(`Error fetching data from ${tableName}:`, error.message, error.details, error.hint);
@@ -268,15 +392,33 @@ export async function getItemById<T extends TableName>(
   cacheStats.misses++;
 
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from(tableName)
-      .select(options?.select || "*")
-      .eq('id' as any, id)
-      .single();
+    const client = getSupabaseClient();
+    let data: any = null;
+    let error: any = null;
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from(tableName)
+        .select(options?.select || "*")
+        .eq('id' as any, id)
+        .single();
+
+      data = result.data;
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        data = await client.from(tableName as string).getById(id);
+      } catch (err) {
+        console.error(`Error fetching item by ID from Upstash ${tableName} (ID: ${id}):`, err);
+        error = err;
+      }
+    }
 
     if (error) {
-      if (error.code === 'PGRST116') {
+      if (error.code === 'PGRST116' || error.message?.includes('not found')) {
         return null;
       }
       console.error(`Error fetching item by ID from ${tableName} (ID: ${id}):`, error.message);
@@ -301,12 +443,30 @@ export async function createItem<T extends TableName>(
   options?: { select?: string; }
 ): Promise<TableRow<T>> {
   try {
-    const supabase = getSupabaseTransactionClient();
-    const { data, error } = await supabase
-      .from(tableName)
-      .insert(item as any)
-      .select(options?.select || "*")
-      .single();
+    const client = getSupabaseTransactionClient();
+    let data: any = null;
+    let error: any = null;
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from(tableName)
+        .insert(item as any)
+        .select(options?.select || "*")
+        .single();
+
+      data = result.data;
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        data = await client.from(tableName as string).create(item as any);
+      } catch (err) {
+        console.error(`Error creating item in Upstash ${tableName}:`, err);
+        error = err;
+      }
+    }
 
     if (error) {
       console.error(`Error creating item in ${tableName}:`, error.message);
@@ -331,13 +491,31 @@ export async function updateItem<T extends TableName>(
   options?: { select?: string; }
 ): Promise<TableRow<T> | null> {
   try {
-    const supabase = getSupabaseTransactionClient();
-    const { data, error } = await supabase
-      .from(tableName)
-      .update(itemUpdates as any)
-      .eq('id' as any, id)
-      .select(options?.select || "*")
-      .single();
+    const client = getSupabaseTransactionClient();
+    let data: any = null;
+    let error: any = null;
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from(tableName)
+        .update(itemUpdates as any)
+        .eq('id' as any, id)
+        .select(options?.select || "*")
+        .single();
+
+      data = result.data;
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        data = await client.from(tableName as string).update(id, itemUpdates as any);
+      } catch (err) {
+        console.error(`Error updating item in Upstash ${tableName} (ID: ${id}):`, err);
+        error = err;
+      }
+    }
 
     if (error) {
       console.error(`Error updating item in ${tableName} (ID: ${id}):`, error.message);
@@ -357,11 +535,30 @@ export async function deleteItem<T extends TableName>(
   id: string
 ): Promise<{ success: boolean; error?: PostgrestError }> {
   try {
-    const supabase = getSupabaseTransactionClient();
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id' as any, id);
+    const client = getSupabaseTransactionClient();
+    let error: any = null;
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from(tableName)
+        .delete()
+        .eq('id' as any, id);
+
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        const success = await client.from(tableName as string).delete(id);
+        if (!success) {
+          error = { message: `Failed to delete item ${id} from ${tableName}` };
+        }
+      } catch (err) {
+        console.error(`Error deleting item from Upstash ${tableName} (ID: ${id}):`, err);
+        error = err;
+      }
+    }
 
     if (error) {
       console.error(`Error deleting item from ${tableName} (ID: ${id}):`, error.message);
@@ -427,17 +624,44 @@ export async function searchSimilarDocuments(
   cacheStats.misses++;
 
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase.rpc('match_documents', {
-      query_embedding: `[${queryEmbedding.join(',')}]` as any,
-      match_threshold: matchThreshold,
-      match_count: matchCount,
-      p_user_id: userId,
-      p_document_type: documentType,
-    });
+    const client = getSupabaseClient();
+    let data: any[] = [];
+    let error: any = null;
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client.rpc('match_documents', {
+        query_embedding: `[${queryEmbedding.join(',')}]` as any,
+        match_threshold: matchThreshold,
+        match_count: matchCount,
+        p_user_id: userId,
+        p_document_type: documentType,
+      });
+
+      data = result.data || [];
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        // Use vector search from Upstash
+        data = await client.vector.search(queryEmbedding, {
+          topK: matchCount,
+          filter: {
+            ...(userId ? { user_id: userId } : {}),
+            ...(documentType ? { document_type: documentType } : {})
+          },
+          includeMetadata: true,
+          namespace: 'documents'
+        });
+      } catch (err) {
+        console.error('Error searching similar documents in Upstash:', err);
+        error = err;
+      }
+    }
 
     if (error) {
-      console.error('Error calling match_documents RPC:', error.message);
+      console.error('Error searching similar documents:', error.message);
       throw error;
     }
     if (data) {
@@ -504,17 +728,47 @@ export async function getMessagesByThreadId(threadId: string, limit: number = 10
 
 export async function deleteMessagesByThreadId(threadId: string): Promise<{ count: number; error?: PostgrestError }> {
   try {
-    const supabase = getSupabaseTransactionClient();
-    const { error, count } = await supabase
-      .from('messages')
-      .delete({ count: 'exact' })
-      .eq('thread_id', threadId);
+    const client = getSupabaseTransactionClient();
+    let count = 0;
+    let error: any = null;
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from('messages')
+        .delete({ count: 'exact' })
+        .eq('thread_id', threadId);
+
+      count = result.count || 0;
+      error = result.error;
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        // For Upstash, we need to first get all messages for the thread
+        const tableClient = client.from('messages');
+        const messages = await tableClient.filter('thread_id', 'eq', threadId).getAll();
+
+        // Then delete each message
+        if (messages && messages.length > 0) {
+          for (const message of messages) {
+            await tableClient.delete(message.id);
+            count++;
+          }
+        }
+      } catch (err) {
+        console.error(`Error deleting messages from Upstash for thread ${threadId}:`, err);
+        error = err;
+      }
+    }
 
     if (error) {
       console.error(`Error deleting messages for thread ${threadId}:`, error.message);
       return { count: 0, error };
     }
-    queryCache.forEach((value, key) => {
+
+    // Clear cache for this thread's messages
+    queryCache.forEach((_, key) => {
       if (key.startsWith(`getData_messages_`)) {
         const matchPart = `"match":{"thread_id":"${threadId}"`;
         if (key.includes(matchPart)) {
@@ -522,7 +776,8 @@ export async function deleteMessagesByThreadId(threadId: string): Promise<{ coun
         }
       }
     });
-    return { count: count || 0, error: undefined };
+
+    return { count, error: undefined };
   } catch (err: any) {
     console.error(`Exception in deleteMessagesByThreadId for thread ${threadId}:`, err);
     const pgError: PostgrestError = {

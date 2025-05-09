@@ -10,24 +10,66 @@
  * - Configurable cache settings
  */
 
-import { isDatabaseAvailable as isLibSQLAvailable } from './db'
-import { isUpstashAvailable } from './upstash/memoryStore'
-import * as LibSQLMemory from './memory'
-import * as UpstashMemory from './upstash/memoryStore'
-import { LRUCache } from 'lru-cache'
-import { Message } from './memory'
-import { v4 as generateUUID } from 'uuid'
+// Import LibSQL memory modules
+import { isDatabaseAvailable as isLibSQLAvailable } from './db';
+import * as LibSQLMemory from './memory';
+import { Message } from './memory';
+
+// Import utility libraries
+import { LRUCache } from 'lru-cache';
+import { v4 as generateUUID } from 'uuid';
+
+// Import Upstash modules
+import {
+  // Client utilities
+  checkUpstashAvailability,
+  UpstashClientError,
+  
+  // Thread operations
+  createRedisThread,
+  getRedisThreadById,
+  updateRedisThread,
+  listRedisThreads,
+  deleteRedisThread,
+  
+  // Message operations
+  createRedisMessage,
+  getRedisMessageById,
+  getRedisMessagesByThreadId,
+  deleteRedisMessage,
+  
+  // Agent state operations
+  saveAgentState,
+  loadAgentState,
+  listThreadAgentStates,
+  deleteAgentState,
+  
+  // Vector operations
+  upsertEmbeddings,
+  searchSimilarEmbeddings,
+  getEmbeddingsByIds,
+  deleteEmbeddingsByIds,
+  
+  // Memory processor for advanced operations
+  MemoryProcessor,
+  MemoryProcessorError,
+  
+  // Types
+  type Thread as RedisThread,
+  type Message as RedisMessage,
+  Thread
+} from './upstash/index';
 
 // Memory provider types
-export type MemoryProvider = 'libsql' | 'upstash'
+export type MemoryProvider = 'libsql' | 'upstash';
 
 // Cache configuration
 export interface CacheConfig {
-  enabled: boolean
-  ttl: number // Time-to-live in milliseconds
-  maxSize: number // Maximum number of items in cache
-  logHits?: boolean // Whether to log cache hits to console
-  collectMetrics?: boolean // Whether to collect cache metrics
+  enabled: boolean;
+  ttl: number; // Time-to-live in milliseconds
+  maxSize: number; // Maximum number of items in cache
+  logHits?: boolean; // Whether to log cache hits to console
+  collectMetrics?: boolean; // Whether to collect cache metrics
 }
 
 // Default cache configuration
@@ -37,14 +79,14 @@ const DEFAULT_CACHE_CONFIG: CacheConfig = {
   maxSize: 100,
   logHits: false,
   collectMetrics: true
-}
+};
 
 // Cache metrics
 export interface CacheMetrics {
-  hits: number
-  misses: number
-  hitRate: () => number
-  reset: () => void
+  hits: number;
+  misses: number;
+  hitRate: () => number;
+  reset: () => void;
 }
 
 // Create metrics objects for each cache
@@ -52,40 +94,40 @@ const threadCacheMetrics: CacheMetrics = {
   hits: 0,
   misses: 0,
   hitRate: () => {
-    const total = threadCacheMetrics.hits + threadCacheMetrics.misses
-    return total > 0 ? threadCacheMetrics.hits / total : 0
+    const total = threadCacheMetrics.hits + threadCacheMetrics.misses;
+    return total > 0 ? threadCacheMetrics.hits / total : 0;
   },
   reset: () => {
-    threadCacheMetrics.hits = 0
-    threadCacheMetrics.misses = 0
+    threadCacheMetrics.hits = 0;
+    threadCacheMetrics.misses = 0;
   }
-}
+};
 
 const messagesCacheMetrics: CacheMetrics = {
   hits: 0,
   misses: 0,
   hitRate: () => {
-    const total = messagesCacheMetrics.hits + messagesCacheMetrics.misses
-    return total > 0 ? messagesCacheMetrics.hits / total : 0
+    const total = messagesCacheMetrics.hits + messagesCacheMetrics.misses;
+    return total > 0 ? messagesCacheMetrics.hits / total : 0;
   },
   reset: () => {
-    messagesCacheMetrics.hits = 0
-    messagesCacheMetrics.misses = 0
+    messagesCacheMetrics.hits = 0;
+    messagesCacheMetrics.misses = 0;
   }
-}
+};
 
 const stateCacheMetrics: CacheMetrics = {
   hits: 0,
   misses: 0,
   hitRate: () => {
-    const total = stateCacheMetrics.hits + stateCacheMetrics.misses
-    return total > 0 ? stateCacheMetrics.hits / total : 0
+    const total = stateCacheMetrics.hits + stateCacheMetrics.misses;
+    return total > 0 ? stateCacheMetrics.hits / total : 0;
   },
   reset: () => {
-    stateCacheMetrics.hits = 0
-    stateCacheMetrics.misses = 0
+    stateCacheMetrics.hits = 0;
+    stateCacheMetrics.misses = 0;
   }
-}
+};
 
 // Export metrics for observability
 export const cacheMetrics = {
@@ -95,74 +137,75 @@ export const cacheMetrics = {
 
   // Get overall hit rate across all caches
   overallHitRate: () => {
-    const totalHits = threadCacheMetrics.hits + messagesCacheMetrics.hits + stateCacheMetrics.hits
-    const totalMisses = threadCacheMetrics.misses + messagesCacheMetrics.misses + stateCacheMetrics.misses
-    const total = totalHits + totalMisses
-    return total > 0 ? totalHits / total : 0
+    const totalHits = threadCacheMetrics.hits + messagesCacheMetrics.hits + stateCacheMetrics.hits;
+    const totalMisses = threadCacheMetrics.misses + messagesCacheMetrics.misses + stateCacheMetrics.misses;
+    const total = totalHits + totalMisses;
+    return total > 0 ? totalHits / total : 0;
   },
 
   // Reset all metrics
   resetAll: () => {
-    threadCacheMetrics.reset()
-    messagesCacheMetrics.reset()
-    stateCacheMetrics.reset()
+    threadCacheMetrics.reset();
+    messagesCacheMetrics.reset();
+    stateCacheMetrics.reset();
   }
-}
+};
 
 // Create caches for different data types
-const threadCache = new LRUCache<string, any>({
+const threadCache = new LRUCache<string, Thread | RedisThread>({
   max: DEFAULT_CACHE_CONFIG.maxSize,
   ttl: DEFAULT_CACHE_CONFIG.ttl
-})
+});
 
-const messagesCache = new LRUCache<string, Message[]>({
+const messagesCache = new LRUCache<string, Message[] | RedisMessage[]>({
   max: DEFAULT_CACHE_CONFIG.maxSize,
   ttl: DEFAULT_CACHE_CONFIG.ttl
-})
+});
 
 const stateCache = new LRUCache<string, any>({
   max: DEFAULT_CACHE_CONFIG.maxSize,
   ttl: DEFAULT_CACHE_CONFIG.ttl
-})
+});
 
 // Memory interface
 export interface MemoryInterface {
   // Thread operations
-  createMemoryThread: (name: string, options?: any) => Promise<string>
-  getMemoryThread: (id: string) => Promise<any>
-  listMemoryThreads: (options?: any) => Promise<any[]>
-  deleteMemoryThread: (id: string) => Promise<boolean>
+  createMemoryThread: (name: string, options?: any) => Promise<string>;
+  getMemoryThread: (id: string) => Promise<Thread | RedisThread | null>;
+  listMemoryThreads: (options?: any) => Promise<(Thread | RedisThread)[]>;
+  deleteMemoryThread: (id: string) => Promise<boolean>;
 
   // Message operations
-  saveMessage: (threadId: string, role: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: any) => Promise<string>
-  loadMessages: (threadId: string, limit?: number) => Promise<any[]>
+  saveMessage: (threadId: string, role: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: any) => Promise<string>;
+  loadMessages: (threadId: string, limit?: number) => Promise<(Message | RedisMessage)[]>;
 
   // Embedding operations
-  generateEmbedding?: (text: string, modelName?: string) => Promise<Float32Array>
-  saveEmbedding?: (vector: Float32Array, model?: string) => Promise<string>
-  semanticSearchMemory?: (query: string, options?: any) => Promise<any[]>
+  generateEmbedding?: (text: string, modelName?: string) => Promise<Float32Array>;
+  saveEmbedding?: (vector: Float32Array, model?: string) => Promise<string>;
+  semanticSearchMemory?: (query: string, options?: any) => Promise<any[]>;
 
   // State operations
-  saveAgentState?: (threadId: string, agentId: string, state: any) => Promise<void>
-  loadAgentState?: (threadId: string, agentId: string) => Promise<any>
+  saveAgentState?: (threadId: string, agentId: string, state: any) => Promise<void>;
+  loadAgentState?: (threadId: string, agentId: string) => Promise<any>;
 }
 
 // Get the configured memory provider
 export function getMemoryProvider(): MemoryProvider {
-  return (process.env.MEMORY_PROVIDER as MemoryProvider) || 'libsql'
+  return (process.env.MEMORY_PROVIDER as MemoryProvider) || 'libsql';
 }
 
 // Check if the configured memory provider is available
 export async function isMemoryAvailable(): Promise<boolean> {
-  const provider = getMemoryProvider()
+  const provider = getMemoryProvider();
 
   switch (provider) {
     case 'libsql':
-      return await isLibSQLAvailable()
+      return await isLibSQLAvailable();
     case 'upstash':
-      return await isUpstashAvailable()
+      const availability = await checkUpstashAvailability();
+      return availability.redisAvailable;
     default:
-      return false
+      return false;
   }
 }
 
@@ -173,16 +216,16 @@ export async function isMemoryAvailable(): Promise<boolean> {
  * @returns Memory interface implementation
  */
 export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterface {
-  const provider = getMemoryProvider()
+  const provider = getMemoryProvider();
 
   // Merge default cache config with provided config
   const config: CacheConfig = {
     ...DEFAULT_CACHE_CONFIG,
     ...cacheConfig
-  }
+  };
 
   // Create a cached version of getMemoryThread
-  const cachedGetMemoryThread = async (id: string): Promise<any> => {
+  const cachedGetMemoryThread = async (id: string): Promise<Thread | RedisThread | null> => {
     // Check cache first if enabled
     if (config.enabled && threadCache.has(id)) {
       // Track cache hit
@@ -195,7 +238,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
         console.log(`[CACHE HIT] Thread ${id}`);
       }
 
-      return threadCache.get(id);
+      return threadCache.get(id) || null;
     }
 
     // Track cache miss
@@ -208,7 +251,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     if (provider === 'libsql') {
       thread = await LibSQLMemory.getMemoryThread(id);
     } else if (provider === 'upstash') {
-      thread = await UpstashMemory.getThread(id);
+      thread = await getRedisThreadById(id);
     }
 
     // Cache the result if enabled
@@ -216,11 +259,11 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
       threadCache.set(id, thread);
     }
 
-    return thread;
+    return thread || null;
   };
 
   // Create a cached version of loadMessages
-  const cachedLoadMessages = async (threadId: string, limit?: number): Promise<Message[]> => {
+  const cachedLoadMessages = async (threadId: string, limit?: number): Promise<(Message | RedisMessage)[]> => {
     const cacheKey = `${threadId}:${limit || 'all'}`;
 
     // Check cache first if enabled
@@ -248,7 +291,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     if (provider === 'libsql') {
       messages = await LibSQLMemory.loadMessages(threadId, limit);
     } else if (provider === 'upstash') {
-      messages = await UpstashMemory.getMessages(threadId);
+      messages = await getRedisMessagesByThreadId(threadId, limit);
     }
 
     // Cache the result if enabled
@@ -283,10 +326,12 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
       stateCacheMetrics.misses++;
     }
 
-    // Get from provider (only LibSQL supports agent state)
+    // Get from provider
     let state;
     if (provider === 'libsql') {
       state = await LibSQLMemory.loadAgentState(threadId, agentId);
+    } else if (provider === 'upstash') {
+      state = await loadAgentState(threadId, agentId);
     }
 
     // Cache the result if enabled
@@ -347,19 +392,20 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     if (provider === 'libsql') {
       messageId = await LibSQLMemory.saveMessage(threadId, role, content, options);
     } else if (provider === 'upstash') {
-      messageId = await UpstashMemory.saveMessage(threadId, {
+      const message = await createRedisMessage(threadId, {
         role,
         content,
         metadata: options?.metadata
       });
+      messageId = message.id;
     }
 
     // Invalidate message cache for this thread
     invalidateMessageCache(threadId);
 
     return messageId || generateUUID();
-  };
 
+  };
   // Create a wrapper for saveAgentState that invalidates cache
   const cachedSaveAgentState = async (
     threadId: string,
@@ -368,6 +414,8 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
   ): Promise<void> => {
     if (provider === 'libsql') {
       await LibSQLMemory.saveAgentState(threadId, agentId, state);
+    } else if (provider === 'upstash') {
+      await saveAgentState(threadId, agentId, state);
     }
 
     // Invalidate state cache for this thread and agent
@@ -381,7 +429,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     if (provider === 'libsql') {
       result = await LibSQLMemory.deleteMemoryThread(threadId);
     } else if (provider === 'upstash') {
-      result = await UpstashMemory.deleteThread(threadId);
+      result = await deleteRedisThread(threadId);
     }
 
     // Invalidate all caches for this thread
@@ -390,71 +438,197 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     return result;
   };
 
-  // Return the appropriate memory interface based on provider
-  switch (provider) {
-    case 'libsql':
-      return {
-        createMemoryThread: LibSQLMemory.createMemoryThread,
-        getMemoryThread: cachedGetMemoryThread,
-        listMemoryThreads: LibSQLMemory.listMemoryThreads,
-        deleteMemoryThread: cachedDeleteMemoryThread,
-        saveMessage: cachedSaveMessage,
-        loadMessages: cachedLoadMessages,
-        generateEmbedding: LibSQLMemory.generateEmbedding,
-        saveEmbedding: LibSQLMemory.saveEmbedding,
-        semanticSearchMemory: LibSQLMemory.semanticSearchMemory,
-        saveAgentState: cachedSaveAgentState,
-        loadAgentState: cachedLoadAgentState,
+  // Create a wrapper for semantic search
+  const semanticSearch = async (query: string, options?: any): Promise<any[]> => {
+    if (provider === 'libsql') {
+      return await LibSQLMemory.semanticSearchMemory(query, options);
+    } else if (provider === 'upstash') {
+      // Create a memory processor instance for advanced operations
+      const memoryProcessor = MemoryProcessor.getInstance();
+      
+      // Use the streamSemanticSearch method to get results
+      const searchStream = memoryProcessor.streamSemanticSearch(query, {
+        topK: options?.limit || 10,
+        filter: options?.filter
+      });
+      
+      // Collect results from the stream
+      const results: any[] = [];
+      
+      return new Promise((resolve, reject) => {
+        searchStream.on('data', (result) => {
+          results.push(result);
+        });
+        
+        searchStream.on('end', () => {
+          resolve(results);
+        });
+        
+        searchStream.on('error', (error) => {
+          reject(error);
+        });
+      });
+    }
+    
+    return [];
+  };
+
+  // Create a wrapper for generating and saving embeddings
+  const generateAndSaveEmbedding = async (text: string, modelName?: string): Promise<Float32Array> => {
+    // Import the generateEmbedding function from ai-integration
+    const { generateEmbedding } = await import('../ai-integration');
+    
+    // Generate the embedding
+    const embedding = await generateEmbedding(text);
+    
+    // Save the embedding if needed
+    if (provider === 'libsql') {
+      await LibSQLMemory.saveEmbedding(embedding, modelName);
+    } else if (provider === 'upstash') {
+      // Convert Float32Array to regular array for Upstash
+      const embeddingArray = Array.from(embedding) as number[];
+      
+      // Save to Upstash Vector
+      await upsertEmbeddings([{
+        id: generateUUID(),
+        vector: embeddingArray,
+        metadata: {
+          text,
+          model: modelName || 'default',
+          created_at: new Date().toISOString()
+        }
+      }]);
+    }
+    
+    return embedding;
+  };
+  // Create a wrapper for createMemoryThread
+  const createMemoryThreadWrapper = async (name: string, options?: any): Promise<string> => {
+    let threadId: string = '';
+    
+    if (provider === 'libsql') {
+      threadId = await LibSQLMemory.createMemoryThread(name, options);
+    } else if (provider === 'upstash') {
+      const thread = await createRedisThread(name);
+      threadId = thread.id;
+    }
+    
+    return threadId || generateUUID();
+  };
+  // Create a wrapper for listMemoryThreads
+  const listMemoryThreadsWrapper = async (options?: any): Promise<(Thread | RedisThread)[]> => {
+    if (provider === 'libsql') {
+      return await LibSQLMemory.listMemoryThreads(options);
+    } else if (provider === 'upstash') {
+      return await listRedisThreads(options);
+    }
+    
+    return [];
+  };
+
+  // Return the memory interface implementation
+  return {
+    // Thread operations
+    createMemoryThread: createMemoryThreadWrapper,
+    getMemoryThread: cachedGetMemoryThread,
+    listMemoryThreads: listMemoryThreadsWrapper,
+    deleteMemoryThread: cachedDeleteMemoryThread,
+    
+    // Message operations
+    saveMessage: cachedSaveMessage,
+    loadMessages: cachedLoadMessages,
+    
+    // Embedding operations
+    generateEmbedding: async (text: string, modelName?: string) => {
+      const { generateEmbedding } = await import('../ai-integration');
+      return generateEmbedding(text);
+    },
+    saveEmbedding: async (vector: Float32Array, model?: string) => {
+      if (provider === 'libsql') {
+        return await LibSQLMemory.saveEmbedding(vector, model);
+      } else if (provider === 'upstash') {
+        const embeddingArray = Array.from(vector);
+        const id = generateUUID();
+        
+        await upsertEmbeddings([{
+          id,
+          vector: embeddingArray,
+          metadata: {
+            model: model || 'default',
+            created_at: new Date().toISOString()
+          }
+        }]);
+        
+        return id;
       }
-    case 'upstash':
-      return {
-        createMemoryThread: (name, options) => UpstashMemory.createThread(name, options?.metadata),
-        getMemoryThread: cachedGetMemoryThread,
-        listMemoryThreads: (options) => UpstashMemory.listThreads(options?.limit, options?.offset),
-        deleteMemoryThread: cachedDeleteMemoryThread,
-        saveMessage: cachedSaveMessage,
-        loadMessages: cachedLoadMessages,
-      }
-    default:
-      throw new Error(`Unsupported memory provider: ${provider}`)
-  }
+      
+      return generateUUID();
+    },
+    semanticSearchMemory: semanticSearch,
+    
+    // State operations
+    saveAgentState: cachedSaveAgentState,
+    loadAgentState: cachedLoadAgentState
+  };
 }
 
 /**
- * Export a singleton memory instance with default caching enabled
- *
- * Usage:
- * ```typescript
- * import { memory } from '@/lib/memory/factory';
- *
- * // Create a thread
- * const threadId = await memory.createMemoryThread('My Thread');
- *
- * // Save a message (invalidates message cache for this thread)
- * await memory.saveMessage(threadId, 'user', 'Hello, world!');
- *
- * // Load messages (uses cache if available)
- * const messages = await memory.loadMessages(threadId);
- * ```
- *
- * To create a memory instance with custom cache settings:
- * ```typescript
- * import { createMemory } from '@/lib/memory/factory';
- *
- * const customMemory = createMemory({
- *   enabled: true,
- *   ttl: 1000 * 60 * 5, // 5 minutes
- *   maxSize: 200
- * });
- * ```
- *
- * To disable caching:
- * ```typescript
- * const uncachedMemory = createMemory({ enabled: false });
- * ```
+ * Utility function to convert between LibSQL and Upstash thread formats
+ * @param thread - Thread to convert
+ * @returns Converted thread
  */
-export const memory = createMemory()
+export function convertThreadFormat(thread: Thread | RedisThread): Thread | RedisThread {
+  if ('thread_id' in thread) {
+    // Convert LibSQL format to Upstash format
+    return {
+      id: thread.thread_id,
+      name: thread.name,
+      created_at: thread.created_at,
+      updated_at: thread.updated_at,
+      metadata: thread.metadata || {}
+    } as RedisThread;
+  } else if ('id' in thread) {
+    // Convert Upstash format to LibSQL format
+    return {
+      id: thread.id,
+      thread_id: thread.id,
+      name: thread.name,
+      created_at: thread.created_at,
+      updated_at: thread.updated_at,
+      metadata: thread.metadata || {}
+    } as Thread;
+  }
+  
+  return thread;
+}
+/**
+ * Utility function to convert between LibSQL and Upstash message formats
+ * @param message - Message to convert
+ * @returns Converted message
+ */
+export function convertMessageFormat(message: Message | RedisMessage): Message | RedisMessage {
+  if ('message_id' in message) {
+    // Convert LibSQL format to Upstash format
+    return {
+      id: message.message_id,
+      thread_id: message.id,
+      role: message.role,
+      content: message.content,
+      created_at: message.created_at,
+      metadata: message.metadata || {}
+    } as RedisMessage;
+  } else if ('id' in message) {
+    // Convert Upstash format to LibSQL format
+    return {
+      message_id: message.id,
+      thread_id: message.id,
+      role: message.role,
+      content: message.content,
+      created_at: message.created_at,
+      metadata: message.metadata || {}
+    } as Message;
+  }
+  
+  return message;
+}
 
-// Re-export memory and persistence utilities
-export * from './supabase'
-export * from './db'

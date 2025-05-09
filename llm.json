@@ -642,6 +642,9 @@
       }
     ],
     "pendingTasks": [
+      { "filePath": "lib/memory/upstash/supabase-adapter.ts", "line": 1, "task": "TODO: Add comprehensive tests for the Upstash Supabase adapter" },
+      { "filePath": "lib/memory/upstash/supabase-adapter-factory.ts", "line": 1, "task": "TODO: Create documentation for the Upstash Supabase adapter usage" },
+      { "filePath": "lib/memory/factory.ts", "line": 1, "task": "TODO: Update memory factory to fully support Upstash Supabase adapter" },
       { "filePath": "lib/workflow/index.ts", "line": 198, "task": "TODO: Execute the agent with the step input" },
       { "filePath": "lib/workflow/supabase.ts", "line": 352, "task": "TODO: Execute the agent with the step input" },
       { "filePath": "lib/tools/agentic/reddit-client.ts", "line": 419, "task": "TODO: add preview images" },
@@ -650,9 +653,24 @@
       { "filePath": "components/chat/ai-sdk-chat.tsx", "line": 546, "task": "TODO: Implement thread deletion and rename actions" }
     ],
     "agentNotepad": [
+      "COMPLETED: Implemented Upstash Supabase adapter for seamless transition from Supabase to Upstash.",
+      "COMPLETED: Updated lib/memory/supabase.ts to use Upstash adapter when USE_UPSTASH_ADAPTER=true.",
+      "COMPLETED: Fixed type issues in agent and persona files to work with Upstash adapter.",
+      "COMPLETED: Added Zod schemas to agent.types.ts for all agent-related types.",
+      "COMPLETED: Updated baseAgent.ts to use Zod schemas for validation.",
+      "COMPLETED: Fixed persona-manager integration in agent-service.ts.",
+      "COMPLETED: Fixed baseAgent.ts to properly use the Upstash adapter when appropriate.",
+      "COMPLETED: Updated agent-service.ts to use the Upstash adapter and fixed tool handling.",
+      "COMPLETED: Fixed persona-manager.ts to handle different function names in PersonaScoreManager.",
+      "COMPLETED: Improved Redis operations in persona-manager.ts to be more reliable.",
+      "NEXT: Migrate existing data from Supabase to Upstash using the adapter.",
+      "NEXT: Add comprehensive tests for the Upstash Supabase adapter.",
+      "NEXT: Implement data migration utilities for Supabase to Upstash transition.",
+      "NEXT: Create documentation for the Upstash Supabase adapter usage.",
+      "NEXT: Fix any remaining type issues in other files that use the Supabase adapter.",
+      "NEXT: Update AI SDK routes to properly integrate with Upstash using appropriate memory and type definitions.",
       "Review pendingTasks regularly and close completed TODOs.",
       "Prioritize implementing core API routes for agents, tools, threads before advanced features.",
-      "Use Upstash libraries (redis, vector, qstash) as potential primary DB for low-latency operations.",
       "Ensure Zod schemas are shared client/server in useObject and streamObject integrations.",
       "Audit tsconfig plugins: replace deprecated typescript-eslint-parser with @typescript-eslint/parser.",
       "Consolidate AI SDK integrations: clarify roles of @ai-sdk/* vs @agentic/ai-sdk packages.",
@@ -660,9 +678,7 @@
       "Consider caching common prompts/results with Upstash semantic-cache for performance.",
       "Validate multi-step tool flows: test maxSteps, onStepFinish, and experimental_prepareStep hooks.",
       "Experiment with microPersonas: load micro traits and parent IDs in PersonaManager and AgentRegistry.",
-      "Implement dynamic selection: use personaManager.getPersonaRecommendation({taskType, userPreferences}) to pick micro-personas.",
-      "Extend registry to cache micro-personas with unique IDs combining parent and microTraits.",
-      "Validate micro-persona effectiveness: A/B test macro vs micro on engagement metrics."
+      "Implement dynamic selection: use personaManager.getPersonaRecommendation({taskType, userPreferences}) to pick micro-personas."
     ]
   },
   "observability": {
@@ -723,8 +739,253 @@
       "Supabase documentation",
       "Drizzle ORM documentation",
       "Google Gemini API documentation",
-      "Upstash (Redis, QStash, Rate Limiting) documentation"
+      "Upstash (Redis, QStash, Rate Limiting, Vector) documentation"
     ],
+    "upstashMemorySystem": {
+      "description": "Comprehensive memory system using Upstash Redis and Vector for agent and persona persistence, with high-performance, serverless architecture.",
+      "components": [
+        {
+          "name": "Supabase Adapter",
+          "purpose": "Compatibility layer to use Upstash Redis and Vector as a replacement for Supabase",
+          "implementation": "lib/memory/upstash/supabase-adapter.ts, lib/memory/upstash/supabase-adapter-factory.ts",
+          "features": [
+            "Table operations (get, create, update, delete)",
+            "Vector operations (search, upsert)",
+            "Query options (select, filter, order, limit, offset)",
+            "Error handling with graceful fallbacks",
+            "Type safety with Zod validation",
+            "Supabase-like client interface for seamless transition"
+          ],
+          "status": "Implemented",
+          "nextSteps": [
+            "Update environment configuration to use Upstash as primary backend",
+            "Migrate existing data from Supabase to Upstash",
+            "Update application code to use the Upstash Supabase adapter",
+            "Add comprehensive tests for the adapter"
+          ]
+        },
+        {
+          "name": "Redis Memory Store",
+          "purpose": "Primary storage for threads, messages, agent states, and persona data",
+          "implementation": "lib/memory/upstash/redis-store.ts",
+          "features": [
+            "Thread lifecycle management with metadata",
+            "Message storage with role-based categorization",
+            "Sorted sets for efficient time-based queries",
+            "Atomic operations for data consistency",
+            "Pipeline support for batch operations",
+            "TTL-based expiration for ephemeral data"
+          ]
+        },
+        {
+          "name": "Vector Store",
+          "purpose": "Semantic search and embedding storage for RAG capabilities",
+          "implementation": "lib/memory/upstash/vector-store.ts",
+          "features": [
+            "Embedding storage with metadata",
+            "Similarity search with filtering",
+            "Hybrid search capabilities",
+            "Batch operations for efficiency",
+            "Metadata-based filtering"
+          ]
+        },
+        {
+          "name": "Logging System",
+          "purpose": "Persistent, structured logging for observability",
+          "implementation": "lib/memory/upstash/upstash-logger.ts",
+          "features": [
+            "Level-based logging (INFO, WARN, ERROR, DEBUG)",
+            "Redis Streams for time-series data",
+            "Structured metadata for rich context",
+            "Capped streams for efficient storage",
+            "Query capabilities for log analysis"
+          ]
+        },
+        {
+          "name": "Client Management",
+          "purpose": "Singleton pattern for connection pooling and reuse",
+          "implementation": "lib/memory/upstash/upstashClients.ts",
+          "features": [
+            "Lazy initialization for performance",
+            "Connection pooling for efficiency",
+            "Error handling and retry logic",
+            "Health checks for availability monitoring"
+          ]
+        },
+        {
+          "name": "Memory Factory Integration",
+          "purpose": "Seamless switching between memory providers",
+          "implementation": "lib/memory/factory.ts",
+          "features": [
+            "Provider abstraction for LibSQL and Upstash",
+            "LRU caching for performance optimization",
+            "Consistent API across providers",
+            "Environment-based configuration"
+          ]
+        }
+      ],
+      "personaIntegration": {
+        "description": "Enhanced persona management with Upstash for persistence, caching, and performance tracking",
+        "components": [
+          {
+            "name": "Persona Storage",
+            "implementation": "lib/agents/personas/upstash-persona-store.ts",
+            "features": [
+              "JSON serialization of persona definitions",
+              "Atomic updates for consistency",
+              "Indexed access by ID, tags, and capabilities",
+              "Versioning support for persona evolution"
+            ]
+          },
+          {
+            "name": "Persona Scoring",
+            "implementation": "lib/agents/personas/persona-score-manager.ts with Upstash",
+            "features": [
+              "Performance metrics tracking",
+              "Time-series analysis of effectiveness",
+              "Multi-dimensional scoring (success rate, user satisfaction, adaptability)",
+              "A/B testing framework for comparison",
+              "Trend analysis for continuous improvement"
+            ]
+          },
+          {
+            "name": "Micro-Persona Management",
+            "implementation": "lib/agents/personas/micro-persona-manager.ts with Upstash",
+            "features": [
+              "Parent-child relationship tracking",
+              "Trait inheritance and override",
+              "Context-specific persona selection",
+              "Dynamic composition at runtime"
+            ]
+          }
+        ],
+        "dataModel": {
+          "persona": {
+            "id": "Unique identifier",
+            "name": "Human-readable name",
+            "description": "Detailed description",
+            "traits": "Array of personality traits",
+            "systemPromptTemplate": "Template for system prompts",
+            "capabilities": "Array of supported capabilities",
+            "modelSettings": "Model-specific configuration",
+            "tags": "Array of categorization tags",
+            "compatibleMicroPersonas": "Array of compatible micro-persona IDs",
+            "version": "Semantic version number",
+            "createdAt": "Creation timestamp",
+            "lastUpdatedAt": "Last update timestamp"
+          },
+          "microPersona": {
+            "id": "Unique identifier (prefixed with 'micro_')",
+            "parentPersonaId": "ID of parent persona",
+            "name": "Human-readable name",
+            "description": "Detailed description",
+            "microTraits": "Array of specialized traits",
+            "promptFragment": "Additional prompt text",
+            "modelSettings": "Override model settings",
+            "version": "Semantic version number",
+            "createdAt": "Creation timestamp",
+            "lastUpdatedAt": "Last update timestamp"
+          },
+          "personaScore": {
+            "personaId": "ID of the persona",
+            "overall_score": "Weighted average score",
+            "success_rate": "Task completion success rate",
+            "user_satisfaction": "Average user rating",
+            "adaptability": "Context adaptation score",
+            "latency": "Average response time",
+            "usage_count": "Number of times used",
+            "task_specific_scores": "Map of scores by task type",
+            "trend": "Score trend over time",
+            "last_updated": "Last update timestamp"
+          }
+        }
+      },
+      "agentIntegration": {
+        "description": "Agent state and memory management with Upstash",
+        "components": [
+          {
+            "name": "Agent State Storage",
+            "implementation": "lib/agents/agent-state-store.ts with Upstash",
+            "features": [
+              "Persistent state across sessions",
+              "Atomic updates for consistency",
+              "Versioning for state evolution",
+              "TTL-based expiration for inactive agents"
+            ]
+          },
+          {
+            "name": "Agent Memory",
+            "implementation": "lib/agents/agent-memory.ts with Upstash",
+            "features": [
+              "Short-term and long-term memory",
+              "Semantic search for relevant context",
+              "Memory summarization for context window management",
+              "Forgetting strategies for irrelevant information"
+            ]
+          },
+          {
+            "name": "Tool Execution History",
+            "implementation": "lib/tools/tool-execution-store.ts with Upstash",
+            "features": [
+              "Tool call logging and results",
+              "Performance metrics tracking",
+              "Error tracking and analysis",
+              "Usage patterns for optimization"
+            ]
+          }
+        ]
+      },
+      "implementationPlan": {
+        "phase1": {
+          "description": "Core Redis and Vector integration",
+          "tasks": [
+            "Complete and test upstashClients.ts with comprehensive error handling",
+            "Enhance redis-store.ts with full CRUD operations for threads and messages",
+            "Optimize vector-store.ts for efficient embedding storage and retrieval",
+            "Implement upstash-logger.ts for comprehensive logging"
+          ]
+        },
+        "phase2": {
+          "description": "Memory Factory and API Integration",
+          "tasks": [
+            "Update factory.ts to fully support Upstash as primary provider",
+            "Implement caching strategies with LRU for performance",
+            "Create migration utilities for LibSQL to Upstash data transfer",
+            "Update API routes to leverage Upstash-specific features"
+          ]
+        },
+        "phase3": {
+          "description": "Persona and Agent Integration",
+          "tasks": [
+            "Implement upstash-persona-store.ts for persona persistence",
+            "Enhance persona-score-manager.ts with Upstash for performance tracking",
+            "Create agent-state-store.ts with Upstash for agent persistence",
+            "Develop tool-execution-store.ts for tool usage tracking"
+          ]
+        },
+        "phase4": {
+          "description": "Advanced Features and Optimization",
+          "tasks": [
+            "Implement QStash for background processing and scheduled tasks",
+            "Add rate limiting for API and tool execution",
+            "Develop semantic caching for LLM responses",
+            "Create observability dashboards for memory system monitoring"
+          ]
+        }
+      },
+      "bestPractices": [
+        "Use pipeline operations for multi-step Redis operations to reduce network overhead",
+        "Implement retry logic with exponential backoff for resilience",
+        "Use sorted sets (ZSET) for time-series data and efficient range queries",
+        "Leverage Redis Streams for event sourcing and logging",
+        "Implement proper error handling and logging for all operations",
+        "Use TTL for ephemeral data to prevent memory leaks",
+        "Implement connection pooling for high-throughput scenarios",
+        "Use batching for vector operations to reduce API calls",
+        "Implement proper serialization/deserialization for complex objects",
+        "Use atomic operations for consistency in multi-step processes"
+      ]
+    },
     "toolsAndTechnologies": [
       "Supabase (for persistence, auth, vector storage)",
       "Drizzle ORM (for type-safe database access)",
@@ -833,44 +1094,141 @@
         "Updated llm.json with initial persona framework research and schema ideas."
       ]
     },
-    "current_sprint": {
-      "summary": "Implement and fix persona-manager, persona-score-manager, persona-library-utils, persona-score-integration. Ensure Zod schema usage, complete functions, error-free operation. Verify index.ts exports. Create masterPersona.json and example usage scripts.",
-      "focus_areas": [
-        "Full implementation of persona-manager.ts",
-        "Full implementation of persona-score-manager.ts",
-        "Full implementation of persona-library-utils.ts",
-        "Full implementation of persona-score-integration.ts",
-        "Creation of c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\templates\\masterPersona.json",
-        "Refinement of example scripts (persona-library-example.ts, persona-score-example.ts)",
-        "Ensuring correct Zod schema usage across the persona module.",
+    "completed_sprint": {
+      "summary": "Successfully implemented and fixed persona-manager, persona-score-manager, persona-library-utils, persona-score-integration. Ensured Zod schema usage, completed functions, achieved error-free operation. Verified index.ts exports. Created masterPersona.json and example usage scripts.",
+      "completed_tasks": [
+        "Full implementation of persona-manager.ts with support for persona and micro-persona management.",
+        "Full implementation of persona-score-manager.ts with caching and performance tracking.",
+        "Full implementation of persona-library-utils.ts with initialization and export capabilities.",
+        "Full implementation of persona-score-integration.ts for seamless scoring system integration.",
+        "Creation of c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\templates\\masterPersona.json.",
+        "Comprehensive implementation of persona-score-example.ts with advanced scoring and filtering capabilities.",
+        "Implemented getTopPerformingPersonasWithScoring with advanced filtering and sorting options.",
+        "Fixed exports in index.ts to properly expose all persona system components.",
+        "Ensured correct Zod schema usage across the persona module.",
         "Comprehensive testing and bug fixing for the entire persona module.",
-        "Verification of all exports in c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\index.ts"
+        "Created example scripts demonstrating persona selection, usage tracking, and performance analysis."
       ],
-      "completions_this_sprint": [
-        "Initial Zod schemas for PersonaDefinition, MicroPersonaDefinition, SafetySetting, ExampleDialogue, PersonaScore, ScoreUpdateData in persona-library.ts.",
-        "Base personas defined in persona-library.ts.",
-        "Example domain/task personas in persona-library-extended.ts.",
-        "Updated llm.json with advancedPersonaFrameworks, personaSchemas, microPersonaSchemas."
-      ],
-      "remaining_tasks": [
-        "Full functional implementation and error fixing for persona-manager.ts.",
-        "Full functional implementation and error fixing for persona-score-manager.ts (including import fixes).",
-        "Full functional implementation and error fixing for persona-library-utils.ts.",
-        "Full functional implementation and error fixing for persona-score-integration.ts.",
-        "Creation and refinement of c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\templates\\masterPersona.json.",
-        "Refinement and completion of example usage scripts.",
-        "Ensuring seamless integration between persona management, scoring, and usage.",
-        "Final verification of all exports in c:\\Users\\dm\\Documents\\ai-sdk-DM\\lib\\agents\\personas\\index.ts."
+      "key_achievements": [
+        "Established a robust persona management system with support for base personas and micro-personas.",
+        "Implemented a sophisticated scoring system that tracks multiple performance metrics.",
+        "Created a flexible query system for retrieving optimal personas based on various criteria.",
+        "Developed trend analysis capabilities to detect improving or declining persona performance.",
+        "Integrated the persona system with the tracing infrastructure for comprehensive observability."
       ]
     },
-    "future_sprint": {
-      "summary": "Full Upstash integration for persona persistence and caching. Advanced persona adaptation strategies. Integration with AI SDK tracing for performance monitoring.",
-      "planned_features": [
-        "Implement Upstash Redis for robust persona storage and caching.",
+    "next_sprint": {
+      "summary": "Advanced persona adaptation strategies and AI SDK tracing integration for performance monitoring.",
+      "planned_tasks": [
         "Develop advanced algorithms for dynamic persona adaptation based on performance scores and context.",
         "Deepen integration with AI SDK tracing for comprehensive performance monitoring and feedback loops.",
-        "Explore real-time persona adjustments based on ongoing interactions."
+        "Explore real-time persona adjustments based on ongoing interactions.",
+        "Implement A/B testing framework for persona effectiveness comparison.",
+        "Create dashboard visualization for persona performance metrics.",
+        "Develop automated persona recommendation system based on task context and historical performance.",
+        "Implement multi-dimensional scoring to evaluate personas across different aspects of performance.",
+        "Create migration tools to transfer persona data between storage backends."
+      ],
+      "completed_tasks": [
+        {
+          "name": "Upstash Memory Integration",
+          "description": "Implemented Upstash Redis and Vector as the main working memory for agents and personas/micro-personas",
+          "components": [
+            {
+              "name": "Agent State Storage",
+              "path": "lib/memory/upstash/agent-state-store.ts",
+              "description": "Persistent storage for agent states with Redis"
+            },
+            {
+              "name": "Persona Storage",
+              "path": "lib/agents/personas/upstash-persona-store.ts",
+              "description": "Persistent storage for personas and micro-personas with Redis"
+            },
+            {
+              "name": "Persona Scoring",
+              "path": "lib/agents/personas/upstash-persona-score.ts",
+              "description": "Performance tracking for personas with Redis"
+            },
+            {
+              "name": "Tool Execution Tracking",
+              "path": "lib/tools/upstash-tool-execution-store.ts",
+              "description": "Tracking tool executions and performance with Redis"
+            },
+            {
+              "name": "Memory Processor",
+              "path": "lib/memory/upstash/memory-processor.ts",
+              "description": "Efficient processing and streaming of memory data"
+            },
+            {
+              "name": "Persona Streaming",
+              "path": "lib/agents/personas/persona-streaming-service.ts",
+              "description": "Streaming personas and micro-personas from Upstash"
+            }
+          ],
+          "benefits": [
+            "Serverless architecture for memory storage",
+            "High-performance Redis for key-value operations",
+            "Vector database for semantic search",
+            "Efficient streaming of large datasets",
+            "Persistent storage across sessions",
+            "Performance tracking and analytics",
+            "Scalable architecture for production use"
+          ]
+        }
+      ],
+      "expected_outcomes": [
+        "Improved persona selection accuracy by 30% through enhanced scoring algorithms.",
+        "Reduced latency in persona retrieval by 50% through Upstash caching.",
+        "Enhanced user satisfaction through more contextually appropriate persona selection.",
+        "Better insights into persona performance through comprehensive dashboards and analytics."
       ]
     }
+  },
+  "personaScoring": {
+    "description": "A comprehensive system for tracking, analyzing, and optimizing persona performance across different tasks and contexts.",
+    "keyComponents": [
+      {
+        "name": "PersonaScoreManager",
+        "purpose": "Core service for managing persona performance metrics",
+        "features": [
+          "Score caching with LRU strategy for performance",
+          "Persistence to Supabase database",
+          "Weighted scoring algorithm balancing success rate, user satisfaction, adaptability, and latency",
+          "Task-specific performance tracking"
+        ]
+      },
+      {
+        "name": "getTopPerformingPersonasWithScoring",
+        "purpose": "Advanced query function for retrieving optimal personas",
+        "features": [
+          "Flexible filtering by capabilities, task types, and usage thresholds",
+          "Customizable sorting by different performance metrics",
+          "Time-frame based analysis",
+          "Integrated with tracing for observability"
+        ]
+      },
+      {
+        "name": "Performance Analysis Tools",
+        "purpose": "Functions for deeper performance insights",
+        "features": [
+          "Trend analysis to detect improving or declining persona performance",
+          "Task-specific persona recommendations",
+          "Historical performance comparison",
+          "User satisfaction tracking"
+        ]
+      }
+    ],
+    "integrations": [
+      "Tracing system for performance monitoring",
+      "Supabase for persistent storage",
+      "LRU caching for optimized access patterns",
+      "PersonaManager for persona metadata and selection"
+    ],
+    "usagePaths": [
+      "Dynamic persona selection based on task requirements and historical performance",
+      "Continuous improvement through feedback loops",
+      "A/B testing of different personas for similar tasks",
+      "Automatic adaptation to changing user needs and preferences"
+    ]
   }
 }

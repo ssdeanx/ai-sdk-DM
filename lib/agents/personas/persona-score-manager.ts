@@ -19,6 +19,14 @@ import { LRUCache } from 'lru-cache'
  * Interface for persona score data
  */
 export interface PersonaScore {
+  persona: any
+  score: any
+  success_count: number
+  failure_count: number
+  average_latency_ms: number
+  user_satisfaction_avg: number
+  user_feedback_count: number
+  token_usage_avg: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
   id: string
   persona_id: string
   usage_count: number

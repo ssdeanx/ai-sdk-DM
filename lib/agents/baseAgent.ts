@@ -2,26 +2,31 @@ import { streamText, CoreMessage } from "ai"
 import { getProviderByName } from "../ai"
 import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
 import { jsonSchemaToZod } from "../tools"
-import { toolRegistry } from "../tools/toolRegistry"
+import { ToolRegistry } from "../tools/toolRegistry"
 import { initializeTools } from "../tools/toolInitializer"
-import * as supabaseMemory from "../memory/supabase"
+import { getData, shouldUseUpstash, isSupabaseClient, isUpstashClient } from "../memory/supabase"
+import { createSupabaseClient } from "../memory/upstash/supabase-adapter-factory"
 import { getLibSQLClient } from "../memory/db"
 import { v4 as uuidv4 } from "uuid"
 import * as aiSdkIntegration from "../ai-sdk-integration"
 import * as aiSdkTracing from "../ai-sdk-tracing"
 import { personaManager } from "./personas/persona-manager"
+import { z } from "zod"
 import {
   Agent,
+  AgentSchema,
   ToolConfig,
+  ToolConfigSchema,
   RunResult,
+  RunResultSchema,
   AgentHooks,
+  AgentHooksSchema,
   AgentState,
-  AgentRunTokenUsage,
-  AgentRunFinishReason,
-  AgentRunToolInvocation,
-  AgentRunFinishData,
+  AgentStateSchema,
   AgentRunOptions,
-  AgentPersona
+  AgentRunOptionsSchema,
+  AgentPersona,
+  AgentPersonaSchema
 } from "./agent.types"
 
 export class BaseAgent {
@@ -36,15 +41,20 @@ export class BaseAgent {
   hooks: AgentHooks
 
   constructor(config: Agent, toolConfigs: ToolConfig[], hooks: AgentHooks = {}) {
-    this.id = config.id
-    this.name = config.name
-    this.description = config.description
-    this.providerName = config.provider
-    this.modelId = config.model_id
-    this.apiKey = config.api_key || ""
-    this.baseUrl = config.base_url
-    this.toolConfigs = toolConfigs
-    this.hooks = hooks
+    // Validate inputs with Zod schemas
+    const validatedConfig = AgentSchema.parse(config);
+    const validatedToolConfigs = z.array(ToolConfigSchema).parse(toolConfigs);
+    const validatedHooks = AgentHooksSchema.parse(hooks);
+
+    this.id = validatedConfig.id
+    this.name = validatedConfig.name
+    this.description = validatedConfig.description
+    this.providerName = validatedConfig.provider
+    this.modelId = validatedConfig.model_id
+    this.apiKey = validatedConfig.api_key || ""
+    this.baseUrl = validatedConfig.base_url
+    this.toolConfigs = validatedToolConfigs
+    this.hooks = validatedHooks
 
     // Ensure tools are initialized once for the whole app (idempotent)
     initializeTools()
@@ -57,22 +67,22 @@ export class BaseAgent {
     const aiTools: Record<string, any> = {}
     for (const toolConfig of this.toolConfigs) {
       const toolName = toolConfig.name
-      if (await toolRegistry.hasTool(toolName)) {
-        const registryTool = await toolRegistry.getTool(toolName)
+      if (await ToolRegistry.hasTool(toolName)) {
+        const registryTool = await ToolRegistry.getTool(toolName)
         aiTools[toolName] = {
           ...registryTool,
           execute: async (params: any) => {
             if (this.hooks.onToolCall) {
               await this.hooks.onToolCall(toolName, params)
             }
-            return await toolRegistry.executeTool(toolName, params)
+            return await ToolRegistry.executeTool(toolName, params)
           }
         }
       } else {
         // Register custom tool if not present
         const schema = JSON.parse(toolConfig.parameters_schema)
         const zodSchema = jsonSchemaToZod(schema)
-        toolRegistry.register(
+        ToolRegistry.register(
           toolName,
           toolConfig.description,
           zodSchema,
@@ -85,15 +95,17 @@ export class BaseAgent {
             if (this.hooks.onToolCall) {
               await this.hooks.onToolCall(toolName, params)
             }
-            return await toolRegistry.executeTool(toolName, params)
+            return await ToolRegistry.executeTool(toolName, params)
           }
         }
       }
     }
     return aiTools
   }
-
   public async run(input?: string, threadId?: string, options?: AgentRunOptions): Promise<RunResult> {
+    // Validate inputs with Zod schemas
+    const validatedOptions = options ? AgentRunOptionsSchema.parse(options) : undefined;
+
     const memoryThreadId = threadId || uuidv4()
     if (input && this.hooks.onStart) {
       await this.hooks.onStart(input, memoryThreadId)
@@ -108,11 +120,23 @@ export class BaseAgent {
           args: [memoryThreadId, this.id, `${this.name} Thread`],
         })
         let systemMsg = this.getSystemPrompt()
+
+        // Get agent config from Supabase or Upstash
+        let agentConfig;
+        if (shouldUseUpstash()) {
+          // Use Upstash adapter
+          const supabaseClient = createSupabaseClient();
+          const agentData = await supabaseClient.from("agents").getById(this.id);
+          agentConfig = agentData;
+        } else {
+          // Use regular Supabase
+          agentConfig = await getData("agents", { match: { id: this.id } }).then(data => data[0]);
+        }
+
         // Persona support
-        const agentConfig = await supabaseMemory.getAgentConfig(this.id)
         if (agentConfig?.persona_id) {
           await personaManager.init()
-          const persona = await personaManager.getPersona(agentConfig.persona_id)
+          const persona = await personaManager.getPersonaById(agentConfig.persona_id)
           if (persona?.systemPromptTemplate) {
             systemMsg = persona.systemPromptTemplate.replace(/\{\{\s*agentName\s*\}\}/g, this.name)
           }
@@ -127,19 +151,70 @@ export class BaseAgent {
       const agentState: AgentState = await loadAgentState(memoryThreadId, this.id)
       const provider = await getProviderByName(this.providerName, this.apiKey, this.baseUrl)
       if (!provider) throw new Error(`Failed to initialize provider: ${this.providerName}`)
-      // Use Supabase for latest config and tools
-      const agentConfig = await supabaseMemory.getAgentConfig(this.id)
-      if (!agentConfig) throw new Error("Agent config not found in Supabase")
+
+      // Get agent config from Supabase or Upstash
+      let agentConfig;
+      if (shouldUseUpstash()) {
+        // Use Upstash adapter
+        const supabaseClient = createSupabaseClient();
+        const agentData = await supabaseClient.from("agents").getById(this.id);
+        agentConfig = agentData;
+      } else {
+        // Use regular Supabase
+        agentConfig = await getData("agents", { match: { id: this.id } }).then(data => data[0]);
+      }
+
+      if (!agentConfig) throw new Error("Agent config not found in database")
+
       // Persona support (again, for dynamic system prompt)
-      let persona: AgentPersona | null = null
+      let systemPromptFromPersona: string | null = null
       if (agentConfig.persona_id) {
         await personaManager.init()
-        persona = (await personaManager.getPersona(agentConfig.persona_id)) ?? null
+        const persona = await personaManager.getPersonaById(agentConfig.persona_id)
+        if (persona) {
+          systemPromptFromPersona = personaManager.generateSystemPrompt(persona)
+        }
       }
-      // Get tools for this agent from Supabase
-      const toolConfigs = await supabaseMemory.getAgentTools(this.id)
-      this.toolConfigs = toolConfigs
-      await toolRegistry.initialize()
+
+      // Get tools for this agent from Supabase or Upstash
+      let agentToolsData: any[] = [];
+      let toolsData: any[] = [];
+
+      if (shouldUseUpstash()) {
+        // Use Upstash adapter
+        const supabaseClient = createSupabaseClient();
+        agentToolsData = await supabaseClient.from("agent_tools").filter("agent_id", "eq", this.id).getAll();
+
+        // Convert agent_tools data to ToolConfig format
+        const toolIds = agentToolsData.map(item => item.tool_id);
+        if (toolIds.length > 0) {
+          toolsData = await Promise.all(toolIds.map(id => supabaseClient.from("tools").getById(id)));
+          toolsData = toolsData.filter(Boolean); // Remove null values
+        } else {
+          toolsData = [];
+        }
+      } else {
+        // Use regular Supabase
+        agentToolsData = await getData("agent_tools", { match: { agent_id: this.id } });
+
+        // Convert agent_tools data to ToolConfig format
+        const toolIds = agentToolsData.map(item => item.tool_id);
+        toolsData = await getData("tools", {
+          match: { id: toolIds.length > 0 ? toolIds[0] : '' }
+        });
+      }
+
+      this.toolConfigs = toolsData.map(tool => ({
+        id: tool.id,
+        name: tool.name,
+        description: tool.description || '',
+        parameters_schema: typeof tool.parameters_schema === 'string'
+          ? tool.parameters_schema
+          : JSON.stringify(tool.parameters_schema || {}),
+        created_at: tool.created_at,
+        updated_at: tool.updated_at
+      }))
+      initializeTools()
       const tools = await this.initializeToolsForAgent()
       // Map messages to CoreMessages
       const coreMessages = messages.map(msg => ({
@@ -151,17 +226,17 @@ export class BaseAgent {
       let result, text
       const maxSteps = 8 // Allow multi-step/parallel tool calls
 
-      // Resolve stream options, prioritizing AgentRunOptions over agentConfig
-      const temperature = options?.temperature ?? agentConfig.temperature
-      const maxTokens = options?.maxTokens ?? agentConfig.max_tokens
-      const systemPrompt = options?.systemPrompt // System prompt from options can override default
-      const onFinishCallback = options?.onFinish // AI SDK specific onFinish
+      // Resolve stream options, prioritizing AgentRunOptions over defaults
+      const temperature = validatedOptions?.temperature ?? 0.7 // Default temperature if not specified
+      const maxTokens = validatedOptions?.maxTokens ?? 4096 // Default max tokens if not specified
+      const systemPrompt = validatedOptions?.systemPrompt || systemPromptFromPersona // System prompt from options can override default
+      const onFinishCallback = validatedOptions?.onFinish // AI SDK specific onFinish
 
       // Update system message if overridden by options
       if (systemPrompt && messages.length > 0 && messages[0].role === 'system') {
         messages[0].content = systemPrompt
         // Potentially re-save if system message is dynamically changed and needs persistence
-        // await saveMessage(memoryThreadId, "system", systemPrompt); 
+        // await saveMessage(memoryThreadId, "system", systemPrompt);
       } else if (systemPrompt && messages.length === 0) {
         // If no messages yet, and system prompt is provided via options, use it
         await saveMessage(memoryThreadId, "system", systemPrompt)
@@ -177,11 +252,11 @@ export class BaseAgent {
         temperature: temperature,
         maxTokens: maxTokens,
         // Pass the onFinish from AgentRunOptions if available
-        onFinish: onFinishCallback, 
+        onFinish: onFinishCallback,
         // Pass toolChoice from AgentRunOptions if available
-        toolChoice: options?.toolChoice,
+        toolChoice: validatedOptions?.toolChoice,
         // Pass traceId from AgentRunOptions if available
-        traceId: options?.traceId,
+        traceId: validatedOptions?.traceId,
         // Note: this.hooks.onToolCall is already used by initializeToolsForAgent wrapper
         // onToolCall: this.hooks.onToolCall // This was here, but seems redundant if tools are wrapped
       }
@@ -210,7 +285,6 @@ export class BaseAgent {
       throw error
     }
   }
-
   private getSystemPrompt(): string {
     if (this.toolConfigs.length > 0) {
       const toolNames = this.toolConfigs.map(t => t.name).join(", ")

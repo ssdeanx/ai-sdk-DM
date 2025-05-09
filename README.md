@@ -424,67 +424,46 @@ The AI SDK chat implementation follows a comprehensive flow from frontend to bac
 
 ```mermaid
 graph TD
+graph TD
 
-    User["User<br>External Actor"]
-    subgraph DeanmachinesAI["DeanmachinesAI System"]
-        Migrations["Drizzle Migrations<br>Schema Management"]
-        subgraph Database["Database Abstraction"]
-            SupabaseClient["Supabase Client<br>with Drizzle ORM"]
-            LibSQLClient["LibSQL Client<br>with Drizzle ORM"]
-        end
-        subgraph CoreLibraries["Core Libraries"]
-            AgentService["Agent Service<br>TypeScript"]
-            AIIntegration["AI Integration<br>TypeScript"]
-            AgenticToolkit["Agentic Toolkit Integration<br>TypeScript"]
-            ToolSystem["Tool Definitions & Execution<br>TypeScript"]
-            MemorySystem["Memory Management<br>TypeScript"]
-            Observability["Observability System<br>TypeScript"]
-            SharedTypes["Shared Types<br>TypeScript"]
-            Utilities["Utilities<br>TypeScript"]
-        end
-        subgraph BackendAPI["Backend API"]
-            StandardRoutes["Standard API Routes<br>Next.js"]
-            CRUDRoutes["Generic CRUD Routes<br>Next.js"]
-        end
-        subgraph Frontend["Frontend Application"]
-            NextApp["Web Application<br>Next.js"]
-            Dashboard["Dashboard Pages<br>Next.js/React"]
-            UILibrary["UI Library<br>React/Shadcn UI"]
-            Components["Application Components<br>React"]
-            CustomHooks["Custom Hooks<br>React"]
-            %% Edges at this level
-            NextApp -->|Renders| Dashboard
-            Dashboard -->|Uses| UILibrary
-            Dashboard -->|Uses| Components
-            Dashboard -->|Uses| CustomHooks
-        end
-        %% Edges at this level
-        Dashboard -->|Makes API calls to| StandardRoutes
-        Dashboard -->|Makes CRUD calls to| CRUDRoutes
-        Migrations -->|Manages Schema for| SupabaseClient
-        Migrations -->|Manages Schema for| LibSQLClient
+    50263["End User<br>External Actor"]
+    subgraph 50254["External Systems"]
+        50255["External Tool APIs"]
+        50291["OpenAI API Service<br>External AI Provider"]
+        50292["Anthropic API Service<br>External AI Provider"]
+        50293["Google AI Services<br>Vertex AI, Generative AI"]
+        50294["Langfuse Platform<br>External Observability"]
+        50295["OpenTelemetry Collector<br>External Observability"]
+        50296["Supabase BaaS<br>Auth, Realtime, Storage"]
+        50297["Upstash Platform<br>QStash, Redis"]
     end
-    subgraph ExternalSystems["External Systems"]
-        Supabase["Supabase<br>PostgreSQL Database"]
-        LibSQL["LibSQL/Turso<br>SQLite Database"]
-        GoogleAI["Google AI / Gemini<br>External AI Service"]
-        OpenAI["OpenAI<br>External AI Service"]
-        Anthropic["Anthropic<br>External AI Service"]
-        Langfuse["Langfuse<br>Observability Service"]
-        WebTools["Web Tools Provider<br>External Service"]
-        CodeExecution["Code Execution Environment<br>External Service"]
+    subgraph 50256["AI SDK Platform"]
+        50257["Shared Kernel"]
+        50258["Data Persistence Layer"]
+        50259["AI SDK Core Library"]
+        50261["Backend API Service"]
+        50262["Frontend Application"]
+        %% Edges at this level (grouped by source)
+        50259["AI SDK Core Library"] -->|retrieves model config from| 50258["Data Persistence Layer"]
+        50261["Backend API Service"] -->|accesses| 50258["Data Persistence Layer"]
     end
-    %% Edges at this level
-    User -->|Uses| NextApp
-    AIIntegration -->|Calls| GoogleAI
-    AIIntegration -->|Calls| OpenAI
-    AIIntegration -->|Calls| Anthropic
-    AgenticToolkit -->|Integrates with| WebTools
-    Observability -->|Sends data to| Langfuse
-    ToolSystem -->|Executes Web Tools via| WebTools
-    ToolSystem -->|Executes Code via| CodeExecution
-    SupabaseClient -->|Connects to| Supabase
-    LibSQLClient -->|Connects to| LibSQL
+    %% Edges at this level (grouped by source)
+    50259["AI SDK Core Library"] -->|connects to| 50255["External Tool APIs"]
+    50259["AI SDK Core Library"] -->|connects to| 50291["OpenAI API Service<br>External AI Provider"]
+    50259["AI SDK Core Library"] -->|connects to| 50292["Anthropic API Service<br>External AI Provider"]
+    50259["AI SDK Core Library"] -->|connects to| 50293["Google AI Services<br>Vertex AI, Generative AI"]
+    50259["AI SDK Core Library"] -->|sends traces/logs to| 50294["Langfuse Platform<br>External Observability"]
+    50259["AI SDK Core Library"] -->|sends traces/metrics to| 50295["OpenTelemetry Collector<br>External Observability"]
+    50259["AI SDK Core Library"] -->|uses for queuing| 50297["Upstash Platform<br>QStash, Redis"]
+    50261["Backend API Service"] -->|handles auth via| 50296["Supabase BaaS<br>Auth, Realtime, Storage"]
+    50263["End User<br>External Actor"] -->|interacts with| 50262["Frontend Application"]
+    50262["Frontend Application"] -->|fetches data via| 50296["Supabase BaaS<br>Auth, Realtime, Storage"]
+    50262["Frontend Application"] -->|sends messages to| 50261["Backend API Service"]
+    50262["Frontend Application"] -->|sends messages to| 50259["AI SDK Core Library"]
+    50261["Backend API Service"] -->|sends messages to| 50259["AI SDK Core Library"]
+    50261["Backend API Service"] -->|sends messages to| 50258["Data Persistence Layer"]
+    50258["Data Persistence Layer"] -->|persists| 50259["AI SDK Core Library"]
+    50258["Data Persistence Layer"] -->|persists| 50261["Backend API Service"]
 ```
 
 ---

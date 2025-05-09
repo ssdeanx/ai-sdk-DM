@@ -3,6 +3,10 @@
  *
  * This module provides a unified interface for working with the AI SDK,
  * integrating with various AI providers, tools, and tracing systems.
+ * It includes support for streaming, generation, and tool execution with
+ * comprehensive error handling and graceful fallbacks.
+ *
+ * @module ai-sdk-integration
  */
 
 import {
@@ -11,7 +15,8 @@ import {
   wrapLanguageModel,
   type LanguageModelV1Middleware,
   type StreamTextResult,
-  type GenerateTextResult
+  type GenerateTextResult,
+  type AIResponse
 } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -28,30 +33,89 @@ import { createTrace, logEvent } from "./langfuse-integration";
 import { getAllBuiltInTools, loadCustomTools } from "./tools";
 import { agenticTools } from "./tools/agentic";
 import { personaManager } from "./agents/personas/persona-manager";
-// Import model configs with fallbacks
-let getModelConfig: (modelId: string) => { api_key?: string; base_url?: string } | undefined;
-let getOpenAIConfig: (modelId: string) => { api_key?: string; base_url?: string } | undefined;
-let getAnthropicConfig: (modelId: string) => { api_key?: string; base_url?: string } | undefined;
+import { modelRegistry, ModelSettings } from "./models/model-registry";
+import { getModelById, getModelByModelId } from "./models/model-service";
+import { z } from "zod";
 
-try {
-  getModelConfig = require("./google-ai").getModelConfig;
-} catch (e) {
-  getModelConfig = () => ({ api_key: process.env.GOOGLE_API_KEY });
-  console.warn("Failed to import getModelConfig from ./google-ai, using fallback");
+// --- Zod Schemas ---
+
+/**
+ * Schema for AI SDK integration options
+ */
+export const AISDKOptionsSchema = z.object({
+  provider: z.enum(['google', 'openai', 'anthropic']),
+  modelId: z.string().min(1),
+  messages: z.array(z.any()),
+  temperature: z.number().min(0).max(2).optional().default(0.7),
+  maxTokens: z.number().int().positive().optional(),
+  tools: z.record(z.any()).optional().default({}),
+  apiKey: z.string().optional(),
+  baseURL: z.string().optional(),
+  traceName: z.string().optional(),
+  userId: z.string().optional(),
+  metadata: z.record(z.any()).optional().default({}),
+  middleware: z.union([
+    z.custom<LanguageModelV1Middleware>(),
+    z.array(z.custom<LanguageModelV1Middleware>())
+  ]).optional(),
+  useSearchGrounding: z.boolean().optional(),
+  dynamicRetrievalConfig: z.object({
+    mode: z.enum(['MODE_AUTOMATIC', 'MODE_DYNAMIC', 'MODE_MANUAL']),
+    dynamicThreshold: z.number().optional()
+  }).optional(),
+  responseModalities: z.array(z.enum(['TEXT', 'IMAGE'])).optional(),
+  cachedContent: z.string().optional()
+});
+
+export type AISDKOptions = z.infer<typeof AISDKOptionsSchema>;
+
+// --- Error Handling ---
+
+/**
+ * Error class for AI SDK integration operations
+ */
+export class AISDKIntegrationError extends Error {
+  /**
+   * Creates a new AISDKIntegrationError
+   *
+   * @param message - Error message
+   * @param cause - Optional cause of the error
+   */
+  constructor(message: string, public cause?: any) {
+    super(message);
+    this.name = "AISDKIntegrationError";
+    Object.setPrototypeOf(this, AISDKIntegrationError.prototype);
+  }
 }
 
-try {
-  getOpenAIConfig = require("./openai-ai").getModelConfig;
-} catch (e) {
-  getOpenAIConfig = () => ({ api_key: process.env.OPENAI_API_KEY });
-  console.warn("Failed to import getOpenAIConfig from ./openai-ai, using fallback");
-}
+// --- Helper Functions ---
 
-try {
-  getAnthropicConfig = require("./anthropic-ai").getModelConfig;
-} catch (e) {
-  getAnthropicConfig = () => ({ api_key: process.env.ANTHROPIC_API_KEY });
-  console.warn("Failed to import getAnthropicConfig from ./anthropic-ai, using fallback");
+/**
+ * Gets model configuration with fallback
+ *
+ * @param modelId - Model ID
+ * @returns Model configuration or undefined
+ */
+async function getModelConfiguration(modelId: string): Promise<ModelSettings | undefined> {
+  try {
+    // Check registry first
+    let model = modelRegistry.getModel(modelId);
+
+    if (!model) {
+      // Try to fetch from database
+      model = await getModelById(modelId);
+
+      if (!model) {
+        // Try to fetch by model_id
+        model = await getModelByModelId(modelId);
+      }
+    }
+
+    return model;
+  } catch (error) {
+    console.warn(`Error getting model configuration for ${modelId}:`, error);
+    return undefined;
+  }
 }
 
 /**

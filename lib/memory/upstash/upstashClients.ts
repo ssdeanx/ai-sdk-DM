@@ -1,8 +1,40 @@
 import { Redis } from '@upstash/redis';
 import { Index, type IndexConfig as UpstashVectorIndexConfig } from "@upstash/vector";
+import { z } from 'zod';
 
 // Re-export IndexConfig for convenience if consumers need to specify it.
 export type IndexConfig = UpstashVectorIndexConfig;
+
+// --- Zod Schemas ---
+
+/**
+ * Schema for Redis client configuration
+ */
+export const RedisConfigSchema = z.object({
+  url: z.string().url(),
+  token: z.string().min(1),
+});
+
+/**
+ * Schema for Vector client configuration
+ */
+export const VectorConfigSchema = z.object({
+  url: z.string().url(),
+  token: z.string().min(1),
+  dimensions: z.number().positive().optional(),
+  similarity: z.enum(['cosine', 'euclidean', 'dot']).optional(),
+  indexName: z.string().optional(),
+});
+
+/**
+ * Schema for environment variables
+ */
+export const EnvVarsSchema = z.object({
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+  UPSTASH_VECTOR_REST_URL: z.string().url().optional(),
+  UPSTASH_VECTOR_REST_TOKEN: z.string().min(1).optional(),
+});
 
 let redisClientInstance: Redis | null = null;
 let vectorClientInstance: Index | null = null;
@@ -20,6 +52,27 @@ export class UpstashClientError extends Error {
 }
 
 /**
+ * Validates environment variables using Zod schema
+ * 
+ * @returns Validated environment variables
+ * @throws UpstashClientError if validation fails
+ */
+function validateEnvVars() {
+  try {
+    const result = EnvVarsSchema.safeParse(process.env);
+    if (!result.success) {
+      throw new UpstashClientError(`Environment variables validation failed: ${result.error.message}`);
+    }
+    return result.data;
+  } catch (error) {
+    if (error instanceof UpstashClientError) {
+      throw error;
+    }
+    throw new UpstashClientError('Failed to validate environment variables', error);
+  }
+}
+
+/**
  * Initializes and returns a singleton Upstash Redis client instance.
  * Reads configuration from environment variables:
  * - UPSTASH_REDIS_REST_URL
@@ -31,14 +84,22 @@ export const getRedisClient = (): Redis => {
     return redisClientInstance;
   }
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Validate environment variables
+  const env = validateEnvVars();
+  const url = env.UPSTASH_REDIS_REST_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
     throw new UpstashClientError("Upstash Redis credentials not found. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.");
   }
 
   try {
+    // Validate Redis configuration
+    const configValidation = RedisConfigSchema.safeParse({ url, token });
+    if (!configValidation.success) {
+      throw new UpstashClientError(`Invalid Redis configuration: ${configValidation.error.message}`);
+    }
+
     redisClientInstance = new Redis({
       url,
       token,
@@ -63,14 +124,28 @@ export const getRedisClient = (): Redis => {
 export const getVectorClient = (config?: IndexConfig): Index => {
   // If a config is provided, or no instance exists, create/re-create one.
   if (config || !vectorClientInstance) {
-    const url = process.env.UPSTASH_VECTOR_REST_URL;
-    const token = process.env.UPSTASH_VECTOR_REST_TOKEN;
+    // Validate environment variables
+    const env = validateEnvVars();
+    const url = env.UPSTASH_VECTOR_REST_URL;
+    const token = env.UPSTASH_VECTOR_REST_TOKEN;
 
     if (!url || !token) {
       throw new UpstashClientError("Upstash Vector credentials not found. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.");
     }
 
     try {
+      // Validate Vector configuration
+      const configToValidate = {
+        url,
+        token,
+        ...config
+      };
+      
+      const configValidation = VectorConfigSchema.safeParse(configToValidate);
+      if (!configValidation.success) {
+        throw new UpstashClientError(`Invalid Vector configuration: ${configValidation.error.message}`);
+      }
+
       // Create a new instance if config is provided or none exists
       const newInstance = new Index({
         url,
@@ -143,3 +218,39 @@ export const checkUpstashAvailability = async (): Promise<{
 
   return { redisAvailable, vectorAvailable, redisError, vectorError, overallStatusMessage };
 };
+
+/**
+ * Validates a Redis configuration object using Zod schema
+ * 
+ * @param config - Redis configuration to validate
+ * @returns Validated Redis configuration
+ * @throws UpstashClientError if validation fails
+ */
+export function validateRedisConfig(config: unknown): z.infer<typeof RedisConfigSchema> {
+  try {
+    return RedisConfigSchema.parse(config);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new UpstashClientError(`Invalid Redis configuration: ${error.message}`, error);
+    }
+    throw new UpstashClientError('Failed to validate Redis configuration', error);
+  }
+}
+
+/**
+ * Validates a Vector configuration object using Zod schema
+ * 
+ * @param config - Vector configuration to validate
+ * @returns Validated Vector configuration
+ * @throws UpstashClientError if validation fails
+ */
+export function validateVectorConfig(config: unknown): z.infer<typeof VectorConfigSchema> {
+  try {
+    return VectorConfigSchema.parse(config);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new UpstashClientError(`Invalid Vector configuration: ${error.message}`, error);
+    }
+    throw new UpstashClientError('Failed to validate Vector configuration', error);
+  }
+}

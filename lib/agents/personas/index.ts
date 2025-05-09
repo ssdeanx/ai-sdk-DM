@@ -43,10 +43,8 @@ import personaLibraryDefault, {
 import {
   personaManager as personaManagerInstance,
   PersonaFileFormat as PersonaManagerFileFormat, // Renamed to avoid conflict if any
-  PersonaFileContent as PersonaManagerFileContent, // Renamed to avoid conflict if any
   // PersonaManager, // Export class if needed for extension
 } from './persona-manager';
-
 // Persona Score Manager
 import {
   personaScoreManager as personaScoreManagerInstance,
@@ -72,7 +70,7 @@ import personaLibraryUtilsDefault, {
 } from './persona-library-utils';
 
 // Examples
-import personaLibraryExampleDefault, {
+import {
   initializeLibrary as exampleInitializeLibrary,
   listAllPersonas as exampleListAllPersonas,
   getTopPerformingPersonas as exampleGetTopPerformingPersonas,
@@ -81,14 +79,14 @@ import personaLibraryExampleDefault, {
   recordFeedbackForPersona as exampleRecordFeedbackForPersona,
 } from './examples/persona-library-example';
 
-import personaScoreExampleDefault, {
-  selectPersonaForTask as exampleSelectPersonaForTask,
-  usePersonaForTaskWithScoring as exampleUsePersonaForTaskWithScoring,
-  recordFeedbackForPersonaWithScoring as exampleRecordFeedbackForPersonaWithScoring,
-  getTopPerformingPersonasWithScoring as exampleGetTopPerformingPersonasWithScoring,
+
+// Persona Score Example
+import {
+  usePersonaForTask as exampleSelectPersonaForTask,
+  recordFeedbackForPersona as exampleRecordFeedbackForPersonaWithScoring,
+  getTopPerformingPersonas as exampleGetTopPerformingPersonasWithScoring,
   getMostUsedPersonas as exampleGetMostUsedPersonas,
 } from './examples/persona-score-example';
-
 
 // --- Re-export all imported items ---
 
@@ -104,13 +102,13 @@ export {
   PersonaScoreSchema,
   ScoreUpdateDataSchema,
   GeminiModelIdSchema,
-  PersonaDefinition,
-  MicroPersonaDefinition,
-  SafetySetting,
-  ExampleDialogue,
-  PersonaScore,
-  ScoreUpdateData,
-  GeminiModelId,
+  type PersonaDefinition,
+  type MicroPersonaDefinition,
+  type SafetySetting,
+  type ExampleDialogue,
+  type PersonaScore,
+  type ScoreUpdateData,
+  type GeminiModelId,
   validatePersonaDefinition,
   validateMicroPersonaDefinition,
   composePersona,
@@ -123,10 +121,8 @@ export {
 export {
   personaManagerInstance as personaManager,
   PersonaManagerFileFormat,
-  PersonaManagerFileContent,
   // PersonaManager, // Export class if needed
 };
-
 // Persona Score Manager Exports
 export {
   personaScoreManagerInstance as personaScoreManager,
@@ -155,7 +151,7 @@ export {
 
 // Example Exports (if intended for library consumers)
 export {
-  personaLibraryExampleDefault as personaLibraryExample,
+  personaLibraryDefault as personaLibraryExample,
   exampleInitializeLibrary as initializeLibrary,
   exampleListAllPersonas as listAllPersonas,
   exampleGetTopPerformingPersonas as getTopPerformingPersonas,
@@ -164,9 +160,9 @@ export {
   exampleRecordFeedbackForPersona as recordFeedbackForPersona,
 };
 export {
-  personaScoreExampleDefault as personaScoreExample,
+  personaLibraryDefault as personaScoreExample,
   exampleSelectPersonaForTask as selectPersonaForTask,
-  exampleUsePersonaForTaskWithScoring as usePersonaForTaskWithScoring,
+  exampleUsePersonaForTask as usePersonaForTaskWithScoring,
   exampleRecordFeedbackForPersonaWithScoring as recordFeedbackForPersonaWithScoring,
   exampleGetTopPerformingPersonasWithScoring as getTopPerformingPersonasWithScoring,
   exampleGetMostUsedPersonas as getMostUsedPersonas,
@@ -183,8 +179,8 @@ export default {
   // Utilities
   personaLibraryUtils: personaLibraryUtilsDefault,
   // Examples
-  personaLibraryExample: personaLibraryExampleDefault,
-  personaScoreExample: personaScoreExampleDefault,
+  personaLibraryExample: personaLibraryDefault,
+  personaScoreExample: personaLibraryDefault,
   // Key Schemas & Types (optional, for convenience if users prefer default import)
   // PersonaDefinitionSchema,
   // PersonaScoreSchema,

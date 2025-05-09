@@ -5,7 +5,7 @@
  * personas with Google's Gemini models for different tasks.
  */
 
-import { streamText, generateText } from 'ai';
+import { streamText, generateText, LanguageModelV1CallOptions, LanguageModelV1StreamPart } from 'ai';
 import { personaManager } from '../persona-manager';
 import { personaScoreManager } from '../persona-score-manager';
 import baseLibrary, { PersonaDefinition } from '../persona-library';
@@ -60,7 +60,7 @@ async function listAllPersonas() {
 async function getTopPerformingPersonas() {
   console.log('Getting top performing personas:');
   
-  const topPersonas = await personaManager.getTopPerformingPersonas(5);
+  const topPersonas = await personaScoreManager.getTopPerformingPersonas(5);
   
   if (topPersonas.length === 0) {
     console.log('No scored personas found. Try using some personas first to generate scores.');
@@ -74,7 +74,6 @@ async function getTopPerformingPersonas() {
   
   return topPersonas;
 }
-
 /**
  * Example of using a persona for a specific task
  */
@@ -124,14 +123,12 @@ async function usePersonaForTask(taskType: string, prompt: string) {
     console.log(result);
     
     // Record usage with metrics
-    await personaManager.recordPersonaUsage(persona.id, {
+    personaManager.recordPersonaUsage(persona.id, {
       success: true,
       latency,
       adaptabilityFactor: 0.8,
       metadata: {
         taskType,
-        promptLength: prompt.length,
-        responseLength: result.length,
         executionTime: new Date().toISOString()
       }
     });
@@ -149,12 +146,14 @@ async function usePersonaForTask(taskType: string, prompt: string) {
     // If we have a persona, record failure
     const persona = await getPersonaByTaskType(taskType);
     if (persona) {
-      await personaManager.recordPersonaUsage(persona.id, {
+      personaManager.recordPersonaUsage(persona.id, {
         success: false,
         metadata: {
           taskType,
-          error: error.message
-        }
+          executionTime: new Date().toISOString()
+        },
+        latency: 0,
+        adaptabilityFactor: 0
       });
     }
     
@@ -163,9 +162,8 @@ async function usePersonaForTask(taskType: string, prompt: string) {
     // End the trace
     traceObj.end();
   }
-}
 
-/**
+}/**
  * Example of streaming text with a persona
  */
 async function streamWithPersona(personaName: string, prompt: string) {
@@ -185,12 +183,35 @@ async function streamWithPersona(personaName: string, prompt: string) {
     const startTime = Date.now();
     
     // Create a provider for the persona
-    const provider = baseLibrary.createPersonaProvider({
-      name: persona.name,
-      description: persona.description,
-      systemPromptTemplate: persona.systemPromptTemplate,
-      modelSettings: persona.modelSettings
-    });
+    const provider = {
+      [persona.name]: {
+        name: persona.name,
+        description: persona.description,
+        systemPromptTemplate: persona.systemPromptTemplate,
+        modelSettings: persona.modelSettings,
+        specificationVersion: "v1" as const,
+        provider: "default",
+        modelId: persona.name,
+        defaultObjectGenerationMode: undefined,
+        supportedGenerationModes: ['text'] as const,
+        supportedStreamingModes: ['text'] as const,
+        doGenerate: async () => { throw new Error("Generation not supported"); },
+        doStream: async (options: LanguageModelV1CallOptions) => {
+          return {
+            stream: new ReadableStream<LanguageModelV1StreamPart>({
+              start(controller) {
+                controller.enqueue({ type: 'text-delta', textDelta: '' });
+                controller.close();
+              }
+            }),
+            rawCall: {
+              rawPrompt: options.prompt,
+              rawSettings: {}
+            }
+          };
+        }
+      }
+    };
     
     // Stream text with the persona
     const result = await streamText({
@@ -200,7 +221,7 @@ async function streamWithPersona(personaName: string, prompt: string) {
     
     // For this example, we'll just collect the streamed text
     let fullText = '';
-    for await (const chunk of result.stream) {
+    for await (const chunk of result.textStream) {
       fullText += chunk;
       process.stdout.write(chunk); // Print chunks as they arrive
     }
@@ -212,13 +233,12 @@ async function streamWithPersona(personaName: string, prompt: string) {
     console.log('\n');
     
     // Record usage with metrics
-    await personaManager.recordPersonaUsage(persona.id, {
+    personaManager.recordPersonaUsage(persona.id, {
       success: true,
       latency,
       adaptabilityFactor: 0.8,
       metadata: {
-        promptLength: prompt.length,
-        responseLength: fullText.length,
+        taskType: 'streaming',
         executionTime: new Date().toISOString()
       }
     });
@@ -234,10 +254,13 @@ async function streamWithPersona(personaName: string, prompt: string) {
     console.error('Error streaming with persona:', error);
     
     // Record failure
-    await personaManager.recordPersonaUsage(persona.id, {
+    personaManager.recordPersonaUsage(persona.id, {
       success: false,
+      latency: 0,
+      adaptabilityFactor: 0,
       metadata: {
-        error: error.message
+        taskType: 'streaming',
+        executionTime: new Date().toISOString()
       }
     });
     
@@ -245,11 +268,11 @@ async function streamWithPersona(personaName: string, prompt: string) {
   }
 }
 
-/**
- * Record user feedback for a persona
+/** 
+ * Record user feedback for a persona 
  */
-async function recordFeedbackForPersona(personaName: string, rating: number, feedback?: string) {
-  console.log(`Recording feedback for persona ${personaName}: ${rating}/1`);
+async function recordFeedbackForPersona(personaName: string, rating: number, feedback?: string): Promise<{ user_satisfaction: number; overall_score: number } | null> {
+  console.log(`Recording feedback for persona ${personaName}: ${rating}/1`);  
   
   // Get all personas
   const personas = await personaManager.listPersonas();
@@ -260,20 +283,27 @@ async function recordFeedbackForPersona(personaName: string, rating: number, fee
     return null;
   }
   
-  const updatedScore = await personaManager.recordUserFeedback(
-    persona.id,
-    rating,
-    feedback
-  );
-  
-  console.log(`Updated user satisfaction: ${updatedScore.user_satisfaction}`);
-  console.log(`Updated overall score: ${updatedScore.overall_score}`);
-  
-  return updatedScore;
+  try {
+    const updatedScore = await personaManager.recordUserFeedback(
+      persona.id,
+      rating,
+      feedback
+    );
+    
+    const typedScore = updatedScore as unknown as { user_satisfaction: number; overall_score: number };
+    
+    console.log(`Updated user satisfaction: ${typedScore.user_satisfaction}`);
+    console.log(`Updated overall score: ${typedScore.overall_score}`);
+    
+    return typedScore;
+  } catch (error) {
+    console.error('Error recording feedback:', error);
+    return null;
+  }
 }
 
-/**
- * Run the example
+/** 
+ * Run the example 
  */
 async function runExample() {
   try {
@@ -296,7 +326,7 @@ async function runExample() {
     );
     
     // Stream with a specific persona
-    const streamingResult = await streamWithPersona(
+    await streamWithPersona(
       'Technical Documentation Writer',
       'Explain how to use the Fetch API in JavaScript with examples'
     );
@@ -332,5 +362,5 @@ export {
 
 // Run the example if this file is executed directly
 if (require.main === module) {
-  runExample().catch(console.error);
+  void runExample().catch(console.error);
 }

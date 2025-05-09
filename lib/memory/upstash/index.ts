@@ -10,8 +10,12 @@ export {
   getVectorClient,
   checkUpstashAvailability,
   UpstashClientError,
-  type RedisClient, // Re-exporting the type alias if needed by consumers
-  type VectorClient // Re-exporting the type alias if needed by consumers
+  validateRedisConfig,
+  validateVectorConfig,
+  RedisConfigSchema,
+  VectorConfigSchema,
+  EnvVarsSchema,
+  type IndexConfig
 } from './upstashClients';
 
 // From redis-store.ts
@@ -34,55 +38,110 @@ export {
 
 // From vector-store.ts
 export {
-  upsertVectors,
-  searchVectors,
-  fetchVectorsById,
-  deleteVectorsById,
+  upsertEmbeddings,
+  searchSimilarEmbeddings,
+  getEmbeddingsByIds,
+  deleteEmbeddingsByIds,
   resetVectorIndex,
   getVectorIndexInfo,
   VectorStoreError,
-  type VectorDocument,
-  type VectorMetadata,
-  type VectorSearchOptions,
-  type VectorSearchResult
+  type EmbeddingMetadata,
+  type EmbeddingVector,
+  type SearchEmbeddingsOptions,
+  type EmbeddingSearchResult
 } from './vector-store';
 
 // From upstash-logger.ts
 export {
-  logToUpstash,
-  getUpstashLogs,
+  logInfo,
+  logWarn,
+  logError,
+  logDebug,
+  getLogs,
+  deleteLogs,
+  clearLogs,
   LoggerError,
-  type LogEntry,
-  type LogQueryOptions
+  LogLevelSchema,
+  LogEntrySchema,
+  type LogLevel,
+  type LogEntry
 } from './upstash-logger';
 
-// General type for the combined Upstash Memory Store (if we create a class wrapper later)
-// For now, we export individual functions.
+// From agent-state-store.ts
+export {
+  saveAgentState,
+  loadAgentState,
+  listThreadAgentStates,
+  deleteAgentState,
+  deleteThreadAgentStates,
+  createAgentState,
+  getAllAgentStates,
+  AgentStateStoreError,
+  AgentStateSchema,
+  StoredAgentStateSchema
+} from './agent-state-store';
 
-// Example of a combined interface if we were to create a unified class later:
-/*
-export interface IUpstashMemory {
-  // Thread operations
-  createThread: typeof createRedisThread;
-  getThreadById: typeof getRedisThreadById;
-  // ... other thread ops
+// From memory-processor.ts
+export {
+  MemoryProcessor,
+  MemoryProcessorError
+} from './memory-processor';
 
-  // Message operations
-  createMessage: typeof createRedisMessage;
-  // ... other message ops
+// From upstashTypes.ts
+export {
+  RedisClientError,
+  VectorStoreError as VectorClientError,
+  VectorMetadataSchema,
+  VectorDocumentSchema,
+  type VectorMetadata as VectorClientMetadata,
+  type VectorDocument as VectorClientDocument,
+  type RedisClientConfig,
+  type VectorStoreConfig,
+  type VectorQueryOptions,
+  type VectorQueryResult,
+  type VectorFetchResult,
+  type RedisPipeline,
+  type VectorIndexConfig,
+  type RedisType,
+  type IndexType,
+  type VectorType,
+  type ZodType
+} from './upstashTypes';
 
-  // Vector operations
-  upsertVectors: typeof upsertVectors;
-  // ... other vector ops
+// From stream-processor.ts
+export {
+  streamProcessor,
+  StreamProcessor,
+  StreamProcessorError,
+  type StreamProcessorOptions,
+  type RedisStreamOptions,
+  type VectorStreamOptions
+} from './stream-processor';
 
-  // Logging
-  log: typeof logToUpstash;
-  getLogs: typeof getUpstashLogs;
+// From supabase-adapter.ts
+export {
+  getData,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+  vectorSearch,
+  upsertVectors as upsertSupabaseVectors,
+  UpstashAdapterError,
+  VectorDataSchema,
+  VectorSearchOptionsSchema,
+  type TableRow,
+  type FilterOptions,
+  type OrderOptions,
+  type QueryOptions,
+  type VectorSearchOptions,
+  type VectorData
+} from './supabase-adapter';
 
-  // Availability
-  checkAvailability: typeof checkUpstashAvailability;
-}
-*/
-
-// It's generally better to export the functions directly if a class wrapper isn't strictly necessary
-// for state management or a more complex API contract.
+// From supabase-adapter-factory.ts
+export {
+  createSupabaseClient,
+  type SupabaseClient,
+  type TableClient,
+  type VectorClient
+} from './supabase-adapter-factory';
