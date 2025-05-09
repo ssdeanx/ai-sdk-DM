@@ -126,11 +126,11 @@ export function useSupabaseCrud<
     setLoading(true)
     setError(null)
     try {
-      const { data, error: pgErr } = await withRetry("fetch", async () => {
-        let q = supabase.from(table).select("*") as any
+      const { data, error: pgErr } = await withRetry("fetch" as const, async () => {
+        let q = supabase.from(table).select("*")
         if (filters) {
           for (const [col, val] of Object.entries(filters)) {
-            q = q.eq(col, val)
+            q = q.eq(col as any, val as any)
           }
         }
         if (order) {
@@ -147,7 +147,7 @@ export function useSupabaseCrud<
       if (pgErr) throw pgErr
       const rows = responseListSchema
         ? validate(responseListSchema, data)
-        : (data as Res[])
+        : (data as unknown as Res[])
 
       setItems(rows)
       onSuccess?.("fetch", rows)
@@ -198,11 +198,11 @@ export function useSupabaseCrud<
         throw zErr
       }
 
-      return withRetry("create", async () => {
+      return withRetry("create" as const, async () => {
         try {
           const { data: result, error: pgErr } = await supabase
-            .from(table)
-            .insert(validated)
+            .from<T>(table)
+            .insert<InsertOf<T>>([validated as InsertOf<T>])
             .select("*")
             .single()
           
@@ -262,11 +262,15 @@ export function useSupabaseCrud<
       }
 
       try {
-        const result = await withRetry("update", async () => {
+        const result = await withRetry("update" as const, async () => {
+          const updateData = { ...validated };
+          if ('id' in updateData) {
+            delete updateData.id;
+          }
           return await supabase
             .from(table)
-            .update(validated)
-            .eq("id", id)
+            .update(updateData as any)
+            .eq("id", id as any)
             .select("*")
             .single()
         })
@@ -310,11 +314,14 @@ export function useSupabaseCrud<
       setLoading(true)
       setError(null)
       try {
-        const result = await withRetry("delete", async () => {
-          const response = await supabase.from(table).delete().eq("id", id);
-          return response;
-        });
-        
+        const result = await withRetry("delete" as const, async () => {
+          return await supabase
+            .from(table)
+            .delete()
+            .eq("id", id as any)
+            .select("*")
+            .single();
+        });        
         if (result.error) throw result.error;
 
         setItems((cur) => cur.filter((r) => 'id' in r && r.id !== id));
@@ -357,8 +364,11 @@ export function useSupabaseCrud<
       }
 
       try {
-        const result = await withRetry("batch", async () => {
-          return await supabase.from(table).insert(validatedArr as any).select("*")
+        const result = await withRetry("batch" as const, async () => {
+          return await supabase
+            .from<T>(table)
+            .insert<InsertOf<T>>(validatedArr as InsertOf<T>[])
+            .select("*")
         })
         
         if (result.error) throw result.error
@@ -366,7 +376,7 @@ export function useSupabaseCrud<
 
         const rows = responseListSchema
           ? validate(responseListSchema, result.data)
-          : (result.data as Res[])
+          : (result.data as unknown as Res[])
 
         setItems((cur) => [...rows, ...cur])
         onSuccess?.("batch", rows)
@@ -387,8 +397,7 @@ export function useSupabaseCrud<
       } finally {
         setLoading(false)
       }
-    },
-    [
+    },    [
       supabase,
       table,
       requestSchema,

@@ -9,8 +9,8 @@ import { NextResponse } from "next/server";
  * @remarks
  * Used in the AI SDK chat route to manage conversation state and persistence.
  */
-import { streamText, CoreMessage, createDataStreamResponse, generateId, type LanguageModelV1Middleware } from 'ai';
-import { streamWithAISDK, getAllAISDKTools, generateWithAISDK } from "@/lib/ai-sdk-integration";
+import { streamText, CoreMessage, createDataStreamResponse, generateId, type LanguageModelV1Middleware, type Tool } from 'ai';
+import { streamWithAISDK, generateWithAISDK } from "@/lib/ai-sdk-integration";
 import { memory } from "@/lib/memory/factory";
 import { createMemoryThread, saveMessage } from "@/lib/memory/memory";
 import { v4 as uuidv4 } from "uuid";
@@ -156,40 +156,39 @@ export async function POST(request: Request) {
       });
     }
 
+    // Ensure tool registry is initialized
+    await toolRegistry.initialize();
+
     // Format tools for AI SDK
-    let toolConfigs = {};
+    let toolConfigs: Record<string, Tool<any, any>> = {};
 
-    // Load built-in tools if needed
-    if (tools && tools.length > 0) {
-      // Get all available tools
-      const allTools: Record<string, any> = await getAllAISDKTools({
-        includeBuiltIn: true,
-        includeCustom: true,
-        includeAgentic: true
-      });
-
-      // Add requested tools to the config
-      toolConfigs = tools.reduce((acc: Record<string, any>, tool: any) => {
-        if (typeof tool === 'string') {
-          // If tool is a string, look it up in allTools
-          if (allTools[tool]) {
-            acc[tool] = allTools[tool];
+    // Process tools requested in the body
+    if (body.tools && Array.isArray(body.tools) && body.tools.length > 0) {
+      for (const toolRequest of body.tools) {
+        if (typeof toolRequest === 'string') {
+          // If toolRequest is a string, it's a tool name. Fetch it from the registry.
+          const toolInstance = await toolRegistry.getTool(toolRequest);
+          if (toolInstance) {
+            toolConfigs[toolRequest] = toolInstance;
+          } else {
+            console.warn(`[Chat API] Tool "${toolRequest}" requested by client but not found in registry.`);
+            // Optionally, handle this case more strictly, e.g., by returning an error
+            // or by not proceeding if a critical tool is missing.
           }
-        } else if (tool.type === 'function') {
-          // If tool is a function definition
-          acc[tool.function.name] = {
-            description: tool.function.description,
-            parameters: tool.function.parameters
-          };
-        } else if (typeof tool === 'object' && tool.name) {
-          // Handle tool objects with name property
-          acc[tool.name] = {
-            description: tool.description || '',
-            parameters: tool.parameters || {}
-          };
+        } else if (toolRequest && typeof toolRequest === 'object') {
+          // If toolRequest is an object, it's an ad-hoc tool definition.
+          // For now, these are logged and not made executable on the server-side,
+          // as they lack a server-side execute method from the registry.
+          // The AI SDK might use these definitions for LLM awareness if passed,
+          // but that's a separate concern from backend execution.
+          const toolName = toolRequest.function?.name || toolRequest.name;
+          if (toolName) {
+            console.warn(`[Chat API] Received ad-hoc tool definition for "${toolName}". These are not automatically made executable by the backend. Only named, registered tools are used for server-side execution.`);
+          } else {
+            console.warn('[Chat API] Received an invalid or unnamed ad-hoc tool definition in the request body.', toolRequest);
+          }
         }
-        return acc;
-      }, {});
+      }
     }
 
     // Get model settings
@@ -387,45 +386,17 @@ export async function POST(request: Request) {
           });
 
           try {
-            // Ensure tool registry is initialized
+            // Tool registry is already initialized earlier in the POST handler.
+            // We just confirm if tools were actually configured to be used for this call.
             if (Object.keys(toolConfigs).length > 0) {
-              try {
-                await toolRegistry.initialize();
-                dataStream.writeData({
-                  status: 'tools_initialized',
-                  toolCount: Object.keys(toolConfigs).length,
-                  timestamp: new Date().toISOString()
-                });
-              } catch (toolError) {
-                console.error('Error initializing tool registry:', toolError);
-                dataStream.writeData({
-                  status: 'tools_initialization_error',
-                  error: toolError instanceof Error ? toolError.message : String(toolError),
-                  timestamp: new Date().toISOString()
-                });
-              }
-            }
-
-            // Add middleware information to data stream
-            if (languageModelMiddleware.length > 0) {
               dataStream.writeData({
-                status: 'middleware_applied',
-                middlewareCount: languageModelMiddleware.length,
-                middlewareTypes: 'language_model_middleware',
+                status: 'tools_configured_for_stream', // Renamed for clarity
+                toolCount: Object.keys(toolConfigs).length,
                 timestamp: new Date().toISOString()
               });
             }
 
-            if (requestResponseMiddleware.length > 0) {
-              dataStream.writeData({
-                status: 'request_response_middleware_applied',
-                middlewareCount: requestResponseMiddleware.length,
-                timestamp: new Date().toISOString()
-              });
-            }
-
-            // Stream with AI SDK
-            const result = await streamWithAISDK(streamOptions);
+            const result = await streamWithAISDK(streamOptions, dataStream);
 
             // Merge the stream into the data stream
             result.mergeIntoDataStream(dataStream);

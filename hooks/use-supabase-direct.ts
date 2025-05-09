@@ -703,7 +703,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       }
 
       const { data, error } = await supabase
-        .from(tableName)
+        .from(tableName as keyof Database['public']['Tables'])
         .select('*')
         .eq('id', id as any)
         .single()
@@ -743,7 +743,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       const transformedData = transformBeforeSave ? transformBeforeSave(data) : data
 
       const { data: createdData, error } = await supabase
-        .from(tableName)
+        .from(tableName as keyof Database['public']['Tables'])
         .insert(transformedData)
         .select()
         .single()
@@ -787,7 +787,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         : data
 
       const { data: updatedData, error } = await supabase
-        .from(tableName)
+        .from(tableName as keyof Database['public']['Tables'])
         .update(transformedData)
         .eq('id', id as any)
         .select()
@@ -831,7 +831,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
 
     try {
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as keyof Database['public']['Tables'])
         .delete()
         .eq('id', id as any)
 
@@ -872,7 +872,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         : dataArray
 
       const { data: createdData, error } = await supabase
-        .from(tableName)
+        .from(tableName as keyof Database['public']['Tables'])
         .insert(transformedData)
         .select()
 
@@ -924,7 +924,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
             : data
 
           const { data: updatedData, error } = await supabase
-            .from(tableName)
+            .from(tableName as keyof Database['public']['Tables'])
             .update(transformedData)
             .eq('id', id as any)
             .select()
@@ -974,7 +974,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         const batchIds = ids.slice(i, i + batchSize)
 
         const { error } = await supabase
-          .from(tableName)
+          .from(tableName as keyof Database['public']['Tables'])
           .delete()
           .in('id', batchIds as any)
 
@@ -1048,7 +1048,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     setError(null);
 
     try {
-      let query = supabase.from(tableName).select('*', { count: 'exact', head: true });
+      let query = supabase.from(tableName as keyof Database['public']['Tables']).select('*', { count: 'exact', head: true });
 
       // Apply simple filters
       if (options?.filters) {
@@ -1140,6 +1140,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       console.error('Transaction error:', err);
 
       const pgError = {
+        name: 'PostgrestError',
         message: err instanceof Error ? err.message : 'Transaction failed',
         details: 'Transaction failed',
         hint: 'Check server logs for details',

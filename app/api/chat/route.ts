@@ -24,6 +24,7 @@ import { getLibSQLClient } from "@/lib/memory/libsql";
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { getGoogleAI } from "@/lib/ai"; // getGoogleAI from lib/ai.ts returns a LanguageModelProvider
+import type { Database } from '@/types/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -57,11 +58,10 @@ export async function POST(request: Request) {
     // Get model configuration from Supabase
     const supabase = getSupabaseClient();
     const { data: modelConfig, error: modelError } = await supabase
-      .from("models")
+      .from<{ id: string; model_id: string; name: string; provider?: string; api_key?: string; base_url?: string }>("models")
       .select("*")
       .eq("id", modelId || process.env.DEFAULT_MODEL_ID)
       .single();
-
     if (modelError || !modelConfig) {
       console.error("Error fetching model:", modelError);
       return NextResponse.json({ error: "Model not found" }, { status: 404 });

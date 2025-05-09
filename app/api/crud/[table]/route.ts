@@ -8,6 +8,7 @@ import { getSupabaseClient, getDrizzleClient } from '@/lib/memory/supabase'
 import { z } from 'zod'
 import * as schema from '@/db/supabase/schema'
 import { eq, desc, asc } from 'drizzle-orm'
+import type { Database } from '@/types/supabase'
 
 // Define allowed tables for security
 const allowedTables = ['models', 'agents', 'tools', 'settings']
@@ -113,7 +114,7 @@ export async function GET(
     // If ID is provided, get a single item
     if (id) {
       const { data, error } = await supabase
-        .from(table)
+        .from(table as keyof Database['public']['Tables'])
         .select('*')
         .eq('id', id)
         .single()
@@ -136,7 +137,7 @@ export async function GET(
     }
 
     // Otherwise, get all items with filters
-    let query = supabase.from(table).select('*')
+    let query = supabase.from(table as keyof Database['public']['Tables']).select('*')
 
     // Apply ordering
     if (orderBy) {
@@ -234,7 +235,7 @@ export async function POST(
     const supabase = getSupabaseClient()
 
     const { data, error } = await supabase
-      .from(table)
+      .from(table as keyof Database['public']['Tables'])
       .insert(body)
       .select()
       .single()
@@ -326,7 +327,7 @@ export async function PATCH(
     const supabase = getSupabaseClient()
 
     const { data, error } = await supabase
-      .from(table)
+      .from(table as keyof Database['public']['Tables'])
       .update(body)
       .eq('id', id)
       .select()
@@ -416,7 +417,7 @@ export async function DELETE(
     const supabase = getSupabaseClient()
 
     const { error } = await supabase
-      .from(table)
+      .from(table as keyof Database['public']['Tables'])
       .delete()
       .eq('id', id)
 
