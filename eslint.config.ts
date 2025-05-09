@@ -7,19 +7,18 @@ import path from 'path'
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: {
-    extends: ['eslint:recommended']
+    extends: ['@typescript-eslint'],
   }
 })
 export default [
   // 1) Pull in all of your familiar "extends" in flat‐config form
   ...compat.extends(
-    'eslint:recommended',
     'plugin:react/recommended',
     'plugin:@typescript-eslint/recommended',
   ),
 
   // 2) Globally ignore build output, node_modules, etc.
-  { ignores: ['node_modules', '.next', 'out', 'dist', 'build'] },
+  { ignores: ['node_modules', '.next', 'out', 'dist', 'build', 'llm.json', 'docs', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '*.md'] },
 
   // 3) Apply parserOptions, plugins, rules, and env to TS/JS files
   {
