@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
 
-interface AudioPlayerProps {
+export interface AudioPlayerProps {
   title?: string
   src: string
   waveform?: boolean

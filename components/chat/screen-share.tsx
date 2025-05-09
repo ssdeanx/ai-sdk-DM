@@ -6,7 +6,7 @@ import { Maximize, Minimize, Play, Pause, Download, Monitor } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-interface ScreenShareProps {
+export interface ScreenShareProps {
   src: string
   title?: string
   isVideo?: boolean

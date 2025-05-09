@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Activity, RefreshCw } from "lucide-react"
 
-interface VisualizationWithTracingProps {
+export interface VisualizationWithTracingProps {
   title?: string
   data: any
   type?: string

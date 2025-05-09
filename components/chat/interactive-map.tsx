@@ -1,11 +1,15 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useLayoutEffect } from "react"
 import { motion } from "framer-motion"
 import { Maximize, Minimize, Download, MapPin, Search, Plus, Minus, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import L from "leaflet"
+
+// Import Leaflet CSS statically to ensure it's bundled correctly
+import "leaflet/dist/leaflet.css"
 
 // Import Leaflet dynamically to avoid SSR issues
 import dynamic from "next/dynamic"
@@ -15,14 +19,14 @@ const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { 
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
 const ZoomControl = dynamic(() => import('react-leaflet').then(mod => mod.ZoomControl), { ssr: false })
 
-interface Location {
+export interface Location {
   lat: number
   lng: number
   title?: string
   description?: string
 }
 
-interface InteractiveMapProps {
+export interface InteractiveMapProps {
   title?: string
   center?: [number, number]
   zoom?: number
@@ -43,24 +47,22 @@ export function InteractiveMap({
   const [mapReady, setMapReady] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(zoom)
   const [searchQuery, setSearchQuery] = useState("")
-  const mapRef = useRef<any>(null)
-  
-  // Load Leaflet CSS
+  const mapRef = useRef<L.Map>(null)
+
   useEffect(() => {
-    // Only load in browser
     if (typeof window !== 'undefined') {
-      import('leaflet/dist/leaflet.css')
-      
+      // Leaflet CSS is now imported statically above
+
       // Fix marker icon issues
       import('leaflet').then(L => {
         delete (L.Icon.Default.prototype as any)._getIconUrl
-        
+
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: '/images/marker-icon-2x.png',
           iconUrl: '/images/marker-icon.png',
           shadowUrl: '/images/marker-shadow.png',
         })
-        
+
         setMapReady(true)
       })
     }
@@ -185,41 +187,46 @@ export function InteractiveMap({
         
         {/* Map */}
         {mapReady && (
-          <div className="h-full w-full">
-            <MapContainer 
-              center={center} 
-              zoom={zoom} 
+            <MapContainer
+              ref={mapRef}
+              center={center as [number, number]} 
+              zoom={currentZoom} 
               style={{ height: '100%', width: '100%' }}
-              zoomControl={false}
-              whenCreated={(map) => {
-                mapRef.current = map
+              zoomControl={false} // Set to false as a separate ZoomControl component is used
+              whenReady={() => {
+                if (mapRef.current) {
+                  setCurrentZoom(mapRef.current.getZoom());
+                }
               }}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {locations.map((location, index) => (
-                <Marker key={index} position={[location.lat, location.lng]}>
-                  {(location.title || location.description) && (
-                    <Popup>
-                      {location.title && <h3 className="font-medium">{location.title}</h3>}
-                      {location.description && <p>{location.description}</p>}
-                    </Popup>
-                  )}
-                </Marker>
+              {locations.map((location: Location, index: number) => (
+              <Marker key={index} position={[location.lat, location.lng] as [number, number]}>
+                {(location.title || location.description) && (
+                <Popup>
+                  {location.title && <h3 className="font-medium">{location.title}</h3>}
+                  {location.description && <p>{location.description}</p>}
+                </Popup>
+                )}
+              </Marker>
               ))}
               <ZoomControl position="bottomright" />
             </MapContainer>
-          </div>
         )}
         
         {!mapReady && (
-          <div className="h-full w-full flex items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+          <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+            Loading map...
           </div>
         )}
       </div>
     </div>
   )
 }
+
+export default InteractiveMap
+
+export type { InteractiveMapProps, Location }

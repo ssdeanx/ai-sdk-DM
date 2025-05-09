@@ -8,7 +8,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-interface CodeBlockProps {
+export interface CodeBlockProps {
   language: string
   code: string
 }

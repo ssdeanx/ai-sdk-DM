@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { 
-  Bot, User, Send, Loader2, RefreshCw, XCircle, 
+import {
+  Bot, User, Send, Loader2, RefreshCw, XCircle,
   Image as ImageIcon, Paperclip, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,12 +16,12 @@ import { CodeBlock } from './code-block';
 import { MermaidDiagram } from './mermaid-diagram';
 import { nanoid } from 'nanoid';
 
-interface MultimodalChatProps {
+export interface MultimodalChatProps {
   apiEndpoint?: string;
   className?: string;
 }
 
-interface ImageAttachment {
+export interface ImageAttachment {
   id: string;
   url: string;
   file: File;

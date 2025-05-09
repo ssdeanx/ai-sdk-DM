@@ -6,7 +6,7 @@ import { Download, Maximize, Minimize, ZoomIn, ZoomOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-interface ImageDisplayProps {
+export interface ImageDisplayProps {
   src: string
   alt: string
   className?: string

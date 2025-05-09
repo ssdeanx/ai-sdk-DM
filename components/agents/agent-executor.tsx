@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAgentExecutor } from "@/hooks/use-executor"
 
-interface Message {
+export interface Message {
   role: "user" | "assistant" | "system"
   content: string
   toolCall?: {
@@ -22,7 +22,7 @@ interface Message {
   toolResult?: any
 }
 
-interface AgentExecutorProps {
+export interface AgentExecutorProps {
   agent: {
     id: string
     name: string

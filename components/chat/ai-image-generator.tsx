@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
-interface AIImageGeneratorProps {
+export interface AIImageGeneratorProps {
   title?: string
   initialPrompt?: string
   generatedImage?: string

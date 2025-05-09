@@ -6,9 +6,10 @@ import { v4 as uuidv4 } from "uuid";
 import { agentRegistry } from "@/lib/agents/registry";
 import { runAgent } from "@/lib/agents/agent-service";
 import { AgentRunOptions } from "@/lib/agents/agent.types";
-// personaManager and createMemoryThread/loadMessages might not be directly needed here if runAgent handles them
 import { personaManager } from "@/lib/agents/personas/persona-manager";
-import { createMemoryThread, saveMessage, loadMessages, loadAgentState, saveAgentState  } from "@/lib/memory/memory";
+import { createMemoryThread, saveMessage, loadMessages, loadAgentState, saveAgentState } from "@/lib/memory/memory";
+import { getSupabaseClient, getAgentConfig, getAgentTools } from "@/lib/memory/supabase";
+import { memory } from "@/lib/memory/factory";
 
 /**
  * POST /api/ai-sdk/agents/[id]/run
@@ -25,14 +26,18 @@ import { createMemoryThread, saveMessage, loadMessages, loadAgentState, saveAgen
  * The function performs the following steps:
  * 1. Parses the request body.
  * 2. Generates a new thread ID if one is not provided.
- * 3. Initializes the agent registry and retrieves the specified agent.
- * 4. Returns a 404 error if the agent is not found.
- * 5. Initializes the persona manager if the agent has an associated persona.
- * 6. Creates a trace for the agent run, capturing metadata like agent ID, name, thread ID, and model ID.
- * 7. Constructs options for the agent run, including temperature, max tokens, system prompt, tool choice, and trace ID.
- * 8. Executes the agent with the provided input, thread ID, and options.
- * 9. Streams the agent's response back to the client, including `x-thread-id` and `x-agent-id` headers.
- * 10. Handles any errors encountered during the process using `handleApiError`.
+ * 3. Initializes the agent registry and retrieves the specified agent configuration.
+ * 4. Returns a 404 error if the agent configuration is not found.
+ * 5. Retrieves tools for the agent.
+ * 6. Optionally initializes the persona manager and retrieves the persona if the agent has an associated persona.
+ * 7. Creates a memory thread if it doesn't exist.
+ * 8. Saves the user message to memory.
+ * 9. Loads previous messages and agent state.
+ * 10. Creates a trace for the agent run, capturing metadata like agent ID, name, thread ID, and model ID.
+ * 11. Constructs options for the agent run, including temperature, max tokens, system prompt, tool choice, trace ID, and onFinish callback.
+ * 12. Executes the agent with the provided input, thread ID, and options.
+ * 13. Streams the agent's response back to the client, including `x-thread-id` and `x-agent-id` headers.
+ * 14. Handles any errors encountered during the process using `handleApiError`.
  *
  * @param request The incoming Next.js API `Request` object.
  * @param params An object containing the route parameters.
@@ -49,9 +54,9 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { 
-      input, 
-      threadId: providedThreadId, 
+    const {
+      input,
+      threadId: providedThreadId,
       stream = true,
       temperature,
       maxTokens,
@@ -62,54 +67,154 @@ export async function POST(
     // Generate thread ID if not provided
     const threadId = providedThreadId || uuidv4();
 
+    // Health check: ensure Supabase is available (uses getSupabaseClient directly)
+    const supabaseHealth = await (async () => {
+      try {
+        const supabase = getSupabaseClient();
+        // Simple query to ensure connection is alive
+        const { error } = await supabase.from('agents').select('id').limit(1);
+        return !error;
+      } catch (e) {
+        return false;
+      }
+    })();
+    if (!supabaseHealth) {
+      return NextResponse.json({ error: "Supabase is not available" }, { status: 503 });
+    }
+
     // Initialize agent registry
     await agentRegistry.init();
 
-    // Get agent from registry
-    const agent = await agentRegistry.getAgent(id);
-    
-    if (!agent) {
+    // Get agent config from Supabase (uses getAgentConfig)
+    const agentConfig = await getAgentConfig(id);
+    if (!agentConfig) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    // Initialize persona manager if agent has a persona_id
-    if ((agent as any).persona_id) {
+    // Get tools for the agent (uses getAgentTools)
+    const agentTools = await getAgentTools(id);
+
+    // Optionally, get persona if present (uses personaManager)
+    let persona = null;
+    if (agentConfig.persona_id) {
       await personaManager.init();
+      persona = await personaManager.getPersona(agentConfig.persona_id);
     }
-    // If agent has a persona_id, ensure persona manager is initialized
-    // Create trace for this run
+
+    // Create a memory thread if it doesn't exist (uses createMemoryThread)
+    let threadExists = false;
+    try {
+      const thread = await memory.getMemoryThread(threadId);
+      threadExists = !!thread;
+    } catch (e) {
+      threadExists = false;
+    }
+    if (!threadExists) {
+      await createMemoryThread(`Thread for agent ${id}`);
+    }
+
+    // Use CoreMessage to construct the user message (for type safety)
+    let userMessage: CoreMessage | undefined = undefined;
+    if (input) {
+      userMessage = { role: 'user', content: input };
+      await saveMessage(
+        threadId,
+        "user",
+        input,
+        {
+          count_tokens: true,
+          generate_embeddings: false,
+          metadata: {},
+          model_name: agentConfig.model_id
+        }
+      );
+    }
+
+    // Load previous messages (uses loadMessages)
+    const previousMessages = await loadMessages(threadId);
+
+    // Load agent state (uses loadAgentState)
+    const agentState = await loadAgentState(threadId, id);
+
+    // Create trace for this run (uses createTrace)
     const trace = await createTrace({
       name: "agent_run",
       userId: threadId,
       metadata: {
         agentId: id,
-        agentName: agent.name,
+        agentName: agentConfig.name,
         threadId,
-        modelId: agent.modelId,
-        messageCount: input ? 1 : 0,
-        hasPersona: !!(agent as any).persona_id
+        modelId: agentConfig.model_id,
+        messageCount: previousMessages.length + (input ? 1 : 0),
+        hasPersona: !!persona
       }
     });
 
-    // Run options
-    const options = {
-      temperature: temperature,
-      maxTokens: maxTokens,
-      systemPrompt: systemPrompt,
-      toolChoice: toolChoice,
-      traceId: trace?.id,
+    // Run options with onFinish to persist assistant message (uses AgentRunOptions)
+    const options: AgentRunOptions = {
+      temperature,
+      maxTokens,
+      systemPrompt,
+      toolChoice,
+      traceId: trace!.id,
+      streamOutput: stream,
+      onFinish: async (data) => {
+        // Save assistant message to memory after completion
+        if (data?.message?.content) {
+          await saveMessage(
+            threadId,
+            "assistant",
+            data.message.content,
+            {
+              count_tokens: true,
+              generate_embeddings: false,
+              metadata: {},
+              model_name: agentConfig.model_id
+            }
+          );
+        }
+        // Save agent state if needed (uses saveAgentState)
+        if (data?.message) {
+          await saveAgentState(threadId, id, { lastRun: new Date().toISOString() });
+        }
+        // Log event (uses logEvent)
+        await logEvent({
+          traceId: trace!.id,
+          name: "agent_run_finish",
+          metadata: {
+            agentId: id,
+            threadId,
+            finishReason: data?.finishReason
+          }
+        });
+      }
     };
 
-    // Run the agent
+    // Run the agent (should support tools, e.g., websearch, if agent is configured for it)
     const response = await runAgent(id, threadId, input, options);
 
-    // Return the stream as a streaming text response
-    return response.streamResult?.toDataStreamResponse({
-      headers: {
-      'x-thread-id': threadId,
-      'x-agent-id': id
-      }
-    });
+    // Use streamResult if available
+    if (response.streamResult) {
+      return response.streamResult.toDataStreamResponse({
+        headers: {
+          'x-thread-id': threadId,
+          'x-agent-id': id
+        }
+      });
+    } else {
+      // Fallback: use createDataStreamResponse with execute function
+      return createDataStreamResponse({
+        execute: async (dataStream) => {
+          // send only JSON-safe fields
+          const { output, memoryThreadId } = response;
+          dataStream.writeData({
+            status: 'completed',
+            output: output ?? null,
+            memoryThreadId
+          });
+        }
+      });
+    }
   } catch (error) {
     return handleApiError(error);
   }

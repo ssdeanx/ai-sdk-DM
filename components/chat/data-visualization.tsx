@@ -19,7 +19,7 @@ let Plotly: any = null
 import dynamic from "next/dynamic"
 const RechartsResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
 
-interface DataPoint {
+export interface DataPoint {
   label: string
   value: number
   color?: string
@@ -30,14 +30,14 @@ interface DataPoint {
   [key: string]: any
 }
 
-interface DataSeries {
+export interface DataSeries {
   name: string
   data: DataPoint[] | number[]
   color?: string
   type?: string
 }
 
-interface DataVisualizationProps {
+export interface DataVisualizationProps {
   title?: string
   data: DataPoint[] | DataSeries[]
   type?: "bar" | "line" | "pie" | "doughnut" | "radar" | "polarArea" | "scatter" | "area" | "heatmap" | "bubble" | "radialBar" | "treemap"
@@ -834,3 +834,8 @@ export function DataVisualization({
     </div>
   )
 }
+
+
+export default DataVisualization
+
+export type { DataPoint, DataSeries, DataVisualizationProps }

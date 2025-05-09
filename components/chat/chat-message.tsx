@@ -11,7 +11,7 @@ import { MermaidDiagram } from "./mermaid-diagram"
 import { ImageDisplay } from "./image-display"
 import { renderContent } from "./ai-sdk-chatHelper"
 
-interface ChatMessageProps {
+export interface ChatMessageProps {
   message: {
     id: string
     role: "user" | "assistant" | "system" | "tool"

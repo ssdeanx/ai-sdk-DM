@@ -32,6 +32,15 @@ import {
   shutdown
 } from "./tracing"
 import { SpanKind, SpanStatusCode } from "./otel-tracing"
+import { BaseAgent } from "./agents/baseAgent";
+import { personaManager } from "./agents/personas/persona-manager";
+import * as supabaseMemory from "./memory/supabase";
+import * as db from "./memory/db";
+import { initializeTools } from "./tools/toolInitializer";
+import * as aiSdkIntegration from "./ai-sdk-integration";
+
+// Optionally, import types or utility functions as needed
+// import { Agent, RunResult, AgentState } from "./agents/agent.types";
 
 // Initialize tracing when this module is imported
 initializeTracing({

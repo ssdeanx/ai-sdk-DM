@@ -3,13 +3,27 @@ import { getProviderByName } from "../ai"
 import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
 import { jsonSchemaToZod } from "../tools"
 import { toolRegistry } from "../tools/toolRegistry"
+import { initializeTools } from "../tools/toolInitializer"
+import * as supabaseMemory from "../memory/supabase"
 import { getLibSQLClient } from "../memory/db"
 import { v4 as uuidv4 } from "uuid"
-import { Agent, ToolConfig, RunResult, AgentHooks, AgentState } from "./agent.types"
+import * as aiSdkIntegration from "../ai-sdk-integration"
+import * as aiSdkTracing from "../ai-sdk-tracing"
+import { personaManager } from "./personas/persona-manager"
+import {
+  Agent,
+  ToolConfig,
+  RunResult,
+  AgentHooks,
+  AgentState,
+  AgentRunTokenUsage,
+  AgentRunFinishReason,
+  AgentRunToolInvocation,
+  AgentRunFinishData,
+  AgentRunOptions,
+  AgentPersona
+} from "./agent.types"
 
-/**
- * Base Agent class that handles configuration, tool initialization, and execution
- */
 export class BaseAgent {
   id: string
   name: string
@@ -21,13 +35,6 @@ export class BaseAgent {
   toolConfigs: ToolConfig[]
   hooks: AgentHooks
 
-  /**
-   * Create a new BaseAgent instance
-   *
-   * @param config - Agent configuration from Supabase
-   * @param toolConfigs - Tool configurations from Supabase
-   * @param hooks - Optional lifecycle hooks
-   */
   constructor(config: Agent, toolConfigs: ToolConfig[], hooks: AgentHooks = {}) {
     this.id = config.id
     this.name = config.name
@@ -38,166 +45,165 @@ export class BaseAgent {
     this.baseUrl = config.base_url
     this.toolConfigs = toolConfigs
     this.hooks = hooks
+
+    // Ensure tools are initialized once for the whole app (idempotent)
+    initializeTools()
+    // Optionally, prefetch all AI SDK tools for this agent (ensures ai-sdk-integration is used)
+    aiSdkIntegration.getAllAISDKTools({ includeBuiltIn: true, includeCustom: true, includeAgentic: true })
   }
 
-  /**
-   * Initialize tools from tool configurations
-   *
-   * @returns Record of AI SDK compatible tools
-   */
-  private async initializeTools() {
-    // Ensure tool registry is initialized
-    await toolRegistry.initialize()
-
-    // Get all available tools
-    const allTools = await toolRegistry.getAllTools()
+  private async initializeToolsForAgent(): Promise<Record<string, any>> {
+    // Only fetch tools for this agent, do not re-initialize global registry
     const aiTools: Record<string, any> = {}
-
-    // Process tool configurations from Supabase
     for (const toolConfig of this.toolConfigs) {
-      try {
-        const toolName = toolConfig.name
-
-        // Check if this tool exists in the registry
-        if (await toolRegistry.hasTool(toolName)) {
-          // Get the tool from registry
-          const registryTool = await toolRegistry.getTool(toolName)
-
-          // Use the tool from registry with a wrapped execute function
-          aiTools[toolName] = {
-            ...registryTool,
-            // Wrap the execute function to add hook
-            execute: async (params: any) => {
-              // Call onToolCall hook if defined
-              if (this.hooks.onToolCall) {
-                await this.hooks.onToolCall(toolName, params)
-              }
-
-              // Execute the tool via registry
-              return await toolRegistry.executeTool(toolName, params)
+      const toolName = toolConfig.name
+      if (await toolRegistry.hasTool(toolName)) {
+        const registryTool = await toolRegistry.getTool(toolName)
+        aiTools[toolName] = {
+          ...registryTool,
+          execute: async (params: any) => {
+            if (this.hooks.onToolCall) {
+              await this.hooks.onToolCall(toolName, params)
             }
-          }
-        } else {
-          // Create a custom tool from the configuration
-          const schema = JSON.parse(toolConfig.parameters_schema)
-          const zodSchema = jsonSchemaToZod(schema)
-
-          // Register the tool in the registry
-          const customTool = toolRegistry.register(
-            toolName,
-            toolConfig.description,
-            zodSchema,
-            async (params: any) => {
-              // This is a fallback for tools not in the registry
-              console.log(`Executing custom tool ${toolName} with params:`, params)
-              return { result: `Executed ${toolName} with params: ${JSON.stringify(params)}` }
-            }
-          )
-
-          // Add the tool with hook
-          aiTools[toolName] = {
-            ...customTool,
-            execute: async (params: any) => {
-              // Call onToolCall hook if defined
-              if (this.hooks.onToolCall) {
-                await this.hooks.onToolCall(toolName, params)
-              }
-
-              // Execute the tool via registry
-              return await toolRegistry.executeTool(toolName, params)
-            }
+            return await toolRegistry.executeTool(toolName, params)
           }
         }
-      } catch (error) {
-        console.error(`Failed to initialize tool ${toolConfig.name}:`, error)
+      } else {
+        // Register custom tool if not present
+        const schema = JSON.parse(toolConfig.parameters_schema)
+        const zodSchema = jsonSchemaToZod(schema)
+        toolRegistry.register(
+          toolName,
+          toolConfig.description,
+          zodSchema,
+          async (params: any) => {
+            return { result: `Executed ${toolName} with params: ${JSON.stringify(params)}` }
+          }
+        )
+        aiTools[toolName] = {
+          execute: async (params: any) => {
+            if (this.hooks.onToolCall) {
+              await this.hooks.onToolCall(toolName, params)
+            }
+            return await toolRegistry.executeTool(toolName, params)
+          }
+        }
       }
     }
-
     return aiTools
   }
 
-  /**
-   * Run the agent with optional input and thread ID
-   *
-   * @param input - Optional user input
-   * @param threadId - Optional memory thread ID
-   * @returns RunResult with output and memory thread ID
-   */
-  public async run(input?: string, threadId?: string): Promise<RunResult> {
-    // Generate thread ID if not provided
+  public async run(input?: string, threadId?: string, options?: AgentRunOptions): Promise<RunResult> {
     const memoryThreadId = threadId || uuidv4()
-
-    // Call onStart hook if defined and input is provided
     if (input && this.hooks.onStart) {
       await this.hooks.onStart(input, memoryThreadId)
     }
-
     try {
       const db = getLibSQLClient()
       let messages = await loadMessages(memoryThreadId)
-
-      // Initialize thread if it doesn't exist
       if (messages.length === 0) {
         await db.execute({
           sql: `INSERT INTO memory_threads (id, agent_id, name, created_at, updated_at)
                 VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
           args: [memoryThreadId, this.id, `${this.name} Thread`],
         })
-
-        // Use system prompt from config or generate a default one
-        const systemMsg = this.getSystemPrompt()
+        let systemMsg = this.getSystemPrompt()
+        // Persona support
+        const agentConfig = await supabaseMemory.getAgentConfig(this.id)
+        if (agentConfig?.persona_id) {
+          await personaManager.init()
+          const persona = await personaManager.getPersona(agentConfig.persona_id)
+          if (persona?.systemPromptTemplate) {
+            systemMsg = persona.systemPromptTemplate.replace(/\{\{\s*agentName\s*\}\}/g, this.name)
+          }
+        }
         await saveMessage(memoryThreadId, "system", systemMsg)
         messages = [{ role: "system", content: systemMsg }]
       }
-
-      // Add user input to thread if provided
       if (input) {
         await saveMessage(memoryThreadId, "user", input)
         messages.push({ role: "user", content: input })
       }
-
-      // Load agent state and initialize provider
-      const agentState = await loadAgentState(memoryThreadId, this.id)
+      const agentState: AgentState = await loadAgentState(memoryThreadId, this.id)
       const provider = await getProviderByName(this.providerName, this.apiKey, this.baseUrl)
-
-      if (!provider) {
-        throw new Error(`Failed to initialize provider: ${this.providerName}`)
+      if (!provider) throw new Error(`Failed to initialize provider: ${this.providerName}`)
+      // Use Supabase for latest config and tools
+      const agentConfig = await supabaseMemory.getAgentConfig(this.id)
+      if (!agentConfig) throw new Error("Agent config not found in Supabase")
+      // Persona support (again, for dynamic system prompt)
+      let persona: AgentPersona | null = null
+      if (agentConfig.persona_id) {
+        await personaManager.init()
+        persona = (await personaManager.getPersona(agentConfig.persona_id)) ?? null
       }
-
-      // Initialize model and tools
-      const model = provider(this.modelId)
-      const tools = await this.initializeTools()
-
-      // Map local messages to CoreMessages expected by the AI SDK
+      // Get tools for this agent from Supabase
+      const toolConfigs = await supabaseMemory.getAgentTools(this.id)
+      this.toolConfigs = toolConfigs
+      await toolRegistry.initialize()
+      const tools = await this.initializeToolsForAgent()
+      // Map messages to CoreMessages
       const coreMessages = messages.map(msg => ({
         id: uuidv4(),
         role: msg.role as CoreMessage['role'],
         content: msg.content
-      })) as CoreMessage[];
+      })) as CoreMessage[]
+      // Streaming with advanced options
+      let result, text
+      const maxSteps = 8 // Allow multi-step/parallel tool calls
 
-      // Stream text from the model
-      const result = streamText({ model, messages: coreMessages, tools, maxSteps: 5 })
-      const text = await result.text
+      // Resolve stream options, prioritizing AgentRunOptions over agentConfig
+      const temperature = options?.temperature ?? agentConfig.temperature
+      const maxTokens = options?.maxTokens ?? agentConfig.max_tokens
+      const systemPrompt = options?.systemPrompt // System prompt from options can override default
+      const onFinishCallback = options?.onFinish // AI SDK specific onFinish
 
-      // Save assistant response
+      // Update system message if overridden by options
+      if (systemPrompt && messages.length > 0 && messages[0].role === 'system') {
+        messages[0].content = systemPrompt
+        // Potentially re-save if system message is dynamically changed and needs persistence
+        // await saveMessage(memoryThreadId, "system", systemPrompt); 
+      } else if (systemPrompt && messages.length === 0) {
+        // If no messages yet, and system prompt is provided via options, use it
+        await saveMessage(memoryThreadId, "system", systemPrompt)
+        messages.push({ role: "system", content: systemPrompt })
+      }
+
+      const streamOptions: any = { // Use 'any' for broader compatibility with potential provider-specific options
+        model: provider(this.modelId),
+        messages: coreMessages,
+        tools,
+        maxSteps,
+        toolCallStreaming: true, // Assuming this is a desired default
+        temperature: temperature,
+        maxTokens: maxTokens,
+        // Pass the onFinish from AgentRunOptions if available
+        onFinish: onFinishCallback, 
+        // Pass toolChoice from AgentRunOptions if available
+        toolChoice: options?.toolChoice,
+        // Pass traceId from AgentRunOptions if available
+        traceId: options?.traceId,
+        // Note: this.hooks.onToolCall is already used by initializeToolsForAgent wrapper
+        // onToolCall: this.hooks.onToolCall // This was here, but seems redundant if tools are wrapped
+      }
+
+      if (aiSdkTracing && aiSdkTracing.streamTextWithTracing) {
+        result = await aiSdkTracing.streamTextWithTracing(streamOptions)
+        text = await result.text
+      } else {
+        result = streamText(streamOptions)
+        text = await result.text
+      }
       await saveMessage(memoryThreadId, "assistant", text)
-
-      // Update agent state
-      const newState = {
+      const newState: AgentState = {
         ...agentState,
         lastRun: new Date().toISOString(),
         runCount: (agentState.runCount || 0) + 1
       }
       await saveAgentState(memoryThreadId, this.id, newState)
-
-      // Create result
-      const runResult: RunResult = { output: text, memoryThreadId }
-
-      // Call onFinish hook if defined
-      if (this.hooks.onFinish) {
+      const runResult: RunResult = { output: text, memoryThreadId, streamResult: result }
+      if (this.hooks.onFinish && !onFinishCallback) { // Only call agent's hook if no specific onFinish was provided in options
         await this.hooks.onFinish(runResult)
       }
-
       return runResult
     } catch (error) {
       console.error(`Agent run error:`, error)
@@ -205,11 +211,6 @@ export class BaseAgent {
     }
   }
 
-  /**
-   * Get the system prompt for the agent
-   *
-   * @returns System prompt string
-   */
   private getSystemPrompt(): string {
     if (this.toolConfigs.length > 0) {
       const toolNames = this.toolConfigs.map(t => t.name).join(", ")

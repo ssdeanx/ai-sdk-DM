@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-interface Column {
+export interface Column {
   key: string
   title: string
   sortable?: boolean
@@ -15,7 +15,7 @@ interface Column {
   render?: (value: any, row: any) => React.ReactNode
 }
 
-interface DataTableProps {
+export interface DataTableProps {
   title?: string
   data: any[]
   columns: Column[]

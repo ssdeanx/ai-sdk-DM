@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import dynamic from "next/dynamic"
 const ThreeViewer = dynamic(() => import('./three-viewer').then(mod => mod.ThreeViewer), { ssr: false })
 
-interface ModelViewerProps {
+export interface ModelViewerProps {
   title?: string
   modelUrl: string
   format?: "gltf" | "glb" | "obj" | "stl"

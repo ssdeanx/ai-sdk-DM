@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
-interface FormField {
+export interface FormField {
   id: string
   type: 'text' | 'textarea' | 'number' | 'email' | 'checkbox' | 'radio' | 'select' | 'date'
   label: string
@@ -29,7 +29,7 @@ interface FormField {
   }
 }
 
-interface InteractiveFormProps {
+export interface InteractiveFormProps {
   title?: string
   description?: string
   fields: FormField[]

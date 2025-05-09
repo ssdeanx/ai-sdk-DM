@@ -230,6 +230,7 @@ export async function runAgent(
 
       return {
         output: responseText,
+        streamResult: result,
         memoryThreadId: threadId,
       };
     }

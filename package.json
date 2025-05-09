@@ -132,6 +132,7 @@
     "graphql": "^16.11.0",
     "graphql-request": "^7.1.2",
     "gray-matter": "^4.0.3",
+    "html2canvas": "^1.4.1",
     "input-otp": "1.4.2",
     "js-tiktoken": "^1.0.20",
     "js-yaml": "^4.1.0",

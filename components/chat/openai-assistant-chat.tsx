@@ -19,7 +19,7 @@ import { CodeBlock } from './code-block';
 import { MermaidDiagram } from './mermaid-diagram';
 import { nanoid } from 'nanoid';
 
-interface OpenAIAssistantChatProps {
+export interface OpenAIAssistantChatProps {
   apiEndpoint?: string;
   initialThreadId?: string;
   className?: string;
@@ -48,7 +48,7 @@ export function OpenAIAssistantChat({
     status,
     submitMessage,
     error,
-    reload,
+    // reload, (removed as it does not exist on UseAssistantHelpers)
     stop
   } = useAssistant({
     api: apiEndpoint,
@@ -266,9 +266,9 @@ export function OpenAIAssistantChat({
         {error && (
           <div className="flex items-center justify-between mt-2 p-2 bg-destructive/10 text-destructive rounded">
             <span className="text-sm">Error: {error.message || 'Something went wrong'}</span>
-            <Button size="sm" variant="ghost" onClick={reload}>
+            {/* <Button size="sm" variant="ghost" onClick={reload}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
-            </Button>
+            </Button> */}
           </div>
         )}
       </div>

@@ -6,7 +6,7 @@ import { Maximize, Minimize, RefreshCw, ExternalLink, Copy, Check } from "lucide
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-interface BrowserDisplayProps {
+export interface BrowserDisplayProps {
   url: string
   title?: string
   className?: string

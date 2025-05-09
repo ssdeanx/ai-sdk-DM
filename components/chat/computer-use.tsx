@@ -6,7 +6,7 @@ import { Maximize, Minimize, Terminal, Copy, Check, Play, Pause, RefreshCw } fro
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-interface ComputerUseProps {
+export interface ComputerUseProps {
   title: string
   content: string
   isTerminal?: boolean

@@ -15,7 +15,6 @@ import { SupabaseClient, PostgrestError } from "@supabase/supabase-js"
 import { getSupabaseClient } from "@/lib/memory/supabase"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
-import { LRUCache } from "lru-cache"
 
 // --- Table‐generic typings --------------------------------------------
 type TableName = keyof Database["public"]["Tables"]
