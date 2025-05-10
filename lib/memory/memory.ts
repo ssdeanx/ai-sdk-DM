@@ -5,34 +5,56 @@ import { pipeline } from "@xenova/transformers"
 import { generateAIResponse } from "../ai"
 import { LRUCache } from "lru-cache"
 import { getGoogleAI } from "../google-ai" // for fallback embeddings
+import { z } from "zod"
 
-// Types for memory management
-export interface Message {
-  id?: string
-  role: "user" | "assistant" | "system" | "tool"
-  content: string
-  tool_call_id?: string
-  name?: string // For tool messages
-  metadata?: Record<string, any>
-  token_count?: number
-  embedding_id?: string
-  created_at?: string
-}
+// Zod schemas for memory management
+export const MessageRoleSchema = z.enum(["user", "assistant", "system", "tool"]);
+export type MessageRole = z.infer<typeof MessageRoleSchema>;
 
-export interface MemoryThread {
-  id: string
-  agent_id?: string
-  network_id?: string
-  name: string
-  summary?: string
-  metadata?: Record<string, any>
-  created_at: string
-  updated_at: string
-}
+export const MessageSchema = z.object({
+  id: z.string().uuid().optional(),
+  role: MessageRoleSchema,
+  content: z.string(),
+  tool_call_id: z.string().optional(),
+  name: z.string().optional(), // For tool messages
+  metadata: z.record(z.unknown()).optional(),
+  token_count: z.number().int().optional(),
+  embedding_id: z.string().optional(),
+  created_at: z.string().optional()
+});
+export type Message = z.infer<typeof MessageSchema>;
 
-export interface AgentState {
-  [key: string]: any
-}
+export const ThreadSchema = z.object({
+  id: z.string().uuid(),
+  agent_id: z.string().uuid().optional(),
+  network_id: z.string().uuid().optional(),
+  name: z.string(),
+  summary: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+  created_at: z.string(),
+  updated_at: z.string()
+});
+export type Thread = z.infer<typeof ThreadSchema>;
+
+export const AgentStateSchema = z.record(z.unknown());
+export type AgentState = z.infer<typeof AgentStateSchema>;
+
+export const ThreadOptionsSchema = z.object({
+  agent_id: z.string().uuid().optional(),
+  network_id: z.string().uuid().optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+export type ThreadOptions = z.infer<typeof ThreadOptionsSchema>;
+
+export const MessageOptionsSchema = z.object({
+  tool_call_id: z.string().optional(),
+  tool_name: z.string().optional(),
+  generate_embeddings: z.boolean().optional(),
+  count_tokens: z.boolean().optional(),
+  metadata: z.record(z.unknown()).optional(),
+  model_name: z.string().optional()
+});
+export type MessageOptions = z.infer<typeof MessageOptionsSchema>;
 
 // Initialize embedding model
 let embeddingModel: any = null
@@ -227,7 +249,7 @@ export function countTokens(text: string, model: "o200k_base" | "cl100k_base" | 
             // Common patterns for invalid model errors
             isInvalidModelError = e.message.includes("Invalid model name") || e.message.includes("Unknown model");
           }
-    
+
           if (isInvalidModelError) {
             console.warn(`Warning: Model '${model}' not found for token counting by js-tiktoken. Falling back to cl100k_base.`);
             encoder = encodingForModel("cl100k_base" as any); // Fallback to a known valid model, cast to any
@@ -352,7 +374,7 @@ export async function saveMessage(
   await db.execute({
     sql: `
       INSERT INTO messages (
-        id, memory_thread_id, role, content, tool_call_id, tool_name, 
+        id, memory_thread_id, role, content, tool_call_id, tool_name,
         token_count, embedding_id, metadata, created_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))

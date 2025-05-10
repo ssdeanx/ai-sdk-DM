@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       threadId,
       model = 'models/gemini-2.0-flash',
       temperature = 0.7,
-      maxTokens = 2048,
+      maxTokens = 8192,
       tools = [],
       attachments = [],
       images = [],
@@ -58,20 +58,38 @@ export async function POST(request: Request) {
     }
 
     // Get or create thread ID
-    const chatThreadId = threadId || uuidv4();
+    const chatThreadId = threadId || generateId();
 
     // Check if thread exists, if not create it
-    if (!threadId) {
+    if (threadId) {
+      // Verify the thread exists
+      const existingThread = await memory.getMemoryThread(threadId);
+      if (!existingThread) {
+        return NextResponse.json(
+          { error: 'Thread not found' },
+          { status: 404 }
+        );
+      }
+    } else {
       try {
-        // Use the memory factory to create a new thread
+        // Use the memory factory to create a new thread with the generated ID
         await memory.createMemoryThread('AI SDK Chat', {
           metadata: {
+            id: chatThreadId, // Pass the generated ID to ensure consistency
             source: 'ai-sdk-ui',
             created_at: new Date().toISOString()
           }
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error creating memory thread:', error);
+        // Handle Upstash-specific errors
+        if (error && typeof error === 'object' && 'name' in error) {
+          const errorObj = error as { name: string; message?: string };
+          if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+            throw new Error(`Failed to create memory thread in Upstash: ${errorObj.message || 'Unknown error'}`);
+          }
+        }
+        // Default error handling
         throw new Error(`Failed to create memory thread: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
@@ -95,17 +113,27 @@ export async function POST(request: Request) {
             }
           }
         );
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error saving message:', error);
+        // Handle Upstash-specific errors
+        if (error && typeof error === 'object' && 'name' in error) {
+          const errorObj = error as { name: string; message?: string };
+          if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+            throw new Error(`Failed to save user message in Upstash: ${errorObj.message || 'Unknown error'}`);
+          }
+        }
+        // Default error handling
         throw new Error(`Failed to save user message: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
-    // Helper function to save assistant messages
+    // Note: This helper function is kept for future use when implementing message persistence
+    // It's not currently used but will be useful for saving assistant messages after streaming
+    /*
     const saveAssistantMessage = async (
       threadId: string,
       content: string,
-      metadata?: Record<string, any>
+      metadata?: Record<string, unknown>
     ) => {
       return await memory.saveMessage(
         threadId,
@@ -121,6 +149,7 @@ export async function POST(request: Request) {
         }
       );
     };
+    */
 
     // Set up model configuration
     let modelConfig;
@@ -207,7 +236,8 @@ export async function POST(request: Request) {
     await toolRegistry.initialize();
 
     // Format tools for AI SDK
-    let toolConfigs: Record<string, Tool<any, any>> = {};
+    // Using Record<string, Tool> without generic parameters to avoid type constraints
+    const toolConfigs: Record<string, Tool> = {};
 
     // Process tools requested in the body
     if (body.tools && Array.isArray(body.tools) && body.tools.length > 0) {
@@ -284,9 +314,9 @@ export async function POST(request: Request) {
             role: 'user',
             content: [
               { type: 'text', text: lastUserMessage.content },
-              ...images.map((img: any) => ({
+              ...images.map((img: { url?: string; data?: string } | string) => ({
                 type: 'image',
-                image: img.url || img.data || img
+                image: typeof img === 'object' ? (img.url || img.data || '') : img
               }))
             ]
           };
@@ -384,39 +414,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Use the AI SDK integration for enhanced capabilities
-    const streamOptions = {
-      provider: modelProvider as "google" | "openai" | "anthropic",
-      modelId: modelConfig.model_id || model,
-      messages: processedMessages,
-      temperature: temperature || modelSettings.default_temperature,
-      maxTokens: effectiveMaxTokens,
-      contextWindow: modelSettings.context_window,
-      tools: Object.keys(toolConfigs).length > 0 ? toolConfigs : undefined,
-      apiKey: modelConfig.api_key,
-      baseURL: modelConfig.base_url,
-      traceName: "ai_sdk_chat_stream",
-      userId: chatThreadId,
-      metadata: {
-        parentTraceId: trace?.id,
-        threadId: chatThreadId,
-        source: 'ai-sdk-ui',
-        modelSettings,
-        personaId: personaId || undefined,
-        hasSystemPrompt: !!systemPrompt || !!personaSystemPrompt,
-        toolCount: Object.keys(toolConfigs).length,
-        messageCount: processedMessages.length,
-        hasImages: images && images.length > 0,
-        hasAttachments: attachments && attachments.length > 0,
-        toolChoice
-      },
-      middleware: languageModelMiddleware,
-      toolChoice,
-      useSearchGrounding: body.useSearchGrounding,
-      dynamicRetrievalConfig: body.dynamicRetrievalConfig,
-      responseModalities: body.responseModalities,
-      cachedContent: body.cachedContent
-    };
+    // Configuration for AI SDK integration is defined inline where used
+    // This ensures we don't have unused variables and keeps the configuration close to its usage
 
     // Use Data Stream Protocol for enhanced features
     if (streamProtocol === 'data') {
@@ -440,6 +439,92 @@ export async function POST(request: Request) {
               });
             }
 
-            const result    return handleApiError(error);
+            // Generate a unique ID for the assistant message
+            const assistantMessageId = uuidv4();
+
+            const result = await streamWithAISDK({
+              provider: modelProvider,
+              modelId: modelConfig.model_id,
+              messages: processedMessages,
+              temperature,
+              maxTokens: effectiveMaxTokens,
+              tools: toolConfigs,
+              apiKey: modelConfig.api_key,
+              baseURL: modelConfig.base_url,
+              traceName: 'ai_sdk_chat',
+              userId: chatThreadId,
+              metadata: {
+                threadId: chatThreadId,
+                messageId: assistantMessageId
+              }
+            });
+
+            // Merge the stream into the data stream
+            result.mergeIntoDataStream(dataStream);
+          } catch (error: unknown) {
+            console.error('Error in AI SDK chat stream:', error);
+
+            // Send error to client
+            dataStream.writeData({
+              status: 'error',
+              error: error instanceof Error ? error.message : String(error),
+              timestamp: new Date().toISOString()
+            });
+
+            // Handle Upstash-specific errors
+            if (error && typeof error === 'object' && 'name' in error) {
+              const errorObj = error as { name: string; message?: string };
+              if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+                dataStream.writeData({
+                  status: 'upstash_error',
+                  error: errorObj.message || 'Unknown Upstash error',
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Default to Text Stream Protocol
+    // Generate a unique ID for the assistant message
+    const assistantMessageId = uuidv4();
+
+    const result = await streamWithAISDK({
+      provider: modelProvider,
+      modelId: modelConfig.model_id,
+      messages: processedMessages,
+      temperature,
+      maxTokens: effectiveMaxTokens,
+      tools: toolConfigs,
+      apiKey: modelConfig.api_key,
+      baseURL: modelConfig.base_url,
+      traceName: 'ai_sdk_chat',
+      userId: chatThreadId,
+      metadata: {
+        threadId: chatThreadId,
+        messageId: assistantMessageId
+      }
+    });
+
+    return result;
+  } catch (error: unknown) {
+    // Log error for debugging
+    console.error('Error in AI SDK chat:', error);
+
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Use the generic API error handler for other errors
+    return handleApiError(error);
   }
 }

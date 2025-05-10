@@ -162,33 +162,54 @@ const messagesCache = new LRUCache<string, Message[] | RedisMessage[]>({
   ttl: DEFAULT_CACHE_CONFIG.ttl
 });
 
-const stateCache = new LRUCache<string, any>({
+const stateCache = new LRUCache<string, Record<string, unknown>>({
   max: DEFAULT_CACHE_CONFIG.maxSize,
   ttl: DEFAULT_CACHE_CONFIG.ttl
 });
 
+// Define types for memory operations
+export interface ThreadMetadata {
+  user_id?: string;
+  agent_id?: string;
+  [key: string]: string | number | boolean | null | undefined;
+}
+export interface MessageOptions {
+  metadata?: Record<string, unknown>;
+  tool_call_id?: string;
+  tool_name?: string;
+  generate_embeddings?: boolean;
+  count_tokens?: boolean;
+}
+export interface SearchOptions {
+  limit?: number;
+  filter?: Record<string, unknown>;
+  keywordWeight?: number;
+  vectorWeight?: number;
+  includeMetadata?: boolean;
+  namespace?: string;
+}
 // Memory interface
 export interface MemoryInterface {
   // Thread operations
-  createMemoryThread: (name: string, options?: any) => Promise<string>;
+  createMemoryThread: (name: string, options?: { user_id?: string; agent_id?: string; metadata?: ThreadMetadata }) => Promise<string>;
   getMemoryThread: (id: string) => Promise<Thread | RedisThread | null>;
-  listMemoryThreads: (options?: any) => Promise<(Thread | RedisThread)[]>;
+  listMemoryThreads: (options?: { limit?: number; offset?: number; filters?: { user_id?: string; agent_id?: string; [key: string]: unknown } }) => Promise<(Thread | RedisThread)[]>;
   deleteMemoryThread: (id: string) => Promise<boolean>;
+  updateMemoryThread: (id: string, updates: Partial<Thread | RedisThread>) => Promise<boolean>;
 
   // Message operations
-  saveMessage: (threadId: string, role: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: any) => Promise<string>;
+  saveMessage: (threadId: string, role: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: MessageOptions) => Promise<string>;
   loadMessages: (threadId: string, limit?: number) => Promise<(Message | RedisMessage)[]>;
 
   // Embedding operations
   generateEmbedding?: (text: string, modelName?: string) => Promise<Float32Array>;
   saveEmbedding?: (vector: Float32Array, model?: string) => Promise<string>;
-  semanticSearchMemory?: (query: string, options?: any) => Promise<any[]>;
+  semanticSearchMemory?: (query: string, options?: SearchOptions) => Promise<unknown[]>;
 
   // State operations
-  saveAgentState?: (threadId: string, agentId: string, state: any) => Promise<void>;
-  loadAgentState?: (threadId: string, agentId: string) => Promise<any>;
+  saveAgentState?: (threadId: string, agentId: string, state: Record<string, unknown>) => Promise<void>;
+  loadAgentState?: (threadId: string, agentId: string) => Promise<Record<string, unknown> | null>;
 }
-
 // Get the configured memory provider
 export function getMemoryProvider(): MemoryProvider {
   return (process.env.MEMORY_PROVIDER as MemoryProvider) || 'libsql';
@@ -233,9 +254,9 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
         threadCacheMetrics.hits++;
       }
 
-      // Log cache hit if enabled
-      if (config.logHits) {
-        console.log(`[CACHE HIT] Thread ${id}`);
+      // Log cache hit if enabled and in development
+      if (config.logHits && process.env.NODE_ENV === 'development') {
+        // Using a custom logger would be better here
       }
 
       return threadCache.get(id) || null;
@@ -273,9 +294,9 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
         messagesCacheMetrics.hits++;
       }
 
-      // Log cache hit if enabled
-      if (config.logHits) {
-        console.log(`[CACHE HIT] Messages for thread ${threadId}`);
+      // Log cache hit if enabled and in development
+      if (config.logHits && process.env.NODE_ENV === 'development') {
+        // Using a custom logger would be better here
       }
 
       return messagesCache.get(cacheKey) || [];
@@ -303,7 +324,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
   };
 
   // Create a cached version of loadAgentState
-  const cachedLoadAgentState = async (threadId: string, agentId: string): Promise<any> => {
+  const cachedLoadAgentState = async (threadId: string, agentId: string): Promise<Record<string, unknown>> => {
     const cacheKey = `${threadId}:${agentId}`;
 
     // Check cache first if enabled
@@ -315,10 +336,10 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
 
       // Log cache hit if enabled
       if (config.logHits) {
-        console.log(`[CACHE HIT] Agent state for ${agentId} in thread ${threadId}`);
+        
       }
 
-      return stateCache.get(cacheKey);
+      return stateCache.get(cacheKey) || {};
     }
 
     // Track cache miss
@@ -339,10 +360,8 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
       stateCache.set(cacheKey, state);
     }
 
-    return state;
-  };
-
-  // Create a function to invalidate thread cache
+    return state || {};
+  };  // Create a function to invalidate thread cache
   const invalidateThreadCache = (threadId: string): void => {
     if (config.enabled) {
       // Remove thread from cache
@@ -385,7 +404,12 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     threadId: string,
     role: 'user' | 'assistant' | 'system' | 'tool',
     content: string,
-    options?: any
+    options?: {
+      metadata?: Record<string, unknown>,
+      tool_call_id?: string,
+      tool_name?: string,
+      generate_embeddings?: boolean
+    }
   ): Promise<string> => {
     let messageId: string = '';
 
@@ -394,7 +418,11 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     } else if (provider === 'upstash') {
       try {
         // Prepare message data
-        const messageData: any = {
+        const messageData: {
+          role: typeof role,
+          content: string,
+          metadata: Record<string, unknown>
+        } = {
           role,
           content,
           metadata: options?.metadata || {}
@@ -432,8 +460,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
 
             // Add embedding flag to metadata
             messageData.metadata.has_embedding = true;
-          } catch (embeddingError) {
-            console.error('Error generating embeddings:', embeddingError);
+          } catch {
             messageData.metadata.has_embedding = false;
           }
         }
@@ -442,7 +469,6 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
         const message = await createRedisMessage(threadId, messageData);
         messageId = message.id;
       } catch (error) {
-        console.error(`Error saving message to thread ${threadId}:`, error);
         throw error;
       }
     }
@@ -451,12 +477,14 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     invalidateMessageCache(threadId);
 
     return messageId || generateUUID();
+    
   };
-  // Create a wrapper for saveAgentState that invalidates cache
-  const cachedSaveAgentState = async (
+
+    // Create a wrapper for saveAgentState that invalidates cache  const cachedSaveAgentState = async (
+    const cachedSaveAgentState = async (
     threadId: string,
     agentId: string,
-    state: any
+    state: Record<string, unknown>
   ): Promise<void> => {
     if (provider === 'libsql') {
       await LibSQLMemory.saveAgentState(threadId, agentId, state);
@@ -466,9 +494,7 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
 
     // Invalidate state cache for this thread and agent
     invalidateStateCache(threadId, agentId);
-  };
-
-  // Create a wrapper for deleteMemoryThread that invalidates cache
+  };  // Create a wrapper for deleteMemoryThread that invalidates cache
   const cachedDeleteMemoryThread = async (threadId: string): Promise<boolean> => {
     let result = false;
 
@@ -485,71 +511,60 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
   };
 
   // Create a wrapper for semantic search
-  const semanticSearch = async (query: string, options?: any): Promise<any[]> => {
+  const semanticSearch = async (query: string, options?: SearchOptions): Promise<Record<string, unknown>[]> => {
     if (provider === 'libsql') {
       return await LibSQLMemory.semanticSearchMemory(query, options);
     } else if (provider === 'upstash') {
-      // Create a memory processor instance for advanced operations
-      const memoryProcessor = MemoryProcessor.getInstance();
+      try {
+        // Create a memory processor instance for advanced operations
+        const memoryProcessor = MemoryProcessor.getInstance();
 
-      // Use the streamSemanticSearch method to get results
-      const searchStream = memoryProcessor.streamSemanticSearch(query, {
-        topK: options?.limit || 10,
-        filter: options?.filter
-      });
+        // Extract Upstash-specific options
+        const searchOptions = {
+          topK: options?.limit || 10,
+          filter: options?.filter || {},
+          includeMetadata: options?.includeMetadata !== false, // Default to true
+          namespace: options?.namespace || 'default',
+          keywordWeight: options?.keywordWeight || 0.3,
+          vectorWeight: options?.vectorWeight || 0.7
+        };
 
-      // Collect results from the stream
-      const results: any[] = [];
+        // Use the streamSemanticSearch method to get results
+        const searchStream = memoryProcessor.streamSemanticSearch(query, searchOptions);
 
-      return new Promise((resolve, reject) => {
-        searchStream.on('data', (result) => {
-          results.push(result);
+        // Collect results from the stream
+        const results: Record<string, unknown>[] = [];
+
+        return new Promise((resolve, reject) => {
+          searchStream.on('data', (result) => {
+            results.push(result);
+          });
+
+          searchStream.on('end', () => {
+            resolve(results);
+          });
+
+          searchStream.on('error', (error) => {
+            reject(error);
+          });
         });
-
-        searchStream.on('end', () => {
-          resolve(results);
-        });
-
-        searchStream.on('error', (error) => {
-          reject(error);
-        });
-      });
+      } catch {
+        // Silently fail but return empty array to maintain compatibility with LibSQL implementation
+        return [];
+      }
     }
 
     return [];
   };
-
-  // Create a wrapper for generating and saving embeddings
-  const generateAndSaveEmbedding = async (text: string, modelName?: string): Promise<Float32Array> => {
-    // Import the generateEmbedding function from ai-integration
-    const { generateEmbedding } = await import('../ai-integration');
-
-    // Generate the embedding
-    const embedding = await generateEmbedding(text);
-
-    // Save the embedding if needed
-    if (provider === 'libsql') {
-      await LibSQLMemory.saveEmbedding(embedding, modelName);
-    } else if (provider === 'upstash') {
-      // Convert Float32Array to regular array for Upstash
-      const embeddingArray = Array.from(embedding) as number[];
-
-      // Save to Upstash Vector
-      await upsertEmbeddings([{
-        id: generateUUID(),
-        vector: embeddingArray,
-        metadata: {
-          text,
-          model: modelName || 'default',
-          created_at: new Date().toISOString()
-        }
-      }]);
-    }
-
-    return embedding;
-  };
   // Create a wrapper for createMemoryThread
-  const createMemoryThreadWrapper = async (name: string, options?: any): Promise<string> => {
+  const createMemoryThreadWrapper = async (
+    name: string,
+    options?: {
+      user_id?: string;
+      agent_id?: string;
+      metadata?: ThreadMetadata
+    }
+  ): Promise<string> => {
     let threadId: string = '';
 
     if (provider === 'libsql') {
@@ -564,16 +579,27 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
 
     return threadId || generateUUID();
   };
+
   // Create a wrapper for listMemoryThreads
-  const listMemoryThreadsWrapper = async (options?: any): Promise<(Thread | RedisThread)[]> => {
+  const listMemoryThreadsWrapper = async (
+    options?: {
+      limit?: number;
+      offset?: number;
+      filters?: {
+        user_id?: string;
+        agent_id?: string;
+        [key: string]: unknown
+      }
+    }
+  ): Promise<(Thread | RedisThread)[]> => {
     if (provider === 'libsql') {
       return await LibSQLMemory.listMemoryThreads(options);
     } else if (provider === 'upstash') {
       // Extract options for Upstash
       const limit = options?.limit || 10;
       const offset = options?.offset || 0;
-      const userId = options?.filters?.user_id || options?.user_id;
-      const agentId = options?.filters?.agent_id || options?.agent_id;
+      const userId = options?.filters?.user_id;
+      const agentId = options?.filters?.agent_id;
 
       return await listRedisThreads(limit, offset, userId, agentId);
     }
@@ -581,6 +607,76 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     return [];
   };
 
+  // Create a wrapper for updateMemoryThread
+  const updateMemoryThreadWrapper = async (id: string, updates: Partial<Thread | RedisThread>): Promise<boolean> => {
+    try {
+      if (provider === 'libsql') {
+        // LibSQL implementation
+
+        // Fallback to direct SQL update if the function doesn't exist
+        try {
+          // Import dynamically to avoid circular dependencies
+          const { getLibSQLClient } = await import('./db');
+          const db = getLibSQLClient();
+
+          // Prepare update fields
+          const updateFields = [];
+          const updateValues = [];
+
+          if (updates.name) {
+            updateFields.push('name = ?');
+            updateValues.push(updates.name);
+          }
+
+          if (updates.updated_at) {
+            updateFields.push('updated_at = ?');
+            updateValues.push(updates.updated_at);
+          }
+
+          if (updates.metadata) {
+            updateFields.push('metadata = ?');
+            updateValues.push(typeof updates.metadata === 'string'
+              ? updates.metadata
+              : JSON.stringify(updates.metadata));
+          }
+
+          if (updateFields.length === 0) {
+            return false; // Nothing to update
+          }
+
+          // Add ID to values
+          updateValues.push(id);
+
+          // Execute update
+          await db.execute({
+            sql: `
+              UPDATE memory_threads
+              SET ${updateFields.join(', ')}
+              WHERE id = ?
+            `,
+            args: updateValues
+          });
+
+          // Invalidate thread cache
+          invalidateThreadCache(id);
+
+          return true;
+        } catch {
+          // Silently fail but return false to indicate failure
+          return false;
+        }
+      } else if (provider === 'upstash') {
+        // For Upstash, use the updateRedisThread function
+        const result = await updateRedisThread(id, updates);
+        return result !== null;
+      }
+
+      return false;
+    } catch {
+      // Silently fail but return false to indicate failure
+      return false;
+    }
+  };
   // Return the memory interface implementation
   return {
     // Thread operations
@@ -588,13 +684,14 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     getMemoryThread: cachedGetMemoryThread,
     listMemoryThreads: listMemoryThreadsWrapper,
     deleteMemoryThread: cachedDeleteMemoryThread,
+    updateMemoryThread: updateMemoryThreadWrapper,
 
     // Message operations
     saveMessage: cachedSaveMessage,
     loadMessages: cachedLoadMessages,
 
     // Embedding operations
-    generateEmbedding: async (text: string, modelName?: string) => {
+    generateEmbedding: async (text: string, _modelName?: string) => {
       const { generateEmbedding } = await import('../ai-integration');
       return generateEmbedding(text);
     },

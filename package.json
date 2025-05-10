@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
     "migrate:generate:supabase": "drizzle-kit generate --config drizzle.supabase.config.ts --name",
     "migrate:generate:libsql": "drizzle-kit generate --config drizzle.libsql.config.ts --name",
     "migrate:up:supabase": "drizzle-kit up --config drizzle.supabase.config.ts",
@@ -16,7 +18,7 @@
     "migrate:all": "pnpm migrate:generate:supabase init && pnpm migrate:up:supabase && pnpm migrate:generate:libsql init && pnpm migrate:up:libsql"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.17.0"
   },
   "license": "MIT",
   "author": "Deanmachines",
@@ -27,7 +29,7 @@
     "Data Processing",
     "Model Training",
     "Deployment"
-  ],  
+  ],
   "dependencies": {
     "@agentic/ai-sdk": "^7.6.4",
     "@agentic/arxiv": "^7.6.4",
@@ -117,6 +119,7 @@
     "@supabase/supabase-js": "^2.49.4",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/react-table": "^8.21.3",
+    "@tsparticles/react": "^3.0.0",
     "@types/d3": "^7.4.3",
     "@uiw/codemirror-theme-vscode": "^4.23.12",
     "@uiw/react-codemirror": "^4.23.12",

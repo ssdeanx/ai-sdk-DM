@@ -275,6 +275,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@tsparticles/react':
+        specifier: ^3.0.0
+        version: 3.0.0(@tsparticles/engine@3.8.1)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@types/d3':
         specifier: ^7.4.3
         version: 7.4.3
@@ -303,8 +306,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       '@upstash/workflow':
-        specifier: ^0.2.12
-        version: 0.2.12(react@19.1.0)
+        specifier: ^0.2.13
+        version: 0.2.13(react@19.1.0)
       '@xenova/transformers':
         specifier: ^2.17.2
         version: 2.17.2
@@ -3783,6 +3786,16 @@ packages:
   '@tokenizer/token@0.3.0':
     resolution: {integrity: sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==}
 
+  '@tsparticles/engine@3.8.1':
+    resolution: {integrity: sha512-S8h10nuZfElY7oih//NUHnT5qf4v3/dnsU8CMs7dz5lBEGr3amrYrXk0V+YKPTIQwfdmJHUaSBoAqFiv4aEGIA==}
+
+  '@tsparticles/react@3.0.0':
+    resolution: {integrity: sha512-hjGEtTT1cwv6BcjL+GcVgH++KYs52bIuQGW3PWv7z3tMa8g0bd6RI/vWSLj7p//NZ3uTjEIeilYIUPBh7Jfq/Q==}
+    peerDependencies:
+      '@tsparticles/engine': ^3.0.2
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
   '@types/aws-lambda@8.10.147':
     resolution: {integrity: sha512-nD0Z9fNIZcxYX5Mai2CTmFD7wX7UldCkW2ezCF8D1T5hdiLsnTWDGRpfRYntU6VjTdLQjOvyszru7I1c1oCQew==}
 
@@ -4128,8 +4141,8 @@ packages:
   '@upstash/vector@1.2.1':
     resolution: {integrity: sha512-xKA9qTgbnPsxym/ymgwmaJbJHSTA6b5B1SNyTqJerV8322xn6eJM+p3xZPxKJYDPfSea7RgVxsTkhE9I/mOaOw==}
 
-  '@upstash/workflow@0.2.12':
-    resolution: {integrity: sha512-bnpK1QR8sIS3LzcYaw+1d9fl5cyve7cYhBy23xo3tUK/NEHTx703NbssuYNXu8vOGQ3j0FHf8SgPPp25dMQ/Kw==}
+  '@upstash/workflow@0.2.13':
+    resolution: {integrity: sha512-TX2fOPnAWgW6ky7MoC9OCgVIu7rB1BRqfP+c8ILziR/I5vdpky5mrHvpSJq28Vqsq+rso0pyLW4Dmle1Hk56Rw==}
 
   '@whatwg-node/disposablestack@0.0.6':
     resolution: {integrity: sha512-LOtTn+JgJvX8WfBVJtF08TGrdjuFzGJc4mkP8EdDI8ADbvO7kiexYep1o8dwnt0okb0jYclCDXF13xU7Ge4zSw==}
@@ -11616,6 +11629,14 @@ snapshots:
 
   '@tokenizer/token@0.3.0': {}
 
+  '@tsparticles/engine@3.8.1': {}
+
+  '@tsparticles/react@3.0.0(@tsparticles/engine@3.8.1)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@tsparticles/engine': 3.8.1
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+
   '@types/aws-lambda@8.10.147': {}
 
   '@types/aws-lambda@8.10.149': {}
@@ -12040,7 +12061,7 @@ snapshots:
 
   '@upstash/vector@1.2.1': {}
 
-  '@upstash/workflow@0.2.12(react@19.1.0)':
+  '@upstash/workflow@0.2.13(react@19.1.0)':
     dependencies:
       '@ai-sdk/openai': 1.3.22(zod@3.24.4)
       '@upstash/qstash': 2.8.1

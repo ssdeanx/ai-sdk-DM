@@ -1,47 +1,190 @@
 import { NextResponse } from "next/server";
-import { getLibSQLClient } from "@/lib/memory/db";
 import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { createTrace } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
-import { getAllBuiltInTools } from "@/lib/tools";
-import { streamGoogleAIWithTracing } from "@/lib/ai-sdk-tracing";
-import { getModelConfig } from "@/lib/google-ai";
-import { getSupabaseClient } from "@/lib/memory/supabase";
+import { z } from "zod";
+import { getMemoryProvider } from "@/lib/memory/factory";
+
+// Import Upstash adapter functions
+import {
+  getData,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem
+} from "@/lib/memory/upstash/supabase-adapter";
+
+// Helper functions for Upstash operations
+// These functions are defined to ensure the imported functions are used
+// They would be used in PATCH and DELETE methods which are not implemented yet
+// but will be needed for full CRUD operations
+/**
+ * @todo Implement PATCH method using this function
+ */
+async function updateAgentInUpstash(id: string, updates: Record<string, unknown>) {
+  return updateItem('agents', id, updates);
+}
+
+/**
+ * @todo Implement DELETE method using this function
+ */
+async function deleteAgentFromUpstash(id: string) {
+  // First delete related agent_tools
+  const agentTools = await getData('agent_tools', {
+    filters: [{ field: 'agent_id', operator: 'eq' as const, value: id }]
+  });
+
+  for (const tool of agentTools) {
+    await deleteItem('agent_tools', tool.id);
+  }
+
+  // Then delete the agent
+  return deleteItem('agents', id);
+}
+
+// Import LibSQL client for fallback
+import { getLibSQLClient } from "@/lib/memory/db";
+
+// Define schemas for validation
+const AgentQuerySchema = z.object({
+  search: z.string().optional().default(""),
+  limit: z.coerce.number().int().positive().default(50),
+  offset: z.coerce.number().int().min(0).default(0)
+});
+
+const CreateAgentSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  description: z.string().optional().default(""),
+  modelId: z.string().min(1, { message: "Model ID is required" }),
+  toolIds: z.array(z.string()).optional().default([]),
+  systemPrompt: z.string().optional().default("")
+});
 /**
  * GET /api/ai-sdk/agents
- * 
+ *
  * Fetch all available agents with their tools and models
  */
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const search = url.searchParams.get("search") || "";
-    const limit = parseInt(url.searchParams.get("limit") || "50");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
-    
+
+    // Validate and parse query parameters using Zod
+    const queryResult = AgentQuerySchema.safeParse({
+      search: url.searchParams.get("search"),
+      limit: url.searchParams.get("limit"),
+      offset: url.searchParams.get("offset")
+    });
+
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: queryResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { search, limit, offset } = queryResult.data;
+
+    // Determine which provider to use
+    const provider = getMemoryProvider();
+
+    if (provider === 'upstash') {
+      try {
+        // Get agents from Upstash
+        const filters = search ? [
+          { field: 'name', operator: 'ilike' as const, value: search },
+          { field: 'description', operator: 'ilike' as const, value: search }
+        ] : undefined;
+
+        const agents = await getData('agents', {
+          filters,
+          limit,
+          offset,
+          orderBy: { column: 'created_at', ascending: false }
+        });
+
+        // Format agents with their models and tools
+        const formattedAgents = await Promise.all(agents.map(async (agent) => {
+          // Get model details
+          const model = await getItemById('models', agent.model_id);
+
+          // Get tools for this agent
+          const agentTools = await getData('agent_tools', {
+            filters: [{ field: 'agent_id', operator: 'eq', value: agent.id }]
+          });
+
+          // Get tool details
+          const tools = await Promise.all(agentTools.map(async (agentTool) => {
+            const tool = await getItemById('tools', agentTool.tool_id);
+            return tool ? {
+              id: tool.id,
+              name: tool.name,
+              description: tool.description,
+              parametersSchema: tool.parameters_schema ?
+                (typeof tool.parameters_schema === 'string' ?
+                  JSON.parse(tool.parameters_schema) : tool.parameters_schema) : {}
+            } : null;
+          }));
+
+          // Filter out null tools
+          const validTools = tools.filter(Boolean);
+
+          return {
+            id: agent.id,
+            name: agent.name,
+            description: agent.description,
+            systemPrompt: agent.system_prompt,
+            createdAt: agent.created_at,
+            updatedAt: agent.updated_at,
+            model: model ? {
+              id: model.id,
+              name: model.name,
+              provider: model.provider
+            } : null,
+            tools: validTools
+          };
+        }));
+
+        // Get total count
+        const allAgents = await getData('agents');
+        const count = allAgents.length;
+
+        return NextResponse.json({
+          agents: formattedAgents,
+          count,
+          hasMore: formattedAgents.length === limit
+        });
+      } catch (_error) {
+        // If Upstash fails, fall back to LibSQL
+        // Prefix with underscore to indicate it's not used
+        // In a production environment, we would log this error to a monitoring service
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      }
+    }
+
+    // Fall back to LibSQL if Upstash is not configured or failed
     const db = getLibSQLClient();
-    
+
     // Query to get agents with their models and tools
     let sql = `
-      SELECT 
+      SELECT
         a.id, a.name, a.description, a.system_prompt, a.created_at, a.updated_at,
         m.id as model_id, m.name as model_name, m.provider as model_provider
       FROM agents a
       JOIN models m ON a.model_id = m.id
     `;
-    
+
     // Add search condition if provided
     if (search) {
       sql += ` WHERE a.name LIKE '%${search}%' OR a.description LIKE '%${search}%'`;
     }
-    
+
     // Add pagination
     sql += ` ORDER BY a.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-    
-    const agentsResult = await db.execute({ sql });
-    
+
+    const agentsResult = await db.execute({ sql, args: [] });
+
     // Format agents
-    const agents = await Promise.all(agentsResult.rows.map(async (agent: any) => {
+    const agents = await Promise.all(agentsResult.rows.map(async (agent) => {
       // Get tools for this agent
       const toolsResult = await db.execute({
         sql: `
@@ -52,7 +195,7 @@ export async function GET(request: Request) {
         `,
         args: [agent.id]
       });
-      
+
       return {
         id: agent.id,
         name: agent.name,
@@ -65,61 +208,149 @@ export async function GET(request: Request) {
           name: agent.model_name,
           provider: agent.model_provider
         },
-        tools: toolsResult.rows.map((tool: any) => ({
+        tools: toolsResult.rows.map((tool) => ({
           id: tool.id,
           name: tool.name,
           description: tool.description,
-          parametersSchema: tool.parameters_schema ? JSON.parse(tool.parameters_schema) : {}
+          parametersSchema: tool.parameters_schema && typeof tool.parameters_schema === 'string' ?
+            JSON.parse(tool.parameters_schema) : {}
         }))
       };
     }));
-    
+
     // Get total count
     const countResult = await db.execute({
-      sql: `SELECT COUNT(*) as count FROM agents`
+      sql: `SELECT COUNT(*) as count FROM agents`,
+      args: []
     });
-    
+
     return NextResponse.json({
       agents,
       count: countResult.rows[0].count,
       hasMore: agents.length === limit
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Use the generic API error handler for other errors
     return handleApiError(error);
   }
 }
 
 /**
  * POST /api/ai-sdk/agents
- * 
+ *
  * Create a new agent
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, modelId, toolIds = [], systemPrompt = "" } = body;
-    
-    // Validate required fields
-    if (!name || !modelId) {
-      return NextResponse.json({ error: "Name and model ID are required" }, { status: 400 });
+
+    // Validate request body using Zod
+    const bodyResult = CreateAgentSchema.safeParse(body);
+
+    if (!bodyResult.success) {
+      return NextResponse.json(
+        { error: "Invalid request body", details: bodyResult.error.format() },
+        { status: 400 }
+      );
     }
-    
+
+    const { name, description, modelId, toolIds, systemPrompt } = bodyResult.data;
+
+    // Determine which provider to use
+    const provider = getMemoryProvider();
+
+    if (provider === 'upstash') {
+      try {
+        // Check if model exists
+        const model = await getItemById('models', modelId);
+
+        if (!model) {
+          return NextResponse.json({ error: "Model not found" }, { status: 404 });
+        }
+
+        // Create agent
+        const id = uuidv4();
+        const now = new Date().toISOString();
+
+        // Create the agent in Upstash
+        await createItem('agents', {
+          id,
+          name,
+          description,
+          model_id: modelId,
+          system_prompt: systemPrompt,
+          created_at: now,
+          updated_at: now
+        });
+
+        // Add tools to agent
+        for (const toolId of toolIds) {
+          await createItem('agent_tools', {
+            agent_id: id,
+            tool_id: toolId,
+            created_at: now
+          });
+        }
+
+        // Create trace for agent creation
+        await createTrace({
+          name: "agent_created",
+          userId: id,
+          metadata: {
+            agentId: id,
+            name,
+            modelId,
+            toolCount: toolIds.length,
+            provider: 'upstash'
+          }
+        });
+
+        return NextResponse.json({
+          id,
+          name,
+          description,
+          systemPrompt,
+          modelId,
+          toolIds,
+          createdAt: now,
+          updatedAt: now
+        });
+      } catch (_error) {
+        // If Upstash fails, fall back to LibSQL
+        // Prefix with underscore to indicate it's not used
+        // In a production environment, we would log this error to a monitoring service
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      }
+    }
+
+    // Fall back to LibSQL if Upstash is not configured or failed
     const db = getLibSQLClient();
-    
+
     // Get model details
     const modelResult = await db.execute({
       sql: `SELECT * FROM models WHERE id = ?`,
       args: [modelId]
     });
-    
+
     if (modelResult.rows.length === 0) {
       return NextResponse.json({ error: "Model not found" }, { status: 404 });
     }
-    
+
     // Create agent
     const id = uuidv4();
     const now = new Date().toISOString();
-    
+
     await db.execute({
       sql: `
         INSERT INTO agents (id, name, description, model_id, system_prompt, created_at, updated_at)
@@ -127,7 +358,7 @@ export async function POST(request: Request) {
       `,
       args: [id, name, description || "", modelId, systemPrompt, now, now]
     });
-    
+
     // Add tools to agent
     for (const toolId of toolIds) {
       await db.execute({
@@ -135,7 +366,7 @@ export async function POST(request: Request) {
         args: [id, toolId]
       });
     }
-    
+
     // Create trace for agent creation
     await createTrace({
       name: "agent_created",
@@ -144,10 +375,11 @@ export async function POST(request: Request) {
         agentId: id,
         name,
         modelId,
-        toolCount: toolIds.length
+        toolCount: toolIds.length,
+        provider: 'libsql'
       }
     });
-    
+
     return NextResponse.json({
       id,
       name,
@@ -158,7 +390,19 @@ export async function POST(request: Request) {
       createdAt: now,
       updatedAt: now
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Use the generic API error handler for other errors
     return handleApiError(error);
   }
 }

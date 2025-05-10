@@ -22,13 +22,28 @@ import type { Database, Json } from '@/types/supabase';
 import * as schema from '@/db/supabase/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { z } from 'zod';
 
 // Import Upstash adapter modules
-import { createSupabaseClient, SupabaseClient as UpstashSupabaseClient } from './upstash/supabase-adapter-factory';
+import {
+  createSupabaseClient,
+  SupabaseClient as UpstashSupabaseClient
+} from './upstash/supabase-adapter-factory';
 
-// Import additional Upstash adapter types and functions for reference
-// These are imported with aliases to avoid conflicts and are used in the implementation
-import './upstash';
+// Define cache item type and client types
+export type CacheItem = any; // Using any here as a temporary solution
+
+// Type guard for client types
+export type ClientType = SupabaseClient<Database> | UpstashSupabaseClient;
+
+// Define error type
+export const ErrorSchema = z.object({
+  message: z.string().optional(),
+  code: z.string().optional(),
+  details: z.string().optional(),
+  hint: z.string().optional()
+}).passthrough();
+export type ErrorType = z.infer<typeof ErrorSchema>;
 
 // Singleton instances for connection reuse
 let supabaseClientInstance: SupabaseClient<Database> | null = null;
@@ -55,12 +70,12 @@ const cacheStats = {
   evictions: 0,
 };
 
-const queryCache = new LRUCache<string, any>({
+const queryCache = new LRUCache<string, CacheItem>({
   max: 500,
   ttl: 1000 * 60 * 5,
   updateAgeOnGet: true,
   allowStale: false,
-  dispose: (value: any, key: string, reason: LRUCache.DisposeReason) => {
+  dispose: (value: CacheItem, key: string, reason: LRUCache.DisposeReason) => {
     if (reason === 'evict') {
       cacheStats.evictions++;
     }
@@ -237,7 +252,7 @@ export async function logDatabaseConnection(
  * @param client The client to check
  * @returns True if the client is a Supabase client
  */
-export const isSupabaseClient = (client: any): client is SupabaseClient<Database> => {
+export const isSupabaseClient = (client: ClientType): client is SupabaseClient<Database> => {
   return client && 'auth' in client && 'rpc' in client;
 };
 
@@ -246,7 +261,7 @@ export const isSupabaseClient = (client: any): client is SupabaseClient<Database
  * @param client The client to check
  * @returns True if the client is an Upstash Supabase client
  */
-export const isUpstashClient = (client: any): client is UpstashSupabaseClient => {
+export const isUpstashClient = (client: ClientType): client is UpstashSupabaseClient => {
   return client && 'from' in client && 'vector' in client && !('auth' in client);
 };
 
@@ -448,15 +463,150 @@ export async function createItem<T extends TableName>(
 ): Promise<TableRow<T>> {
   try {
     const client = getSupabaseTransactionClient();
-    let data: any = null;
-    let error: any = null;
+    let data: TableRow<T> | null = null;
+    let error: Error | null = null;
 
     // Handle different client types
     if (isSupabaseClient(client)) {
       // Regular Supabase client
       const result = await client
         .from(tableName)
-        .insert(item as any)
+export async function updateItem<T extends TableName>(
+  tableName: T,
+  id: string,
+  itemUpdates: TableUpdate<T>,
+  options?: { select?: string; }
+): Promise<TableRow<T> | null> {
+  try {
+    const client = getSupabaseTransactionClient()
+    let data: TableRow<T> | null = null
+    let error: Error | null = null
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from(tableName)
+        .update(itemUpdates)
+        .eq('id', id)
+        .select(options?.select || "*")
+        .single()
+
+      data = result.data as TableRow<T> | null
+      error = result.error
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        data = await client.from(tableName as string).update(id, itemUpdates)
+      } catch (err) {
+        error = err as Error
+      }
+    }
+
+    if (error) {
+      if ((error as any).code === 'PGRST116' || error.message?.includes('not found')) {
+        return null
+      }
+      throw error
+    }
+    if (data) {
+      queryCache.clear(); // Invalidate cache on update
+    }
+    return data
+  } catch (err) {
+    if (err instanceof PostgrestError) throw err
+    throw new Error(`Failed to update item in ${tableName} (ID: ${id}): ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+export async function deleteItem<T extends TableName>(
+  tableName: T,
+  id: string
+): Promise<void> {
+  try {
+    const client = getSupabaseTransactionClient()
+    let error: Error | null = null
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const result = await client
+        .from(tableName)
+        .delete()
+        .eq('id', id)
+      error = result.error
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        await client.from(tableName as string).delete(id)
+      } catch (err) {
+        error = err as Error
+      }
+    }
+
+    if (error) {
+      if ((error as any).code === 'PGRST116' || error.message?.includes('not found')) {
+        // Item not found, consider it deleted
+        return
+      }
+      throw error
+    }
+    queryCache.clear(); // Invalidate cache on delete
+  } catch (err) {
+    if (err instanceof PostgrestError) throw err
+    throw new Error(`Failed to delete item from ${tableName} (ID: ${id}): ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+export async function upsertItem<T extends TableName>(
+  tableName: T,
+  item: TableInsert<T>,
+  options?: { onConflict?: string; select?: string; }
+): Promise<TableRow<T>> {
+  try {
+    const client = getSupabaseTransactionClient()
+    let data: TableRow<T> | null = null
+    let error: Error | null = null
+
+    // Handle different client types
+    if (isSupabaseClient(client)) {
+      // Regular Supabase client
+      const query = client
+        .from(tableName)
+        .upsert(item, { onConflict: options?.onConflict || 'id' })
+        .select(options?.select || "*")
+      
+      const result = await query.single()
+      data = result.data as TableRow<T> | null
+      error = result.error
+
+    } else if (isUpstashClient(client)) {
+      // Upstash adapter client
+      try {
+        // Upstash client doesn't have a direct upsert with onConflict.
+        // We can simulate it by trying to update first, then create if it fails.
+        // However, a simpler approach for now is to just use create,
+        // assuming the ID is unique or handled by the Upstash adapter.
+        // For a true upsert, a more complex logic would be needed here.
+        data = await client.from(tableName as string).upsert(item)
+      } catch (err) {
+        error = err as Error
+      }
+    }
+
+    if (error) {
+      throw error
+    }
+    if (!data) {
+      throw new Error(`Failed to upsert item in ${tableName}, no data returned.`)
+    }
+    queryCache.clear(); // Invalidate cache on upsert
+    return data
+  } catch (err) {
+    if (err instanceof PostgrestError) throw err
+    throw new Error(`Failed to upsert item in ${tableName}: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}        .insert(item)
         .select(options?.select || "*")
         .single();
 
@@ -465,31 +615,25 @@ export async function createItem<T extends TableName>(
     } else if (isUpstashClient(client)) {
       // Upstash adapter client
       try {
-        data = await client.from(tableName as string).create(item as any);
+        data = await client.from(tableName as string).create(item);
       } catch (err) {
-        console.error(`Error creating item in Upstash ${tableName}:`, err);
-        error = err;
+        error = err as Error;
       }
     }
 
     if (error) {
-      console.error(`Error creating item in ${tableName}:`, error.message);
       throw error;
     }
     if (!data) {
       throw new Error(`Failed to create item in ${tableName}, no data returned.`);
     }
     queryCache.clear();
-    return data as unknown as TableRow<T>;
+    return data as TableRow<T>;
   } catch (err) {
-    console.error(`Exception in createItem in ${tableName}:`, err instanceof Error ? err.message : String(err));
     if (err instanceof PostgrestError) throw err;
     throw new Error(`Failed to create item in ${tableName}: ${err instanceof Error ? err.message : String(err)}`);
   }
-}
-
-export async function updateItem<T extends TableName>(
-  tableName: T,
+}export async function updateItem<T extends TableName>(  tableName: T,
   id: string,
   itemUpdates: TableUpdate<T>,
   options?: { select?: string; }
