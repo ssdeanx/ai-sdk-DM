@@ -10,6 +10,9 @@
  * This hook is optimized for performance and should be used for operations
  * that require direct database access, such as bulk operations or complex queries.
  *
+ * It also supports the Upstash adapter for Supabase compatibility, allowing
+ * seamless switching between Supabase and Upstash backends.
+ *
  * @module hooks/use-supabase-direct
  */
 
@@ -20,6 +23,9 @@ import type { Database } from '@/types/supabase'
 import { LRUCache } from 'lru-cache'
 import { getDrizzleClient } from '@/lib/memory/drizzle'
 import { DATABASE_URL } from '../lib/tools/graphql/constants';
+import { useMemoryProvider } from './use-memory-provider'
+import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory'
+import type { SupabaseClient as UpstashSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory'
 
 /**
  * Options for the useSupabaseDirect hook
@@ -108,6 +114,23 @@ interface UseSupabaseDirectOptions<T> {
    * @default true
    */
   autoRefresh?: boolean
+
+  /**
+   * Upstash adapter options
+   */
+  upstash?: {
+    /**
+     * Whether to force using Upstash adapter
+     * If not specified, will use the value from environment variables
+     */
+    forceUse?: boolean
+
+    /**
+     * Whether to add Upstash adapter headers to the request
+     * @default true
+     */
+    addHeaders?: boolean
+  }
 }
 
 /**
@@ -219,7 +242,8 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     onError,
     onSuccess,
     cache: cacheOptions = { enabled: true },
-    useDrizzle = !!schemaTable
+    useDrizzle = !!schemaTable,
+    upstash = { addHeaders: true }
   } = options
 
   const [loading, setLoading] = useState(false)
@@ -232,6 +256,14 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     currentPage: 1,
     pageSize: 20
   })
+
+  // Get memory provider configuration
+  const { useUpstashAdapter } = useMemoryProvider()
+
+  // Determine if we should use Upstash adapter
+  const shouldUseUpstash = upstash.forceUse !== undefined
+    ? upstash.forceUse
+    : useUpstashAdapter
 
   // Initialize LRU cache with optimized settings
   const cacheInstance = useRef<LRUCache<string, any>>(new LRUCache({
@@ -258,50 +290,77 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     staleHits: 0,
     refreshes: 0
   })
+
   // Initialize Drizzle client if needed
   const drizzleRef = useRef<ReturnType<typeof getDrizzleClient> | null>(null)
 
-  // Create Supabase client using session pooler for regular queries
-  // Session pooler is optimized for many short-lived connections
-  const supabase = createClient<Database>(
-    process.env.SESSION_POOL_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    {
-      db: {
-        schema: 'public',
-      },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-      global: {
-        headers: {
-          'x-client-info': 'useSupabaseDirect-SessionPool'
-        }
-      },
-    }
-  )
+  // Create client refs to hold the Supabase or Upstash clients
+  const supabaseRef = useRef<any>(null)
+  const transactionClientRef = useRef<any>(null)
 
-  // Create transaction client using transaction pooler
-  // Transaction pooler is optimized for transactions that modify data
-  const transactionClient = createClient<Database>(
-    process.env.DATABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    {
-      db: {
-        schema: 'public',
-      },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-      global: {
-        headers: {
-          'x-client-info': 'useSupabaseDirect-TransactionPool'
+  // Initialize clients if not already done
+  if (!supabaseRef.current) {
+    if (shouldUseUpstash) {
+      try {
+        // Create Upstash adapter client
+        supabaseRef.current = createSupabaseClient()
+        transactionClientRef.current = supabaseRef.current
+        console.log("Using Upstash adapter for Supabase direct operations")
+      } catch (error) {
+        console.error("Error creating Upstash adapter:", error)
+        // Fall back to regular Supabase clients
+        supabaseRef.current = createClient<Database>(
+          process.env.SESSION_POOL_URL || '',
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          {
+            db: { schema: 'public' },
+            auth: { persistSession: true, autoRefreshToken: true },
+            global: { headers: { 'x-client-info': 'useSupabaseDirect-SessionPool' } },
+          }
+        )
+
+        transactionClientRef.current = createClient<Database>(
+          process.env.DATABASE_URL || '',
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          {
+            db: { schema: 'public' },
+            auth: { persistSession: true, autoRefreshToken: true },
+            global: { headers: { 'x-client-info': 'useSupabaseDirect-TransactionPool' } },
+          }
+        )
+      }
+    } else {
+      // Create regular Supabase clients
+      supabaseRef.current = createClient<Database>(
+        process.env.SESSION_POOL_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          db: { schema: 'public' },
+          auth: { persistSession: true, autoRefreshToken: true },
+          global: { headers: { 'x-client-info': 'useSupabaseDirect-SessionPool' } },
         }
-      },
+      )
+
+      transactionClientRef.current = createClient<Database>(
+        process.env.DATABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          db: { schema: 'public' },
+          auth: { persistSession: true, autoRefreshToken: true },
+          global: { headers: { 'x-client-info': 'useSupabaseDirect-TransactionPool' } },
+        }
+      )
     }
-  )
+  }
+
+  // Get the clients from the refs
+  const supabase = supabaseRef.current as any
+  const transactionClient = transactionClientRef.current as any
+
+  // Type guard to check if client is Upstash adapter
+  const isUpstashAdapter = (client: any): client is UpstashSupabaseClient => {
+    return client && typeof client === 'object' && 'isUpstashAdapter' in client && client.isUpstashAdapter === true;
+  }
 
   // Use Drizzle if enabled
   useEffect(() => {

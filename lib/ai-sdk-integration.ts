@@ -13,14 +13,12 @@ import {
   streamText,
   generateText,
   wrapLanguageModel,
+  customProvider,
   type LanguageModelV1Middleware,
   type StreamTextResult,
   type GenerateTextResult,
-  type AIResponse
+  type Provider
 } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   streamGoogleAIWithTracing,
   streamOpenAIWithTracing,
@@ -36,6 +34,7 @@ import { personaManager } from "./agents/personas/persona-manager";
 import { modelRegistry, ModelSettings } from "./models/model-registry";
 import { getModelById, getModelByModelId } from "./models/model-service";
 import { z } from "zod";
+import { shouldUseUpstash } from "./memory/supabase";
 
 // --- Zod Schemas ---
 
@@ -102,12 +101,18 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
     let model = modelRegistry.getModel(modelId);
 
     if (!model) {
-      // Try to fetch from database
-      model = await getModelById(modelId);
-
-      if (!model) {
+      // Try to fetch from database (Upstash or Supabase)
+      // Note: getModelById and getModelByModelId already handle Upstash/Supabase selection internally
+      // based on shouldUseUpstash() in the model-service.ts implementation
+      const dbModel = await getModelById(modelId);
+      if (dbModel) {
+        model = dbModel;
+      } else {
         // Try to fetch by model_id
-        model = await getModelByModelId(modelId);
+        const modelIdModel = await getModelByModelId(modelId);
+        if (modelIdModel) {
+          model = modelIdModel;
+        }
       }
     }
 
@@ -116,6 +121,36 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
     console.warn(`Error getting model configuration for ${modelId}:`, error);
     return undefined;
   }
+}
+
+/**
+ * Gets Google AI model configuration
+ *
+ * @param modelId - Model ID
+ * @returns API key or undefined
+ */
+async function getModelConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
+  return await getModelConfiguration(modelId);
+}
+
+/**
+ * Gets OpenAI model configuration
+ *
+ * @param modelId - Model ID
+ * @returns API key or undefined
+ */
+async function getOpenAIConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
+  return await getModelConfiguration(modelId);
+}
+
+/**
+ * Gets Anthropic model configuration
+ *
+ * @param modelId - Model ID
+ * @returns API key or undefined
+ */
+async function getAnthropicConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
+  return await getModelConfiguration(modelId);
 }
 
 /**
@@ -151,6 +186,27 @@ export async function getAllAISDKTools({
     ...customTools,
     ...agTools
   };
+}
+
+/**
+ * Create a custom provider with pre-configured language models
+ *
+ * @param options - Configuration options
+ * @param options.languageModels - Map of model IDs to language models
+ * @param options.fallbackProvider - Optional fallback provider
+ * @returns Custom provider
+ */
+export function createCustomAISDKProvider({
+  languageModels = {},
+  fallbackProvider
+}: {
+  languageModels?: Record<string, any>;
+  fallbackProvider?: Provider;
+} = {}): Provider {
+  return customProvider({
+    languageModels,
+    fallbackProvider
+  });
 }
 
 /**
@@ -244,7 +300,7 @@ export async function streamWithAISDK({
           temperature,
           maxTokens,
           tools,
-          apiKey: apiKey || getModelConfig(modelId)?.api_key,
+          apiKey: apiKey || (await getModelConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -268,7 +324,7 @@ export async function streamWithAISDK({
           temperature,
           maxTokens,
           tools,
-          apiKey: apiKey || getOpenAIConfig(modelId)?.api_key,
+          apiKey: apiKey || (await getOpenAIConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -288,7 +344,7 @@ export async function streamWithAISDK({
           temperature,
           maxTokens,
           tools,
-          apiKey: apiKey || getAnthropicConfig(modelId)?.api_key,
+          apiKey: apiKey || (await getAnthropicConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -315,11 +371,10 @@ export async function streamWithAISDK({
         personaManager.recordPersonaUsage(personaId, {
           success: true,
           latency,
+          adaptabilityFactor: 1.0,
           metadata: {
-            provider,
-            modelId,
-            traceId,
-            operation: 'stream'
+            taskType: 'stream',
+            executionTime: latency.toString()
           }
         }).catch(error => {
           console.error(`Error updating persona score for ${personaId}:`, error);
@@ -424,7 +479,7 @@ export async function generateWithAISDK({
           temperature,
           maxTokens,
           tools,
-          apiKey: apiKey || getModelConfig(modelId)?.api_key,
+          apiKey: apiKey || (await getModelConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -444,7 +499,7 @@ export async function generateWithAISDK({
           temperature,
           maxTokens,
           tools,
-          apiKey: apiKey || getOpenAIConfig(modelId)?.api_key,
+          apiKey: apiKey || (await getOpenAIConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -462,7 +517,7 @@ export async function generateWithAISDK({
           temperature,
           maxTokens,
           tools,
-          apiKey: apiKey || getAnthropicConfig(modelId)?.api_key,
+          apiKey: apiKey || (await getAnthropicConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -487,11 +542,10 @@ export async function generateWithAISDK({
         personaManager.recordPersonaUsage(personaId, {
           success: true,
           latency,
+          adaptabilityFactor: 1.0,
           metadata: {
-            provider,
-            modelId,
-            traceId,
-            operation: 'generate'
+            taskType: 'generate',
+            executionTime: latency.toString()
           }
         }).catch(error => {
           console.error(`Error updating persona score for ${personaId}:`, error);

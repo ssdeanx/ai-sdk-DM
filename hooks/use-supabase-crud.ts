@@ -7,14 +7,18 @@
  * - file uploads (Supabase Storage)
  * - Zod request/response validation
  * - retry/backoff for transient network failures
+ * - Upstash adapter support for Supabase compatibility
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { z } from "zod"
 import { SupabaseClient, PostgrestError } from "@supabase/supabase-js"
-import { getSupabaseClient } from "@/lib/memory/supabase"
+import { getSupabaseClient, isSupabaseClient, isUpstashClient } from "@/lib/memory/supabase"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
+import { useMemoryProvider } from "./use-memory-provider"
+import { createSupabaseClient } from "@/lib/memory/upstash/supabase-adapter-factory"
+import type { SupabaseClient as UpstashSupabaseClient } from "@/lib/memory/upstash/supabase-adapter-factory"
 
 // --- Table‐generic typings --------------------------------------------
 type TableName = keyof Database["public"]["Tables"]
@@ -41,6 +45,23 @@ export interface UseSupabaseCrudOptions<
 
   maxRetries?: number
   retryDelay?: number
+
+  /**
+   * Upstash adapter options
+   */
+  upstash?: {
+    /**
+     * Whether to force using Upstash adapter
+     * If not specified, will use the value from environment variables
+     */
+    forceUse?: boolean
+
+    /**
+     * Whether to add Upstash adapter headers to the request
+     * @default true
+     */
+    addHeaders?: boolean
+  }
 
   onSuccess?: (op: CrudOp, data?: Res | Res[] | string) => void
   onError?: (err: Error, op: CrudOp) => void
@@ -75,13 +96,41 @@ export function useSupabaseCrud<
   pagination,
   maxRetries = 3,
   retryDelay = 500,
+  upstash = { addHeaders: true },
   onSuccess,
   onError,
 }: UseSupabaseCrudOptions<T, Req, Res>): UseSupabaseCrudReturn<T, Res> {
   const toast = useToast().toast
-  const supabaseRef = useRef<SupabaseClient<Database> | null>(null)
-  if (!supabaseRef.current) supabaseRef.current = getSupabaseClient()
-  const supabase = supabaseRef.current
+  const { useUpstashAdapter } = useMemoryProvider()
+
+  // Determine if we should use Upstash adapter
+  const shouldUseUpstash = upstash.forceUse !== undefined
+    ? upstash.forceUse
+    : useUpstashAdapter
+
+  // Create a ref to hold the client
+  const clientRef = useRef<SupabaseClient<Database> | UpstashSupabaseClient | null>(null)
+
+  // Initialize the client if not already done
+  if (!clientRef.current) {
+    if (shouldUseUpstash) {
+      try {
+        clientRef.current = createSupabaseClient()
+        console.log("Using Upstash adapter for Supabase CRUD operations")
+      } catch (error) {
+        console.error("Error creating Upstash adapter:", error)
+        // Fall back to regular Supabase client
+        clientRef.current = getSupabaseClient() as SupabaseClient<Database>
+      }
+    } else {
+      clientRef.current = getSupabaseClient() as SupabaseClient<Database>
+    }
+  }
+
+  // Type guard to check if client is Upstash adapter
+  const isUpstashAdapter = (client: any): client is UpstashSupabaseClient => {
+    return client && typeof client === 'object' && 'isUpstashAdapter' in client && client.isUpstashAdapter === true;
+  }
 
   const [items, setItems] = useState<Res[]>([])
   const [loading, setLoading] = useState<boolean>(false)
@@ -126,8 +175,15 @@ export function useSupabaseCrud<
     setLoading(true)
     setError(null)
     try {
+      // Check if client is available
+      if (!clientRef.current) {
+        throw new Error("Database client is not available");
+      }
+
       const { data, error: pgErr } = await withRetry("fetch" as const, async () => {
-        let q = supabase.from(table).select("*")
+        // Use type assertion to handle both Supabase and Upstash adapter clients
+        const client = clientRef.current as any;
+        let q = client.from(table).select("*")
         if (filters) {
           for (const [col, val] of Object.entries(filters)) {
             q = q.eq(col as any, val as any)
@@ -141,9 +197,8 @@ export function useSupabaseCrud<
         if (pagination) {
           q = q.range(pagination.offset, pagination.offset + pagination.limit - 1)
         }
-        return await q
+        return q
       })
-
       if (pgErr) throw pgErr
       const rows = responseListSchema
         ? validate(responseListSchema, data)
@@ -165,7 +220,7 @@ export function useSupabaseCrud<
       setLoading(false)
     }
   }, [
-    supabase,
+    clientRef,
     table,
     filters,
     order,
@@ -184,6 +239,11 @@ export function useSupabaseCrud<
       setLoading(true)
       setError(null)
 
+      // Check if client is available
+      if (!clientRef.current) {
+        throw new Error("Database client is not available");
+      }
+
       let validated: Partial<InsertOf<T>>
       try {
         validated = validate(requestSchema as z.ZodSchema<Partial<InsertOf<T>>>, data)
@@ -200,12 +260,14 @@ export function useSupabaseCrud<
 
       return withRetry("create" as const, async () => {
         try {
-          const { data: result, error: pgErr } = await supabase
-            .from<T>(table)
-            .insert<InsertOf<T>>([validated as InsertOf<T>])
+          // Use type assertion to handle both Supabase and Upstash adapter clients
+          const client = clientRef.current as any;
+          const { data: result, error: pgErr } = await client
+            .from(table)
+            .insert([validated as any])
             .select("*")
             .single()
-          
+
           if (pgErr) throw pgErr
           if (!result) throw new Error("No data returned")
 
@@ -229,7 +291,7 @@ export function useSupabaseCrud<
       })
     },
     [
-      supabase,
+      clientRef,
       table,
       requestSchema,
       responseSchema,
@@ -246,6 +308,11 @@ export function useSupabaseCrud<
     async (id: string, changes: UpdateOf<T>): Promise<Res> => {
       setLoading(true)
       setError(null)
+
+      // Check if client is available
+      if (!clientRef.current) {
+        throw new Error("Database client is not available");
+      }
 
       let validated: UpdateOf<T>
       try {
@@ -267,14 +334,16 @@ export function useSupabaseCrud<
           if ('id' in updateData) {
             delete updateData.id;
           }
-          return await supabase
+          // Use type assertion to handle both Supabase and Upstash adapter clients
+          const client = clientRef.current as any;
+          return await client
             .from(table)
             .update(updateData as any)
             .eq("id", id as any)
             .select("*")
             .single()
         })
-        
+
         if (result.error) throw result.error
         if (!result.data) throw new Error("No data returned")
 
@@ -297,7 +366,7 @@ export function useSupabaseCrud<
       }
     },
     [
-      supabase,
+      clientRef,
       table,
       responseSchema,
       validate,
@@ -313,15 +382,23 @@ export function useSupabaseCrud<
     async (id: string): Promise<void> => {
       setLoading(true)
       setError(null)
+
+      // Check if client is available
+      if (!clientRef.current) {
+        throw new Error("Database client is not available");
+      }
+
       try {
         const result = await withRetry("delete" as const, async () => {
-          return await supabase
+          // Use type assertion to handle both Supabase and Upstash adapter clients
+          const client = clientRef.current as any;
+          return await client
             .from(table)
             .delete()
             .eq("id", id as any)
             .select("*")
             .single();
-        });        
+        });
         if (result.error) throw result.error;
 
         setItems((cur) => cur.filter((r) => 'id' in r && r.id !== id));
@@ -340,7 +417,7 @@ export function useSupabaseCrud<
         setLoading(false);
       }
     },
-    [supabase, table, onSuccess, onError, toast, withRetry]
+    [clientRef, table, onSuccess, onError, toast, withRetry]
   )
 
   // --- BATCH INSERT ---------------------------------------------------
@@ -348,6 +425,11 @@ export function useSupabaseCrud<
     async (arr: Partial<InsertOf<T>>[]): Promise<Res[]> => {
       setLoading(true)
       setError(null)
+
+      // Check if client is available
+      if (!clientRef.current) {
+        throw new Error("Database client is not available");
+      }
 
       let validatedArr: Partial<InsertOf<T>>[]
       try {
@@ -365,12 +447,14 @@ export function useSupabaseCrud<
 
       try {
         const result = await withRetry("batch" as const, async () => {
-          return await supabase
-            .from<T>(table)
-            .insert<InsertOf<T>>(validatedArr as InsertOf<T>[])
+          // Use type assertion to handle both Supabase and Upstash adapter clients
+          const client = clientRef.current as any;
+          return await client
+            .from(table)
+            .insert(validatedArr as any)
             .select("*")
         })
-        
+
         if (result.error) throw result.error
         if (!result.data) throw new Error("No data returned")
 
@@ -398,7 +482,7 @@ export function useSupabaseCrud<
         setLoading(false)
       }
     },    [
-      supabase,
+      clientRef,
       table,
       requestSchema,
       responseListSchema,
@@ -415,13 +499,23 @@ export function useSupabaseCrud<
     async (bucket: string, path: string, file: File): Promise<string> => {
       setLoading(true)
       setError(null)
+
+      // Check if client is available
+      if (!clientRef.current) {
+        throw new Error("Database client is not available");
+      }
+
       try {
-        const { data, error: stErr } = await supabase.storage
+        // Get a regular Supabase client for storage operations
+        // This is because the Upstash adapter might not support storage operations
+        const storageClient = getSupabaseClient() as any
+
+        const { error: stErr } = await storageClient.storage
           .from(bucket)
           .upload(path, file)
         if (stErr) throw stErr as unknown as PostgrestError
 
-        const url = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
+        const url = storageClient.storage.from(bucket).getPublicUrl(path).data.publicUrl
         onSuccess?.("upload", url)
         toast({ title: "Uploaded", description: "File uploaded." })
         return url
@@ -439,7 +533,7 @@ export function useSupabaseCrud<
         setLoading(false)
       }
     },
-    [supabase, onSuccess, onError, toast]
+    [clientRef, onSuccess, onError, toast]
   )
 
   // auto‐fetch on mount

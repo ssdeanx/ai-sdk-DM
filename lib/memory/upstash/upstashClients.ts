@@ -53,7 +53,7 @@ export class UpstashClientError extends Error {
 
 /**
  * Validates environment variables using Zod schema
- * 
+ *
  * @returns Validated environment variables
  * @throws UpstashClientError if validation fails
  */
@@ -140,7 +140,7 @@ export const getVectorClient = (config?: IndexConfig): Index => {
         token,
         ...config
       };
-      
+
       const configValidation = VectorConfigSchema.safeParse(configToValidate);
       if (!configValidation.success) {
         throw new UpstashClientError(`Invalid Vector configuration: ${configValidation.error.message}`);
@@ -159,10 +159,34 @@ export const getVectorClient = (config?: IndexConfig): Index => {
     } catch (error) {
       throw new UpstashClientError("Failed to initialize Upstash Vector client.", error);
     }
-  } 
+  }
   // No new config, and an instance exists, so return the existing one.
   return vectorClientInstance;
 };
+
+/**
+ * Check if Upstash Redis is available based on environment variables
+ * @returns Whether Upstash Redis is available
+ */
+export function isUpstashRedisAvailable(): boolean {
+  return !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+}
+
+/**
+ * Check if Upstash Vector is available based on environment variables
+ * @returns Whether Upstash Vector is available
+ */
+export function isUpstashVectorAvailable(): boolean {
+  return !!process.env.UPSTASH_VECTOR_REST_URL && !!process.env.UPSTASH_VECTOR_REST_TOKEN;
+}
+
+/**
+ * Check if Upstash adapter should be used based on environment variables
+ * @returns Whether Upstash adapter should be used
+ */
+export function shouldUseUpstashAdapter(): boolean {
+  return process.env.USE_UPSTASH_ADAPTER === 'true';
+}
 
 /**
  * Checks the availability of Upstash services (Redis and Vector).
@@ -181,28 +205,40 @@ export const checkUpstashAvailability = async (): Promise<{
   let redisError: UpstashClientError | Error | unknown = undefined;
   let vectorError: UpstashClientError | Error | unknown = undefined;
 
-  // Check Redis
-  try {
-    const redis = getRedisClient();
-    await redis.ping();
-    redisAvailable = true;
-    console.log("Upstash Redis connection successful.");
-  } catch (error) {
-    console.error("Upstash Redis connection failed:", error);
-    redisError = error instanceof UpstashClientError ? error : new UpstashClientError("Redis availability check failed.", error);
+  // Check if Redis is available based on environment variables
+  if (!isUpstashRedisAvailable()) {
+    redisError = new UpstashClientError("Upstash Redis environment variables not set");
     redisAvailable = false;
+  } else {
+    // Check Redis connection
+    try {
+      const redis = getRedisClient();
+      await redis.ping();
+      redisAvailable = true;
+      console.log("Upstash Redis connection successful.");
+    } catch (error) {
+      console.error("Upstash Redis connection failed:", error);
+      redisError = error instanceof UpstashClientError ? error : new UpstashClientError("Redis availability check failed.", error);
+      redisAvailable = false;
+    }
   }
 
-  // Check Vector
-  try {
-    const vector = getVectorClient(); // Get client (potentially new if called with config elsewhere, but usually singleton here)
-    await vector.info(); // Attempt to fetch index info as a concrete check.
-    vectorAvailable = true;
-    console.log("Upstash Vector connection successful (checked via info()).");
-  } catch (error) {
-    console.error("Upstash Vector connection failed or info() call issue:", error);
-    vectorError = error instanceof UpstashClientError ? error : new UpstashClientError("Vector availability check failed.", error);
+  // Check if Vector is available based on environment variables
+  if (!isUpstashVectorAvailable()) {
+    vectorError = new UpstashClientError("Upstash Vector environment variables not set");
     vectorAvailable = false;
+  } else {
+    // Check Vector connection
+    try {
+      const vector = getVectorClient(); // Get client (potentially new if called with config elsewhere, but usually singleton here)
+      await vector.info(); // Attempt to fetch index info as a concrete check.
+      vectorAvailable = true;
+      console.log("Upstash Vector connection successful (checked via info()).");
+    } catch (error) {
+      console.error("Upstash Vector connection failed or info() call issue:", error);
+      vectorError = error instanceof UpstashClientError ? error : new UpstashClientError("Vector availability check failed.", error);
+      vectorAvailable = false;
+    }
   }
 
   let overallStatusMessage = "";
@@ -221,7 +257,7 @@ export const checkUpstashAvailability = async (): Promise<{
 
 /**
  * Validates a Redis configuration object using Zod schema
- * 
+ *
  * @param config - Redis configuration to validate
  * @returns Validated Redis configuration
  * @throws UpstashClientError if validation fails
@@ -239,7 +275,7 @@ export function validateRedisConfig(config: unknown): z.infer<typeof RedisConfig
 
 /**
  * Validates a Vector configuration object using Zod schema
- * 
+ *
  * @param config - Vector configuration to validate
  * @returns Validated Vector configuration
  * @throws UpstashClientError if validation fails

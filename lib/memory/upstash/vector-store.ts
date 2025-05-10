@@ -1,6 +1,57 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getVectorClient } from './upstashClients';
+import { getVectorClient, isUpstashVectorAvailable } from './upstashClients';
 import type { Index, Vector, QueryResult, FetchResult } from '@upstash/vector';
+import { generateEmbedding } from '../../ai-integration';
+import { z } from 'zod';
+
+// --- Zod Schemas ---
+
+/**
+ * Zod schema for embedding metadata
+ */
+export const EmbeddingMetadataSchema = z.record(z.any()).and(
+  z.object({
+    text: z.string().optional(),
+    source_url: z.string().optional(),
+    document_id: z.string().optional(),
+    chunk_id: z.string().optional(),
+    user_id: z.string().optional(),
+    created_at: z.string().optional(),
+  }).partial()
+);
+
+/**
+ * Zod schema for embedding vector
+ */
+export const EmbeddingVectorSchema = z.object({
+  id: z.string(),
+  vector: z.array(z.number()),
+  metadata: EmbeddingMetadataSchema.optional(),
+  sparseVector: z.object({
+    indices: z.array(z.number()),
+    values: z.array(z.number())
+  }).optional(),
+});
+
+/**
+ * Zod schema for search embeddings options
+ */
+export const SearchEmbeddingsOptionsSchema = z.object({
+  topK: z.number().positive().optional().default(10),
+  includeVectors: z.boolean().optional().default(false),
+  includeMetadata: z.boolean().optional().default(true),
+  filter: z.string().optional(),
+});
+
+/**
+ * Zod schema for embedding search result
+ */
+export const EmbeddingSearchResultSchema = z.object({
+  id: z.string(),
+  score: z.number(),
+  vector: z.array(z.number()).optional(),
+  metadata: EmbeddingMetadataSchema.optional(),
+});
 
 // --- Types ---
 
@@ -173,5 +224,190 @@ export async function getVectorIndexInfo(): Promise<any> { // Upstash SDK return
   } catch (error) {
     console.error("Error fetching Upstash Vector index info:", error);
     throw new VectorStoreError("Failed to fetch vector index info", error);
+  }
+}
+
+// --- RAG-specific Functions ---
+
+/**
+ * Stores text embedding in Upstash Vector.
+ * This function generates an embedding for the given text and stores it in the vector database.
+ *
+ * @param text - The text to generate an embedding for
+ * @param metadata - Optional metadata to store with the embedding
+ * @returns Promise resolving to the ID of the stored embedding
+ * @throws VectorStoreError if storing fails
+ */
+export async function storeTextEmbedding(
+  text: string,
+  metadata?: EmbeddingMetadata
+): Promise<string> {
+  try {
+    // Check if Upstash Vector is available
+    if (!isUpstashVectorAvailable()) {
+      throw new VectorStoreError('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+    }
+
+    // Validate text input
+    if (!text || typeof text !== 'string') {
+      throw new VectorStoreError('Invalid text input for embedding generation');
+    }
+
+    // Generate embedding for the text
+    const embedding = await generateEmbedding(text);
+
+    // Convert Float32Array to regular array
+    const embeddingArray = Array.from(embedding) as number[];
+
+    // Generate a unique ID for the embedding
+    const id = uuidv4();
+
+    // Prepare metadata with the original text
+    const fullMetadata: EmbeddingMetadata = {
+      text,
+      created_at: new Date().toISOString(),
+      ...metadata
+    };
+
+    // Validate with Zod schema
+    const vectorData = EmbeddingVectorSchema.parse({
+      id,
+      vector: embeddingArray,
+      metadata: fullMetadata
+    });
+
+    // Store the embedding in Upstash Vector
+    await upsertEmbeddings(vectorData);
+
+    return id;
+  } catch (error) {
+    console.error('Error storing text embedding:', error);
+    if (error instanceof VectorStoreError) {
+      throw error;
+    }
+    throw new VectorStoreError('Failed to store text embedding', error);
+  }
+}
+
+/**
+ * Searches for similar text in the vector store.
+ * This function generates an embedding for the query text and searches for similar embeddings.
+ *
+ * @param query - The text query to search for
+ * @param limit - Maximum number of results to return
+ * @param filter - Optional filter for the search
+ * @returns Promise resolving to an array of search results
+ * @throws VectorStoreError if search fails
+ */
+export async function searchTextStore(
+  query: string,
+  limit: number = 10,
+  filter?: string
+): Promise<EmbeddingSearchResult[]> {
+  try {
+    // Check if Upstash Vector is available
+    if (!isUpstashVectorAvailable()) {
+      throw new VectorStoreError('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+    }
+
+    // Validate query input
+    if (!query || typeof query !== 'string') {
+      throw new VectorStoreError('Invalid query text for search');
+    }
+
+    // Generate embedding for the query
+    const embedding = await generateEmbedding(query);
+
+    // Convert Float32Array to regular array
+    const embeddingArray = Array.from(embedding) as number[];
+
+    // Validate search options with Zod schema
+    const searchOptions = SearchEmbeddingsOptionsSchema.parse({
+      topK: limit,
+      includeMetadata: true,
+      filter
+    });
+
+    // Search for similar embeddings
+    const results = await searchSimilarEmbeddings(embeddingArray, searchOptions);
+
+    return results;
+  } catch (error) {
+    console.error('Error searching text store:', error);
+    if (error instanceof VectorStoreError) {
+      throw error;
+    }
+    throw new VectorStoreError('Failed to search text store', error);
+  }
+}
+
+/**
+ * Performs a hybrid search combining vector similarity and keyword matching.
+ *
+ * @param query - The text query to search for
+ * @param options - Search options
+ * @returns Promise resolving to an array of search results
+ * @throws VectorStoreError if search fails
+ */
+export async function hybridSearch(
+  query: string,
+  options?: {
+    limit?: number;
+    filter?: string;
+    keywordWeight?: number; // Weight for keyword matching (0-1)
+    vectorWeight?: number;  // Weight for vector similarity (0-1)
+  }
+): Promise<EmbeddingSearchResult[]> {
+  try {
+    // Default options
+    const limit = options?.limit || 10;
+    const filter = options?.filter;
+    const keywordWeight = options?.keywordWeight || 0.3;
+    const vectorWeight = options?.vectorWeight || 0.7;
+
+    // Validate weights
+    if (keywordWeight < 0 || keywordWeight > 1 || vectorWeight < 0 || vectorWeight > 1) {
+      throw new VectorStoreError('Weights must be between 0 and 1');
+    }
+
+    // Perform vector search
+    const vectorResults = await searchTextStore(query, limit * 2, filter);
+
+    // Extract keywords from query (simple implementation)
+    const keywords = query.toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length > 3) // Filter out short words
+      .map(word => word.replace(/[^\w]/g, '')); // Remove non-word characters
+
+    // Re-rank results based on keyword matching
+    const rerankedResults = vectorResults.map(result => {
+      const text = result.metadata?.text || '';
+
+      // Calculate keyword score
+      let keywordScore = 0;
+      if (text && keywords.length > 0) {
+        const textLower = text.toLowerCase();
+        const matchedKeywords = keywords.filter(keyword => textLower.includes(keyword));
+        keywordScore = matchedKeywords.length / keywords.length;
+      }
+
+      // Calculate combined score
+      const combinedScore = (result.score * vectorWeight) + (keywordScore * keywordWeight);
+
+      return {
+        ...result,
+        score: combinedScore
+      };
+    });
+
+    // Sort by combined score and limit results
+    rerankedResults.sort((a, b) => b.score - a.score);
+    return rerankedResults.slice(0, limit);
+  } catch (error) {
+    console.error('Error performing hybrid search:', error);
+    if (error instanceof VectorStoreError) {
+      throw error;
+    }
+    throw new VectorStoreError('Failed to perform hybrid search', error);
   }
 }

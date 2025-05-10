@@ -2,10 +2,11 @@
 
 /**
  * Enhanced hook for fetching data from a Next.js API route that, in turn,
- * talks to Supabase (or any backend).  Supports:
+ * talks to Supabase or Upstash (via the Upstash adapter).  Supports:
  * – cursor or page-based pagination
  * – retries with exponential back-off
  * – optional in-memory LRU caching
+ * – automatic detection of Upstash adapter
  *
  * @module hooks/use-supabase-fetch
  */
@@ -13,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { LRUCache } from "lru-cache"
+import { useMemoryProvider } from "./use-memory-provider"
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -52,6 +54,21 @@ interface UseSupabaseFetchOptions<T> {
     maxSize?: number
   }
 
+  /* Upstash adapter options */
+  upstash?: {
+    /**
+     * Whether to force using Upstash adapter
+     * If not specified, will use the value from useMemoryProvider
+     */
+    forceUse?: boolean
+
+    /**
+     * Whether to add Upstash adapter headers to the request
+     * @default true
+     */
+    addHeaders?: boolean
+  }
+
   onSuccess?: (data: T[]) => void
   onError?: (error: Error) => void
 }
@@ -81,10 +98,14 @@ export function useSupabaseFetch<T>({
   /* cache */
   cache = { enabled: true, ttl: 60_000, maxSize: 100 },
 
+  /* upstash */
+  upstash = { addHeaders: true },
+
   onSuccess,
   onError,
 }: UseSupabaseFetchOptions<T>) {
   const { toast } = useToast()
+  const { useUpstashAdapter } = useMemoryProvider()
 
   /* ---------------------------------------------------------------------- */
   /* State                                                                  */
@@ -183,7 +204,34 @@ export function useSupabaseFetch<T>({
         }
 
         /* ---------------------- 3. perform request ----------------------- */
-        const response = await fetch(url)
+        // Add Upstash adapter headers if enabled
+        const headers: HeadersInit = {};
+
+        // Check if we should use Upstash adapter
+        const shouldUseUpstash = upstash.forceUse !== undefined
+          ? upstash.forceUse
+          : useUpstashAdapter;
+
+        if (shouldUseUpstash) {
+          if (upstash.addHeaders) {
+            headers['x-use-upstash-adapter'] = 'true';
+
+            // Add additional headers for Upstash adapter configuration
+            headers['x-upstash-adapter-version'] = '1.0.0';
+
+            // Add cache control headers
+            headers['x-upstash-cache-control'] = cache.enabled ? 'enabled' : 'disabled';
+
+            if (cache.enabled && cache.ttl) {
+              headers['x-upstash-cache-ttl'] = String(cache.ttl);
+            }
+          }
+
+          // Log Upstash adapter usage for debugging
+          console.log(`Using Upstash adapter for fetch: ${endpoint}`);
+        }
+
+        const response = await fetch(url, { headers })
 
         if (!response.ok) {
           const { error: msg } = await response.json().catch(() => ({}))
@@ -271,6 +319,9 @@ export function useSupabaseFetch<T>({
       toast,
       onSuccess,
       onError,
+      useUpstashAdapter,
+      upstash.forceUse,
+      upstash.addHeaders,
     ]
   )
 

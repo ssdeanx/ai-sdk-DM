@@ -24,36 +24,36 @@ import {
   // Client utilities
   checkUpstashAvailability,
   UpstashClientError,
-  
+
   // Thread operations
   createRedisThread,
   getRedisThreadById,
   updateRedisThread,
   listRedisThreads,
   deleteRedisThread,
-  
+
   // Message operations
   createRedisMessage,
   getRedisMessageById,
   getRedisMessagesByThreadId,
   deleteRedisMessage,
-  
+
   // Agent state operations
   saveAgentState,
   loadAgentState,
   listThreadAgentStates,
   deleteAgentState,
-  
+
   // Vector operations
   upsertEmbeddings,
   searchSimilarEmbeddings,
   getEmbeddingsByIds,
   deleteEmbeddingsByIds,
-  
+
   // Memory processor for advanced operations
   MemoryProcessor,
   MemoryProcessorError,
-  
+
   // Types
   type Thread as RedisThread,
   type Message as RedisMessage,
@@ -392,19 +392,65 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     if (provider === 'libsql') {
       messageId = await LibSQLMemory.saveMessage(threadId, role, content, options);
     } else if (provider === 'upstash') {
-      const message = await createRedisMessage(threadId, {
-        role,
-        content,
-        metadata: options?.metadata
-      });
-      messageId = message.id;
+      try {
+        // Prepare message data
+        const messageData: any = {
+          role,
+          content,
+          metadata: options?.metadata || {}
+        };
+
+        // Add tool-specific fields if provided
+        if (options?.tool_call_id) {
+          messageData.metadata.tool_call_id = options.tool_call_id;
+        }
+
+        if (options?.tool_name) {
+          messageData.metadata.tool_name = options.tool_name;
+        }
+
+        // Generate embeddings if requested
+        if (options?.generate_embeddings && content) {
+          try {
+            const { generateEmbedding } = await import('../ai-integration');
+            const embedding = await generateEmbedding(content);
+
+            // Convert Float32Array to regular array for Upstash
+            const embeddingArray = Array.from(embedding) as number[];
+
+            // Save embedding to vector store
+            await upsertEmbeddings([{
+              id: generateUUID(),
+              vector: embeddingArray,
+              metadata: {
+                thread_id: threadId,
+                role,
+                text: content,
+                created_at: new Date().toISOString()
+              }
+            }]);
+
+            // Add embedding flag to metadata
+            messageData.metadata.has_embedding = true;
+          } catch (embeddingError) {
+            console.error('Error generating embeddings:', embeddingError);
+            messageData.metadata.has_embedding = false;
+          }
+        }
+
+        // Create the message
+        const message = await createRedisMessage(threadId, messageData);
+        messageId = message.id;
+      } catch (error) {
+        console.error(`Error saving message to thread ${threadId}:`, error);
+        throw error;
+      }
     }
 
     // Invalidate message cache for this thread
     invalidateMessageCache(threadId);
 
     return messageId || generateUUID();
-
   };
   // Create a wrapper for saveAgentState that invalidates cache
   const cachedSaveAgentState = async (
@@ -445,31 +491,31 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     } else if (provider === 'upstash') {
       // Create a memory processor instance for advanced operations
       const memoryProcessor = MemoryProcessor.getInstance();
-      
+
       // Use the streamSemanticSearch method to get results
       const searchStream = memoryProcessor.streamSemanticSearch(query, {
         topK: options?.limit || 10,
         filter: options?.filter
       });
-      
+
       // Collect results from the stream
       const results: any[] = [];
-      
+
       return new Promise((resolve, reject) => {
         searchStream.on('data', (result) => {
           results.push(result);
         });
-        
+
         searchStream.on('end', () => {
           resolve(results);
         });
-        
+
         searchStream.on('error', (error) => {
           reject(error);
         });
       });
     }
-    
+
     return [];
   };
 
@@ -477,17 +523,17 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
   const generateAndSaveEmbedding = async (text: string, modelName?: string): Promise<Float32Array> => {
     // Import the generateEmbedding function from ai-integration
     const { generateEmbedding } = await import('../ai-integration');
-    
+
     // Generate the embedding
     const embedding = await generateEmbedding(text);
-    
+
     // Save the embedding if needed
     if (provider === 'libsql') {
       await LibSQLMemory.saveEmbedding(embedding, modelName);
     } else if (provider === 'upstash') {
       // Convert Float32Array to regular array for Upstash
       const embeddingArray = Array.from(embedding) as number[];
-      
+
       // Save to Upstash Vector
       await upsertEmbeddings([{
         id: generateUUID(),
@@ -499,20 +545,23 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
         }
       }]);
     }
-    
+
     return embedding;
   };
   // Create a wrapper for createMemoryThread
   const createMemoryThreadWrapper = async (name: string, options?: any): Promise<string> => {
     let threadId: string = '';
-    
+
     if (provider === 'libsql') {
       threadId = await LibSQLMemory.createMemoryThread(name, options);
     } else if (provider === 'upstash') {
-      const thread = await createRedisThread(name);
+      const userId = options?.user_id || null;
+      const agentId = options?.agent_id || null;
+      const metadata = options?.metadata || null;
+      const thread = await createRedisThread(name, userId, agentId, metadata);
       threadId = thread.id;
     }
-    
+
     return threadId || generateUUID();
   };
   // Create a wrapper for listMemoryThreads
@@ -520,9 +569,15 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     if (provider === 'libsql') {
       return await LibSQLMemory.listMemoryThreads(options);
     } else if (provider === 'upstash') {
-      return await listRedisThreads(options);
+      // Extract options for Upstash
+      const limit = options?.limit || 10;
+      const offset = options?.offset || 0;
+      const userId = options?.filters?.user_id || options?.user_id;
+      const agentId = options?.filters?.agent_id || options?.agent_id;
+
+      return await listRedisThreads(limit, offset, userId, agentId);
     }
-    
+
     return [];
   };
 
@@ -533,11 +588,11 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
     getMemoryThread: cachedGetMemoryThread,
     listMemoryThreads: listMemoryThreadsWrapper,
     deleteMemoryThread: cachedDeleteMemoryThread,
-    
+
     // Message operations
     saveMessage: cachedSaveMessage,
     loadMessages: cachedLoadMessages,
-    
+
     // Embedding operations
     generateEmbedding: async (text: string, modelName?: string) => {
       const { generateEmbedding } = await import('../ai-integration');
@@ -547,9 +602,9 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
       if (provider === 'libsql') {
         return await LibSQLMemory.saveEmbedding(vector, model);
       } else if (provider === 'upstash') {
-        const embeddingArray = Array.from(vector);
+        const embeddingArray = Array.from(vector) as number[];
         const id = generateUUID();
-        
+
         await upsertEmbeddings([{
           id,
           vector: embeddingArray,
@@ -558,14 +613,14 @@ export function createMemory(cacheConfig?: Partial<CacheConfig>): MemoryInterfac
             created_at: new Date().toISOString()
           }
         }]);
-        
+
         return id;
       }
-      
+
       return generateUUID();
     },
     semanticSearchMemory: semanticSearch,
-    
+
     // State operations
     saveAgentState: cachedSaveAgentState,
     loadAgentState: cachedLoadAgentState
@@ -598,7 +653,7 @@ export function convertThreadFormat(thread: Thread | RedisThread): Thread | Redi
       metadata: thread.metadata || {}
     } as Thread;
   }
-  
+
   return thread;
 }
 /**
@@ -628,7 +683,7 @@ export function convertMessageFormat(message: Message | RedisMessage): Message |
       metadata: message.metadata || {}
     } as Message;
   }
-  
+
   return message;
 }
 

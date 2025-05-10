@@ -1,6 +1,6 @@
 /**
  * OpenTelemetry Tracing Module
- * 
+ *
  * This module provides OpenTelemetry tracing integration for the AI SDK.
  * It sets up a tracer provider and exports traces to the configured endpoint.
  */
@@ -13,14 +13,115 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, context, SpanStatusCode, Span, SpanKind, Tracer } from '@opentelemetry/api';
 import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
+import { shouldUseUpstash } from './memory/supabase';
+import { getRedisClient } from './memory/upstash/upstashClients';
 
 // Initialize OpenTelemetry SDK
 let sdk: NodeSDK | null = null;
 let tracer: Tracer | null = null;
 
 /**
+ * Store trace data in Upstash Redis if available
+ *
+ * @param traceId - The trace ID
+ * @param spanId - The span ID
+ * @param data - The trace data to store
+ * @returns Promise resolving to true if successful, false otherwise
+ */
+export async function storeTraceDataInUpstash(
+  traceId: string,
+  spanId: string,
+  data: Record<string, any>
+): Promise<boolean> {
+  if (!shouldUseUpstash()) {
+    return false;
+  }
+
+  try {
+    const redis = getRedisClient();
+    const key = `trace:${traceId}:span:${spanId}`;
+    const timestamp = Date.now();
+
+    // Store the trace data with timestamp
+    await redis.hset(key, {
+      ...data,
+      timestamp,
+      stored_at: new Date().toISOString()
+    });
+
+    // Set expiration (30 days)
+    await redis.expire(key, 60 * 60 * 24 * 30);
+
+    return true;
+  } catch (error) {
+    console.error('Failed to store trace data in Upstash:', error);
+    return false;
+  }
+}
+
+/**
+ * Retrieve trace data from Upstash Redis
+ *
+ * @param traceId - The trace ID
+ * @param spanId - Optional span ID to retrieve specific span data
+ * @returns Promise resolving to the trace data or null if not found
+ */
+export async function getTraceDataFromUpstash(
+  traceId: string,
+  spanId?: string
+): Promise<Record<string, any> | null> {
+  if (!shouldUseUpstash()) {
+    return null;
+  }
+
+  try {
+    const redis = getRedisClient();
+
+    if (spanId) {
+      // Get specific span data
+      const key = `trace:${traceId}:span:${spanId}`;
+      const data = await redis.hgetall(key);
+
+      // Handle null or empty object
+      if (!data || typeof data !== 'object' || Object.keys(data || {}).length === 0) {
+        return null;
+      }
+
+      return data;
+    } else {
+      // Get all spans for this trace
+      const keys = await redis.keys(`trace:${traceId}:span:*`);
+
+      if (keys.length === 0) {
+        return null;
+      }
+
+      const result: Record<string, any> = {
+        traceId,
+        spans: []
+      };
+
+      // Get data for each span
+      for (const key of keys) {
+        const spanData = await redis.hgetall(key);
+
+        // Handle null or empty object
+        if (spanData && typeof spanData === 'object' && Object.keys(spanData || {}).length > 0) {
+          result.spans.push(spanData);
+        }
+      }
+
+      return result;
+    }
+  } catch (error) {
+    console.error('Failed to retrieve trace data from Upstash:', error);
+    return null;
+  }
+}
+
+/**
  * Initialize the OpenTelemetry SDK
- * 
+ *
  * @param serviceName - The name of the service
  * @param serviceVersion - The version of the service
  * @param endpoint - The OTLP endpoint to export traces to
@@ -78,7 +179,7 @@ export function initializeOTel({
 
 /**
  * Create a span to measure the duration of an operation
- * 
+ *
  * @param name - The name of the span
  * @param options - Configuration options for the span
  * @param options.kind - The kind of span (default: SpanKind.INTERNAL)
@@ -116,7 +217,7 @@ export function createOTelSpan(
 
 /**
  * Create and start a span, returning a function to end it
- * 
+ *
  * @param name - The name of the span
  * @param options - Configuration options for the span
  * @param options.kind - The kind of span (default: SpanKind.INTERNAL)

@@ -35,6 +35,9 @@ import { SpanKind, SpanStatusCode } from "./otel-tracing"
 import { BaseAgent } from "./agents/baseAgent";
 import { personaManager } from "./agents/personas/persona-manager";
 import * as supabaseMemory from "./memory/supabase";
+import { shouldUseUpstash } from "./memory/supabase";
+import * as upstashAdapter from "./memory/upstash/supabase-adapter";
+import { getRedisClient, getVectorClient } from "./memory/upstash/upstashClients";
 import * as db from "./memory/db";
 import { initializeTools } from "./tools/toolInitializer";
 import * as aiSdkIntegration from "./ai-sdk-integration";

@@ -17,13 +17,14 @@ import * as fileTools from "./file-tools"
 import * as apiTools from "./api-tools"
 import * as ragTools from "./rag-tools"
 import * as agenticTools from "./agentic"
+import * as toolExecutionStore from "./upstash-tool-execution-store"
 
 // Import tool initialization and registry
 import { initializeTools, initializeBuiltInTools, initializeCustomTools, initializeAgenticTools } from "./toolInitializer"
 import { ToolRegistry, toolRegistry } from "./toolRegistry"
 
 // Export all tool modules
-export { webTools, codeTools, dataTools, fileTools, apiTools, ragTools, agenticTools }
+export { webTools, codeTools, dataTools, fileTools, apiTools, ragTools, agenticTools, toolExecutionStore }
 
 // Export tool initialization and registry
 export { initializeTools, initializeBuiltInTools, initializeCustomTools, initializeAgenticTools }
@@ -39,6 +40,7 @@ export const toolCategories = [
   { id: "rag", name: "RAG Tools", description: "Tools for retrieval-augmented generation" },
   { id: "agentic", name: "Agentic Tools", description: "Agentic and AI SDK compatible tools" },
   { id: "custom", name: "Custom Tools", description: "User-defined custom tools" },
+  { id: "execution", name: "Tool Execution", description: "Tools for tracking and analyzing tool executions" },
 ]
 
 /**

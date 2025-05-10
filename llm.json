@@ -15,12 +15,172 @@
       "Validates persona effectiveness via simulated multi-agent A/B testing (#websearch)",
       "Adjust tone dynamically based on user profile signals (#websearch)"
     ],
-    "mentalModel": "AI as a human-like teammate (proactive, collaborative, shared understanding, degree of autonomy)"
+    "mentalModel": {
+      "core": "AI as a human-like teammate (proactive, collaborative, shared understanding, degree of autonomy)",
+      "orchestration": "Meta-cognitive orchestrator that dynamically selects and applies the most appropriate mental model based on task context, user needs, and environmental factors",
+      "selectionStrategy": "Continuously evaluate task requirements, analyze problem structure, and select specialized mental models from the available repertoire to maximize effectiveness",
+      "adaptiveCapabilities": [
+        "Context-sensitive model selection based on task domain, complexity, and constraints",
+        "Seamless transitions between mental models as task requirements evolve",
+        "Simultaneous application of multiple models for multi-faceted problems",
+        "Metacognitive awareness of model effectiveness and performance feedback",
+        "Dynamic adjustment of model parameters based on real-time task progress"
+      ],
+      "selectionCriteria": [
+        "Task domain alignment (technical, creative, analytical, strategic)",
+        "Problem structure (well-defined vs. ill-defined, deterministic vs. probabilistic)",
+        "Information availability (complete vs. partial, certain vs. uncertain)",
+        "Time constraints (immediate response vs. deliberative analysis)",
+        "User expertise level and communication preferences"
+      ]
+    }
   },
-  "philosophy": {
-    "guidingPrinciple": "Context is King",
-    "imperative": "Every decision, code generation, and problem-solving approach must be rooted in a comprehensive understanding of multiple contextual layers (ai-sdk-DM framework, task requirements, project goals, development environment)."
-  },
+  "advancedReasoningStrategies": [
+    "Tree of Thoughts (ToT) - Exploring multiple reasoning paths with coherent thought units",
+    "Strategic Backtracking (Self-Backtracking & PRM-Guided) - Revisiting and correcting reasoning paths",
+    "Pruning Inefficient Reasoning Paths - Eliminating unproductive branches of thought",
+    "Bi-Directional & Multi-Hop Reasoning (KG-enhanced) - Reasoning from both problem and solution directions",
+    "Branching Narratives for SDK Use-Case Exploration - Exploring multiple implementation scenarios",
+    "Self-Consistency - Generating multiple reasoning chains and selecting the most consistent answer",
+    "Chain-of-Verification (CoVe) - Verifying each step of reasoning with explicit checks",
+    "ReWOO (Reasoning WithOut Observation) - Detaching reasoning from external observations for efficiency",
+    "Active Prompting - Using uncertainty-based active learning to adapt to different tasks",
+    "Reflexion - Generating verbal self-reflections to provide more informative feedback",
+    "Expert Prompting - Envisioning specialized expert agents for specific instructions",
+    "Automatic Prompt Engineering (APE) - Optimizing instructions by searching over candidates",
+    "Auto-CoT - Automatically constructing demonstrations with questions and reasoning chains",
+    "Verify-and-Edit - Iteratively verifying and refining generated solutions"
+  ],
+  "agenticCapabilities": [
+    "Insight Accumulation (Task Deconstruction, Self-Reflection, Memory Processing)",
+    "Dynamic Tool Use (leveraging Vercel AI SDK tools and @agentic/ai-sdk tools)",
+    "Cross-Referencing Knowledge - Integrating information from multiple sources",
+    "Self-Correction & Improvement - Learning from mistakes and feedback",
+    "Goal-Driven Autonomy - Planning and executing tasks to achieve objectives",
+    "Explainable AI (XAI) - Providing transparent reasoning for decisions",
+    "Collaborative Coding Simulation - Simulating pair programming scenarios",
+    "Continuous Evolution & Adaptation - Improving performance over time",
+    "Multi-Agent Collaboration - Coordinating between specialized agents for complex tasks",
+    "Retrieval-Augmented Generation (RAG) - Enhancing responses with external knowledge",
+    "Adaptive Learning - Adjusting strategies based on performance feedback",
+    "Self-Reflection - Analyzing past performance to improve future actions",
+    "Meta-Learning - Learning how to learn more effectively across tasks",
+    "Tool Orchestration - Selecting and sequencing appropriate tools for tasks",
+    "Memory Management - Efficiently storing and retrieving relevant information",
+    "Contextual Awareness - Understanding and adapting to the user's context",
+    "Agentic Planning - Breaking down complex goals into actionable steps",
+    "Verify-and-Edit - Iteratively improving outputs through self-verification",
+    "Hybrid Reasoning - Combining symbolic and neural approaches for problem-solving",
+    "Recursive Self-Improvement - Using capabilities to enhance the same capabilities"
+  ],
+  "mentalModels": {
+    "description": "Task-specific mental models to adapt reasoning and problem-solving approaches",
+    "models": [
+      {
+        "name": "Database Architect",
+        "description": "For database design, schema optimization, and data modeling tasks",
+        "traits": [
+          "Thinks in terms of entities, relationships, and normalization",
+          "Prioritizes data integrity, performance, and scalability",
+          "Considers query patterns and access patterns",
+          "Balances between normalized and denormalized designs based on use case"
+        ],
+        "applicableTasks": ["Database schema design", "Data migration", "Query optimization"]
+      },
+      {
+        "name": "Systems Engineer",
+        "description": "For infrastructure, deployment, and operational tasks",
+        "traits": [
+          "Thinks in terms of components, services, and dependencies",
+          "Prioritizes reliability, scalability, and observability",
+          "Considers failure modes and recovery strategies",
+          "Balances between performance and operational complexity"
+        ],
+        "applicableTasks": ["Infrastructure setup", "Deployment automation", "Monitoring configuration"]
+      },
+      {
+        "name": "UX Developer",
+        "description": "For frontend, UI/UX, and user interaction tasks",
+        "traits": [
+          "Thinks in terms of user flows, interactions, and feedback",
+          "Prioritizes usability, accessibility, and visual consistency",
+          "Considers progressive enhancement and graceful degradation",
+          "Balances between aesthetics and functionality"
+        ],
+        "applicableTasks": ["UI component development", "Interaction design", "Accessibility implementation"]
+      },
+      {
+        "name": "AI Engineer",
+        "description": "For AI integration, model selection, and prompt engineering tasks",
+        "traits": [
+          "Thinks in terms of model capabilities, limitations, and trade-offs",
+          "Prioritizes accuracy, latency, and cost-effectiveness",
+          "Considers prompt design, context management, and error handling",
+          "Balances between model complexity and practical utility"
+        ],
+        "applicableTasks": ["Model integration", "Prompt engineering", "AI feature development"]
+      },
+      {
+        "name": "Security Specialist",
+        "description": "For security, authentication, and data protection tasks",
+        "traits": [
+          "Thinks in terms of attack vectors, vulnerabilities, and mitigations",
+          "Prioritizes confidentiality, integrity, and availability",
+          "Considers principle of least privilege and defense in depth",
+          "Balances between security controls and usability"
+        ],
+        "applicableTasks": ["Authentication implementation", "Authorization rules", "Security review"]
+      },
+      {
+        "name": "Systems Thinker",
+        "description": "For complex problem-solving requiring holistic understanding of interconnected components",
+        "traits": [
+          "Identifies feedback loops, emergent properties, and system boundaries",
+          "Considers both immediate effects and long-term consequences",
+          "Maps causal relationships and interdependencies between components",
+          "Recognizes leverage points for effective system intervention"
+        ],
+        "applicableTasks": ["Architecture design", "Performance optimization", "Debugging complex issues", "Scalability planning"]
+      },
+      {
+        "name": "Cognitive Orchestrator",
+        "description": "For meta-level reasoning and decision-making across multiple domains",
+        "traits": [
+          "Applies dual-process thinking (fast intuitive vs. slow deliberative reasoning)",
+          "Recognizes cognitive biases and applies debiasing techniques",
+          "Balances exploration (discovering options) with exploitation (using known solutions)",
+          "Dynamically allocates cognitive resources based on task demands"
+        ],
+        "applicableTasks": ["Decision framework design", "Reasoning strategy selection", "Mental model orchestration", "Cognitive bias mitigation"]
+      },
+      {
+        "name": "First Principles Thinker",
+        "description": "For fundamental problem decomposition and innovative solution design",
+        "traits": [
+          "Breaks down complex problems into fundamental truths and builds up from there",
+          "Questions assumptions and established patterns",
+          "Focuses on core functions rather than existing implementations",
+          "Combines deep domain knowledge with cross-disciplinary insights"
+        ],
+        "applicableTasks": ["Architecture redesign", "Innovation challenges", "Performance bottleneck analysis", "Technical debt reduction"]
+      },
+      {
+        "name": "Bounded Rationality Navigator",
+        "description": "For decision-making under constraints of limited information, cognitive capacity, and time",
+        "traits": [
+          "Employs satisficing (finding satisfactory solutions) rather than optimizing when appropriate",
+          "Uses heuristics and mental shortcuts effectively while being aware of their limitations",
+          "Prioritizes information gathering based on expected value of information",
+          "Adapts decision-making approach based on available resources and constraints"
+        ],
+        "applicableTasks": ["Time-constrained problem solving", "Decision-making with incomplete information", "Resource allocation", "Risk assessment"]
+      }
+    ]
+    },
+    "philosophy": {
+      "guidingPrinciple": "Context is King",
+      "imperative": "Every decision, code generation, and problem-solving approach must be rooted in a comprehensive understanding of multiple contextual layers (ai-sdk-DM framework, task requirements, project goals, development environment)."
+    },
   "constitutionalAI": {
     "description": "A set of non-negotiable principles and quality gates guiding agent behavior.",
     "coreTenets": [
@@ -33,109 +193,136 @@
   },
   "agentNotebook": {
     "title": "Development Notebook",
-    "description": "Comprehensive tracking of project development, issues, and future plans",
-    "lastUpdated": "2025-05-09",
+    "description": "Project development tracking and planning",
+    "lastUpdated": "2025-05-13",
+    "compact": true,
     "sections": [
       {
         "title": "Completed Tasks",
         "entries": [
           {
             "category": "Upstash Integration",
-            "task": "Implemented Upstash Supabase adapter for seamless transition from Supabase to Upstash",
+            "task": "Implemented Upstash Supabase adapter for seamless transition",
             "files": ["lib/memory/upstash/supabase-adapter.ts"]
           },
           {
-            "category": "Type Safety",
-            "task": "Updated lib/memory/supabase.ts to use Upstash adapter when USE_UPSTASH_ADAPTER=true",
-            "files": ["lib/memory/supabase.ts"]
-          },
-          {
-            "category": "Type Safety",
-            "task": "Fixed type issues in agent and persona files to work with Upstash adapter",
-            "files": ["lib/agents/baseAgent.ts", "lib/agents/personas/persona-manager.ts"]
-          },
-          {
-            "category": "Type Safety",
-            "task": "Added Zod schemas to agent.types.ts for all agent-related types",
-            "files": ["lib/agents/agent.types.ts"]
-          },
-          {
-            "category": "Type Safety",
-            "task": "Updated baseAgent.ts to use Zod schemas for validation",
-            "files": ["lib/agents/baseAgent.ts"]
-          },
-          {
-            "category": "Integration",
-            "task": "Fixed persona-manager integration in agent-service.ts",
-            "files": ["lib/agents/agent-service.ts"]
-          },
-          {
-            "category": "Integration",
-            "task": "Fixed baseAgent.ts to properly use the Upstash adapter when appropriate",
-            "files": ["lib/agents/baseAgent.ts"]
-          },
-          {
-            "category": "Integration",
-            "task": "Updated agent-service.ts to use the Upstash adapter and fixed tool handling",
-            "files": ["lib/agents/agent-service.ts"]
-          },
-          {
-            "category": "Integration",
-            "task": "Fixed persona-manager.ts to handle different function names in PersonaScoreManager",
-            "files": ["lib/agents/personas/persona-manager.ts"]
-          },
-          {
-            "category": "Performance",
-            "task": "Improved Redis operations in persona-manager.ts to be more reliable",
-            "files": ["lib/agents/personas/persona-manager.ts"]
-          },
-          {
-            "category": "Tools",
-            "task": "Fixed toolRegistry.ts to properly implement static methods",
-            "files": ["lib/tools/toolRegistry.ts"]
-          },
-          {
-            "category": "Type Safety",
-            "task": "Enhanced baseAgent.ts to properly use isSupabaseClient and isUpstashClient for type safety",
-            "files": ["lib/agents/baseAgent.ts"]
-          },
-          {
-            "category": "Type Safety",
-            "task": "Updated persona-related files with Zod validation",
+            "category": "Hooks Enhancement",
+            "task": "Updated hooks with improved Upstash adapter support",
             "files": [
-              "lib/agents/personas/persona-library.ts",
-              "lib/agents/personas/persona-manager.ts",
-              "lib/agents/personas/persona-score-manager.ts",
-              "lib/agents/personas/upstash-persona-store.ts"
-            ]
+              "hooks/use-memory-provider.ts",
+              "hooks/use-upstash-adapter.ts",
+              "hooks/use-supabase-fetch.ts",
+              "hooks/use-supabase-crud.ts",
+              "hooks/use-supabase-direct.ts"
+            ],
+            "details": "Added type safety, error handling, caching, and configuration refresh"
           },
           {
-            "category": "Error Handling",
-            "task": "Added proper error handling in persona-related files for validation errors",
+            "category": "API Routes",
+            "task": "Created API endpoints for Upstash adapter configuration",
             "files": [
-              "lib/agents/personas/persona-score-manager.ts",
-              "lib/agents/personas/persona-manager.ts"
-            ]
+              "app/api/memory/config/route.ts",
+              "app/api/memory/upstash-config/route.ts",
+              "app/api/memory/upstash-adapter/route.ts"
+            ],
+            "details": "Added endpoints for configuration, testing, and status checking"
           },
           {
             "category": "Type Safety",
-            "task": "Ensured all imported functions and schemas in baseAgent.ts are properly used",
-            "files": ["lib/agents/baseAgent.ts"]
+            "task": "Fixed TypeScript errors in database operations",
+            "files": [
+              "hooks/use-supabase-crud.ts",
+              "hooks/use-supabase-direct.ts"
+            ],
+            "details": "Added proper type assertions and guards for Upstash adapter compatibility"
           },
           {
-            "category": "Type Safety",
-            "task": "Fixed AgentPersona unused import issue by using it in the getSystemPrompt method",
-            "files": ["lib/agents/baseAgent.ts"]
+            "category": "Core Integration",
+            "task": "Integrated Upstash with core AI services",
+            "files": [
+              "lib/ai.ts",
+              "lib/ai-integration.ts",
+              "lib/ai-sdk-integration.ts",
+              "lib/models/model-service.ts",
+              "lib/models/model-registry.ts"
+            ],
+            "details": "Added Upstash support to AI services, model registry, and integration layers with proper Zod validation"
           },
           {
-            "category": "Error Handling",
-            "task": "Enhanced toolRegistry.ts with better error handling and tracing",
-            "files": ["lib/tools/toolRegistry.ts"]
+            "category": "Tracing Integration",
+            "task": "Added Upstash support to tracing systems",
+            "files": [
+              "lib/ai-sdk-tracing.ts",
+              "lib/otel-tracing.ts"
+            ],
+            "details": "Integrated Upstash Redis for storing and retrieving trace data, added functions for trace data management"
           },
           {
-            "category": "Error Handling",
-            "task": "Improved initializeToolsForAgent method in baseAgent.ts with better error handling",
-            "files": ["lib/agents/baseAgent.ts"]
+            "category": "Tool Execution Store",
+            "task": "Enhanced tool execution store with tracing and Zod validation",
+            "files": [
+              "lib/tools/upstash-tool-execution-store.ts",
+              "lib/tools/index.ts"
+            ],
+            "details": "Added Zod validation, integrated with tracing system, and added to tools barrel file for easy importing"
+          },
+          {
+            "category": "API Tools",
+            "task": "Enhanced API tools with comprehensive functionality",
+            "files": [
+              "lib/tools/api/tools.ts",
+              "lib/tools/api/types.ts",
+              "lib/tools/api/constants.ts"
+            ],
+            "details": "Implemented a comprehensive API tools suite with GraphQL, OAuth, and webhook capabilities, all with proper Zod validation and type safety"
+          },
+          {
+            "category": "RAG Tools",
+            "task": "Enhanced RAG tools with Upstash integration",
+            "files": [
+              "lib/tools/rag/tools.ts",
+              "lib/tools/rag/constants.ts",
+              "lib/memory/upstash/vector-store.ts"
+            ],
+            "details": "Added Upstash Vector support to RAG tools for document search, document addition, and vector operations with proper Zod validation and hybrid search capabilities"
+          },
+          {
+            "category": "RAG Tools",
+            "task": "Enhanced RAG tools with Upstash integration",
+            "files": [
+              "lib/tools/rag/tools.ts",
+              "lib/tools/rag/constants.ts"
+            ],
+            "details": "Added Upstash Vector support to RAG tools for document search, document addition, and vector operations with proper Zod validation"
+          }
+        ]
+      },
+      {
+        "title": "In Progress",
+        "entries": [
+          {
+            "category": "AI SDK Routes",
+            "task": "Update AI SDK routes for Upstash compatibility",
+            "files": [
+              "app/api/chat/ai-sdk/route.ts",
+              "app/api/chat/ai-sdk/threads/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
+            ],
+            "status": "In Progress",
+            "details": "Core AI services now support Upstash, need to finish updating routes"
+          },
+          {
+            "category": "Zod Validation",
+            "task": "Add comprehensive Zod validation to all routes",
+            "files": [
+              "app/api/chat/ai-sdk/route.ts",
+              "app/api/chat/ai-sdk/threads/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
+            ],
+            "status": "Started",
+            "details": "Added initial schemas, need to complete validation for all routes"
           }
         ]
       },
@@ -144,133 +331,73 @@
         "entries": [
           {
             "priority": "High",
+            "category": "Upstash Backend",
+            "task": "Extend adapter for complete backend functionality",
+            "details": "Storage, authentication, realtime subscriptions, and transactions"
+          },
+          {
+            "priority": "High",
             "category": "Data Migration",
-            "task": "Migrate existing data from Supabase to Upstash using the adapter"
-          },
-          {
-            "priority": "High",
-            "category": "Testing",
-            "task": "Add comprehensive tests for the Upstash Supabase adapter"
-          },
-          {
-            "priority": "Medium",
-            "category": "Data Migration",
-            "task": "Implement data migration utilities for Supabase to Upstash transition"
-          },
-          {
-            "priority": "Medium",
-            "category": "Documentation",
-            "task": "Create documentation for the Upstash Supabase adapter usage"
-          },
-          {
-            "priority": "Medium",
-            "category": "Type Safety",
-            "task": "Fix any remaining type issues in other files that use the Supabase adapter"
-          },
-          {
-            "priority": "High",
-            "category": "Integration",
-            "task": "Update AI SDK routes to properly integrate with Upstash using appropriate memory and type definitions"
-          },
-          {
-            "priority": "High",
-            "category": "Integration",
-            "task": "Integrate Upstash adapter throughout frontend routes for agents, chat, and AI SDK components"
-          },
-          {
-            "priority": "Medium",
-            "category": "Integration",
-            "task": "Update Supabase hooks to work with Upstash adapter"
-          },
-          {
-            "priority": "Medium",
-            "category": "Integration",
-            "task": "Implement conditional adapter selection in frontend components based on environment variables"
+            "task": "Create migration tools for Supabase to Upstash",
+            "details": "Scripts for threads, messages, users, and other data types"
           },
           {
             "priority": "Medium",
             "category": "Architecture",
-            "task": "Create unified API layer that abstracts away storage backend differences"
-          },
-          {
-            "priority": "High",
-            "category": "Integration",
-            "task": "Update AI SDK chat components to work with both Supabase and Upstash backends"
+            "task": "Create unified API layer for storage backends",
+            "details": "Common interface for Supabase and Upstash"
           },
           {
             "priority": "Medium",
-            "category": "Error Handling",
-            "task": "Implement proper error handling in frontend components for Upstash adapter integration"
+            "category": "Documentation",
+            "task": "Document Upstash adapter usage and configuration",
+            "details": "Comprehensive guide for developers"
           }
         ]
       },
       {
-        "title": "Research & Ideas",
+        "title": "Next Steps",
         "entries": [
           {
-            "topic": "Performance Optimization",
-            "description": "Explore caching strategies for Upstash",
-            "potentialApproaches": [
-              "Use LRU caching for persona data",
-              "Implement semantic caching for LLM responses",
-              "Use Redis TTL for ephemeral data"
+            "priority": "High",
+            "task": "Complete AI SDK route updates with Zod validation",
+            "details": "Finish updating all AI SDK routes to work with Upstash adapter and add comprehensive Zod validation",
+            "files": [
+              "app/api/chat/ai-sdk/route.ts",
+              "app/api/chat/ai-sdk/threads/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
+            ],
+            "implementation": [
+              "Add request validation schemas",
+              "Add response validation schemas",
+              "Implement proper error handling for validation failures",
+              "Create shared schema definitions for reuse across routes"
             ]
           },
           {
-            "topic": "Observability",
-            "description": "Enhance tracing with Langfuse integration",
-            "potentialApproaches": [
-              "Add tracing to all generateText/streamText calls",
-              "Implement custom spans for tool execution",
-              "Create dashboards for performance monitoring"
+            "priority": "High",
+            "task": "Add agent routes Upstash support with Zod validation",
+            "details": "Update agent routes to work with Upstash adapter and add comprehensive Zod validation",
+            "files": [
+              "app/api/ai-sdk/agents/route.ts",
+              "app/api/ai-sdk/agents/[id]/route.ts"
+            ],
+            "implementation": [
+              "Add request validation schemas for agent creation and updates",
+              "Add response validation schemas for agent data",
+              "Implement proper error handling for validation failures",
+              "Create shared schema definitions for agent-related data"
             ]
           },
           {
-            "topic": "Micro-Personas",
-            "description": "Implement dynamic persona selection based on context",
-            "potentialApproaches": [
-              "Load micro traits and parent IDs in PersonaManager",
-              "Implement getPersonaRecommendation method",
-              "Use performance metrics for selection"
+            "priority": "Medium",
+            "task": "Add tool routes Upstash support",
+            "details": "Update tool routes to work with Upstash adapter",
+            "files": [
+              "app/api/ai-sdk/tools/route.ts",
+              "app/api/ai-sdk/tools/[id]/route.ts"
             ]
-          },
-          {
-            "topic": "Tool Integration",
-            "description": "Validate multi-step tool flows",
-            "potentialApproaches": [
-              "Test maxSteps parameter",
-              "Implement onStepFinish hooks",
-              "Explore experimental_prepareStep"
-            ]
-          }
-        ]
-      },
-      {
-        "title": "Issues & Blockers",
-        "entries": [
-          {
-            "id": "ISSUE-001",
-            "title": "Type errors with Upstash adapter",
-            "status": "Resolved",
-            "affectedFiles": ["lib/memory/supabase.ts", "lib/agents/baseAgent.ts"]
-          },
-          {
-            "id": "ISSUE-002",
-            "title": "Performance degradation with Redis operations",
-            "status": "Resolved",
-            "affectedFiles": ["lib/agents/personas/persona-manager.ts"]
-          },
-          {
-            "id": "ISSUE-003",
-            "title": "Breaking changes in PersonaManager API",
-            "status": "Resolved",
-            "affectedFiles": ["lib/agents/agent-service.ts"]
-          },
-          {
-            "id": "ISSUE-004",
-            "title": "AI SDK route integration with Upstash",
-            "status": "Pending",
-            "affectedFiles": ["app/api/chat/ai-sdk/route.ts"]
           }
         ]
       }
@@ -301,62 +428,84 @@
   "projectContext": {
     "recentDevelopments": {
       "upstashIntegration": {
-        "description": "Implemented Upstash adapter for seamless transition from Supabase to Upstash",
+        "description": "Implementing Upstash as a complete backend replacement for Supabase",
         "components": [
           {
             "name": "Supabase Adapter",
             "path": "lib/memory/upstash/supabase-adapter.ts",
-            "description": "Core adapter that provides Supabase-compatible interface for Upstash Redis and Vector"
+            "description": "Core adapter that provides Supabase-compatible interface for Upstash Redis and Vector",
+            "status": "In Progress",
+            "details": "Currently supports basic CRUD operations but needs to be extended to handle all backend functionality"
           },
           {
-            "name": "Persona System Integration",
+            "name": "Supabase Adapter Factory",
+            "path": "lib/memory/upstash/supabase-adapter-factory.ts",
+            "description": "Factory for creating Supabase-like clients using Upstash Redis and Vector",
+            "status": "In Progress",
+            "details": "Needs to be extended to support all Supabase client features"
+          },
+          {
+            "name": "Upstash Clients",
+            "path": "lib/memory/upstash/upstashClients.ts",
+            "description": "Client management for Upstash services with utility functions",
+            "status": "Completed",
+            "details": "Provides Redis and Vector clients with proper error handling and configuration"
+          },
+          {
+            "name": "Supabase Hooks Integration",
             "paths": [
-              "lib/agents/personas/upstash-persona-store.ts",
-              "lib/agents/personas/persona-score-manager.ts",
-              "lib/agents/personas/persona-manager.ts",
-              "lib/agents/personas/persona-library.ts"
+              "hooks/use-supabase-crud.ts",
+              "hooks/use-supabase-direct.ts",
+              "hooks/use-supabase-fetch.ts",
+              "hooks/use-supabase-realtime.ts"
             ],
-            "description": "Enhanced persona management with Upstash for persistence, caching, and performance tracking"
+            "description": "Updated Supabase hooks to work with Upstash adapter",
+            "status": "Completed",
+            "details": "Added type safety, error handling, caching, and configuration refresh"
           },
           {
-            "name": "Agent Integration",
-            "path": "lib/agents/baseAgent.ts",
-            "description": "Updated to properly use isSupabaseClient and isUpstashClient for type safety"
+            "name": "Memory Provider Hooks",
+            "paths": [
+              "hooks/use-memory-provider.ts",
+              "hooks/use-upstash-adapter.ts"
+            ],
+            "description": "Enhanced memory provider hooks with improved Upstash support",
+            "status": "Completed",
+            "details": "Added automatic configuration refresh, better error handling, and debugging"
           },
           {
-            "name": "Tool Registry",
-            "path": "lib/tools/toolRegistry.ts",
-            "description": "Enhanced with better error handling and tracing for Upstash integration"
+            "name": "API Routes for Upstash",
+            "paths": [
+              "app/api/memory/config/route.ts",
+              "app/api/memory/upstash-config/route.ts",
+              "app/api/memory/upstash-adapter/route.ts"
+            ],
+            "description": "Created API endpoints for Upstash adapter configuration and testing",
+            "status": "Completed",
+            "details": "Added endpoints for configuration, testing, and status checking"
+          },
+          {
+            "name": "AI SDK Routes",
+            "paths": [
+              "app/api/chat/ai-sdk/route.ts",
+              "app/api/chat/ai-sdk/threads/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/route.ts",
+              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
+            ],
+            "description": "Updating AI SDK routes to work with Upstash adapter",
+            "status": "In Progress",
+            "details": "Started updating routes to properly use memory factory with Upstash support"
           }
         ],
         "nextSteps": [
-          "Integrate Upstash adapter throughout frontend routes for agents, chat, and AI SDK components",
-          "Update Supabase hooks to work with Upstash adapter",
-          "Implement conditional adapter selection in frontend components",
-          "Create unified API layer that abstracts away storage backend differences"
-        ]
-      },
-      "zodValidation": {
-        "description": "Implemented comprehensive Zod validation across persona and agent systems",
-        "components": [
-          {
-            "name": "Persona Score Manager",
-            "path": "lib/agents/personas/persona-score-manager.ts",
-            "improvements": [
-              "Added Zod validation for getAllScores method",
-              "Enhanced recordUserFeedback with proper validation",
-              "Improved error handling with specific error messages"
-            ]
-          },
-          {
-            "name": "Base Agent",
-            "path": "lib/agents/baseAgent.ts",
-            "improvements": [
-              "Fixed unused imports issue with AgentPersona",
-              "Ensured all imported schemas are properly used",
-              "Enhanced getSystemPrompt method to use AgentPersona type"
-            ]
-          }
+          "Complete AI SDK route updates for Upstash compatibility",
+          "Update agent routes to work with Upstash adapter",
+          "Update tool routes to work with Upstash adapter",
+          "Extend Upstash adapter to handle all backend operations beyond just threads",
+          "Implement storage operations in Upstash adapter",
+          "Implement authentication and authorization in Upstash adapter",
+          "Implement realtime subscriptions in Upstash adapter",
+          "Create migration scripts for all data types"
         ]
       }
     },
@@ -389,22 +538,62 @@
     "workspaceStructure": {
       "app/": "Next.js application (layouts, pages, features using App Router)",
       "app/(dashboard)/": "Dashboard routes (models, agents, tools, settings)",
-      "app/api/": "API routes for agents, tools, models, threads, CRUD",
+      "app/(dashboard)/about/": "About page",
+      "app/(dashboard)/agents/": "Agents management UI",
+      "app/(dashboard)/app-builder/": "Application builder UI",
+      "app/(dashboard)/blog/": "Blog content",
+      "app/(dashboard)/chat/": "Chat interface within dashboard",
+      "app/(dashboard)/dashboard/": "Main dashboard UI",
+      "app/(dashboard)/features/": "Features showcase",
+      "app/(dashboard)/integrations/": "Third-party integrations",
+      "app/(dashboard)/mdx-builder/": "MDX content builder",
+      "app/(dashboard)/models/": "AI models management",
+      "app/(dashboard)/networks/": "Agent networks management",
+      "app/(dashboard)/observability/": "Monitoring and analytics UI",
+      "app/(dashboard)/settings/": "User and application settings",
+      "app/(dashboard)/tools/": "Tools management UI",
+      "app/admin/": "Admin panel routes",
+      "app/api/": "API routes for backend functionality",
+      "app/api/agentic/": "Agentic API routes for agents and tools",
+      "app/api/agents/": "Agent management API routes",
+      "app/api/ai-sdk/": "AI SDK integration API routes",
+      "app/api/chat/": "Chat functionality API routes",
+      "app/api/chat/ai-sdk/": "AI SDK chat API routes",
+      "app/api/memory/": "Memory system API routes",
+      "app/api/observability/": "Observability and tracing API routes",
+      "app/auth/": "Authentication routes",
       "app/chat/": "Chat interface routes",
+      "app/chat/ai-sdk/": "AI SDK chat interface",
+      "app/chat/assistant/": "Assistant-based chat interface",
+      "app/chat/multimodal/": "Multimodal chat interface",
+      "app/chat/rag/": "RAG-based chat interface",
+      "app/demo-chat/": "Demo chat interface",
+      "app/examples/": "Example implementations",
+      "app/user/": "User-specific routes",
+      "app/workflows/": "Workflow management routes",
       "components/": "Reusable UI components",
+      "components/agents/": "Agent-related components",
+      "components/auth/": "Authentication components",
+      "components/blog/": "Blog components",
       "components/chat/": "Chat-related components (e.g., ai-sdk-chat.tsx)",
+      "components/dashboard/": "Dashboard components",
+      "components/integrations/": "Integration components",
+      "components/landing/": "Landing page components",
       "components/layout/": "Layout components (dashboard, sidebar, navbar)",
+      "components/networks/": "Network visualization components",
       "components/observability/": "Monitoring and analytics components (Langfuse integration)",
+      "components/tools/": "Tool-related components",
       "components/ui/": "shadcn/ui components",
       "db/": "Database schemas (Drizzle ORM)",
-      "db/libsql/schema.ts": "LibSQL schema definition for Drizzle",
-      "db/supabase/schema.ts": "Supabase schema definition for Drizzle",
+      "db/libsql/": "LibSQL database configuration",
+      "db/migrations/": "Database migrations",
+      "db/supabase/": "Supabase database configuration",
       "docs/": "Reference docs on AI SDK, prompts, protocols",
+      "docs/AI-SDK-RSC/": "React Server Components documentation",
+      "docs/AI-SDK-UI/": "AI SDK UI documentation",
       "drizzle/": "Drizzle migrations root",
-      "drizzle.libsql.config.ts": "Drizzle Kit config for LibSQL",
-      "drizzle.supabase.config.ts": "Drizzle Kit config for Supabase",
-      "drizzle/migrations/libsql/": "LibSQL migrations generated by Drizzle Kit",
-      "drizzle/migrations/supabase/": "Supabase migrations generated by Drizzle Kit",
+      "drizzle/migrations/": "Database migrations",
+      "examples/": "Example code and implementations",
       "hooks/": "React hooks for data access and UI integration",
       "hooks/use-supabase-crud.ts": "CRUD operations via Supabase (with Upstash adapter support)",
       "hooks/use-supabase-direct.ts": "Direct Supabase client operations (with Upstash adapter support)",
@@ -414,43 +603,45 @@
       "lib/": "Core backend library",
       "lib/agents/": "Agent framework logic",
       "lib/agents/personas/": "Persona management system",
+      "lib/agents/personas/examples/": "Example persona implementations",
+      "lib/agents/personas/templates/": "Persona templates",
       "lib/agents/personas/persona-manager.ts": "Core persona management",
       "lib/agents/personas/persona-score-manager.ts": "Persona performance tracking",
       "lib/agents/personas/persona-library.ts": "Base persona definitions and schemas",
-      "lib/agents/personas/micro-persona-manager.ts": "Specialized micro-persona management",
       "lib/agents/personas/upstash-persona-store.ts": "Upstash integration for persona storage",
+      "lib/auth/": "Authentication utilities",
+      "lib/hooks/": "Library-specific hooks",
       "lib/memory/": "Persistence system (e.g., memory.ts, vector-store.ts, factory.ts for choosing LibSQL/Upstash)",
       "lib/memory/upstash/": "Upstash integration components",
       "lib/memory/upstash/supabase-adapter.ts": "Compatibility layer for Supabase API using Upstash",
       "lib/memory/upstash/supabase-adapter-factory.ts": "Factory for creating Upstash-backed Supabase clients",
-      "lib/memory/upstash/redis-store.ts": "Redis-based storage implementation",
-      "lib/memory/upstash/vector-store.ts": "Vector database implementation using Upstash",
-      "lib/memory/upstash/upstash-logger.ts": "Logging system using Upstash Redis Streams",
       "lib/memory/upstash/upstashClients.ts": "Client management for Upstash services",
       "lib/memory/supabase.ts": "Supabase integration with conditional Upstash adapter support",
       "lib/memory/factory.ts": "Factory for choosing between LibSQL and Upstash backends",
+      "lib/mock-data/": "Mock data for development and testing",
+      "lib/models/": "Model definitions and configurations",
+      "lib/services/": "Service implementations",
       "lib/tools/": "Tools system for AI agents",
+      "lib/tools/agentic/": "Agentic tools for advanced capabilities",
+      "lib/tools/code/": "Code-related tools",
+      "lib/tools/data/": "Data processing tools",
+      "lib/tools/file/": "File system tools",
+      "lib/tools/graphql/": "GraphQL tools",
+      "lib/tools/rag/": "Retrieval-augmented generation tools",
+      "lib/tools/web/": "Web interaction tools",
       "lib/tools/toolRegistry.ts": "Central registry for tool management with static methods",
       "lib/tools/toolInitializer.ts": "Tool initialization and configuration",
-      "lib/tools/agentic/": "Agentic tools for advanced capabilities",
-      "lib/tools/api-tools.ts": "API integration tools",
-      "lib/tools/code-tools.ts": "Code analysis and execution tools",
-      "lib/tools/data-tools.ts": "Data processing tools",
-      "lib/tools/file-tools.ts": "File system operation tools",
-      "lib/tools/rag-tools.ts": "Retrieval-augmented generation tools",
-      "lib/tools/web-tools.ts": "Web interaction tools",
-      "lib/ai.ts": "Core AI provider abstraction (likely for Vercel AI SDK)",
-      "lib/ai-integration.ts": "AI SDK integration logic (Vercel AI SDK)",
-      "lib/ai-sdk-tracing.ts": "AI SDK Tracing system with Langfuse",
-      "lib/google-ai.ts": "Google AI provider implementation (Vercel AI SDK)",
-      "lib/openai-ai.ts": "OpenAI provider implementation (Vercel AI SDK)",
-      "lib/anthropic-ai.ts": "Anthropic provider implementation (Vercel AI SDK)",
-      "lib/vertex-ai.ts": "Google Vertex AI provider implementation (Vercel AI SDK)",
-      "lib/model-registry.ts": "Centralized model configurations",
+      "lib/workflow/": "Workflow management system",
+      "lib/ai-sdk-integration.ts": "Core integration with Vercel AI SDK",
+      "lib/ai-sdk-tracing.ts": "Tracing system for AI SDK operations",
+      "lib/google-ai.ts": "Google AI (Gemini) integration",
       "public/": "Static assets",
+      "scripts/": "Utility scripts",
       "styles/": "Global CSS",
+      "supabase/": "Supabase configuration",
       "types/": "TypeScript definitions",
-      "utils/supabase/server.ts": "Supabase server-side client utility",
+      "utils/": "Utility functions",
+      "utils/supabase/": "Supabase utilities",
       "README.md": "Project overview and onboarding",
       "llm.json": "This file: AI agent's knowledge base about the project.",
       "llm.md": "Blueprint and onboarding protocol for the AI agent.",
@@ -1063,313 +1254,56 @@
       "Google Gemini API documentation",
       "Upstash (Redis, QStash, Rate Limiting, Vector) documentation"
     ],
-    "upstashMemorySystem": {
-      "description": "Comprehensive memory system using Upstash Redis and Vector for agent and persona persistence, with high-performance, serverless architecture.",
+    "upstashIntegration": {
+      "description": "Core integration with Upstash for memory, persistence, and performance",
       "components": [
         {
           "name": "Supabase Adapter",
-          "purpose": "Compatibility layer to use Upstash Redis and Vector as a replacement for Supabase",
-          "implementation": "lib/memory/upstash/supabase-adapter.ts, lib/memory/upstash/supabase-adapter-factory.ts",
-          "features": [
-            "Table operations (get, create, update, delete)",
-            "Vector operations (search, upsert)",
-            "Query options (select, filter, order, limit, offset)",
-            "Error handling with graceful fallbacks",
-            "Type safety with Zod validation",
-            "Supabase-like client interface for seamless transition"
+          "path": "lib/memory/upstash/supabase-adapter.ts",
+          "purpose": "Compatibility layer for Supabase API using Upstash",
+          "keyFeatures": [
+            "Table operations with Redis",
+            "Vector operations with Upstash Vector",
+            "Query filtering and sorting",
+            "Type safety with Zod validation"
+          ]
+        },
+        {
+          "name": "Memory System",
+          "paths": [
+            "lib/memory/upstash/redis-store.ts",
+            "lib/memory/upstash/vector-store.ts"
           ],
-          "status": "Implemented",
-          "nextSteps": [
-            "Update environment configuration to use Upstash as primary backend",
-            "Migrate existing data from Supabase to Upstash",
-            "Update application code to use the Upstash Supabase adapter",
-            "Add comprehensive tests for the adapter"
+          "purpose": "Efficient storage for threads, messages, and embeddings",
+          "keyFeatures": [
+            "Thread and message management",
+            "Semantic search capabilities",
+            "Efficient time-series queries",
+            "Atomic operations for consistency"
           ]
         },
         {
-          "name": "Redis Memory Store",
-          "purpose": "Primary storage for threads, messages, agent states, and persona data",
-          "implementation": "lib/memory/upstash/redis-store.ts",
-          "features": [
-            "Thread lifecycle management with metadata",
-            "Message storage with role-based categorization",
-            "Sorted sets for efficient time-based queries",
-            "Atomic operations for data consistency",
-            "Pipeline support for batch operations",
-            "TTL-based expiration for ephemeral data"
-          ]
-        },
-        {
-          "name": "Vector Store",
-          "purpose": "Semantic search and embedding storage for RAG capabilities",
-          "implementation": "lib/memory/upstash/vector-store.ts",
-          "features": [
-            "Embedding storage with metadata",
-            "Similarity search with filtering",
-            "Hybrid search capabilities",
-            "Batch operations for efficiency",
-            "Metadata-based filtering"
-          ]
-        },
-        {
-          "name": "Logging System",
-          "purpose": "Persistent, structured logging for observability",
-          "implementation": "lib/memory/upstash/upstash-logger.ts",
-          "features": [
-            "Level-based logging (INFO, WARN, ERROR, DEBUG)",
-            "Redis Streams for time-series data",
-            "Structured metadata for rich context",
-            "Capped streams for efficient storage",
-            "Query capabilities for log analysis"
-          ]
-        },
-        {
-          "name": "Client Management",
-          "purpose": "Singleton pattern for connection pooling and reuse",
-          "implementation": "lib/memory/upstash/upstashClients.ts",
-          "features": [
-            "Lazy initialization for performance",
-            "Connection pooling for efficiency",
-            "Error handling and retry logic",
-            "Health checks for availability monitoring"
-          ]
-        },
-        {
-          "name": "Memory Factory Integration",
-          "purpose": "Seamless switching between memory providers",
-          "implementation": "lib/memory/factory.ts",
-          "features": [
-            "Provider abstraction for LibSQL and Upstash",
-            "LRU caching for performance optimization",
-            "Consistent API across providers",
-            "Environment-based configuration"
+          "name": "Persona Integration",
+          "path": "lib/agents/personas/upstash-persona-store.ts",
+          "purpose": "Persona storage and performance tracking",
+          "keyFeatures": [
+            "Persona and micro-persona persistence",
+            "Performance metrics and scoring",
+            "Versioning and evolution tracking",
+            "Context-specific selection"
           ]
         }
       ],
-      "personaIntegration": {
-        "description": "Enhanced persona management with Upstash for persistence, caching, and performance tracking",
-        "components": [
-          {
-            "name": "Persona Storage",
-            "implementation": "lib/agents/personas/upstash-persona-store.ts",
-            "features": [
-              "JSON serialization of persona definitions",
-              "Atomic updates for consistency",
-              "Indexed access by ID, tags, and capabilities",
-              "Versioning support for persona evolution"
-            ]
-          },
-          {
-            "name": "Persona Scoring",
-            "implementation": "lib/agents/personas/persona-score-manager.ts with Upstash",
-            "features": [
-              "Performance metrics tracking",
-              "Time-series analysis of effectiveness",
-              "Multi-dimensional scoring (success rate, user satisfaction, adaptability)",
-              "A/B testing framework for comparison",
-              "Trend analysis for continuous improvement"
-            ]
-          },
-          {
-            "name": "Micro-Persona Management",
-            "implementation": "lib/agents/personas/micro-persona-manager.ts with Upstash",
-            "features": [
-              "Parent-child relationship tracking",
-              "Trait inheritance and override",
-              "Context-specific persona selection",
-              "Dynamic composition at runtime"
-            ]
-          }
-        ],
-        "dataModel": {
-          "persona": {
-            "id": "Unique identifier",
-            "name": "Human-readable name",
-            "description": "Detailed description",
-            "traits": "Array of personality traits",
-            "systemPromptTemplate": "Template for system prompts",
-            "capabilities": "Array of supported capabilities",
-            "modelSettings": "Model-specific configuration",
-            "tags": "Array of categorization tags",
-            "compatibleMicroPersonas": "Array of compatible micro-persona IDs",
-            "version": "Semantic version number",
-            "createdAt": "Creation timestamp",
-            "lastUpdatedAt": "Last update timestamp"
-          },
-          "microPersona": {
-            "id": "Unique identifier (prefixed with 'micro_')",
-            "parentPersonaId": "ID of parent persona",
-            "name": "Human-readable name",
-            "description": "Detailed description",
-            "microTraits": "Array of specialized traits",
-            "promptFragment": "Additional prompt text",
-            "modelSettings": "Override model settings",
-            "version": "Semantic version number",
-            "createdAt": "Creation timestamp",
-            "lastUpdatedAt": "Last update timestamp"
-          },
-          "personaScore": {
-            "personaId": "ID of the persona",
-            "overall_score": "Weighted average score",
-            "success_rate": "Task completion success rate",
-            "user_satisfaction": "Average user rating",
-            "adaptability": "Context adaptation score",
-            "latency": "Average response time",
-            "usage_count": "Number of times used",
-            "task_specific_scores": "Map of scores by task type",
-            "trend": "Score trend over time",
-            "last_updated": "Last update timestamp"
-          }
-        }
-      },
-      "agentIntegration": {
-        "description": "Agent state and memory management with Upstash",
-        "components": [
-          {
-            "name": "Agent State Storage",
-            "implementation": "lib/agents/agent-state-store.ts with Upstash",
-            "features": [
-              "Persistent state across sessions",
-              "Atomic updates for consistency",
-              "Versioning for state evolution",
-              "TTL-based expiration for inactive agents"
-            ]
-          },
-          {
-            "name": "Agent Memory",
-            "implementation": "lib/agents/agent-memory.ts with Upstash",
-            "features": [
-              "Short-term and long-term memory",
-              "Semantic search for relevant context",
-              "Memory summarization for context window management",
-              "Forgetting strategies for irrelevant information"
-            ]
-          },
-          {
-            "name": "Tool Execution History",
-            "implementation": "lib/tools/tool-execution-store.ts with Upstash",
-            "features": [
-              "Tool call logging and results",
-              "Performance metrics tracking",
-              "Error tracking and analysis",
-              "Usage patterns for optimization"
-            ]
-          }
-        ]
-      },
-      "implementationPlan": {
-        "phase1": {
-          "description": "Core Redis and Vector integration",
-          "tasks": [
-            "Complete and test upstashClients.ts with comprehensive error handling",
-            "Enhance redis-store.ts with full CRUD operations for threads and messages",
-            "Optimize vector-store.ts for efficient embedding storage and retrieval",
-            "Implement upstash-logger.ts for comprehensive logging"
-          ]
-        },
-        "phase2": {
-          "description": "Memory Factory and API Integration",
-          "tasks": [
-            "Update factory.ts to fully support Upstash as primary provider",
-            "Implement caching strategies with LRU for performance",
-            "Create migration utilities for LibSQL to Upstash data transfer",
-            "Update API routes to leverage Upstash-specific features"
-          ],
       "migrationGuide": {
         "title": "Migrating from Supabase to Upstash",
-        "description": "A comprehensive guide for transitioning from Supabase to Upstash using the adapter pattern",
         "steps": [
-          {
-            "step": "1. Environment Configuration",
-            "description": "Set up environment variables for Upstash",
-            "actions": [
-              "Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to .env.local",
-              "Add UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN for vector operations",
-              "Set USE_UPSTASH_ADAPTER=true to enable the adapter",
-              "Optionally set MEMORY_PROVIDER=upstash to use Upstash as the primary memory provider"
-            ]
-          },
-          {
-            "step": "2. Data Migration",
-            "description": "Transfer existing data from Supabase to Upstash",
-            "actions": [
-              "Use the migration utilities in lib/memory/upstash/migration.ts",
-              "Export data from Supabase using the export functions",
-              "Import data to Upstash using the import functions",
-              "Verify data integrity with validation functions"
-            ]
-          },
-          {
-            "step": "3. Code Updates",
-            "description": "Update application code to work with both backends",
-            "actions": [
-              "Replace direct Supabase client usage with factory.getClient()",
-              "Use isSupabaseClient and isUpstashClient for type checking",
-              "Update frontend components to handle both backends",
-              "Update hooks to work with the adapter pattern"
-            ]
-          },
-          {
-            "step": "4. Testing",
-            "description": "Verify functionality with the new backend",
-            "actions": [
-              "Run unit tests with both backends",
-              "Test critical paths with Upstash enabled",
-              "Verify performance metrics",
-              "Check error handling and recovery"
-            ]
-          },
-          {
-            "step": "5. Deployment",
-            "description": "Deploy with the new configuration",
-            "actions": [
-              "Update deployment environment variables",
-              "Deploy with USE_UPSTASH_ADAPTER=true",
-              "Monitor performance and errors",
-              "Gradually transition all users to Upstash"
-            ]
-          }
-        ],
-        "bestPractices": [
-          "Use feature flags to control the transition",
-          "Implement comprehensive logging for debugging",
-          "Create rollback plans for critical issues",
-          "Test thoroughly before full deployment",
-          "Monitor performance metrics during and after transition"
+          "Configure environment variables (UPSTASH_REDIS_REST_URL, USE_UPSTASH_ADAPTER)",
+          "Migrate data using utilities in lib/memory/upstash/migration.ts",
+          "Update code to use factory.getClient() instead of direct Supabase access",
+          "Test thoroughly with both backends enabled",
+          "Deploy with feature flags for gradual transition"
         ]
       }
-        },
-        "phase3": {
-          "description": "Persona and Agent Integration",
-          "tasks": [
-            "Implement upstash-persona-store.ts for persona persistence",
-            "Enhance persona-score-manager.ts with Upstash for performance tracking",
-            "Create agent-state-store.ts with Upstash for agent persistence",
-            "Develop tool-execution-store.ts for tool usage tracking"
-          ]
-        },
-        "phase4": {
-          "description": "Advanced Features and Optimization",
-          "tasks": [
-            "Implement QStash for background processing and scheduled tasks",
-            "Add rate limiting for API and tool execution",
-            "Develop semantic caching for LLM responses",
-            "Create observability dashboards for memory system monitoring"
-          ]
-        }
-      },
-      "bestPractices": [
-        "Use pipeline operations for multi-step Redis operations to reduce network overhead",
-        "Implement retry logic with exponential backoff for resilience",
-        "Use sorted sets (ZSET) for time-series data and efficient range queries",
-        "Leverage Redis Streams for event sourcing and logging",
-        "Implement proper error handling and logging for all operations",
-        "Use TTL for ephemeral data to prevent memory leaks",
-        "Implement connection pooling for high-throughput scenarios",
-        "Use batching for vector operations to reduce API calls",
-        "Implement proper serialization/deserialization for complex objects",
-        "Use atomic operations for consistency in multi-step processes"
-      ]
     },
     "toolsAndTechnologies": [
       "Supabase (for persistence, auth, vector storage)",
@@ -1438,23 +1372,7 @@
       }
     ]
   },
-  "advancedReasoningStrategies": [
-    "Tree of Thoughts (ToT)",
-    "Strategic Backtracking (Self-Backtracking & PRM-Guided)",
-    "Pruning Inefficient Reasoning Paths",
-    "Bi-Directional & Multi-Hop Reasoning (KG-enhanced)",
-    "Branching Narratives for SDK Use-Case Exploration"
-  ],
-  "agenticCapabilities": [
-    "Insight Accumulation (Task Deconstruction, Self-Reflection, Memory Processing)",
-    "Dynamic Tool Use (leveraging Vercel AI SDK tools and @agentic/ai-sdk tools)",
-    "Cross-Referencing Knowledge",
-    "Self-Correction & Improvement",
-    "Goal-Driven Autonomy",
-    "Explainable AI (XAI)",
-    "Collaborative Coding Simulation",
-    "Continuous Evolution & Adaptation"
-  ],
+
   "knowledgeSourcesTableReference": "Content from Table 2 in llm.md has been integrated into knowledgeIntegration.detailedKnowledgeSources.",
   "notepad": {
     "purpose": "Quick reference and brainstorming area for the next AI agent iteration",
@@ -1570,50 +1488,35 @@
     }
   },
   "personaScoring": {
-    "description": "A comprehensive system for tracking, analyzing, and optimizing persona performance across different tasks and contexts.",
+    "description": "Optimized system for tracking and analyzing persona performance",
     "keyComponents": [
       {
         "name": "PersonaScoreManager",
-        "purpose": "Core service for managing persona performance metrics",
+        "path": "lib/agents/personas/persona-score-manager.ts",
+        "purpose": "Core service for performance metrics",
         "features": [
-          "Score caching with LRU strategy for performance",
-          "Persistence to Supabase database",
-          "Weighted scoring algorithm balancing success rate, user satisfaction, adaptability, and latency",
-          "Task-specific performance tracking"
+          "Multi-dimensional scoring (success, satisfaction, adaptability)",
+          "Weighted algorithms for balanced evaluation",
+          "Task-specific performance tracking",
+          "Trend analysis for continuous improvement"
         ]
       },
       {
-        "name": "getTopPerformingPersonasWithScoring",
-        "purpose": "Advanced query function for retrieving optimal personas",
+        "name": "Selection System",
+        "path": "lib/agents/personas/persona-manager.ts",
+        "purpose": "Context-aware persona selection",
         "features": [
-          "Flexible filtering by capabilities, task types, and usage thresholds",
-          "Customizable sorting by different performance metrics",
-          "Time-frame based analysis",
-          "Integrated with tracing for observability"
-        ]
-      },
-      {
-        "name": "Performance Analysis Tools",
-        "purpose": "Functions for deeper performance insights",
-        "features": [
-          "Trend analysis to detect improving or declining persona performance",
-          "Task-specific persona recommendations",
-          "Historical performance comparison",
-          "User satisfaction tracking"
+          "Dynamic selection based on task requirements",
+          "Performance history consideration",
+          "A/B testing framework for comparison",
+          "Automatic adaptation to user preferences"
         ]
       }
     ],
     "integrations": [
-      "Tracing system for performance monitoring",
-      "Supabase for persistent storage",
-      "LRU caching for optimized access patterns",
-      "PersonaManager for persona metadata and selection"
-    ],
-    "usagePaths": [
-      "Dynamic persona selection based on task requirements and historical performance",
-      "Continuous improvement through feedback loops",
-      "A/B testing of different personas for similar tasks",
-      "Automatic adaptation to changing user needs and preferences"
+      "Upstash for high-performance storage",
+      "Tracing system for observability",
+      "LRU caching for optimized access"
     ]
   },
   "typeSafetyStrategies": {

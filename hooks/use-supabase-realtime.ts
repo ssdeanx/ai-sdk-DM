@@ -5,6 +5,8 @@
  * Provides real-time updates for Supabase tables with automatic reconnection,
  * Zod validation, and optimized performance
  *
+ * Also supports Upstash adapter for Supabase compatibility when configured
+ *
  * @module hooks/use-supabase-realtime
  */
 
@@ -24,8 +26,10 @@ import {
 } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { Database } from '@/types/supabase'
-import { getSupabaseClient } from '@/lib/memory/supabase'
+import { getSupabaseClient, isSupabaseClient, isUpstashClient } from '@/lib/memory/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { useMemoryProvider } from './use-memory-provider'
+import type { SupabaseClient as UpstashSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory'
 
 export type ChannelType = 'postgres' | 'presence' | 'broadcast'
 export type SubscriptionStatus =
@@ -38,7 +42,7 @@ interface UseSupabaseRealtimeOptions<T extends z.ZodType<any, any>> {
   channelType?: ChannelType
   channelName?: string
   table?: string
-  
+
   /** database schema (public, private, etc.) */
   tableSchema?: string
 
@@ -75,6 +79,23 @@ interface UseSupabaseRealtimeOptions<T extends z.ZodType<any, any>> {
   onStatusChange?: (status: SubscriptionStatus) => void
   onValidationError?: (err: z.ZodError) => void
   onError?: (err: Error) => void
+
+  /**
+   * Upstash adapter options
+   */
+  upstash?: {
+    /**
+     * Whether to force using Upstash adapter
+     * If not specified, will use the value from environment variables
+     */
+    forceUse?: boolean
+
+    /**
+     * Whether to add Upstash adapter headers to the request
+     * @default true
+     */
+    addHeaders?: boolean
+  }
 }
 
 interface UseSupabaseRealtimeReturn {
@@ -90,8 +111,63 @@ interface UseSupabaseRealtimeReturn {
   validationStats: { success: number; errors: number }
 }
 
+/**
+ * Zod schema for Upstash adapter options
+ */
+export const UpstashAdapterOptionsSchema = z.object({
+  /**
+   * Whether to force using Upstash adapter
+   * If not specified, will use the value from environment variables
+   */
+  forceUse: z.boolean().optional(),
+
+  /**
+   * Whether to add Upstash adapter headers to the request
+   * @default true
+   */
+  addHeaders: z.boolean().optional().default(true)
+}).optional();
+
+/**
+ * Zod schema for UseSupabaseRealtimeOptions
+ */
+export const UseSupabaseRealtimeOptionsSchema = <T extends z.ZodType<any, any>>(schema: T) => z.object({
+  channelType: z.enum(['postgres', 'presence', 'broadcast']).optional().default('postgres'),
+  channelName: z.string().optional(),
+  table: z.string().optional(),
+  tableSchema: z.string().optional().default('public'),
+  event: z.enum(['INSERT', 'UPDATE', 'DELETE', '*']).optional().default('*'),
+  filter: z.object({
+    column: z.string(),
+    value: z.any(),
+    operator: z.enum(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in']).optional()
+  }).optional(),
+  enabled: z.boolean().optional().default(true),
+  maxReconnectAttempts: z.number().optional().default(5),
+  reconnectDelay: z.number().optional().default(1000),
+  zodSchema: schema.optional(),
+  logValidationErrors: z.boolean().optional().default(true),
+  onInsert: z.function().args(z.any()).returns(z.void()).optional(),
+  onUpdate: z.function().args(z.any()).returns(z.void()).optional(),
+  onDelete: z.function().args(z.any()).returns(z.void()).optional(),
+  onChange: z.function().args(z.any()).returns(z.void()).optional(),
+  onBroadcast: z.function().args(z.any()).returns(z.void()).optional(),
+  onPresenceSync: z.function().args(z.record(z.array(z.any()))).returns(z.void()).optional(),
+  onPresenceJoin: z.function().args(z.string(), z.any()).returns(z.void()).optional(),
+  onPresenceLeave: z.function().args(z.string(), z.any()).returns(z.void()).optional(),
+  initialPresence: z.record(z.any()).optional(),
+  broadcastEventName: z.string().optional().default('message'),
+  onStatusChange: z.function().args(z.any()).returns(z.void()).optional(),
+  onValidationError: z.function().args(z.instanceof(z.ZodError)).returns(z.void()).optional(),
+  onError: z.function().args(z.instanceof(Error)).returns(z.void()).optional(),
+  upstash: UpstashAdapterOptionsSchema
+});
+
 export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
-  {
+  options: UseSupabaseRealtimeOptions<T>
+): UseSupabaseRealtimeReturn {
+  // Validate options with Zod
+  const {
     channelType = 'postgres',
     channelName,
     table,
@@ -121,8 +197,11 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
     onStatusChange,
     onValidationError,
     onError,
-  }: UseSupabaseRealtimeOptions<T>
-): UseSupabaseRealtimeReturn {
+
+    // Upstash adapter options
+    upstash = { addHeaders: true },
+  } = options;
+
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [lastEventTimestamp, setLastEventTimestamp] = useState<number | null>(null)
@@ -132,18 +211,30 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
   const [validationStats, setValidationStats] = useState({ success: 0, errors: 0 })
 
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const supabaseRef = useRef<SupabaseClient<Database> | null>(null)
+  const supabaseRef = useRef<any>(null)
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const { toast } = useToast()
+  const { useUpstashAdapter } = useMemoryProvider()
+
+  // Determine if we should use Upstash adapter
+  const shouldUseUpstash = upstash?.forceUse !== undefined
+    ? upstash.forceUse
+    : useUpstashAdapter
 
   const initSupabase = useCallback(() => {
     if (!supabaseRef.current) {
+      // Get the appropriate client based on configuration
       supabaseRef.current = getSupabaseClient()
+
+      // Check if we're using Upstash and it doesn't support realtime
+      if (shouldUseUpstash && isUpstashClient(supabaseRef.current)) {
+        console.warn("Upstash adapter doesn't fully support Supabase Realtime. Some features may not work as expected.");
+      }
     }
     return supabaseRef.current
-  }, [])
+  }, [shouldUseUpstash])
 
   const validateData = useCallback(
     (data: any) => {
@@ -227,7 +318,9 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
     try {
       setConnectionStatus('connecting')
       setError(null)
-      const supabase = initSupabase()
+
+      // Initialize Supabase client
+      const supabaseClient = initSupabase()
 
       if (channelType === 'postgres' && !table) {
         throw new Error('`table` is required for postgres channel')
@@ -242,7 +335,12 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
           ? `${tableSchema}_${table}_${filter ? `${filter.column}_${filter.operator}_${filter.value}` : 'all'}_${Date.now()}`
           : `${channelName}_${channelType}_${Date.now()}`
 
-      const ch = supabase.channel(name)
+      // Check if we have a valid client that supports realtime
+      if (!supabaseClient || (shouldUseUpstash && isUpstashClient(supabaseClient) && !('channel' in supabaseClient))) {
+        throw new Error("Realtime subscriptions are not supported with the current client configuration");
+      }
+
+      const ch = supabaseClient.channel(name)
 
       if (channelType === 'postgres') {
         const params: any = { event, schema: tableSchema, table }
@@ -274,7 +372,7 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
         ch.on(REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, params, onPayload).subscribe(handleStatus)
       } else if (channelType === 'broadcast') {
         ch
-          .on(REALTIME_LISTEN_TYPES.BROADCAST, { event: broadcastEventName }, (p) => {
+          .on(REALTIME_LISTEN_TYPES.BROADCAST, { event: broadcastEventName }, (p: any) => {
             setLastEventTimestamp(Date.now())
             onBroadcast?.(p)
           })
@@ -306,7 +404,7 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
               onPresenceLeave?.(p.key, p.leftPresences)
             }
           )
-          .subscribe(async (status) => {
+          .subscribe(async (status: SubscriptionStatus) => {
             if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && initialPresence) {
               await ch.track(initialPresence)
             }

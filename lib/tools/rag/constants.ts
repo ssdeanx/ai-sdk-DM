@@ -7,7 +7,7 @@ export const DEFAULT_EMBEDDING_MODEL = 'text-embedding-ada-002' as const;
 export const DEFAULT_SEARCH_LIMIT = 5 as const;
 export const MAX_SEARCH_LIMIT = 20 as const;
 
-export const VECTOR_PROVIDERS = ['supabase', 'pinecone', 'libsql'] as const;
+export const VECTOR_PROVIDERS = ['supabase', 'pinecone', 'libsql', 'upstash'] as const;
 export const CHUNKING_STRATEGIES = ['fixed', 'recursive', 'semantic'] as const;
 
 export const DEFAULT_CHUNK_SIZE = 1000 as const;

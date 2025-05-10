@@ -15,6 +15,17 @@ import { getLibSQLClient } from '@/lib/memory/db';
 import { generateEmbedding, saveEmbedding } from '@/lib/ai-integration';
 import { storeTextEmbedding, searchTextStore } from '@/lib/memory/vector-store';
 import {
+  getVectorClient,
+  isUpstashVectorAvailable,
+  shouldUseUpstashAdapter
+} from '@/lib/memory/upstash/upstashClients';
+import {
+  vectorSearch,
+  upsertVectors,
+  upsertTexts,
+  semanticSearch
+} from '@/lib/memory/upstash/supabase-adapter';
+import {
   VECTOR_PROVIDERS,
   CHUNKING_STRATEGIES,
   SIMILARITY_METRICS,
@@ -297,6 +308,7 @@ async function documentSearch(
             FROM documents d
             JOIN embeddings e ON d.embedding_id = e.id
           `,
+          args: []
         });
 
         // Calculate similarities
@@ -379,6 +391,48 @@ async function documentSearch(
         }
       }
 
+      case 'upstash': {
+        try {
+          // Check if Upstash Vector is available
+          if (!isUpstashVectorAvailable()) {
+            throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+          }
+
+          // Use semanticSearch from upstash/supabase-adapter.ts
+          const searchOptions = {
+            topK: limit,
+            includeMetadata: true,
+            ...(filter ? { filter } : {})
+          };
+
+          const searchResults = await semanticSearch(query, searchOptions);
+
+          // Format results to match DocumentSearchItem
+          const formattedResults = searchResults.map((result: any) => {
+            const metadata = result.metadata || {};
+            return {
+              id: result.id,
+              title: metadata.title || 'Untitled',
+              content: metadata.text || '',
+              metadata,
+              similarity: result.score || 0.5,
+            };
+          });
+
+          return {
+            success: true,
+            query,
+            results: formattedResults,
+          };
+        } catch (error) {
+          console.error('Error in Upstash document search:', error);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error in Upstash document search',
+          } as ToolFailure;
+        }
+      }
+
       case 'pinecone':
         // Placeholder for Pinecone integration
         throw new Error('Pinecone integration not yet implemented');
@@ -404,36 +458,65 @@ async function documentAdd(
   const { title, content, metadata = {}, generateEmbedding: shouldGenerateEmbedding } = params;
 
   try {
-    const db = getLibSQLClient();
-    const documentId = uuidv4();
-    let embeddingId = null;
+    // Check if Upstash is available and should be used
+    if (shouldUseUpstashAdapter() && isUpstashVectorAvailable()) {
+      try {
+        const documentId = uuidv4();
 
-    // Generate embedding if requested
-    if (shouldGenerateEmbedding) {
-      const embedding = await generateEmbedding(content);
-      embeddingId = await saveEmbedding(embedding);
-    }
+        // Use upsertTexts from upstash/supabase-adapter.ts
+        await upsertTexts([{
+          id: documentId,
+          text: content,
+          metadata: {
+            ...metadata,
+            title,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        }]);
 
-    // Save the document
-    await db.execute({
-      sql: `
-        INSERT INTO documents (id, title, content, metadata, embedding_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `,
-      args: [
+        return {
+          success: true,
+          documentId,
+          title,
+        };
+      } catch (error) {
+        console.error('Error adding document to Upstash:', error);
+        throw error;
+      }
+    } else {
+      // Fall back to LibSQL
+      const db = getLibSQLClient();
+      const documentId = uuidv4();
+      let embeddingId = null;
+
+      // Generate embedding if requested
+      if (shouldGenerateEmbedding) {
+        const embedding = await generateEmbedding(content);
+        embeddingId = await saveEmbedding(embedding);
+      }
+
+      // Save the document
+      await db.execute({
+        sql: `
+          INSERT INTO documents (id, title, content, metadata, embedding_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `,
+        args: [
+          documentId,
+          title,
+          content,
+          JSON.stringify(metadata),
+          embeddingId,
+        ],
+      });
+
+      return {
+        success: true,
         documentId,
         title,
-        content,
-        JSON.stringify(metadata),
-        embeddingId,
-      ],
-    });
-
-    return {
-      success: true,
-      documentId,
-      title,
-    };
+      };
+    }
   } catch (error) {
     console.error('Error adding document:', error);
     return {
@@ -548,6 +631,42 @@ async function vectorStoreUpsert(
         break;
       }
 
+      case 'upstash': {
+        try {
+          // Check if Upstash Vector is available
+          if (!isUpstashVectorAvailable()) {
+            throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+          }
+
+          // Prepare text items with IDs and metadata
+          const textItems = texts.map((text, index) => {
+            const id = uuidv4();
+            const metadata = metadatas[index] || {};
+
+            return {
+              id,
+              text,
+              metadata: {
+                ...metadata,
+                namespace,
+                created_at: new Date().toISOString()
+              }
+            };
+          });
+
+          // Use upsertTexts from upstash/supabase-adapter.ts
+          await upsertTexts(textItems, { namespace });
+
+          // Collect IDs
+          ids.push(...textItems.map(item => item.id));
+        } catch (error) {
+          console.error('Error in Upstash vector upsert:', error);
+          throw error;
+        }
+
+        break;
+      }
+
       case 'pinecone':
         // Placeholder for Pinecone integration
         throw new Error('Pinecone integration not yet implemented');
@@ -592,6 +711,7 @@ async function vectorStoreQuery(
             FROM documents d
             JOIN embeddings e ON d.embedding_id = e.id
           `,
+          args: []
         });
 
         // Calculate similarities
@@ -698,6 +818,47 @@ async function vectorStoreQuery(
           return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error in vector search',
+          } as ToolFailure;
+        }
+      }
+
+      case 'upstash': {
+        try {
+          // Check if Upstash Vector is available
+          if (!isUpstashVectorAvailable()) {
+            throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+          }
+
+          // Use semanticSearch from upstash/supabase-adapter.ts
+          const searchOptions = {
+            topK: limit,
+            includeMetadata: true,
+            ...(namespace ? { namespace } : {}),
+            ...(filter ? { filter } : {})
+          };
+
+          const searchResults = await semanticSearch(query, searchOptions);
+
+          // Format results to match VectorStoreQueryItem
+          const formattedResults = searchResults.map((result: any) => {
+            return {
+              id: result.id,
+              metadata: result.metadata || {},
+              score: result.score || 0.5,
+            };
+          });
+
+          return {
+            success: true,
+            query,
+            results: formattedResults,
+            provider,
+          };
+        } catch (error) {
+          console.error('Error in Upstash vector search:', error);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error in Upstash vector search',
           } as ToolFailure;
         }
       }

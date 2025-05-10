@@ -4,6 +4,8 @@ import { createVertex, GoogleVertexProvider } from "@ai-sdk/google-vertex"
 import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
 import { createAnthropic, AnthropicProvider } from '@ai-sdk/anthropic'
 import { getItemById } from "./memory/supabase"
+import { getItemById as getUpstashItemById } from "./memory/upstash/supabase-adapter"
+import { shouldUseUpstash } from "./memory/supabase"
 
 // Define a union type for possible providers
 type AIProvider =
@@ -98,11 +100,21 @@ export async function generateAIResponse(
   } = {},
 ) {
   try {
-    // Fetch model config from Supabase
-    const modelConfig = await getItemById<any>("models", modelId)
+    // Fetch model config from Upstash or Supabase
+    let modelConfig;
+
+    if (shouldUseUpstash()) {
+      // Use Upstash adapter
+      modelConfig = await getUpstashItemById<any>("models", modelId);
+    } else {
+      // Use regular Supabase
+      modelConfig = await getItemById<any>("models", modelId);
+    }
+
     if (!modelConfig) {
       throw new Error(`Model config not found for modelId: ${modelId}`)
     }
+
     const provider = await getProviderByName(
       modelConfig.provider,
       modelConfig.api_key,
@@ -156,11 +168,21 @@ export async function streamAIResponse(
   } = {},
 ) {
   try {
-    // Fetch model config from Supabase
-    const modelConfig = await getItemById<any>("models", modelId)
+    // Fetch model config from Upstash or Supabase
+    let modelConfig;
+
+    if (shouldUseUpstash()) {
+      // Use Upstash adapter
+      modelConfig = await getUpstashItemById<any>("models", modelId);
+    } else {
+      // Use regular Supabase
+      modelConfig = await getItemById<any>("models", modelId);
+    }
+
     if (!modelConfig) {
       throw new Error(`Model config not found for modelId: ${modelId}`)
     }
+
     const provider = await getProviderByName(
       modelConfig.provider,
       modelConfig.api_key,

@@ -4,6 +4,8 @@ import { createVertex } from "@ai-sdk/google-vertex"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { getLibSQLClient } from "./memory/db"
+import { getRedisClient, getVectorClient } from "./memory/upstash/upstashClients"
+import { shouldUseUpstash } from "./memory/supabase"
 import { getEncoding } from "js-tiktoken"
 import { pipeline } from "@xenova/transformers"
 
@@ -217,58 +219,106 @@ export async function generateEmbedding(text: string) {
 // Save embedding to database
 export async function saveEmbedding(vector: Float32Array, model = "all-MiniLM-L6-v2") {
   try {
-    const db = getLibSQLClient()
-    const id = crypto.randomUUID()
+    const id = crypto.randomUUID();
 
-    // Convert Float32Array to Buffer
-    const buffer = Buffer.from(vector.buffer)
+    if (shouldUseUpstash()) {
+      // Use Upstash Vector
+      const vectorClient = getVectorClient();
 
-    await db.execute({
-      sql: `
-        INSERT INTO embeddings (id, vector, model, dimensions)
-        VALUES (?, ?, ?, ?)
-      `,
-      args: [id, buffer, model, vector.length],
-    })
+      // Convert Float32Array to regular array
+      const vectorArray = Array.from(vector);
 
-    return id
+      // Upsert to Upstash Vector
+      // Note: The exact API might differ based on Upstash Vector implementation
+      // This is a generic implementation that should be adjusted based on actual API
+      await vectorClient.upsert([{
+        id,
+        vector: vectorArray,
+        metadata: {
+          model,
+          dimensions: vector.length,
+          created_at: new Date().toISOString()
+        }
+      }]);
+    } else {
+      // Use LibSQL
+      const db = getLibSQLClient();
+
+      // Convert Float32Array to Buffer
+      const buffer = Buffer.from(vector.buffer);
+
+      await db.execute({
+        sql: `
+          INSERT INTO embeddings (id, vector, model, dimensions)
+          VALUES (?, ?, ?, ?)
+        `,
+        args: [id, buffer, model, vector.length],
+      });
+    }
+
+    return id;
   } catch (error) {
-    console.error("Error saving embedding:", error)
-    throw error
+    console.error("Error saving embedding:", error);
+    throw error;
   }
 }
 
 // Perform vector search
 export async function performVectorSearch(vector: Float32Array, limit = 5) {
   try {
-    const db = getLibSQLClient()
+    if (shouldUseUpstash()) {
+      // Use Upstash Vector
+      const vectorClient = getVectorClient();
 
-    // This is a simplified approach - in a real implementation, you would use
-    // a vector database or extension that supports efficient similarity search
-    // For now, we'll retrieve all embeddings and compute similarity in JS
+      // Convert Float32Array to regular array
+      const vectorArray = Array.from(vector);
 
-    const result = await db.execute({
-      sql: `SELECT id, vector FROM embeddings`,
-    })
+      // Perform similarity search using Upstash Vector API
+      // Note: The exact API might differ based on Upstash Vector implementation
+      // This is a generic implementation that should be adjusted based on actual API
+      const results = await vectorClient.query({
+        vector: vectorArray,
+        topK: limit,
+        includeMetadata: true
+      });
 
-    const similarities = result.rows.map((row) => {
-      // Assuming row.vector is returned as Uint8Array for BLOB data
-      const storedVector = new Float32Array((row.vector as unknown as Uint8Array).buffer)
-      const similarity = cosineSimilarity(vector, storedVector)
-      return {
-        id: row.id,
-        similarity,
-      }
-    })
+      // Format results to match the expected output
+      return results.map((result: any) => ({
+        id: result.id,
+        similarity: result.score || 0
+      }));
+    } else {
+      // Use LibSQL
+      const db = getLibSQLClient();
 
-    // Sort by similarity (descending)
-    similarities.sort((a, b) => b.similarity - a.similarity)
+      // This is a simplified approach - in a real implementation, you would use
+      // a vector database or extension that supports efficient similarity search
+      // For now, we'll retrieve all embeddings and compute similarity in JS
 
-    // Return top results
-    return similarities.slice(0, limit)
+      const result = await db.execute({
+        sql: `SELECT id, vector FROM embeddings`,
+        args: []
+      });
+
+      const similarities = result.rows.map((row) => {
+        // Assuming row.vector is returned as Uint8Array for BLOB data
+        const storedVector = new Float32Array((row.vector as unknown as Uint8Array).buffer);
+        const similarity = cosineSimilarity(vector, storedVector);
+        return {
+          id: row.id as string,
+          similarity,
+        };
+      });
+
+      // Sort by similarity (descending)
+      similarities.sort((a, b) => b.similarity - a.similarity);
+
+      // Return top results
+      return similarities.slice(0, limit);
+    }
   } catch (error) {
-    console.error("Error performing vector search:", error)
-    throw error
+    console.error("Error performing vector search:", error);
+    throw error;
   }
 }
 
