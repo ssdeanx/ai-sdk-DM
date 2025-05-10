@@ -3,7 +3,7 @@
  *
  * @remarks
  *   • Provides document search, document addition, chunking, and vector store operations.
- *   • Supports multiple vector store providers (Supabase, Pinecone, LibSQL).
+ *   • Supports multiple vector store providers (Supabase, LibSQL, Upstash).
  *   • Each tool returns a discriminated union (`success: true | false`) that
  *     matches the shapes in `lib/tools/rag/types.ts`.
  */
@@ -13,18 +13,28 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { getLibSQLClient } from '@/lib/memory/db';
 import { generateEmbedding, saveEmbedding } from '@/lib/ai-integration';
-import { storeTextEmbedding, searchTextStore } from '@/lib/memory/vector-store';
+// Import LibSQL vector store functions
+import { storeTextEmbedding as libsqlStoreTextEmbedding, searchTextStore as libsqlSearchTextStore } from '@/lib/memory/vector-store';
+// Import Upstash client utilities
 import {
   getVectorClient,
   isUpstashVectorAvailable,
   shouldUseUpstashAdapter
 } from '@/lib/memory/upstash/upstashClients';
+// Import Upstash adapter functions
 import {
-  vectorSearch,
-  upsertVectors,
-  upsertTexts,
-  semanticSearch
+  vectorSearch as upstashVectorSearch,
+  upsertTexts as upstashUpsertTexts,
+  semanticSearch as upstashSemanticSearch
 } from '@/lib/memory/upstash/supabase-adapter';
+// Import Upstash vector store functions
+import {
+  storeTextEmbedding as upstashStoreTextEmbedding,
+  searchTextStore as upstashSearchTextStore,
+  hybridSearch as upstashHybridSearch,
+  EmbeddingMetadata
+} from '@/lib/memory/upstash/vector-store';
+
 import {
   VECTOR_PROVIDERS,
   CHUNKING_STRATEGIES,
@@ -34,6 +44,27 @@ import {
   DEFAULT_CHUNK_SIZE,
   DEFAULT_CHUNK_OVERLAP,
 } from './constants';
+
+// Define hybrid vector search schema
+const hybridVectorSearchSchema = z.object({
+  query: z.string().describe('Search query to find relevant documents'),
+  limit: z.number().int().min(1).max(MAX_SEARCH_LIMIT).default(DEFAULT_SEARCH_LIMIT).describe('Maximum number of results to return'),
+  filter: z.record(z.any()).optional().describe('Optional metadata filter criteria'),
+  keywordWeight: z.number().min(0).max(1).default(0.3).describe('Weight for keyword matching (0-1)'),
+  vectorWeight: z.number().min(0).max(1).default(0.7).describe('Weight for vector similarity (0-1)'),
+});
+
+// Define hybrid vector search result type
+type HybridVectorSearchResult = {
+  success: true;
+  query: string;
+  results: Array<{
+    id: string;
+    metadata: Record<string, any>;
+    score: number;
+    content?: string;
+  }>;
+} | ToolFailure;
 import {
   DocumentSearchResult,
   DocumentAddResult,
@@ -363,7 +394,7 @@ async function documentSearch(
       case 'supabase': {
         try {
           // Use searchTextStore from vector-store.ts
-          const searchResults = await searchTextStore(query, limit);
+          const searchResults = await libsqlSearchTextStore(query, limit);
 
           // Format results based on the actual structure
           // The vectorSearch function in lib/memory/db.ts returns Array<{ id: string; similarity: number }>
@@ -398,32 +429,95 @@ async function documentSearch(
             throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
           }
 
-          // Use semanticSearch from upstash/supabase-adapter.ts
-          const searchOptions = {
-            topK: limit,
-            includeMetadata: true,
-            ...(filter ? { filter } : {})
-          };
+          // Get vector client for direct operations
+          const vectorClient = getVectorClient();
 
-          const searchResults = await semanticSearch(query, searchOptions);
-
-          // Format results to match DocumentSearchItem
-          const formattedResults = searchResults.map((result: any) => {
-            const metadata = result.metadata || {};
-            return {
-              id: result.id,
-              title: metadata.title || 'Untitled',
-              content: metadata.text || '',
-              metadata,
-              similarity: result.score || 0.5,
+          // Try multiple search strategies for comprehensive results
+          try {
+            // Strategy 1: Use upstashVectorSearch for direct vector search
+            // Generate embedding for the query
+            const queryEmbedding = await generateEmbedding(query);
+            const vectorQueryOptions = {
+              topK: limit,
+              includeMetadata: true,
+              filter: filter ? JSON.stringify(filter) : undefined
             };
-          });
 
-          return {
-            success: true,
-            query,
-            results: formattedResults,
-          };
+            // Use upstashVectorSearch for direct vector search
+            const vectorResults = await upstashVectorSearch(Array.from(queryEmbedding) as number[], vectorQueryOptions);
+
+            // Format results to match DocumentSearchItem
+            const formattedResults = vectorResults.map((result: any) => {
+              const metadata = result.metadata || {};
+              return {
+                id: result.id,
+                title: metadata.title || 'Untitled',
+                content: metadata.text || '',
+                metadata,
+                similarity: result.score || 0.5,
+              };
+            });
+
+            return {
+              success: true,
+              query,
+              results: formattedResults,
+            };
+          } catch (vectorSearchError) {
+            console.warn('Error using upstashVectorSearch, trying upstashSearchTextStore:', vectorSearchError);
+
+            // Strategy 2: Try using upstashSearchTextStore (from vector-store.ts)
+            try {
+              const searchResults = await upstashSearchTextStore(query, limit, filter ? JSON.stringify(filter) : undefined);
+
+              // Format results to match DocumentSearchItem
+              const formattedResults = searchResults.map((result: any) => {
+                const metadata = result.metadata || {};
+                return {
+                  id: result.id,
+                  title: metadata.title || 'Untitled',
+                  content: metadata.text || '',
+                  metadata,
+                  similarity: result.score || 0.5,
+                };
+              });
+
+              return {
+                success: true,
+                query,
+                results: formattedResults,
+              };
+            } catch (searchError) {
+              console.warn('Error using upstashSearchTextStore, falling back to semanticSearch:', searchError);
+
+              // Strategy 3: Fall back to semanticSearch from supabase-adapter.ts
+              const searchOptions = {
+                topK: limit,
+                includeMetadata: true,
+                ...(filter ? { filter } : {})
+              };
+
+              const searchResults = await upstashSemanticSearch(query, searchOptions);
+
+              // Format results to match DocumentSearchItem
+              const formattedResults = searchResults.map((result: any) => {
+                const metadata = result.metadata || {};
+                return {
+                  id: result.id,
+                  title: metadata.title || 'Untitled',
+                  content: metadata.text || '',
+                  metadata,
+                  similarity: result.score || 0.5,
+                };
+              });
+
+              return {
+                success: true,
+                query,
+                results: formattedResults,
+              };
+            }
+          }
         } catch (error) {
           console.error('Error in Upstash document search:', error);
           return {
@@ -432,10 +526,6 @@ async function documentSearch(
           } as ToolFailure;
         }
       }
-
-      case 'pinecone':
-        // Placeholder for Pinecone integration
-        throw new Error('Pinecone integration not yet implemented');
 
       default:
         throw new Error(`Unsupported vector store provider: ${provider}`);
@@ -464,7 +554,7 @@ async function documentAdd(
         const documentId = uuidv4();
 
         // Use upsertTexts from upstash/supabase-adapter.ts
-        await upsertTexts([{
+        await upstashUpsertTexts([{
           id: documentId,
           text: content,
           metadata: {
@@ -620,7 +710,7 @@ async function vectorStoreUpsert(
           const text = texts[i];
           // Note: We're not using metadata directly here as storeTextEmbedding
           // doesn't support metadata in its current implementation
-          const id = await storeTextEmbedding(text);
+          const id = await libsqlStoreTextEmbedding(text);
 
           // Store additional metadata if needed
           // This would depend on your implementation of vector-store.ts
@@ -638,27 +728,64 @@ async function vectorStoreUpsert(
             throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
           }
 
-          // Prepare text items with IDs and metadata
-          const textItems = texts.map((text, index) => {
-            const id = uuidv4();
-            const metadata = metadatas[index] || {};
+          // Ensure vector client is available
+          getVectorClient();
 
-            return {
-              id,
-              text,
-              metadata: {
+          // Try using upstashStoreTextEmbedding first for each text
+          try {
+            for (let i = 0; i < texts.length; i++) {
+              const text = texts[i];
+              const metadata = metadatas[i] || {} as EmbeddingMetadata;
+
+              // Store with upstashStoreTextEmbedding
+              const id = await upstashStoreTextEmbedding(text, {
                 ...metadata,
                 namespace,
                 created_at: new Date().toISOString()
-              }
-            };
-          });
+              });
 
-          // Use upsertTexts from upstash/supabase-adapter.ts
-          await upsertTexts(textItems, { namespace });
+              ids.push(id);
+            }
+          } catch (storeError) {
+            console.warn('Error using upstashStoreTextEmbedding, falling back to upsertTexts:', storeError);
 
-          // Collect IDs
-          ids.push(...textItems.map(item => item.id));
+            // Fall back to upsertTexts from supabase-adapter.ts
+            // Prepare text items with IDs and metadata
+            const textItems = texts.map((text, index) => {
+              const id = uuidv4();
+              const metadata = metadatas[index] || {};
+
+              return {
+                id,
+                text,
+                metadata: {
+                  ...metadata,
+                  namespace,
+                  created_at: new Date().toISOString()
+                }
+              };
+            });
+
+            // Use upsertTexts from upstash/supabase-adapter.ts
+            await upstashUpsertTexts(textItems, { namespace });
+
+            // Collect IDs
+            ids.push(...textItems.map(item => item.id));
+
+            // Also try direct vector upsert for future compatibility
+            const vectors = await Promise.all(textItems.map(async (item) => {
+              const embedding = await generateEmbedding(item.text);
+              return {
+                id: item.id,
+                vector: Array.from(embedding) as number[],
+                metadata: item.metadata
+              };
+            }));
+
+            // Upsert vectors directly using the vector client
+            const vectorClient = getVectorClient();
+            await vectorClient.upsert(vectors);
+          }
         } catch (error) {
           console.error('Error in Upstash vector upsert:', error);
           throw error;
@@ -666,10 +793,6 @@ async function vectorStoreUpsert(
 
         break;
       }
-
-      case 'pinecone':
-        // Placeholder for Pinecone integration
-        throw new Error('Pinecone integration not yet implemented');
 
       default:
         throw new Error(`Unsupported vector store provider: ${provider}`);
@@ -795,7 +918,7 @@ async function vectorStoreQuery(
       case 'supabase': {
         try {
           // Use searchTextStore from vector-store.ts
-          const searchResults = await searchTextStore(query, limit);
+          const searchResults = await libsqlSearchTextStore(query, limit);
 
           // Format results based on the actual structure
           // The vectorSearch function in lib/memory/db.ts returns Array<{ id: string; similarity: number }>
@@ -837,7 +960,7 @@ async function vectorStoreQuery(
             ...(filter ? { filter } : {})
           };
 
-          const searchResults = await semanticSearch(query, searchOptions);
+          const searchResults = await upstashSemanticSearch(query, searchOptions);
 
           // Format results to match VectorStoreQueryItem
           const formattedResults = searchResults.map((result: any) => {
@@ -863,15 +986,59 @@ async function vectorStoreQuery(
         }
       }
 
-      case 'pinecone':
-        // Placeholder for Pinecone integration
-        throw new Error('Pinecone integration not yet implemented');
-
       default:
         throw new Error(`Unsupported vector store provider: ${provider}`);
     }
   } catch (error) {
     console.error('Error in vector store query:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    } as ToolFailure;
+  }
+}
+
+/**
+ * Perform a hybrid search using Upstash Vector
+ * This combines vector similarity with keyword matching for better results
+ */
+async function hybridVectorSearch(
+  params: z.infer<typeof hybridVectorSearchSchema>
+): Promise<HybridVectorSearchResult> {
+  const { query, limit, filter, keywordWeight, vectorWeight } = params;
+
+  try {
+    // Check if Upstash Vector is available
+    if (!isUpstashVectorAvailable()) {
+      throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+    }
+
+    // Use hybridSearch from upstash/vector-store.ts
+    const searchResults = await upstashHybridSearch(query, {
+      limit,
+      filter: filter ? JSON.stringify(filter) : undefined,
+      keywordWeight,
+      vectorWeight
+    });
+
+    // Format results
+    const formattedResults = searchResults.map(result => {
+      const metadata = result.metadata || {};
+      return {
+        id: result.id,
+        metadata,
+        score: result.score,
+        content: metadata.text || '',
+      };
+    });
+
+    return {
+      success: true,
+      query,
+      results: formattedResults,
+    };
+  } catch (error) {
+    console.error('Error in hybrid vector search:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -910,5 +1077,11 @@ export const tools = {
     description: 'Query a vector store for semantically similar items',
     parameters: vectorStoreQuerySchema,
     execute: vectorStoreQuery,
+  }),
+
+  HybridVectorSearch: tool({
+    description: 'Perform a hybrid search combining vector similarity with keyword matching (Upstash only)',
+    parameters: hybridVectorSearchSchema,
+    execute: hybridVectorSearch,
   }),
 };

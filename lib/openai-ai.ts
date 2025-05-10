@@ -12,7 +12,7 @@ export function getOpenAI(apiKey?: string, baseURL?: string) {
 
 // Get model configuration from Supabase
 export async function getModelConfig(modelId: string) {
-  const supabase = getSupabaseClient()
+  const supabase = await getSupabaseClient()
 
   const { data, error } = await supabase.from("models").select("*").eq("id", modelId).single()
 
@@ -23,7 +23,6 @@ export async function getModelConfig(modelId: string) {
 
   return data
 }
-
 // Stream text with OpenAI
 export async function streamOpenAI({
   modelId,

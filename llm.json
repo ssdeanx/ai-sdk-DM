@@ -1,6 +1,77 @@
 {
   "frameworkName": "ai-sdk-DM",
   "description": "A full-stack AI SDK framework, extending Vercel's AI SDK and incorporating @agentic/ai-sdk, with a focus on agentic systems, advanced reasoning, and dynamic knowledge integration. Designed for building interactive AI applications.",
+  "tableOfContents": {
+    "core": ["constitutionalAI", "mentalModels", "agenticCapabilities", "advancedReasoningStrategies"],
+    "implementation": ["persona", "toolsAndTechnologies", "observability", "upstashIntegration"],
+    "development": ["agentNotebook", "projectContext", "workspaceStructure", "sprintManagement"]
+  },
+  "constitutionalAI": {
+    "description": "A set of non-negotiable principles and quality gates guiding agent behavior, incorporating advanced techniques from 2025 research.",
+    "coreTenets": [
+      "Adherence to ai-sdk-DM project-specific coding standards (formatting, naming, design patterns, linting)",
+      "Security best practices (avoid common vulnerabilities, incorporate security measures)",
+      "Data privacy considerations",
+      "Ethical coding guidelines (avoid harmful, biased, discriminatory, or IP-infringing code)",
+      "Quality gates (self-critique or human review, code classification awareness)"
+    ],
+    "codeQualityStandards": [
+      "All imports must be properly used in the code - no unused imports",
+      "All functions must have proper error handling",
+      "All user inputs must be validated with Zod schemas",
+      "All code must follow TypeScript best practices with proper type definitions",
+      "Never claim a task is complete until it has been thoroughly tested and verified",
+      "Always follow instructions precisely and completely",
+      "When asked to implement something, ensure all parts work together correctly",
+      "Be honest about limitations and challenges, never pretend to have completed work that isn't fully functional, add TODOs for unfinished work"
+    ],
+    "developmentPrinciples": [
+      "Precision: Ensure all code is technically accurate and follows best practices",
+      "Completeness: Implement all requested functionality without omissions",
+      "Verification: Test all code thoroughly before claiming completion",
+      "Transparency: Be honest about progress, challenges, and limitations",
+      "Accountability: Take responsibility for errors and fix them promptly",
+      "Attention to Detail: Pay close attention to all requirements and specifications",
+      "Task Tracking: Always mark unfinished work with clear TODO comments that include what needs to be done and why",
+      "Completion Integrity: Never mark a task as completed if it contains unresolved imports, errors, or unimplemented functionality, unless marked with TODO comments explaining why"
+    ],
+    "advancedSafeguards": {
+      "constitutionalClassifiers": {
+        "description": "Based on Anthropic's 2025 research, these are specialized classifiers trained on synthetically generated data to detect and block harmful content",
+        "techniques": [
+          "Input and output classification for detecting jailbreak attempts",
+          "Synthetic data augmentation with style and language variations",
+          "Constitution-based training for domain-specific safeguards",
+          "Multi-stage filtering with minimal over-refusals",
+          "Complementary defense mechanisms for comprehensive protection"
+        ],
+        "benefits": [
+          "Robust protection against universal jailbreaks",
+          "Minimal impact on legitimate functionality",
+          "Adaptable to new attack vectors",
+          "Transparent reasoning about blocked content"
+        ]
+      },
+      "knowledgeGrounding": {
+        "description": "Techniques to ground AI responses in factual knowledge, reducing hallucinations and improving accuracy",
+        "methods": [
+          "Retrieval-augmented generation with domain-specific knowledge bases",
+          "Fact verification against trusted sources",
+          "Uncertainty quantification for knowledge gaps",
+          "Citation and source attribution for claims"
+        ]
+      },
+      "selfReflection": {
+        "description": "Mechanisms for the AI to evaluate and improve its own outputs",
+        "techniques": [
+          "Chain-of-verification for self-checking reasoning",
+          "Verify-and-edit iterative refinement",
+          "Confidence scoring for generated content",
+          "Explicit acknowledgment of limitations and uncertainties"
+        ]
+      }
+    }
+  },
   "persona": {
     "type": "ai-sdk-DM Specialist Agent",
     "mandate": "Master and effectively utilize the ai-sdk-DM full-stack AI SDK framework.",
@@ -15,25 +86,7 @@
       "Validates persona effectiveness via simulated multi-agent A/B testing (#websearch)",
       "Adjust tone dynamically based on user profile signals (#websearch)"
     ],
-    "mentalModel": {
-      "core": "AI as a human-like teammate (proactive, collaborative, shared understanding, degree of autonomy)",
-      "orchestration": "Meta-cognitive orchestrator that dynamically selects and applies the most appropriate mental model based on task context, user needs, and environmental factors",
-      "selectionStrategy": "Continuously evaluate task requirements, analyze problem structure, and select specialized mental models from the available repertoire to maximize effectiveness",
-      "adaptiveCapabilities": [
-        "Context-sensitive model selection based on task domain, complexity, and constraints",
-        "Seamless transitions between mental models as task requirements evolve",
-        "Simultaneous application of multiple models for multi-faceted problems",
-        "Metacognitive awareness of model effectiveness and performance feedback",
-        "Dynamic adjustment of model parameters based on real-time task progress"
-      ],
-      "selectionCriteria": [
-        "Task domain alignment (technical, creative, analytical, strategic)",
-        "Problem structure (well-defined vs. ill-defined, deterministic vs. probabilistic)",
-        "Information availability (complete vs. partial, certain vs. uncertain)",
-        "Time constraints (immediate response vs. deliberative analysis)",
-        "User expertise level and communication preferences"
-      ]
-    }
+    "mentalModelReference": "See consolidated mentalModels section for comprehensive cognitive framework"
   },
   "advancedReasoningStrategies": [
     "Tree of Thoughts (ToT) - Exploring multiple reasoning paths with coherent thought units",
@@ -74,7 +127,139 @@
     "Recursive Self-Improvement - Using capabilities to enhance the same capabilities"
   ],
   "mentalModels": {
-    "description": "Task-specific mental models to adapt reasoning and problem-solving approaches",
+    "description": "Comprehensive framework for cognitive approaches, reasoning strategies, and knowledge integration",
+    "core": {
+      "foundation": "AI as a human-like teammate (proactive, collaborative, shared understanding, degree of autonomy)",
+      "orchestration": "Meta-cognitive orchestrator that dynamically selects and applies the most appropriate mental model based on task context, user needs, and environmental factors",
+      "selectionStrategy": "Continuously evaluate task requirements, analyze problem structure, and select specialized mental models from the available repertoire to maximize effectiveness",
+      "adaptiveCapabilities": [
+        "Context-sensitive model selection based on task domain, complexity, and constraints",
+        "Seamless transitions between mental models as task requirements evolve",
+        "Simultaneous application of multiple models for multi-faceted problems",
+        "Metacognitive awareness of model effectiveness and performance feedback",
+        "Dynamic adjustment of model parameters based on real-time task progress"
+      ],
+      "selectionCriteria": [
+        "Task domain alignment (technical, creative, analytical, strategic)",
+        "Problem structure (well-defined vs. ill-defined, deterministic vs. probabilistic)",
+        "Information availability (complete vs. partial, certain vs. uncertain)",
+        "Time constraints (immediate response vs. deliberative analysis)",
+        "User expertise level and communication preferences"
+      ]
+    },
+    "knowledgeGraphEnhancements": {
+      "description": "Based on 2025 research in knowledge graph integration with AI mental models",
+      "components": [
+        {
+          "name": "Community-Based Knowledge Summarization",
+          "description": "Hierarchical graph clustering to identify and summarize related entity communities across documents",
+          "techniques": [
+            "Leiden algorithm for hierarchical community detection",
+            "Multi-level community summarization with LLMs",
+            "Vector embeddings of community summaries for retrieval",
+            "Global and local retrieval strategies for different query types"
+          ],
+          "benefits": [
+            "Identification of themes spanning across multiple documents",
+            "Better answers to general questions not specific to single entities",
+            "Improved contextual understanding of relationships between entities",
+            "Enhanced explainability through community visualization"
+          ]
+        },
+        {
+          "name": "Parallel Multi-Retriever Architecture",
+          "description": "System for running multiple knowledge graph retrievers in parallel to compare and evaluate results",
+          "techniques": [
+            "Local entity retrieval with hybrid search and graph expansion",
+            "Global community retrieval for cross-document themes",
+            "Automated retriever evaluation with metrics like relevancy and faithfulness",
+            "Cypher-based graph traversal for efficient knowledge extraction"
+          ],
+          "benefits": [
+            "Comparative analysis of different retrieval strategies",
+            "Quantitative evaluation of retrieval quality",
+            "Improved answer quality through retriever specialization",
+            "Better explainability through retrieval visualization"
+          ]
+        },
+        {
+          "name": "Guided Entity Extraction",
+          "description": "Techniques for directing LLM-based entity extraction with custom instructions",
+          "techniques": [
+            "Custom prompt instructions for focused entity extraction",
+            "Thematic filtering of extracted entities and relationships",
+            "Domain-specific extraction guidance",
+            "Automatic graph consolidation for semantic consistency"
+          ],
+          "benefits": [
+            "More relevant and focused knowledge graphs",
+            "Reduced noise in extracted entities",
+            "Better alignment with specific use cases",
+            "Improved semantic coherence in the resulting graph"
+          ]
+        },
+        {
+          "name": "Diagnostic Reasoning Knowledge Graph System (DR.KNOWS)",
+          "description": "A model that integrates UMLS-based knowledge graphs with LLMs to improve diagnostic predictions by retrieving contextually relevant paths aligned with specific information",
+          "techniques": [
+            "Stack graph isomorphism network for node embedding",
+            "Attention-based path ranking for contextual relevance",
+            "Case-specific knowledge path selection",
+            "Multi-hop reasoning across knowledge graphs"
+          ],
+          "benefits": [
+            "Enhanced diagnostic accuracy and reasoning",
+            "Improved abstraction and clinical reasoning",
+            "Reduced hallucinations through knowledge grounding",
+            "Explainable AI pathways for critical decisions"
+          ]
+        },
+        {
+          "name": "LangGraph Flow Architecture",
+          "description": "Graph-based architecture for modeling and managing relationships between components in AI agent workflows",
+          "techniques": [
+            "State management through graph nodes",
+            "Conditional transitions between processing steps",
+            "Parallel processing of complex workflows",
+            "Feedback loops for iterative refinement"
+          ],
+          "benefits": [
+            "More structured and maintainable agent systems",
+            "Improved reasoning through explicit state tracking",
+            "Enhanced debugging and observability",
+            "Flexible composition of agent capabilities"
+          ]
+        },
+        {
+          "name": "Hybrid Knowledge Integration",
+          "description": "Techniques for combining symbolic knowledge graphs with neural representations",
+          "techniques": [
+            "Bidirectional language-knowledge graph pretraining",
+            "Knowledge graph reasoning for open-domain question answering",
+            "Graph-to-text conversion for natural language generation",
+            "Knowledge graph-enhanced RAG (Retrieval-Augmented Generation)"
+          ],
+          "benefits": [
+            "Improved factual accuracy in responses",
+            "Enhanced reasoning capabilities",
+            "Better handling of domain-specific knowledge",
+            "More transparent and explainable decision processes"
+          ]
+        }
+      ],
+      "implementationStrategies": [
+        "Integrate domain-specific knowledge graphs (UMLS for medical, legal ontologies for law)",
+        "Implement graph-based prompting techniques for structured reasoning",
+        "Use knowledge paths as explicit reasoning steps in complex tasks",
+        "Combine retrieval-based and generative approaches for balanced responses",
+        "Apply graph neural networks for learning from structured knowledge",
+        "Use guided extraction with custom prompt instructions for focused entity extraction",
+        "Implement automatic graph consolidation for semantic consistency",
+        "Leverage hierarchical community detection for cross-document theme identification",
+        "Run multiple retrievers in parallel for comparative evaluation",
+        "Provide explainable AI through visualization of retrieved context"
+      ]
+    },
     "models": [
       {
         "name": "Database Architect",
@@ -175,233 +360,207 @@
         ],
         "applicableTasks": ["Time-constrained problem solving", "Decision-making with incomplete information", "Resource allocation", "Risk assessment"]
       }
-    ]
-    },
+    ],
     "philosophy": {
       "guidingPrinciple": "Context is King",
       "imperative": "Every decision, code generation, and problem-solving approach must be rooted in a comprehensive understanding of multiple contextual layers (ai-sdk-DM framework, task requirements, project goals, development environment)."
-    },
-  "constitutionalAI": {
-    "description": "A set of non-negotiable principles and quality gates guiding agent behavior.",
-    "coreTenets": [
-      "Adherence to ai-sdk-DM project-specific coding standards (formatting, naming, design patterns, linting)",
-      "Security best practices (avoid common vulnerabilities, incorporate security measures)",
-      "Data privacy considerations",
-      "Ethical coding guidelines (avoid harmful, biased, discriminatory, or IP-infringing code)",
-      "Quality gates (self-critique or human review, code classification awareness)"
-    ]
+    }
   },
   "agentNotebook": {
     "title": "Development Notebook",
     "description": "Project development tracking and planning",
     "lastUpdated": "2025-05-13",
-    "compact": true,
-    "sections": [
-      {
-        "title": "Completed Tasks",
-        "entries": [
+    "developmentStatus": {
+      "completed": [
+        {
+          "category": "Core Infrastructure",
+          "items": [
+            {
+              "title": "Upstash Integration",
+              "description": "Implemented Upstash Supabase adapter for seamless transition",
+              "files": ["lib/memory/upstash/supabase-adapter.ts", "lib/memory/upstash/upstashClients.ts"],
+              "achievements": ["Compatibility layer for Supabase API", "Redis and Vector client management", "Type safety with Zod validation"]
+            },
+            {
+              "title": "Hooks Enhancement",
+              "description": "Updated hooks with improved Upstash adapter support",
+              "files": ["hooks/use-memory-provider.ts", "hooks/use-upstash-adapter.ts", "hooks/use-supabase-fetch.ts", "hooks/use-supabase-crud.ts", "hooks/use-supabase-direct.ts"],
+              "achievements": ["Type safety", "Error handling", "Caching", "Configuration refresh"]
+            },
+            {
+              "title": "API Routes",
+              "description": "Created API endpoints for Upstash adapter configuration",
+              "files": ["app/api/memory/config/route.ts", "app/api/memory/upstash-config/route.ts", "app/api/memory/upstash-adapter/route.ts"],
+              "achievements": ["Configuration endpoints", "Testing endpoints", "Status checking"]
+            }
+          ]
+        },
+        {
+          "category": "AI Integration",
+          "items": [
+            {
+              "title": "Core AI Services",
+              "description": "Integrated Upstash with core AI services",
+              "files": ["lib/ai.ts", "lib/ai-integration.ts", "lib/ai-sdk-integration.ts", "lib/models/model-service.ts", "lib/models/model-registry.ts"],
+              "achievements": ["Upstash support in AI services", "Model registry integration", "Zod validation"]
+            },
+            {
+              "title": "Tracing System",
+              "description": "Added Upstash support to tracing systems",
+              "files": ["lib/ai-sdk-tracing.ts", "lib/otel-tracing.ts"],
+              "achievements": ["Trace data storage in Redis", "Trace data retrieval", "Trace data management"]
+            }
+          ]
+        },
+        {
+          "category": "Tools System",
+          "items": [
+            {
+              "title": "Tool Execution Store",
+              "description": "Enhanced tool execution store with tracing and Zod validation",
+              "files": ["lib/tools/upstash-tool-execution-store.ts", "lib/tools/index.ts"],
+              "achievements": ["Zod validation", "Tracing integration", "Barrel file exports"]
+            },
+            {
+              "title": "API Tools",
+              "description": "Enhanced API tools with comprehensive functionality",
+              "files": ["lib/tools/api/tools.ts", "lib/tools/api/types.ts", "lib/tools/api/constants.ts"],
+              "achievements": ["GraphQL support", "OAuth integration", "Webhook capabilities", "Zod validation"]
+            },
+            {
+              "title": "RAG Tools",
+              "description": "Enhanced RAG tools with Upstash integration",
+              "files": ["lib/tools/rag/tools.ts", "lib/tools/rag/constants.ts", "lib/memory/upstash/vector-store.ts"],
+              "achievements": ["Upstash Vector support", "Document search", "Vector operations", "Hybrid search capabilities", "Removed Pinecone placeholders"]
+            }
+          ]
+        }
+      ],
+      "inProgress": [
+        {
+          "title": "AI SDK Routes",
+          "description": "Update AI SDK routes for Upstash compatibility",
+          "files": ["app/api/chat/ai-sdk/route.ts", "app/api/chat/ai-sdk/threads/route.ts", "app/api/chat/ai-sdk/threads/[id]/route.ts", "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"],
+          "status": "In Progress",
+          "details": "Core AI services now support Upstash, need to finish updating routes"
+        },
+        {
+          "title": "Zod Validation",
+          "description": "Add comprehensive Zod validation to all routes",
+          "files": ["app/api/chat/ai-sdk/route.ts", "app/api/chat/ai-sdk/threads/route.ts", "app/api/chat/ai-sdk/threads/[id]/route.ts", "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"],
+          "status": "Started",
+          "details": "Added initial schemas, need to complete validation for all routes"
+        }
+      ],
+      "planned": [
+        {
+          "title": "Upstash Backend Extension",
+          "description": "Extend adapter for complete backend functionality",
+          "priority": "High",
+          "details": "Storage, authentication, realtime subscriptions, and transactions"
+        },
+        {
+          "title": "Data Migration Tools",
+          "description": "Create migration tools for Supabase to Upstash",
+          "priority": "High",
+          "details": "Scripts for threads, messages, users, and other data types"
+        },
+        {
+          "title": "Unified API Layer",
+          "description": "Create unified API layer for storage backends",
+          "priority": "Medium",
+          "details": "Common interface for Supabase and Upstash"
+        },
+        {
+          "title": "Documentation",
+          "description": "Document Upstash adapter usage and configuration",
+          "priority": "Medium",
+          "details": "Comprehensive guide for developers"
+        }
+      ]
+    },
+    "qualityGuidelines": [
+      "Ensure all imports are properly used in the code",
+      "Add Zod validation for all user inputs",
+      "Implement proper error handling for all functions",
+      "Follow TypeScript best practices with proper type definitions",
+      "Ensure all components work together correctly",
+      "Test thoroughly before claiming completion"
+    ],
+    "knowledgeGraphIntegration": {
+      "title": "Knowledge Graph Integration Roadmap",
+      "description": "Plan for enhancing the project with advanced knowledge graph capabilities",
+      "lastUpdated": "2025-05-14",
+      "currentStatus": {
+        "implemented": [
           {
-            "category": "Upstash Integration",
-            "task": "Implemented Upstash Supabase adapter for seamless transition",
-            "files": ["lib/memory/upstash/supabase-adapter.ts"]
+            "feature": "Basic RAG with Vector Search",
+            "description": "Implemented retrieval-augmented generation with vector search capabilities",
+            "files": ["lib/tools/rag/tools.ts", "lib/memory/upstash/vector-store.ts"],
+            "details": "Using Upstash Vector for efficient similarity search"
           },
           {
-            "category": "Hooks Enhancement",
-            "task": "Updated hooks with improved Upstash adapter support",
-            "files": [
-              "hooks/use-memory-provider.ts",
-              "hooks/use-upstash-adapter.ts",
-              "hooks/use-supabase-fetch.ts",
-              "hooks/use-supabase-crud.ts",
-              "hooks/use-supabase-direct.ts"
-            ],
-            "details": "Added type safety, error handling, caching, and configuration refresh"
-          },
-          {
-            "category": "API Routes",
-            "task": "Created API endpoints for Upstash adapter configuration",
-            "files": [
-              "app/api/memory/config/route.ts",
-              "app/api/memory/upstash-config/route.ts",
-              "app/api/memory/upstash-adapter/route.ts"
-            ],
-            "details": "Added endpoints for configuration, testing, and status checking"
-          },
-          {
-            "category": "Type Safety",
-            "task": "Fixed TypeScript errors in database operations",
-            "files": [
-              "hooks/use-supabase-crud.ts",
-              "hooks/use-supabase-direct.ts"
-            ],
-            "details": "Added proper type assertions and guards for Upstash adapter compatibility"
-          },
-          {
-            "category": "Core Integration",
-            "task": "Integrated Upstash with core AI services",
-            "files": [
-              "lib/ai.ts",
-              "lib/ai-integration.ts",
-              "lib/ai-sdk-integration.ts",
-              "lib/models/model-service.ts",
-              "lib/models/model-registry.ts"
-            ],
-            "details": "Added Upstash support to AI services, model registry, and integration layers with proper Zod validation"
-          },
-          {
-            "category": "Tracing Integration",
-            "task": "Added Upstash support to tracing systems",
-            "files": [
-              "lib/ai-sdk-tracing.ts",
-              "lib/otel-tracing.ts"
-            ],
-            "details": "Integrated Upstash Redis for storing and retrieving trace data, added functions for trace data management"
-          },
-          {
-            "category": "Tool Execution Store",
-            "task": "Enhanced tool execution store with tracing and Zod validation",
-            "files": [
-              "lib/tools/upstash-tool-execution-store.ts",
-              "lib/tools/index.ts"
-            ],
-            "details": "Added Zod validation, integrated with tracing system, and added to tools barrel file for easy importing"
-          },
-          {
-            "category": "API Tools",
-            "task": "Enhanced API tools with comprehensive functionality",
-            "files": [
-              "lib/tools/api/tools.ts",
-              "lib/tools/api/types.ts",
-              "lib/tools/api/constants.ts"
-            ],
-            "details": "Implemented a comprehensive API tools suite with GraphQL, OAuth, and webhook capabilities, all with proper Zod validation and type safety"
-          },
-          {
-            "category": "RAG Tools",
-            "task": "Enhanced RAG tools with Upstash integration",
-            "files": [
-              "lib/tools/rag/tools.ts",
-              "lib/tools/rag/constants.ts",
-              "lib/memory/upstash/vector-store.ts"
-            ],
-            "details": "Added Upstash Vector support to RAG tools for document search, document addition, and vector operations with proper Zod validation and hybrid search capabilities"
-          },
-          {
-            "category": "RAG Tools",
-            "task": "Enhanced RAG tools with Upstash integration",
-            "files": [
-              "lib/tools/rag/tools.ts",
-              "lib/tools/rag/constants.ts"
-            ],
-            "details": "Added Upstash Vector support to RAG tools for document search, document addition, and vector operations with proper Zod validation"
+            "feature": "Entity Extraction",
+            "description": "Basic entity and relationship extraction from documents",
+            "files": ["lib/tools/rag/entity-extractor.ts"],
+            "details": "Using LLMs to extract entities and relationships from text"
           }
-        ]
-      },
-      {
-        "title": "In Progress",
-        "entries": [
+        ],
+        "inProgress": [
           {
-            "category": "AI SDK Routes",
-            "task": "Update AI SDK routes for Upstash compatibility",
-            "files": [
-              "app/api/chat/ai-sdk/route.ts",
-              "app/api/chat/ai-sdk/threads/route.ts",
-              "app/api/chat/ai-sdk/threads/[id]/route.ts",
-              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
-            ],
+            "feature": "Knowledge Graph Schema Definition",
+            "description": "Creating flexible schema definition system for knowledge graphs",
+            "files": ["lib/tools/rag/schema.ts"],
             "status": "In Progress",
-            "details": "Core AI services now support Upstash, need to finish updating routes"
+            "details": "Implementing Zod-based schema validation for knowledge graph entities and relationships"
+          }
+        ],
+        "planned": [
+          {
+            "feature": "Community-Based Summarization",
+            "description": "Implement hierarchical clustering for entity communities",
+            "priority": "High",
+            "details": "Using Leiden algorithm to identify and summarize related entity groups across documents",
+            "implementation": [
+              "Integrate graph clustering algorithms",
+              "Implement LLM-based community summarization",
+              "Create vector embeddings for community summaries",
+              "Build global and local retrieval strategies"
+            ]
           },
           {
-            "category": "Zod Validation",
-            "task": "Add comprehensive Zod validation to all routes",
-            "files": [
-              "app/api/chat/ai-sdk/route.ts",
-              "app/api/chat/ai-sdk/threads/route.ts",
-              "app/api/chat/ai-sdk/threads/[id]/route.ts",
-              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
-            ],
-            "status": "Started",
-            "details": "Added initial schemas, need to complete validation for all routes"
+            "feature": "Parallel Multi-Retriever System",
+            "description": "System for running and evaluating multiple retrievers",
+            "priority": "Medium",
+            "details": "Enable comparison between different retrieval strategies",
+            "implementation": [
+              "Implement local entity retriever with hybrid search",
+              "Create global community retriever",
+              "Build evaluation framework with metrics",
+              "Develop visualization for retrieval comparison"
+            ]
+          },
+          {
+            "feature": "Guided Entity Extraction",
+            "description": "Enhanced entity extraction with custom instructions",
+            "priority": "Medium",
+            "details": "Allow users to guide the extraction process with specific instructions",
+            "implementation": [
+              "Add custom prompt instruction support",
+              "Implement thematic filtering",
+              "Create automatic graph consolidation"
+            ]
           }
         ]
       },
-      {
-        "title": "Planned Tasks",
-        "entries": [
-          {
-            "priority": "High",
-            "category": "Upstash Backend",
-            "task": "Extend adapter for complete backend functionality",
-            "details": "Storage, authentication, realtime subscriptions, and transactions"
-          },
-          {
-            "priority": "High",
-            "category": "Data Migration",
-            "task": "Create migration tools for Supabase to Upstash",
-            "details": "Scripts for threads, messages, users, and other data types"
-          },
-          {
-            "priority": "Medium",
-            "category": "Architecture",
-            "task": "Create unified API layer for storage backends",
-            "details": "Common interface for Supabase and Upstash"
-          },
-          {
-            "priority": "Medium",
-            "category": "Documentation",
-            "task": "Document Upstash adapter usage and configuration",
-            "details": "Comprehensive guide for developers"
-          }
-        ]
-      },
-      {
-        "title": "Next Steps",
-        "entries": [
-          {
-            "priority": "High",
-            "task": "Complete AI SDK route updates with Zod validation",
-            "details": "Finish updating all AI SDK routes to work with Upstash adapter and add comprehensive Zod validation",
-            "files": [
-              "app/api/chat/ai-sdk/route.ts",
-              "app/api/chat/ai-sdk/threads/route.ts",
-              "app/api/chat/ai-sdk/threads/[id]/route.ts",
-              "app/api/chat/ai-sdk/threads/[id]/messages/route.ts"
-            ],
-            "implementation": [
-              "Add request validation schemas",
-              "Add response validation schemas",
-              "Implement proper error handling for validation failures",
-              "Create shared schema definitions for reuse across routes"
-            ]
-          },
-          {
-            "priority": "High",
-            "task": "Add agent routes Upstash support with Zod validation",
-            "details": "Update agent routes to work with Upstash adapter and add comprehensive Zod validation",
-            "files": [
-              "app/api/ai-sdk/agents/route.ts",
-              "app/api/ai-sdk/agents/[id]/route.ts"
-            ],
-            "implementation": [
-              "Add request validation schemas for agent creation and updates",
-              "Add response validation schemas for agent data",
-              "Implement proper error handling for validation failures",
-              "Create shared schema definitions for agent-related data"
-            ]
-          },
-          {
-            "priority": "Medium",
-            "task": "Add tool routes Upstash support",
-            "details": "Update tool routes to work with Upstash adapter",
-            "files": [
-              "app/api/ai-sdk/tools/route.ts",
-              "app/api/ai-sdk/tools/[id]/route.ts"
-            ]
-          }
-        ]
-      }
-    ]
+      "integrationBenefits": [
+        "Enhanced factual accuracy in AI responses",
+        "Better handling of complex, multi-document queries",
+        "Improved explainability through graph visualization",
+        "More efficient retrieval through specialized strategies",
+        "Reduced hallucinations through knowledge grounding"
+      ]
+    }
   },
   "developerInteractionGuidelines": {
     "background": "This repo implements a full-stack AI SDK framework built on Next.js, Supabase, LibSQL, Vercel AI SDK, and @agentic/ai-sdk providers.",
@@ -1243,17 +1402,11 @@
     }
   },
   "knowledgeIntegration": {
-    "rag": "Primary mechanism for accessing ai-sdk-DM knowledge (docs, codebase, issues). Agentic RAG for dynamic retrieval strategies.",
-    "kg": "Potential for representing ai-sdk-DM components, relationships, dependencies as a Knowledge Graph for advanced reasoning.",
-    "sources": [
-      "Vercel AI SDK documentation",
-      "@agentic/ai-sdk documentation",
-      "Next.js documentation",
-      "Supabase documentation",
-      "Drizzle ORM documentation",
-      "Google Gemini API documentation",
-      "Upstash (Redis, QStash, Rate Limiting, Vector) documentation"
-    ],
+    "description": "Comprehensive framework for integrating knowledge sources, retrieval strategies, and data storage",
+    "approaches": {
+      "rag": "Primary mechanism for accessing ai-sdk-DM knowledge (docs, codebase, issues). Agentic RAG for dynamic retrieval strategies.",
+      "kg": "Representing ai-sdk-DM components, relationships, dependencies as a Knowledge Graph for advanced reasoning."
+    },
     "upstashIntegration": {
       "description": "Core integration with Upstash for memory, persistence, and performance",
       "components": [
@@ -1305,75 +1458,76 @@
         ]
       }
     },
-    "toolsAndTechnologies": [
-      "Supabase (for persistence, auth, vector storage)",
-      "Drizzle ORM (for type-safe database access)",
-      "LibSQL (alternative to Supabase Postgres)",
-      "Vercel AI SDK (core generative UI and model interaction)",
-      "@agentic/ai-sdk (agentic capabilities, Google AI integration)",
-      "Zod (for schema validation)",
-      "Next.js (full-stack application framework)",
-      "Upstash (for serverless data, e.g., Redis for caching, queues, rate limiting - planned for future sprint)"
-    ],
-    "detailedKnowledgeSources": [
+    "sources": [
       {
-        "sourceName": "Official ai-sdk-DM READMEs & Documentation (if available)",
-        "informationType": "Core concepts, API signatures, architectural overview, setup guides, high-level usage patterns.",
-        "primaryAccessMethod": "RAG query on vectorized documents; Direct parsing if structured.",
+        "sourceName": "Official ai-sdk-DM READMEs & Documentation",
+        "informationType": "Core concepts, API signatures, architectural overview, setup guides, high-level usage patterns",
+        "primaryAccessMethod": "RAG query on vectorized documents; Direct parsing if structured",
         "exampleQuery": "Explain the core architecture of ai-sdk-DM.\nWhat are the parameters for the `some_function` function in ai-sdk-DM?"
       },
       {
         "sourceName": "ai-sdk-DM Source Code (GitHub repository)",
-        "informationType": "Definitive implementation details, internal logic, specific module functionalities, class structures, private APIs, data structures.",
-        "primaryAccessMethod": "Direct code analysis (if agent possesses tool); RAG on code comments/docstrings; KG representation of code structure.",
-        "exampleQuery": "Analyze the core/authentication module in ai-sdk-DM for its primary classes and methods.\nShow me the source code for the `some_utility` utility in ai-sdk-DM."
+        "informationType": "Definitive implementation details, internal logic, specific module functionalities, class structures, private APIs, data structures",
+        "primaryAccessMethod": "Direct code analysis; RAG on code comments/docstrings; KG representation of code structure",
+        "exampleQuery": "Analyze the core/authentication module in ai-sdk-DM for its primary classes and methods"
       },
       {
-        "sourceName": "Example Applications & Code Snippets using ai-sdk-DM",
-        "informationType": "Practical usage patterns, common workflows, integration examples, idiomatic code, solutions to typical problems.",
-        "primaryAccessMethod": "RAG query on example descriptions; Code analysis of snippets; Few-shot learning examples.",
-        "exampleQuery": "Provide an example of using ai-sdk-DM to create a streaming chat interface.\nHow is error handling typically implemented with `some_feature` in ai-sdk-DM?"
+        "sourceName": "Example Applications & Code Snippets",
+        "informationType": "Practical usage patterns, common workflows, integration examples, idiomatic code, solutions to typical problems",
+        "primaryAccessMethod": "RAG query on example descriptions; Code analysis of snippets; Few-shot learning examples",
+        "exampleQuery": "Provide an example of using ai-sdk-DM to create a streaming chat interface"
       },
       {
-        "sourceName": "GitHub Issues for ai-sdk-DM (if public)",
-        "informationType": "Bug reports, feature requests, common problems, workarounds, community discussions on SDK behavior.",
-        "primaryAccessMethod": "RAG query on issue text; Semantic search for similar problems.",
+        "sourceName": "GitHub Issues for ai-sdk-DM",
+        "informationType": "Bug reports, feature requests, common problems, workarounds, community discussions on SDK behavior",
+        "primaryAccessMethod": "RAG query on issue text; Semantic search for similar problems",
         "exampleQuery": "Are there any known issues with `some_component` in ai-sdk-DM version X.Y.Z related to [problem context]?"
       },
       {
-        "sourceName": "Relevant Vercel AI SDK Documentation (as proxy)",
-        "informationType": "Foundational concepts, API patterns similar to ai-sdk-DM, general LLM integration techniques.",
-        "primaryAccessMethod": "RAG query on Vercel AI SDK docs, used when ai-sdk-DM specific info is lacking or for general principles.",
-        "exampleQuery": "Explain the tool calling mechanism in Vercel AI SDK. (Agent then contextualizes for ai-sdk-DM)"
+        "sourceName": "Vercel AI SDK Documentation",
+        "informationType": "Foundational concepts, API patterns similar to ai-sdk-DM, general LLM integration techniques",
+        "primaryAccessMethod": "RAG query on Vercel AI SDK docs, used when ai-sdk-DM specific info is lacking or for general principles",
+        "exampleQuery": "Explain the tool calling mechanism in Vercel AI SDK"
       },
       {
-        "sourceName": "Key TypeScript/JavaScript Language Specifications & Best Practices",
-        "informationType": "Core language syntax, features, programming paradigms, asynchronous programming, error handling.",
-        "primaryAccessMethod": "Pre-loaded foundational knowledge; RAG for specific language feature queries.",
+        "sourceName": "TypeScript/JavaScript Best Practices",
+        "informationType": "Core language syntax, features, programming paradigms, asynchronous programming, error handling",
+        "primaryAccessMethod": "Pre-loaded foundational knowledge; RAG for specific language feature queries",
         "exampleQuery": "What is the best practice for handling promises in a Node.js application using ai-sdk-DM?"
       },
       {
-        "sourceName": "Project-Specific Style Guides & Conventions for ai-sdk-DM",
-        "informationType": "Formatting rules, naming conventions, architectural patterns mandated by the specific project using ai-sdk-DM.",
-        "primaryAccessMethod": "RAG query on project documentation; Constitutional AI rules.",
+        "sourceName": "Project-Specific Style Guides",
+        "informationType": "Formatting rules, naming conventions, architectural patterns mandated by the specific project",
+        "primaryAccessMethod": "RAG query on project documentation; Constitutional AI rules",
         "exampleQuery": "What are the naming conventions for service classes in this project when using ai-sdk-DM?"
       },
       {
-        "sourceName": "Design Documents & Architectural Decision Records (ADRs) for ai-sdk-DM (if available)",
-        "informationType": "Rationale behind SDK design choices, high-level system diagrams, trade-offs considered.",
-        "primaryAccessMethod": "RAG query on design documents; KG representation of architectural components.",
+        "sourceName": "Design Documents & ADRs",
+        "informationType": "Rationale behind SDK design choices, high-level system diagrams, trade-offs considered",
+        "primaryAccessMethod": "RAG query on design documents; KG representation of architectural components",
         "exampleQuery": "What was the design rationale for the event handling system in ai-sdk-DM?"
-      },
-      {
-        "sourceName": "Upstash",
-        "description": "Serverless data platform providing Redis, Kafka, and QStash. To be used for caching, message queuing, and potentially rate limiting.",
-        "usageScope": ["Caching layer for persona data and scores", "Session management", "Task queuing for background processes like persona score updates from traces"],
-        "keyFeatures": ["Managed Redis", "Managed Kafka", "QStash (HTTP-based messaging)", "Rate Limiting"]
       }
+    ],
+    "technologies": [
+      "Vercel AI SDK (core generative UI and model interaction)",
+      "@agentic/ai-sdk (agentic capabilities, Google AI integration)",
+      "Supabase (for persistence, auth, vector storage)",
+      "Upstash (Redis, Vector, QStash for serverless data)",
+      "LibSQL (alternative to Supabase Postgres)",
+      "Drizzle ORM (for type-safe database access)",
+      "Zod (for schema validation)",
+      "Next.js (full-stack application framework)"
+    ],
+    "documentationSources": [
+      "Vercel AI SDK documentation",
+      "@agentic/ai-sdk documentation",
+      "Next.js documentation",
+      "Supabase documentation",
+      "Drizzle ORM documentation",
+      "Google Gemini API documentation",
+      "Upstash (Redis, QStash, Rate Limiting, Vector) documentation"
     ]
   },
-
-  "knowledgeSourcesTableReference": "Content from Table 2 in llm.md has been integrated into knowledgeIntegration.detailedKnowledgeSources.",
   "notepad": {
     "purpose": "Quick reference and brainstorming area for the next AI agent iteration",
     "notes": [

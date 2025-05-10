@@ -1,6 +1,6 @@
 /**
  * Combined Tracing Module
- * 
+ *
  * This module provides a unified interface for tracing using both Langfuse and OpenTelemetry.
  * It allows for seamless integration of both tracing systems in the AI SDK.
  */
@@ -8,7 +8,6 @@
 import {
   createTrace,
   createGeneration,
-  createSpan as createLangfuseSpan,
   startSpan as startLangfuseSpan,
   logEvent,
   scoreGeneration,
@@ -20,7 +19,6 @@ import {
 
 import {
   initializeOTel,
-  createOTelSpan,
   startOTelSpan,
   shutdownOTel,
   SpanKind,
@@ -47,7 +45,7 @@ export function initializeTracing({
 
 /**
  * Create a trace in both Langfuse and OpenTelemetry
- * 
+ *
  * @param options - Configuration options for the trace
  * @param options.name - The name of the trace
  * @param options.userId - Optional user ID for the trace
@@ -98,7 +96,7 @@ export async function trace({
 
 /**
  * Create a span in both Langfuse and OpenTelemetry
- * 
+ *
  * @param options - Configuration options for the span
  * @param options.traceId - The ID of the trace this span belongs to
  * @param options.name - The name of the span
@@ -166,7 +164,7 @@ export function span({
 
 /**
  * Log a generation in both Langfuse and OpenTelemetry
- * 
+ *
  * @param options - Configuration options for the generation
  * @returns The created generation object
  */
@@ -205,7 +203,7 @@ export async function generation(options: {
 
 /**
  * Log an event in both Langfuse and OpenTelemetry
- * 
+ *
  * @param options - Configuration options for the event
  * @returns The created event object
  */

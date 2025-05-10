@@ -6,8 +6,8 @@
  */
 
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { resourceFromAttributes } from '@opentelemetry/resources';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { trace, context, SpanStatusCode, Span, SpanKind, Tracer } from '@opentelemetry/api';
@@ -142,9 +142,9 @@ export function initializeOTel({
 
   try {
     // Create a resource that identifies your service
-    const resource = new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
-      [SemanticResourceAttributes.SERVICE_VERSION]: serviceVersion,
+    const resource = resourceFromAttributes({
+      [ATTR_SERVICE_NAME]: serviceName,
+      [ATTR_SERVICE_VERSION]: serviceVersion,
     });
 
     // Create an exporter for traces
@@ -175,19 +175,15 @@ export function initializeOTel({
   } catch (error) {
     console.error('Failed to initialize OpenTelemetry SDK:', error);
   }
-}
 
-/**
- * Create a span to measure the duration of an operation
- *
+}/** * Create a span to measure the duration of an operation *
  * @param name - The name of the span
  * @param options - Configuration options for the span
  * @param options.kind - The kind of span (default: SpanKind.INTERNAL)
  * @param options.attributes - Optional attributes for the span
  * @param options.parentSpan - Optional parent span
  * @returns The created span
- */
-export function createOTelSpan(
+ */export function createOTelSpan(
   name: string,
   options: {
     kind?: SpanKind;
@@ -292,3 +288,5 @@ export function shutdownOTel() {
 
 // Export SpanKind and SpanStatusCode for convenience
 export { SpanKind, SpanStatusCode };
+
+
