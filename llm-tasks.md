@@ -1,33 +1,63 @@
 # Upstash Integration Tasks
 
-## Tree of Thoughts (ToT) Approach
+## Tree of Thoughts (ToT) Approach with bi-directional multi-hop reasoning and predictive pruning, also crossref and accumlate insights with each thought
 
-When implementing these changes, use the Tree of Thoughts methodology:
+When implementing these changes, use the Tree of Thoughts methodology with bi-directional multi-hop reasoning and predictive pruning, also crossref and accumlate insights with each thought:
 
-1. **Exploration Phase**:
-   - Analyze the current implementation of each route
-   - Identify all database interactions that need to be updated
-   - Map out the required changes for both Upstash and LibSQL paths
+1. **Decomposition of Thoughts**:
+   - Break down the problem into smaller, manageable pieces (thoughts).
+   - For each route, identify individual tasks: schema validation, database interaction, error handling, response generation.
 
-2. **Planning Phase**:
-   - Design the Zod validation schemas based on existing code
-   - Plan the error handling strategy for different failure scenarios
-   - Determine the appropriate Upstash adapter functions to use
+2. **Generation of Thoughts**:
+   - For each task, generate multiple potential solutions or approaches.
+   - Example: For database interaction, consider different Upstash commands or LibSQL queries.
 
-3. **Implementation Phase**:
-   - Start with the simplest routes first
-   - Implement changes incrementally, testing each step
-   - Use consistent patterns across all routes
+3. **Evaluation of Thoughts**:
+   - Assess the feasibility, efficiency, and correctness of each generated thought.
+   - Use predictive pruning: Discard unpromising thoughts early to save resources. For instance, if a particular Upstash adapter function doesn't support a required feature, prune that thought.
 
-4. **Verification Phase**:
-   - Test each route thoroughly with both backends
-   - Verify error handling works as expected
-   - Ensure backward compatibility is maintained
+4. **Cross-referencing and Accumulation of Insights**:
+   - As thoughts are evaluated, cross-reference insights gained from one thought to others.
+   - If a Zod schema works well for one route, consider reusing or adapting it for similar routes.
+   - Accumulate successful patterns and apply them consistently.
 
-5. **Refinement Phase**:
-   - Optimize code for performance and readability
-   - Add comprehensive comments for future maintenance
-   - Update documentation to reflect changes
+5. **Bi-directional Multi-hop Reasoning**:
+   - **Forward Reasoning (Exploration & Planning)**:
+     - Analyze the current implementation of each route (current state).
+     - Identify all database interactions that need to be updated (intermediate goal).
+     - Map out the required changes for both Upstash and LibSQL paths (target state).
+     - Design the Zod validation schemas based on existing code.
+     - Plan the error handling strategy for different failure scenarios.
+     - Determine the appropriate Upstash adapter functions to use.
+   - **Backward Reasoning (Verification & Refinement)**:
+     - Start from the desired outcome (e.g., a successfully migrated route).
+     - Work backward to ensure all intermediate steps correctly lead to this outcome.
+     - Test each route thoroughly with both backends.
+     - Verify error handling works as expected.
+     - Ensure backward compatibility is maintained.
+
+6. **State Maintenance and Backtracking**:
+   - Keep track of the current state of the implementation (which thoughts have been implemented, which are pending).
+   - If a chosen path (sequence of thoughts) leads to an error or an undesirable outcome, backtrack to a previous state and explore alternative thoughts.
+
+7. **Implementation Phase**:
+   - Start with the simplest routes first, applying the ToT process.
+   - Implement changes incrementally, testing each thought/step.
+   - Use consistent patterns identified through cross-referencing and insight accumulation.
+
+8. **Verification Phase (Integrated with Bi-directional Reasoning)**:
+   - Continuously test each implemented thought and the overall route with both backends.
+   - Verify error handling for each specific thought implementation.
+
+9. **Refinement Phase (Integrated with Bi-directional Reasoning)**:
+   - Optimize code for performance and readability based on evaluations.
+   - Add comprehensive comments for future maintenance, explaining the reasoning behind chosen thoughts.
+   - Update documentation to reflect changes and the decision-making process.
+
+10. **Final Review and Synthesis**:
+    - Review the entire migration process.
+    - Synthesize the lessons learned and best practices for future tasks.
+    - Ensure all requirements from the initial problem statement are met.
 
 ## Overview
 
@@ -78,9 +108,33 @@ This document outlines the remaining tasks for migrating data-handling API route
   - app/api/ai-sdk/agents/route.ts - Attempted but contains TypeScript errors and incomplete implementation
   - app/api/ai-sdk/agents/[id]/route.ts - Attempted but contains multiple TypeScript errors, Supabase client type issues, and incomplete implementation
 
+- Tool Routes:
+  - app/api/ai-sdk/tools/execute/route.ts - MULTIPLE FAILED ATTEMPTS. Assistant repeatedly ignored explicit instructions to keep adapter imports and use them directly. Despite being told 10+ times to keep the imports and use them as they were, the assistant:
+    1. Repeatedly tried to remove critical adapter imports (getData, getItemById, updateItem, deleteItem)
+    2. Tried to replace direct adapter function usage with toolExecutionStore
+    3. Added eslint-disable comments instead of actually using the imports
+    4. Refused to implement the route as instructed even after multiple clear requests
+    5. Attempted to "fix" TypeScript errors by removing the required imports
+    6. Continued to make the same mistakes even after being explicitly told to stop
+    7. Failed to understand the adapter pattern despite it being explained multiple times
+    8. Failed to add the barrel file from agentic tools despite being explicitly asked to do so
+
 ## Critical Issues to Address
 
 - TypeScript errors must be fixed before considering any route complete
+- Assistants MUST follow instructions EXACTLY as given without deviation
+- DO NOT remove imports that appear unused - they are critical for the adapter pattern
+- DO NOT try to "fix" TypeScript errors by removing required code
+- DO NOT replace direct adapter function usage with other implementations
+- DO NOT add eslint-disable comments instead of actually using the imports
+- NEVER assume you know better than the user about their codebase
+- IMPLEMENT EXACTLY what is asked for, not what you think is "better"
+- If you don't understand an instruction, ASK for clarification instead of guessing
+- When told to stop doing something, STOP IMMEDIATELY
+- NEVER argue with the user about their implementation choices
+- If the user says an import is needed, it IS needed - do not question this
+- FOLLOW THE ADAPTER PATTERN exactly as implemented in the codebase
+- FAILURE TO FOLLOW THESE INSTRUCTIONS will result in permanent disqualification from coding tasks
 - TODOs must be added to mark unfinished work
 - Proper error handling needs to be implemented
 - Comprehensive testing must be done for each route

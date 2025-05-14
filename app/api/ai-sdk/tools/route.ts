@@ -5,6 +5,26 @@ import { getAllBuiltInTools, loadCustomTools, toolCategories } from "@/lib/tools
 import { agenticTools } from "@/lib/tools/agentic";
 import { getAllAISDKTools } from "@/lib/ai-sdk-integration";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { getMemoryProvider } from "@/lib/memory/factory";
+import { z } from "zod";
+
+// Import Upstash adapter functions
+import {
+  getData,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem
+} from "@/lib/memory/upstash/supabase-adapter";
+
+// Define schemas for validation
+const ToolQuerySchema = z.object({
+  category: z.string().optional(),
+  search: z.string().optional().default(""),
+  builtIn: z.enum(["true", "false"]).optional().default("true"),
+  custom: z.enum(["true", "false"]).optional().default("true"),
+  agentic: z.enum(["true", "false"]).optional().default("true")
+});
 
 /**
  * GET /api/ai-sdk/tools
@@ -14,11 +34,27 @@ import { createTrace, logEvent } from "@/lib/langfuse-integration";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const category = url.searchParams.get("category");
-    const search = url.searchParams.get("search") || "";
-    const includeBuiltIn = url.searchParams.get("builtIn") !== "false";
-    const includeCustom = url.searchParams.get("custom") !== "false";
-    const includeAgentic = url.searchParams.get("agentic") !== "false";
+
+    // Parse and validate query parameters
+    const queryResult = ToolQuerySchema.safeParse({
+      category: url.searchParams.get("category"),
+      search: url.searchParams.get("search") || "",
+      builtIn: url.searchParams.get("builtIn") || "true",
+      custom: url.searchParams.get("custom") || "true",
+      agentic: url.searchParams.get("agentic") || "true"
+    });
+
+    if (!queryResult.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: queryResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { category, search } = queryResult.data;
+    const includeBuiltIn = queryResult.data.builtIn !== "false";
+    const includeCustom = queryResult.data.custom !== "false";
+    const includeAgentic = queryResult.data.agentic !== "false";
 
     // Get all tools using the AI SDK integration module
     const allTools = await getAllAISDKTools({
@@ -29,7 +65,57 @@ export async function GET(request: Request) {
 
     // Get individual tool collections for categorization
     const builtInTools = includeBuiltIn ? getAllBuiltInTools() : {};
-    const customTools = includeCustom ? await loadCustomTools() : {};
+
+    // Get custom tools - try Upstash first if enabled
+    let customTools = {};
+    const provider = getMemoryProvider();
+
+    if (includeCustom) {
+      if (provider === 'upstash') {
+        try {
+          // Get custom tools from Upstash
+          const customToolsData = await getData('tools', {});
+
+          // Convert to the format expected by the rest of the code
+          customTools = customToolsData.reduce((acc, tool) => {
+            // Parse parameters schema
+            let parametersSchema;
+            try {
+              parametersSchema = JSON.parse(tool.parameters_schema);
+            } catch (e) {
+              parametersSchema = {};
+            }
+
+            acc[tool.name] = {
+              description: tool.description,
+              parameters: parametersSchema
+            };
+            return acc;
+          }, {});
+
+        } catch (error) {
+          // Create trace for error with detailed logging
+          await createTrace({
+            name: "upstash_fallback",
+            userId: "system",
+            metadata: {
+              operation: "list_tools",
+              error: error instanceof Error ? error.message : String(error),
+              timestamp: new Date().toISOString()
+            }
+          });
+
+          // TODO: Add proper logging mechanism
+
+          // Fall back to LibSQL
+          customTools = await loadCustomTools();
+        }
+      } else {
+        // Use LibSQL directly
+        customTools = await loadCustomTools();
+      }
+    }
+
     const agTools = includeAgentic ? agenticTools : {};
 
     // Format tools for response
@@ -83,7 +169,8 @@ export async function GET(request: Request) {
         customCount: Object.keys(customTools).length,
         agenticCount: Object.keys(agTools).length,
         category,
-        search
+        search,
+        provider
       }
     });
 
@@ -93,9 +180,29 @@ export async function GET(request: Request) {
       count: formattedTools.length
     });
   } catch (error) {
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
     return handleApiError(error);
   }
 }
+
+// Define schemas for validation
+const CreateToolSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  description: z.string().min(1, { message: "Description is required" }),
+  parametersSchema: z.union([z.string(), z.record(z.any())]),
+  implementation: z.string().optional(),
+  category: z.string().default("custom")
+});
 
 /**
  * POST /api/ai-sdk/tools
@@ -104,13 +211,18 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    // Parse and validate request body
     const body = await request.json();
-    const { name, description, parametersSchema, implementation, category = "custom" } = body;
+    const validationResult = CreateToolSchema.safeParse(body);
 
-    // Validate required fields
-    if (!name || !description || !parametersSchema) {
-      return NextResponse.json({ error: "Name, description, and parametersSchema are required" }, { status: 400 });
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: "Invalid request body", details: validationResult.error.format() },
+        { status: 400 }
+      );
     }
+
+    const { name, description, parametersSchema, implementation, category } = validationResult.data;
 
     // Validate parameters schema is valid JSON
     let parsedSchema;
@@ -122,71 +234,168 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Parameters schema must be valid JSON" }, { status: 400 });
     }
 
-    const db = getLibSQLClient();
-
-    // Check if tool with same name already exists
-    const existingToolResult = await db.execute({
-      sql: `SELECT id FROM tools WHERE name = ?`,
-      args: [name]
-    });
-
-    if (existingToolResult.rows.length > 0) {
-      return NextResponse.json({ error: "A tool with this name already exists" }, { status: 409 });
-    }
-
-    // Insert new tool
+    // Determine which provider to use
+    const provider = getMemoryProvider();
+    let toolId;
+    let useLibSQL = false;
     const now = new Date().toISOString();
 
-    const result = await db.execute({
-      sql: `
-        INSERT INTO tools (name, description, parameters_schema, category, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        RETURNING id
-      `,
-      args: [
-        name,
-        description,
-        JSON.stringify(parsedSchema),
-        category,
-        now,
-        now
-      ]
-    });
+    if (provider === 'upstash') {
+      try {
+        // Check if tool with same name already exists
+        const existingTools = await getData('tools', {
+          filters: [{ field: 'name', operator: 'eq', value: name }]
+        });
 
-    const toolId = result.rows[0].id;
+        if (existingTools.length > 0) {
+          return NextResponse.json({ error: "A tool with this name already exists" }, { status: 409 });
+        }
 
-    // If implementation is provided, save it to the apps table
-    if (implementation) {
-      await db.execute({
-        sql: `
-          INSERT INTO apps (name, type, code, created_at, updated_at)
-          VALUES (?, 'tool', ?, ?, ?)
-        `,
-        args: [name, implementation, now, now]
-      });
+        // Create new tool
+        const toolData = {
+          name,
+          description,
+          parameters_schema: JSON.stringify(parsedSchema),
+          category,
+          created_at: now,
+          updated_at: now
+        };
+
+        const newTool = await createItem('tools', toolData);
+        toolId = newTool.id;
+
+        // If implementation is provided, save it to the apps table
+        if (implementation) {
+          await createItem('apps', {
+            name,
+            type: 'tool',
+            code: implementation,
+            created_at: now,
+            updated_at: now
+          });
+        }
+
+        // Create trace for tool creation
+        await createTrace({
+          name: "tool_created",
+          metadata: {
+            toolId,
+            name,
+            category,
+            hasImplementation: !!implementation,
+            provider: 'upstash'
+          }
+        });
+
+        return NextResponse.json({
+          id: toolId,
+          name,
+          description,
+          parametersSchema: parsedSchema,
+          category,
+          createdAt: now,
+          updatedAt: now
+        });
+      } catch (error) {
+        // Create trace for error with detailed logging
+        await createTrace({
+          name: "upstash_fallback",
+          userId: "system",
+          metadata: {
+            operation: "create_tool",
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+          }
+        });
+
+        // TODO: Add proper logging mechanism
+
+        // Fall back to LibSQL
+        useLibSQL = true;
+      }
+    } else {
+      useLibSQL = true;
     }
 
-    // Create trace for tool creation
-    await createTrace({
-      name: "tool_created",
-      metadata: {
-        toolId,
-        name,
-        category,
-        hasImplementation: !!implementation
-      }
-    });
+    // Fall back to LibSQL if needed
+    if (useLibSQL) {
+      const db = getLibSQLClient();
 
-    return NextResponse.json({
-      id: toolId,
-      name,
-      description,
-      parametersSchema: parsedSchema,
-      category,
-      createdAt: now,
-      updatedAt: now
-    });
+      // Check if tool with same name already exists
+      const existingToolResult = await db.execute({
+        sql: `SELECT id FROM tools WHERE name = ?`,
+        args: [name]
+      });
+
+      if (existingToolResult.rows.length > 0) {
+        return NextResponse.json({ error: "A tool with this name already exists" }, { status: 409 });
+      }
+
+      // Insert new tool
+      const result = await db.execute({
+        sql: `
+          INSERT INTO tools (name, description, parameters_schema, category, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          RETURNING id
+        `,
+        args: [
+          name,
+          description,
+          JSON.stringify(parsedSchema),
+          category,
+          now,
+          now
+        ]
+      });
+
+      toolId = result.rows[0].id;
+
+      // If implementation is provided, save it to the apps table
+      if (implementation) {
+        await db.execute({
+          sql: `
+            INSERT INTO apps (name, type, code, created_at, updated_at)
+            VALUES (?, 'tool', ?, ?, ?)
+          `,
+          args: [name, implementation, now, now]
+        });
+      }
+
+      // Create trace for tool creation
+      await createTrace({
+        name: "tool_created",
+        metadata: {
+          toolId,
+          name,
+          category,
+          hasImplementation: !!implementation,
+          provider: 'libsql'
+        }
+      });
+
+      return NextResponse.json({
+        id: toolId,
+        name,
+        description,
+        parametersSchema: parsedSchema,
+        category,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
   } catch (error) {
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Use the generic API error handler for other errors
     return handleApiError(error);
   }
 }

@@ -83,8 +83,8 @@ export async function GET(
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    // Cast agent to RegistryAgent type for better type safety
-    const typedAgent = agent as RegistryAgent;
+    // Cast agent to RegistryAgent type with proper type conversion
+    const typedAgent = agent as unknown as RegistryAgent;
 
     // Get persona information if available
     let persona = null;
@@ -200,7 +200,9 @@ export async function GET(
 
     return handleApiError(error);
   }
+
 }
+
 /**
  * PATCH /api/ai-sdk/agents/[id]
  *
@@ -310,9 +312,11 @@ export async function PATCH(
 
       try {
         // Check if agent exists
-        const result = await supabase.from("agents").select("*").eq("id", id).single();
-        const agent = result.data;
-        const checkError = result.error;
+        const { data: agent, error: checkError } = await supabase
+          .from("agents")
+          .select("*")
+          .eq("id", id)
+          .single();
 
         if (checkError || !agent) {
           return NextResponse.json({ error: "Agent not found" }, { status: 404 });
@@ -330,8 +334,12 @@ export async function PATCH(
         updateData.updated_at = new Date().toISOString();
 
         // Update agent
-        const updateResult = await supabase.from("agents").update(updateData).eq("id", id).select().single();
-        const updateError = updateResult.error;
+        const { data: updateResult, error: updateError } = await supabase
+          .from("agents")
+          .update(updateData)
+          .eq("id", id)
+          .select()
+          .single();
 
         if (updateError) {
           throw updateError;
@@ -340,7 +348,14 @@ export async function PATCH(
         // Update tool associations if provided
         if (toolIds !== undefined) {
           // Delete existing tool associations
-          const deleteResult = await supabase.from("agent_tools").delete().eq("agent_id", id);
+          const { error: deleteError } = await supabase
+            .from("agent_tools")
+            .delete()
+            .eq("agent_id", id);
+
+          if (deleteError) {
+            throw deleteError;
+          }
 
           // Add new tool associations
           if (toolIds.length > 0) {
@@ -353,9 +368,13 @@ export async function PATCH(
               tool_id: toolId
             }));
 
-            const insertResult = await supabase.from("agent_tools").insert(toolAssociations);
-            if (insertResult.error) {
-              throw insertResult.error;
+              .from("agent_tools")
+
+              .insert(toolAssociations)
+              .select();
+
+            if (insertError) {
+              throw insertError;
             }
           }
         }
@@ -464,11 +483,9 @@ export async function PATCH(
     }
 
     // Use the generic API error handler for other errors
-    return handleApiError(error);
   }
-}
 
-/**
+}/**
  * DELETE /api/ai-sdk/agents/[id]
  *
  * Delete an agent

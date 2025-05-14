@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace } from "@/lib/langfuse-integration";
+import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getMemoryProvider } from "@/lib/memory/factory";
@@ -15,20 +15,45 @@ import {
 } from "@/lib/memory/upstash/supabase-adapter";
 
 // Helper functions for Upstash operations
-// These functions are defined to ensure the imported functions are used
-// They would be used in PATCH and DELETE methods which are not implemented yet
-// but will be needed for full CRUD operations
 /**
- * @todo Implement PATCH method using this function
+ * Updates an agent in Upstash
+ *
+ * @param id - Agent ID
+ * @param updates - Updates to apply
+ * @returns Updated agent
  */
 async function updateAgentInUpstash(id: string, updates: Record<string, unknown>) {
-  return updateItem('agents', id, updates);
+  // First check if agent exists
+  const existingAgent = await getItemById('agents', id);
+
+  if (!existingAgent) {
+    throw new Error(`Agent with ID ${id} not found`);
+  }
+
+  // Add updated_at timestamp
+  const updatedData = {
+    ...updates,
+    updated_at: new Date().toISOString()
+  };
+
+  // Update the agent
+  return updateItem('agents', id, updatedData);
 }
 
 /**
- * @todo Implement DELETE method using this function
+ * Deletes an agent from Upstash
+ *
+ * @param id - Agent ID
+ * @returns Whether deletion was successful
  */
 async function deleteAgentFromUpstash(id: string) {
+  // First check if agent exists
+  const existingAgent = await getItemById('agents', id);
+
+  if (!existingAgent) {
+    throw new Error(`Agent with ID ${id} not found`);
+  }
+
   // First delete related agent_tools
   const agentTools = await getData('agent_tools', {
     filters: [{ field: 'agent_id', operator: 'eq' as const, value: id }]
@@ -58,6 +83,19 @@ const CreateAgentSchema = z.object({
   modelId: z.string().min(1, { message: "Model ID is required" }),
   toolIds: z.array(z.string()).optional().default([]),
   systemPrompt: z.string().optional().default("")
+});
+
+const UpdateAgentSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }).optional(),
+  description: z.string().optional(),
+  modelId: z.string().optional(),
+  toolIds: z.array(z.string()).optional(),
+  systemPrompt: z.string().optional(),
+  personaId: z.string().uuid().optional()
+});
+
+const AgentParamsSchema = z.object({
+  id: z.string().uuid({ message: "Invalid agent ID format" })
 });
 /**
  * GET /api/ai-sdk/agents
@@ -153,11 +191,20 @@ export async function GET(request: Request) {
           count,
           hasMore: formattedAgents.length === limit
         });
-      } catch (_error) {
+      } catch (error) {
         // If Upstash fails, fall back to LibSQL
-        // Prefix with underscore to indicate it's not used
-        // In a production environment, we would log this error to a monitoring service
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // Create trace for error with detailed logging
+        await createTrace({
+          name: "upstash_fallback",
+          userId: "system",
+          metadata: {
+            operation: "list_agents",
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+          }
+        });
+
+        // TODO: Add proper logging mechanism
       }
     }
 
@@ -326,11 +373,20 @@ export async function POST(request: Request) {
           createdAt: now,
           updatedAt: now
         });
-      } catch (_error) {
+      } catch (error) {
         // If Upstash fails, fall back to LibSQL
-        // Prefix with underscore to indicate it's not used
-        // In a production environment, we would log this error to a monitoring service
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // Create trace for error with detailed logging
+        await createTrace({
+          name: "upstash_fallback",
+          userId: "system",
+          metadata: {
+            operation: "create_agent",
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+          }
+        });
+
+        // TODO: Add proper logging mechanism
       }
     }
 
@@ -390,6 +446,417 @@ export async function POST(request: Request) {
       createdAt: now,
       updatedAt: now
     });
+  } catch (error: unknown) {
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Use the generic API error handler for other errors
+    return handleApiError(error);
+  }
+}
+
+/**
+ * PATCH /api/ai-sdk/agents/:id
+ *
+ * Update an existing agent
+ */
+export async function PATCH(request: Request) {
+  try {
+    // Extract agent ID from URL
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
+
+    // Validate agent ID
+    const paramsResult = AgentParamsSchema.safeParse({ id });
+    if (!paramsResult.success) {
+      return NextResponse.json(
+        { error: "Invalid agent ID", details: paramsResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const bodyResult = UpdateAgentSchema.safeParse(body);
+
+    if (!bodyResult.success) {
+      return NextResponse.json(
+        { error: "Invalid request body", details: bodyResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { name, description, modelId, toolIds, systemPrompt, personaId } = bodyResult.data;
+
+    // Determine which provider to use
+    const provider = getMemoryProvider();
+    let existingAgent;
+    let useLibSQL = false;
+
+    if (provider === 'upstash') {
+      try {
+        // Check if agent exists
+        existingAgent = await getItemById('agents', id);
+
+        if (!existingAgent) {
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+        }
+
+        // Prepare update data
+        const updateData: Record<string, unknown> = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (modelId !== undefined) updateData.model_id = modelId;
+        if (systemPrompt !== undefined) updateData.system_prompt = systemPrompt;
+        if (personaId !== undefined) updateData.persona_id = personaId;
+        updateData.updated_at = new Date().toISOString();
+
+        // Update agent using the helper function
+        await updateAgentInUpstash(id, updateData);
+
+        // Handle tool associations if provided
+        if (toolIds !== undefined) {
+          // Get all existing tool associations
+          const existingAssociations = await getData('agent_tools', {
+            filters: [{ field: 'agent_id', operator: 'eq', value: id }]
+          });
+
+          // Delete existing tool associations
+          for (const assoc of existingAssociations) {
+            await deleteItem('agent_tools', assoc.id);
+          }
+
+          // Add new tool associations
+          if (toolIds.length > 0) {
+            for (const toolId of toolIds) {
+              await createItem('agent_tools', {
+                agent_id: id,
+                tool_id: toolId,
+                created_at: new Date().toISOString()
+              });
+            }
+          }
+        }
+
+        // Create trace for agent update
+        await createTrace({
+          name: "agent_updated",
+          userId: id,
+          metadata: {
+            agentId: id,
+            name: name || existingAgent.name,
+            toolCount: toolIds?.length,
+            provider: 'upstash'
+          }
+        });
+
+        // Get updated agent
+        const updatedAgent = await getItemById('agents', id);
+
+        if (!updatedAgent) {
+          return NextResponse.json({ error: "Failed to retrieve updated agent" }, { status: 500 });
+        }
+
+        // Get tools for this agent
+        const agentTools = await getData('agent_tools', {
+          filters: [{ field: 'agent_id', operator: 'eq', value: id }]
+        });
+
+        const toolIdList = agentTools.map(tool => tool.tool_id);
+
+        // Prepare response
+        return NextResponse.json({
+          id,
+          name: updatedAgent.name,
+          description: updatedAgent.description,
+          modelId: updatedAgent.model_id,
+          systemPrompt: updatedAgent.system_prompt,
+          personaId: updatedAgent.persona_id,
+          toolIds: toolIdList,
+          updatedAt: updatedAgent.updated_at
+        });
+      } catch (error) {
+        // Create trace for error with detailed logging
+        await createTrace({
+          name: "upstash_fallback",
+          userId: id,
+          metadata: {
+            operation: "update_agent",
+            agentId: id,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+          }
+        });
+
+        // TODO: Add proper logging mechanism instead of console.error
+
+        // Fall back to LibSQL
+        useLibSQL = true;
+      }
+    } else {
+      useLibSQL = true;
+    }
+
+    // Fall back to LibSQL if needed
+    if (useLibSQL) {
+      const db = getLibSQLClient();
+
+      try {
+        // Check if agent exists
+        const result = await db.execute({
+          sql: `SELECT * FROM agents WHERE id = ?`,
+          args: [id]
+        });
+
+        if (result.rows.length === 0) {
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+        }
+
+        existingAgent = result.rows[0];
+
+        // Prepare update data
+        const updateFields = [];
+        const updateValues = [];
+
+        if (name !== undefined) {
+          updateFields.push('name = ?');
+          updateValues.push(name);
+        }
+
+        if (description !== undefined) {
+          updateFields.push('description = ?');
+          updateValues.push(description);
+        }
+
+        if (modelId !== undefined) {
+          updateFields.push('model_id = ?');
+          updateValues.push(modelId);
+        }
+
+        if (systemPrompt !== undefined) {
+          updateFields.push('system_prompt = ?');
+          updateValues.push(systemPrompt);
+        }
+
+        if (personaId !== undefined) {
+          updateFields.push('persona_id = ?');
+          updateValues.push(personaId);
+        }
+
+        const now = new Date().toISOString();
+        updateFields.push('updated_at = ?');
+        updateValues.push(now);
+
+        // Add ID to values
+        updateValues.push(id);
+
+        // Update agent
+        await db.execute({
+          sql: `
+            UPDATE agents
+            SET ${updateFields.join(', ')}
+            WHERE id = ?
+          `,
+          args: updateValues
+        });
+
+        // Update tool associations if provided
+        if (toolIds !== undefined) {
+          // Delete existing tool associations
+          await db.execute({
+            sql: `DELETE FROM agent_tools WHERE agent_id = ?`,
+            args: [id]
+          });
+
+          // Add new tool associations
+          if (toolIds.length > 0) {
+            for (const toolId of toolIds) {
+              await db.execute({
+                sql: `INSERT INTO agent_tools (agent_id, tool_id) VALUES (?, ?)`,
+                args: [id, toolId]
+              });
+            }
+          }
+        }
+
+        // Get updated tool IDs
+        const toolsResult = await db.execute({
+          sql: `SELECT tool_id FROM agent_tools WHERE agent_id = ?`,
+          args: [id]
+        });
+
+        const toolIdList = toolsResult.rows.map(row => row.tool_id);
+
+        // Create trace for agent update
+        await createTrace({
+          name: "agent_updated",
+          userId: id,
+          metadata: {
+            agentId: id,
+            name: name || existingAgent.name,
+            toolCount: toolIds?.length,
+            provider: 'libsql'
+          }
+        });
+
+        // Prepare response
+        return NextResponse.json({
+          id,
+          name: name || existingAgent.name,
+          description: description || existingAgent.description,
+          modelId: modelId || existingAgent.model_id,
+          systemPrompt: systemPrompt || existingAgent.system_prompt,
+          personaId: personaId || existingAgent.persona_id,
+          toolIds: toolIdList,
+          updatedAt: now
+        });
+      } catch (error) {
+        throw error;
+      }
+    }
+  } catch (error: unknown) {
+    // Handle Upstash-specific errors
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorObj = error as { name: string; message?: string };
+      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+        return NextResponse.json(
+          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Use the generic API error handler for other errors
+    return handleApiError(error);
+  }
+}
+
+/**
+ * DELETE /api/ai-sdk/agents/:id
+ *
+ * Delete an agent
+ */
+export async function DELETE(request: Request) {
+  try {
+    // Extract agent ID from URL
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
+
+    // Validate agent ID
+    const paramsResult = AgentParamsSchema.safeParse({ id });
+    if (!paramsResult.success) {
+      return NextResponse.json(
+        { error: "Invalid agent ID", details: paramsResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    // Determine which provider to use
+    const provider = getMemoryProvider();
+    let useLibSQL = false;
+    let success = false;
+
+    if (provider === 'upstash') {
+      try {
+        // Delete agent using the helper function
+        success = await deleteAgentFromUpstash(id);
+
+        if (!success) {
+          return NextResponse.json({ error: "Failed to delete agent" }, { status: 500 });
+        }
+
+        // Create trace for agent deletion
+        await createTrace({
+          name: "agent_deleted",
+          userId: id,
+          metadata: {
+            agentId: id,
+            timestamp: new Date().toISOString(),
+            provider: 'upstash'
+          }
+        });
+
+        return NextResponse.json({ success: true });
+      } catch (error) {
+        // If error is "not found", return 404
+        if (error instanceof Error && error.message.includes('not found')) {
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+        }
+
+        // Create trace for error with detailed logging
+        await createTrace({
+          name: "upstash_fallback",
+          userId: id,
+          metadata: {
+            operation: "delete_agent",
+            agentId: id,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+          }
+        });
+
+        // TODO: Add proper logging mechanism instead of console.error
+
+        // Fall back to LibSQL
+        useLibSQL = true;
+      }
+    } else {
+      useLibSQL = true;
+    }
+
+    // Fall back to LibSQL if needed
+    if (useLibSQL) {
+      const db = getLibSQLClient();
+
+      try {
+        // Check if agent exists
+        const checkResult = await db.execute({
+          sql: `SELECT id FROM agents WHERE id = ?`,
+          args: [id]
+        });
+
+        if (checkResult.rows.length === 0) {
+          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+        }
+
+        // Delete agent tools first (foreign key constraint)
+        await db.execute({
+          sql: `DELETE FROM agent_tools WHERE agent_id = ?`,
+          args: [id]
+        });
+
+        // Delete agent
+        await db.execute({
+          sql: `DELETE FROM agents WHERE id = ?`,
+          args: [id]
+        });
+
+        // Create trace for agent deletion
+        await createTrace({
+          name: "agent_deleted",
+          userId: id,
+          metadata: {
+            agentId: id,
+            timestamp: new Date().toISOString(),
+            provider: 'libsql'
+          }
+        });
+
+        return NextResponse.json({ success: true });
+      } catch (error) {
+        throw error;
+      }
+    }
   } catch (error: unknown) {
     // Handle Upstash-specific errors
     if (error && typeof error === 'object' && 'name' in error) {
