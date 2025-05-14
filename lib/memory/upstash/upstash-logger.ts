@@ -314,3 +314,12 @@ export async function clearLogs(
     throw new LoggerError(`Failed to clear logs for service ${service}`, error);
   }
 }
+
+// --- Logger Facade for Production Use ---
+// This provides a simple, type-safe, production-ready logger interface for use in other modules.
+export const upstashLogger = {
+  info: (service: string, message: string, details?: Record<string, unknown> | null) => logInfo(service, message, details),
+  warn: (service: string, message: string, details?: Record<string, unknown> | null) => logWarn(service, message, details),
+  error: (service: string, message: string, errorDetails?: Error | Record<string, unknown> | null, additionalDetails?: Record<string, unknown> | null) => logError(service, message, errorDetails, additionalDetails),
+  debug: (service: string, message: string, details?: Record<string, unknown> | null) => logDebug(service, message, details),
+};
