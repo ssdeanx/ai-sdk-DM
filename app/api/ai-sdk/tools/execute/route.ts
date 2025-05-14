@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-import { getLibSQLClient } from "@/lib/memory/db";
 import { handleApiError } from "@/lib/api-error-handler";
 import { getAllBuiltInTools, loadCustomTools } from "@/lib/tools";
 import { agenticTools } from "@/lib/tools/agentic";
 import { getAllAISDKTools } from "@/lib/ai-sdk-integration";
-import { createTrace } from "@/lib/langfuse-integration";
 import { getMemoryProvider } from "@/lib/memory/factory";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
+// Local type for dynamic tool execution
+interface DynamicTool {
+  execute: (params: Record<string, unknown>, options: { toolCallId: string }) => Promise<unknown>;
+}
+
 const ToolExecuteSchema = z.object({
   toolName: z.string().min(1, { message: "Tool name is required" }),
-  parameters: z.record(z.any()).optional().default({}),
+  parameters: z.record(z.unknown()).optional().default({}),
   traceId: z.string().optional()
 });
 
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const { toolName, parameters, traceId } = validationResult.data;
+    const { toolName, parameters } = validationResult.data;
     const builtInTools = getAllBuiltInTools();
     const customTools = await loadCustomTools();
     const agTools = agenticTools;
@@ -34,39 +37,29 @@ export async function POST(request: Request) {
       includeCustom: true,
       includeAgentic: true
     });
-    let toolExists = false;
-    let toolExec: ((params: unknown) => Promise<unknown>) | undefined;
-    if (toolName in builtInTools) {
-      toolExists = true;
-      toolExec = builtInTools[toolName].execute;
-    } else if (toolName in customTools) {
-      toolExists = true;
-      toolExec = customTools[toolName]?.execute;
-    } else if (toolName in agTools) {
-      toolExists = true;
-      toolExec = agTools[toolName]?.execute;
-    } else if (toolName in allTools) {
-      toolExists = true;
-      toolExec = (allTools as Record<string, any>)[toolName]?.execute;
+    let tool: unknown;
+    if (Object.prototype.hasOwnProperty.call(builtInTools, toolName)) {
+      tool = (builtInTools as Record<string, unknown>)[toolName];
+    } else if (Object.prototype.hasOwnProperty.call(customTools, toolName)) {
+      tool = (customTools as Record<string, unknown>)[toolName];
+    } else if (Object.prototype.hasOwnProperty.call(agTools, toolName)) {
+      tool = (agTools as Record<string, unknown>)[toolName];
+    } else if (Object.prototype.hasOwnProperty.call(allTools, toolName)) {
+      tool = (allTools as Record<string, unknown>)[toolName];
     }
-    if (!toolExists || !toolExec) {
+    if (
+      !tool ||
+      typeof tool !== "object" ||
+      tool === null ||
+      typeof (tool as { execute?: unknown }).execute !== "function"
+    ) {
       return NextResponse.json({ error: `Tool '${toolName}' not found` }, { status: 404 });
     }
     const executionId = uuidv4();
-    const executionTrace = await createTrace({
-      name: "tool_execution",
-      userId: executionId,
-      metadata: {
-        toolName,
-        parameters,
-        parentTraceId: traceId,
-        timestamp: new Date().toISOString()
-      }
-    });
     const startTime = Date.now();
     let result;
     try {
-      result = await toolExec(parameters);
+      result = await (tool as DynamicTool).execute(parameters, { toolCallId: executionId });
     } catch (err) {
       return NextResponse.json({ error: `Tool execution failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
     }
@@ -74,7 +67,17 @@ export async function POST(request: Request) {
     const provider = getMemoryProvider();
     if (provider === 'upstash') {
       try {
-        await (await import("@/lib/memory/upstash/supabase-adapter")).createItem('tool_executions', {
+        // Use explicit type for tool_executions row
+        type ToolExecutionRow = {
+          id: string;
+          tool_name: string;
+          parameters: string;
+          result: string;
+          status: string;
+          execution_time: number;
+          created_at: string;
+        };
+        const executionRow: ToolExecutionRow = {
           id: executionId,
           tool_name: toolName,
           parameters: JSON.stringify(parameters),
@@ -82,8 +85,11 @@ export async function POST(request: Request) {
           status: 'success',
           execution_time: executionTime,
           created_at: new Date().toISOString()
-        });
-      } catch {}
+        };
+        await (await import("@/lib/memory/upstash/supabase-adapter")).createItem('tool_executions', executionRow);
+      } catch {
+        // fallback: do not throw, just skip logging if Upstash fails
+      }
     }
     return NextResponse.json({ result, executionTime });
   } catch (error) {

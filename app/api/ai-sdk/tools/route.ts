@@ -66,17 +66,15 @@ export async function GET(request: Request) {
         try {
           // Use a more specific type for Upstash tools table
           type UpstashToolRow = { name: string; description: string; parameters_schema: string; category?: string };
-          const customToolsData: UpstashToolRow[] = await (await import("@/lib/memory/upstash/supabase-adapter")).getData('tools', {});
+          const rawTools: Array<Record<string, unknown>> = await (await import("@/lib/memory/upstash/supabase-adapter")).getData('tools', {});
+          const customToolsData: UpstashToolRow[] = rawTools.filter(
+            (t): t is UpstashToolRow => typeof t.name === 'string' && typeof t.description === 'string' && typeof t.parameters_schema === 'string'
+          );
           customTools = customToolsData.reduce((acc, tool) => {
-            if (typeof tool.name !== 'string') return acc;
             let parametersSchema: unknown = {};
-            if (typeof tool.parameters_schema === 'string') {
-              try {
-                parametersSchema = JSON.parse(tool.parameters_schema);
-              } catch {}
-            } else if (tool.parameters_schema) {
-              parametersSchema = tool.parameters_schema;
-            }
+            try {
+              parametersSchema = JSON.parse(tool.parameters_schema);
+            } catch {}
             acc[tool.name] = {
               description: tool.description || '',
               parameters: parametersSchema
@@ -86,6 +84,7 @@ export async function GET(request: Request) {
         } catch {
           // fallback: normalize loadCustomTools result
           const loaded = await loadCustomTools();
+          for (const [name, tool] of Object.entries(loaded)) {
             customTools[name] = {
               description: tool.description || '',
               parameters: tool.parameters || {}
@@ -108,14 +107,8 @@ export async function GET(request: Request) {
 
     // Helper to get tool category
     function getToolCategory(name: string): string {
-      // Try to find a category by matching tool name to known category ids
-      // Since toolCategories is a flat array, we cannot check cat.tools
-      // Instead, use heuristics: if tool is in builtInTools, check by module prefix
-      // Otherwise, use category from customTools if available
-      // Otherwise, agentic or 'other'
       if (name in agTools) return "agentic";
-      if (name in customTools) return customTools[name].category || "custom";
-      // Try to infer from builtInTools by prefix
+      if (name in customTools) return "custom";
       for (const cat of toolCategories) {
         if (cat.id && name.toLowerCase().startsWith(cat.id)) {
           return cat.id;
