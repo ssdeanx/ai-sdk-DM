@@ -31,3 +31,4 @@ next-env.d.ts
 .augment/
 Supabase/
 supa.md
+bundles.json

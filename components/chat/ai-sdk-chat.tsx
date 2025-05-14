@@ -1,10 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-// Import from the AI SDK
-import { CreateMessage, type UseChatHelpers, Message as AIMessage } from 'ai/react';
-import { LanguageModelV1 } from 'ai';
-// Import components
+import { useChat, Message } from 'ai/react';
 import { ChatSidebar } from './chat-sidebar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -14,33 +11,22 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 import { renderContent } from './ai-sdk-chatHelper';
-// Import your custom hooks
-import { useChat } from '@/hooks/use-chat';
-import { useAgentExecutor, useToolExecutor } from '@/hooks/use-executor';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { RequestMiddleware, ResponseMiddleware } from '@/lib/middleware';
-import { LanguageModelV1Middleware } from 'ai';
-import { MODEL_REGISTRY } from '@/lib/model-registry';
+import { useToolExecutor } from '@/hooks/use-executor';
 import {
-  Bot, User, Send, Loader2, RefreshCw, XCircle, Paperclip,
-  FileText, Code, Mic, Copy, Check, Eraser,
+  Send, XCircle, Paperclip,
+  FileText, Mic, Copy, Check,
   Maximize2, Minimize2, ThumbsUp, ThumbsDown,
-  Zap, Settings, MessageSquare, Image as ImageIcon,
-  Terminal, BarChart, Table, Globe, Monitor,
-  MapPin, FormInput, ChevronLeft, ChevronRight
+  Zap, Settings, ChevronLeft,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
 
 export interface AiSdkChatProps {
   apiEndpoint?: string;
-  initialMessages?: AIMessage[];
+  initialMessages?: Message[];
   initialThreadId?: string;
   modelId?: string;
   temperature?: number;
@@ -50,37 +36,11 @@ export interface AiSdkChatProps {
   provider?: string;
   systemPrompt?: string;
   personaId?: string;
-  streamProtocol?: 'text' | 'data';
-  toolChoice?: 'auto' | 'none' | string;
+  streamProtocol?: 'data' | 'text';
+  toolChoice?: string;
   maxSteps?: number;
-  middleware?: {
-    caching?: {
-      enabled?: boolean
-      ttl?: number
-      maxSize?: number
-    }
-    reasoning?: {
-      enabled?: boolean
-      tagName?: string
-      startWithReasoning?: boolean
-    }
-    simulation?: {
-      enabled?: boolean
-    }
-    logging?: {
-      enabled?: boolean
-      logParams?: boolean
-      logResults?: boolean
-    }
-    defaultSettings?: {
-      temperature?: number
-      maxTokens?: number
-      providerMetadata?: Record<string, any>
-    }
-  }
-  useCustomHooks?: boolean;
+  middleware?: unknown;
   agentId?: string;
-  onThreadChange?: (threadId: string) => void;
 }
 
 export interface FileAttachment {
@@ -95,6 +55,7 @@ export interface ImageAttachment {
   id: string;
   url: string;
   type: 'image';
+  name?: string; // Add name for compatibility with alt text
   width?: number;
   height?: number;
 }
@@ -102,7 +63,7 @@ export interface ImageAttachment {
 export interface ToolCall {
   id: string;
   name: string;
-  args: any;
+  args: unknown;
   result?: string;
   status: 'pending' | 'completed' | 'error';
 }
@@ -123,34 +84,41 @@ export function AiSdkChat({
   toolChoice = 'auto',
   maxSteps = 5,
   middleware,
-  useCustomHooks = false,
   agentId,
-  onThreadChange
 }: AiSdkChatProps) {
-  // Initialize chat hook directly
-  const chatHook = useChat({
-    apiEndpoint: agentId ? `/api/agents/${agentId}/run` : apiEndpoint,
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    stop,
+  } = useChat({
+    api: agentId ? `/api/agents/${agentId}/run` : apiEndpoint,
+    id: initialThreadId,
     initialMessages,
-    initialThreadId,
-    modelId,
-    temperature,
-    maxTokens,
-    tools,
+    body: {
+      modelId,
+      temperature,
+      maxTokens,
+      tools,
+      provider,
+      systemPrompt,
+      personaId,
+      streamProtocol,
+      toolChoice,
+      maxSteps,
+      middleware,
+      agentId,
+    },
+    streamProtocol,
   });
 
-  // Destructure common chatHook values
-  const { messages, input, isLoading, threadId, stop, setMessages: setChatMessages, append } = chatHook;
-  const setInput = chatHook.setInput;
-  const handleInputChange = chatHook.handleInputChange;
-  const handleSubmit = chatHook.handleSubmit;
-
-  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // State
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [imageAttachments, setImageAttachments] = useState<ImageAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -158,29 +126,6 @@ export function AiSdkChat({
   const [isSpeechRecording, setIsSpeechRecording] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [threadName, setThreadName] = useState('New Chat');
-
-  const [selectedSystemPrompt, setSelectedSystemPrompt] = useState(systemPrompt || '');
-  const [selectedPersonaId, setSelectedPersonaId] = useState(personaId || '');
-
-  // Critical state variables
-  const [isConnected, setIsConnected] = useState(true);
-  const [connectionRetries, setConnectionRetries] = useState(0);
-  const [lastSuccessfulResponse, setLastSuccessfulResponse] = useState<Date | null>(null);
-
-  const [modelAvailability, setModelAvailability] = useState<Record<string, boolean>>({});
-  const [fallbackModelId, setFallbackModelId] = useState<string>('gemini-2.0-flash');
-  const [isUsingFallbackModel, setIsUsingFallbackModel] = useState(false);
-  const [errorRecoveryMode, setErrorRecoveryMode] = useState<'none' | 'retry' | 'fallback'>('none');
-  const [maxRetries, setMaxRetries] = useState(3);
-  const [retryDelay, setRetryDelay] = useState(1000);
-  const [streamInterrupted, setStreamInterrupted] = useState(false);
-  const [lastError, setLastError] = useState<Error | null>(null);
-
-  // Use model registry for providers, allModels, and modelSettings
-  const providers = Object.entries(MODEL_REGISTRY).map(([id]) => ({ id, name: id.charAt(0).toUpperCase() + id.slice(1) }));
-  const allModels = Object.values(MODEL_REGISTRY).flatMap(models => Object.entries(models).map(([id, cfg]: any) => ({ id, name: cfg.name })));
-  const modelSettings = Object.values(MODEL_REGISTRY).reduce((acc, models) => ({ ...acc, ...models }), {} as Record<string, any>);
 
   const [selectedModel, setSelectedModel] = useState(modelId);
   const [selectedProvider, setSelectedProvider] = useState<string>(provider);
@@ -189,17 +134,16 @@ export function AiSdkChat({
   const [enabledTools, setEnabledTools] = useState<string[]>(tools);
   const [isCopied, setIsCopied] = useState(false);
 
-  const { executeTool, isExecuting: isToolExecuting, error: toolError } = useToolExecutor({
-    toolId: 'default-tool-id', // Replace with the actual tool ID
-    onSuccess: (data) => {
-      console.log('Tool executed successfully:', data);
+  const { executeTool, isExecuting: isToolExecuting } = useToolExecutor({
+    toolId: 'default-tool-id',
+    onSuccess: (_data) => {
+      // Optionally handle tool success
     },
     onError: (err) => {
-      console.error('Error executing tool:', err.message);
+      toast({ title: 'Tool execution error', description: err.message, variant: 'destructive' });
     },
   });
 
-  // Define available tools/functions
   const availableFunctions = {
     'web-search': {
       description: 'Search the web for information',
@@ -208,12 +152,12 @@ export function AiSdkChat({
         properties: {
           query: {
             type: 'string',
-            description: 'The search query'
-          }
+            description: 'The search query',
+          },
         },
-        required: ['query']
+        required: ['query'],
       },
-      execute: async (args: { query: string }) => executeTool({ toolName: 'web-search', args })
+      execute: async (args: { query: string }) => executeTool({ toolName: 'web-search', args }),
     },
     'weather': {
       description: 'Get current weather information',
@@ -222,12 +166,12 @@ export function AiSdkChat({
         properties: {
           location: {
             type: 'string',
-            description: 'The city or location'
-          }
+            description: 'The city or location',
+          },
         },
-        required: ['location']
+        required: ['location'],
       },
-      execute: async (args: { location: string }) => executeTool({ toolName: 'weather', args })
+      execute: async (args: { location: string }) => executeTool({ toolName: 'weather', args }),
     },
     'image-generation': {
       description: 'Generate an image based on a description',
@@ -236,221 +180,27 @@ export function AiSdkChat({
         properties: {
           prompt: {
             type: 'string',
-            description: 'Description of the image to generate'
+            description: 'Description of the image to generate',
           },
           style: {
             type: 'string',
             description: 'Style of the image (vivid, natural, cinematic, anime, digital-art)',
             enum: ['vivid', 'natural', 'cinematic', 'anime', 'digital-art'],
-            default: 'vivid'
-          }
+            default: 'vivid',
+          },
         },
-        required: ['prompt']
+        required: ['prompt'],
       },
-      execute: async (args: { prompt: string, style?: string }) => executeTool({ toolName: 'image-generation', args })
+      execute: async (args: { prompt: string; style?: string }) => executeTool({ toolName: 'image-generation', args }),
     },
-    'computer-use': {
-      description: 'Execute a computer task or command',
-      parameters: {
-        type: 'object',
-        properties: {
-          task: {
-            type: 'string',
-            description: 'The task or command to execute'
-          },
-          showSteps: {
-            type: 'boolean',
-            description: 'Whether to show the execution steps',
-            default: false
-          }
-        },
-        required: ['task']
-      },
-      execute: async (args: { task: string, showSteps?: boolean }) => executeTool({ toolName: 'computer-use', args })
-    },
-    'data-visualization': {
-      description: 'Create a data visualization',
-      parameters: {
-        type: 'object',
-        properties: {
-          data: {
-            type: 'array',
-            description: 'The data to visualize',
-            items: {
-              type: 'object'
-            }
-          },
-          type: {
-            type: 'string',
-            description: 'The type of visualization',
-            enum: ['bar', 'line', 'pie', 'scatter'],
-            default: 'bar'
-          }
-        },
-        required: ['data']
-      },
-      execute: async (args: { data: any[], type?: string }) => executeTool({ toolName: 'data-visualization', args })
-    },
-    'browser-display': {
-      description: 'Display a webpage in an iframe',
-      parameters: {
-        type: 'object',
-        properties: {
-          url: {
-            type: 'string',
-            description: 'The URL of the webpage to display'
-          },
-          height: {
-            type: 'string',
-            description: 'The height of the iframe',
-            default: '400px'
-          }
-        },
-        required: ['url']
-      },
-      execute: async (args: { url: string, height?: string }) => executeTool({ toolName: 'browser-display', args })
-    },
-    'screen-share': {
-      description: 'Display a screen recording or screenshot',
-      parameters: {
-        type: 'object',
-        properties: {
-          src: {
-            type: 'string',
-            description: 'The URL of the screen recording or screenshot'
-          },
-          title: {
-            type: 'string',
-            description: 'The title of the screen recording or screenshot',
-            default: 'Screen Recording'
-          },
-          isVideo: {
-            type: 'boolean',
-            description: 'Whether the source is a video or an image',
-            default: true
-          }
-        },
-        required: ['src']
-      },
-      execute: async (args: { src: string, title?: string, isVideo?: boolean }) => executeTool({ toolName: 'screen-share', args })
-    },
-    'interactive-map': {
-      description: 'Display an interactive map',
-      parameters: {
-        type: 'object',
-        properties: {
-          center: {
-            type: 'array',
-            description: 'The center coordinates of the map [latitude, longitude]',
-            items: {
-              type: 'number'
-            },
-            minItems: 2,
-            maxItems: 2
-          },
-          zoom: {
-            type: 'number',
-            description: 'The zoom level of the map',
-            default: 13
-          },
-          locations: {
-            type: 'array',
-            description: 'The locations to display on the map',
-            items: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-                title: { type: 'string' },
-                description: { type: 'string' }
-              },
-              required: ['lat', 'lng']
-            },
-            default: []
-          }
-        },
-        required: ['center']
-      },
-      execute: async (args: { center: [number, number], zoom?: number, locations?: any[] }) => executeTool({ toolName: 'interactive-map', args })
-    },
-    'interactive-form': {
-      description: 'Display an interactive form',
-      parameters: {
-        type: 'object',
-        properties: {
-          title: {
-            type: 'string',
-            description: 'The title of the form',
-            default: 'Feedback Form'
-          },
-          fields: {
-            type: 'array',
-            description: 'The fields to display in the form',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                type: {
-                  type: 'string',
-                  enum: ['text', 'textarea', 'number', 'email', 'checkbox', 'radio', 'select', 'date']
-                },
-                label: { type: 'string' },
-                placeholder: { type: 'string' },
-                required: { type: 'boolean' },
-                options: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      value: { type: 'string' },
-                      label: { type: 'string' }
-                    },
-                    required: ['value', 'label']
-                  }
-                }
-              },
-              required: ['id', 'type', 'label']
-            }
-          },
-          submitLabel: {
-            type: 'string',
-            description: 'The label for the submit button',
-            default: 'Submit'
-          }
-        },
-        required: ['title', 'fields']
-      },
-      execute: async (args: { title: string, fields: any[], submitLabel?: string }) => executeTool({ toolName: 'interactive-form', args })
-    }
   };
 
-  // Track function calls
   const [functionCalls, setFunctionCalls] = useState<ToolCall[]>([]);
 
-  // Fetch threads
-  const [threads, setThreads] = useState<{ id: string; name: string; updatedAt: string }[]>([]);
-  const [isLoadingThreads, setIsLoadingThreads] = useState(false);
-
-  // Fetch threads on component mount
-  useEffect(() => { /* TODO: Implement thread fetching */ }, []);
-
-  // Create a new message using CreateMessage type
-  const createNewMessage = (role: 'user' | 'assistant' | 'system', content: string): CreateMessage => {
-    return { id: nanoid(), role, content };
-  };
-
-  // Create a new thread
-  const createThread = async (name: string = 'New Chat') => { /* TODO: Implement thread creation */ };
-
-  // Track current thread ID
-  const [currentThreadId, setCurrentThreadId] = useState<string | undefined>(initialThreadId);
-
-  // Effect to scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle file selection and upload (placeholder implementations)
   const handleFileSelect = () => fileInputRef.current?.click();
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -461,13 +211,13 @@ export function AiSdkChat({
       setUploadProgress((prev) => prev + (100 / files.length));
       const newAttachment: FileAttachment = {
         id: nanoid(),
-        name: file.name,
+        name: file.name || 'Unnamed File',
         type: file.type.startsWith('image/') ? 'image' : 'file',
         url: URL.createObjectURL(file),
         size: file.size,
       };
       if (newAttachment.type === 'image') {
-        setImageAttachments(prev => [...prev, newAttachment as unknown as ImageAttachment]);
+        setImageAttachments(prev => [...prev, { ...newAttachment, type: 'image', name: newAttachment.name }]);
       } else {
         setAttachments(prev => [...prev, newAttachment]);
       }
@@ -477,13 +227,11 @@ export function AiSdkChat({
     toast({ title: 'Files uploaded', description: `${files.length} file(s) processed.` });
   };
 
-  // Handle speech input (placeholder)
   const handleSpeechInput = () => {
     setIsSpeechRecording(!isSpeechRecording);
     toast({ title: isSpeechRecording ? 'Recording stopped' : 'Recording started...' });
   };
 
-  // Handle key down for sending message with Enter
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -491,68 +239,53 @@ export function AiSdkChat({
     }
   };
 
-  // Handle function call button click (for testing)
-  const handleFunctionCall = async (toolName: string, args: any) => {
-    if (!append) {
-      toast({ title: 'Error', description: 'Append function not available.', variant: 'destructive' });
-      return;
-    }
+  const handleFunctionCall = async (toolName: string, args: Record<string, unknown>) => {
     const toolCallId = nanoid();
     setFunctionCalls(prev => [...prev, { id: toolCallId, name: toolName, args, status: 'pending' }]);
-    let result;
+    let result: string | undefined;
     let status: 'completed' | 'error' = 'completed';
     try {
       if (availableFunctions[toolName as keyof typeof availableFunctions]) {
-        result = await availableFunctions[toolName as keyof typeof availableFunctions].execute(args);
+        // Type-safe call
+        result = await (availableFunctions[toolName as keyof typeof availableFunctions].execute as (args: Record<string, unknown>) => Promise<string>)(args);
         toast({ title: `Tool ${toolName} executed`, description: `Result: ${JSON.stringify(result)}` });
       } else {
         throw new Error(`Tool ${toolName} not found`);
       }
-    } catch (e: any) {
-      result = e.message || 'Error executing tool';
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      result = errMsg || 'Error executing tool';
       status = 'error';
-      setLastError(e);
       toast({ title: `Tool ${toolName} error`, description: result, variant: 'destructive' });
     }
     setFunctionCalls(prev => prev.map(call => call.id === toolCallId ? { ...call, result, status } : call));
-
-    if (messages.length > 0 && messages[messages.length -1].role === 'assistant' && messages[messages.length -1].tool_calls ) {
-        append({
-            role: 'tool',
-            content: JSON.stringify(result),
-            tool_call_id: toolCallId,
-            tool_name: toolName
-        } as AIMessage & { tool_call_id: string, tool_name: string});
-    }
   };
 
-  // UI Rendering (JSX)
   return (
     <div className={cn('flex h-full', className, isFullScreen ? 'fixed inset-0 z-50 bg-background' : '')}>
       <ChatSidebar
-        threads={threads}
-        isLoadingThreads={isLoadingThreads}
-        currentThreadId={threadId}
-        onNewChat={() => {
-          if (setChatMessages) setChatMessages([]);
-          setFunctionCalls([]);
-          setAttachments([]);
-          setImageAttachments([]);
-          setThreadName('New Chat');
-        }}
-        onSelectThread={(id) => {
-          setCurrentThreadId(id);
-        }}
-        onDeleteThread={(id) => { /* TODO: Implement thread deletion */ }}
-        onRenameThread={(id, newName) => { /* TODO: Implement thread rename */ }}
+        models={[]}
+        tools={[]}
+        threads={[]}
+        selectedModelId={selectedModel}
+        selectedThreadId={initialThreadId || ''}
+        selectedTools={enabledTools}
+        temperature={selectedTemperature}
+        maxTokens={selectedMaxTokens}
+        onModelChange={setSelectedModel}
+        onThreadChange={() => {}}
+        onToolToggle={() => {}}
+        onTemperatureChange={setSelectedTemperature}
+        onMaxTokensChange={setSelectedMaxTokens}
+        onCreateThread={() => {}}
       />
       <div className="flex flex-col flex-1 h-full bg-muted/50 dark:bg-muted/20">
         <header className="flex items-center justify-between p-4 border-b bg-background">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => { /* TODO: Toggle sidebar */ }}>
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => {}}>
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <h2 className="text-lg font-semibold">{threadName}</h2>
+            <h2 className="text-lg font-semibold">New Chat</h2>
           </div>
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -577,12 +310,12 @@ export function AiSdkChat({
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((m: AIMessage, index: number) => (
+          {messages.map((m: Message, index: number) => (
             <div key={m.id || `message-${index}`} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
               <Card className={cn('max-w-[75%]', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card')}>
                 <CardContent className="p-3">
                   <div className="text-sm">
-                    {renderContent(m.content, m.tool_calls)}
+                    {renderContent(m.content)}
                   </div>
                   {m.role === 'assistant' && (
                     <div className="flex items-center justify-end gap-1 mt-2">
@@ -653,7 +386,7 @@ export function AiSdkChat({
               {imageAttachments.map((attachment) => (
                 <div key={attachment.id} className="relative group">
                   <div className="relative w-24 h-24 rounded-md overflow-hidden border">
-                    <img src={attachment.url} alt={attachment.name} className="w-full h-full object-cover" />
+                    <img src={attachment.url} alt={attachment.name || 'Image'} className="w-full h-full object-cover" />
                     <Button
                       variant="destructive"
                       size="icon"
@@ -669,7 +402,7 @@ export function AiSdkChat({
                 <div key={attachment.id} className="relative group">
                     <div className="flex items-center p-2 border rounded-md bg-muted">
                         <FileText className="h-4 w-4 mr-2 text-blue-500" />
-                        <span className="text-xs truncate max-w-[100px]">{attachment.name}</span>
+                        <span className="text-xs truncate max-w-[100px]">{attachment.name || 'File'}</span>
                         <Button
                         variant="ghost"
                         size="icon"
@@ -794,9 +527,6 @@ export function AiSdkChat({
                 onChange={(e) => setSelectedProvider(e.target.value)}
               >
                 <option value="all">All Providers</option>
-                {providers.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
               </select>
             </div>
 
@@ -806,51 +536,10 @@ export function AiSdkChat({
                 id="model"
                 className="w-full p-2 border rounded-md bg-background text-foreground"
                 value={selectedModel}
-                onChange={(e) => {
-                  setSelectedModel(e.target.value);
-                  if (modelSettings[e.target.value]?.max_tokens) {
-                    const modelMaxTokens = modelSettings[e.target.value].max_tokens;
-                    if (selectedMaxTokens > modelMaxTokens) {
-                      setSelectedMaxTokens(modelMaxTokens);
-                    }
-                  }
-                }}
+                onChange={(e) => setSelectedModel(e.target.value)}
               >
-                {selectedProvider === 'all' ? (
-                  allModels.map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                      {modelSettings[model.id]?.supports_vision && " (Vision)"}
-                      {modelSettings[model.id]?.supports_functions && " (Functions)"}
-                    </option>
-                  ))
-                ) : (
-                  Object.entries(MODEL_REGISTRY[selectedProvider as keyof typeof MODEL_REGISTRY] || {}).map(([id, cfg]: [string, any]) => (
-                    <option key={id} value={id}>
-                      {cfg.name}
-                      {cfg.supports_vision && " (Vision)"}
-                      {cfg.supports_functions && " (Functions)"}
-                    </option>
-                  ))
-                )}
+                <option value={modelId}>{modelId}</option>
               </select>
-              {modelSettings[selectedModel] && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <p>Max Tokens: {modelSettings[selectedModel].max_tokens?.toLocaleString()}</p>
-                  <p>Context Window: {modelSettings[selectedModel].context_window?.toLocaleString()} tokens</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {modelSettings[selectedModel].supports_vision && (
-                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-xs">Vision</span>
-                    )}
-                    {modelSettings[selectedModel].supports_functions && (
-                      <span className="px-1.5 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs">Functions</span>
-                    )}
-                    {modelSettings[selectedModel].supports_streaming && (
-                      <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded-full text-xs">Streaming</span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -867,9 +556,6 @@ export function AiSdkChat({
                 onChange={(e) => setSelectedTemperature(parseFloat(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
               />
-              <p className="text-xs text-muted-foreground">
-                Lower values produce more focused and deterministic responses.
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -880,55 +566,12 @@ export function AiSdkChat({
                 id="max-tokens"
                 type="range"
                 min={256}
-                max={modelSettings[selectedModel]?.max_tokens || 8192}
+                max={8192}
                 step={256}
                 value={selectedMaxTokens}
                 onChange={(e) => setSelectedMaxTokens(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
               />
-              <p className="text-xs text-muted-foreground">
-                Maximum number of tokens to generate in the response.
-              </p>
-            </div>
-
-            <div className="space-y-2 border-t pt-4">
-              <Label className="font-medium text-base">Error Recovery</Label>
-              <div className="space-y-4 mt-2">
-                <div className="space-y-2">
-                  <Label htmlFor="fallbackModel">Fallback Model</Label>
-                  <select
-                    id="fallbackModel"
-                    className="w-full p-2 border rounded-md bg-background text-foreground"
-                    value={fallbackModelId}
-                    onChange={(e) => setFallbackModelId(e.target.value)}
-                  >
-                    {allModels.filter(m => m.id.includes('flash') || m.id.includes('mini') || m.id.includes('haiku')).map(model => (
-                        <option key={`fallback-${model.id}`} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-muted-foreground">
-                    Model to use if the primary model fails.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="max-retries">Max Retries: {maxRetries}</Label>
-                  </div>
-                  <input id="max-retries" type="range" min={0} max={10} step={1} value={maxRetries} onChange={(e) => setMaxRetries(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
-                  <p className="text-xs text-muted-foreground">
-                    Number of times to retry before using fallback model.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="retry-delay">Retry Delay (ms): {retryDelay}</Label>
-                  </div>
-                  <input id="retry-delay" type="range" min={500} max={10000} step={500} value={retryDelay} onChange={(e) => setRetryDelay(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
-                  <p className="text-xs text-muted-foreground">
-                    Delay between retry attempts (milliseconds).
-                  </p>
-                </div>
-              </div>
             </div>
 
             <div className="space-y-2 border-t pt-4">
