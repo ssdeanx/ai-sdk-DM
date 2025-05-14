@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
-import { getLibSQLClient } from "@/lib/memory/db";
 import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { logEvent } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
 import { countTokens } from "@/lib/memory/memory";
+import { getMemoryProvider } from "@/lib/memory/factory";
+import {
+  getItemById,
+  getData,
+  createItem,
+  updateItem
+} from "@/lib/memory/upstash/supabase-adapter";
+import { getLibSQLClient } from "@/lib/memory/db";
 
 /**
  * GET /api/ai-sdk/threads/[id]/messages
@@ -19,60 +26,102 @@ export async function GET(
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "100");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    
-    const db = getLibSQLClient();
-    
-    // Check if thread exists
-    const threadResult = await db.execute({
-      sql: `SELECT id FROM memory_threads WHERE id = ?`,
-      args: [id]
-    });
-    
-    if (threadResult.rows.length === 0) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
-    }
-    
-    // Get messages
-    const messagesResult = await db.execute({
-      sql: `
-        SELECT * FROM messages 
-        WHERE memory_thread_id = ? 
-        ORDER BY created_at ASC
-        LIMIT ? OFFSET ?
-      `,
-      args: [id, limit, offset]
-    });
-    
-    // Format messages
-    const messages = messagesResult.rows.map((msg: any) => {
-      let metadata = {};
+    const provider = getMemoryProvider();
+    let messages: unknown[] = [];
+    let count = 0;
+    let useLibSQL = false;
+
+    if (provider === "upstash") {
       try {
-        metadata = typeof msg.metadata === 'string' 
-          ? JSON.parse(msg.metadata) 
-          : msg.metadata || {};
-      } catch (e) {
-        console.error('Error parsing message metadata:', e);
+        const thread = await getItemById("memory_threads", id);
+        if (!thread) {
+          return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+        }
+
+        messages = await getData("messages", {
+          filters: [{ field: "memory_thread_id", operator: "eq", value: id }],
+          orderBy: { column: "created_at", ascending: true },
+          limit,
+          offset
+        });
+
+        count = (await getData("messages", {
+          filters: [{ field: "memory_thread_id", operator: "eq", value: id }]
+        })).length;
+      } catch {
+        useLibSQL = true;
       }
-      
-      return {
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        metadata,
-        tokenCount: msg.token_count,
-        createdAt: msg.created_at
-      };
-    });
-    
-    // Get total count
-    const countResult = await db.execute({
-      sql: `SELECT COUNT(*) as count FROM messages WHERE memory_thread_id = ?`,
-      args: [id]
-    });
-    
+    } else {
+      useLibSQL = true;
+    }
+
+    if (useLibSQL) {
+      const db = getLibSQLClient();
+
+      const threadResult = await db.execute({
+        sql: `SELECT id FROM memory_threads WHERE id = ?`,
+        args: [id]
+      });
+
+      if (threadResult.rows.length === 0) {
+        return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      }
+
+      const messagesResult = await db.execute({
+        sql: `SELECT * FROM messages WHERE memory_thread_id = ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
+        args: [id, limit, offset]
+      });
+
+      messages = messagesResult.rows.map((msg) => {
+        let metadata = {};
+        try {
+          metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata || {};
+        } catch {
+          // ignore
+        }
+        return {
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          metadata,
+          tokenCount: msg.token_count,
+          createdAt: msg.created_at
+        };
+      });
+
+      const countResult = await db.execute({
+        sql: `SELECT COUNT(*) as count FROM messages WHERE memory_thread_id = ?`,
+        args: [id]
+      });
+
+      count = Number(countResult.rows[0].count ?? 0);
+    } else {
+      // Format messages for Upstash
+      messages = Array.isArray(messages)
+        ? messages.map((msg) => {
+            if (typeof msg !== 'object' || msg === null) return msg;
+            const m = msg as Record<string, unknown>;
+            let metadata: Record<string, unknown> = {};
+            try {
+              metadata = typeof m.metadata === 'string' ? JSON.parse(m.metadata as string) : m.metadata || {};
+            } catch {
+              // ignore
+            }
+            return {
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              metadata,
+              tokenCount: m.token_count,
+              createdAt: m.created_at
+            };
+          })
+        : [];
+    }
+
     return NextResponse.json({
       messages,
-      count: countResult.rows[0].count,
+      count,
       hasMore: messages.length === limit
     });
   } catch (error) {
@@ -93,7 +142,7 @@ export async function POST(
     const { id } = params;
     const body = await request.json();
     const { role, content, metadata = {} } = body;
-    
+
     // Validate required fields
     if (!role || !content) {
       return NextResponse.json(
@@ -101,66 +150,75 @@ export async function POST(
         { status: 400 }
       );
     }
-    
-    const db = getLibSQLClient();
-    
-    // Check if thread exists
-    const threadResult = await db.execute({
-      sql: `SELECT id FROM memory_threads WHERE id = ?`,
-      args: [id]
-    });
-    
-    if (threadResult.rows.length === 0) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
-    }
-    
-    // Generate message ID
+
+    const provider = getMemoryProvider();
+    let useLibSQL = false;
     const messageId = uuidv4();
     const now = new Date().toISOString();
-    
-    // Count tokens
-    let tokenCount = null;
+    let tokenCount: number | null = null;
+
     try {
       tokenCount = countTokens(content);
-    } catch (e) {
-      console.error('Error counting tokens:', e);
+    } catch {
+      // ignore
     }
-    
-    // Merge metadata
+
     const messageMetadata = {
       ...metadata,
       source: 'ai-sdk-ui',
       timestamp: now
     };
-    
-    // Insert message
-    await db.execute({
-      sql: `
-        INSERT INTO messages (
-          id, memory_thread_id, role, content, 
-          token_count, metadata, created_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        messageId, 
-        id, 
-        role, 
-        content, 
-        tokenCount, 
-        JSON.stringify(messageMetadata), 
-        now
-      ]
-    });
-    
-    // Update thread's updated_at timestamp
-    await db.execute({
-      sql: `UPDATE memory_threads SET updated_at = ? WHERE id = ?`,
-      args: [now, id]
-    });
-    
-    // Log message creation
+
+    if (provider === "upstash") {
+      try {
+        const thread = await getItemById("memory_threads", id);
+        if (!thread) {
+          return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+        }
+
+        await createItem("messages", {
+          id: messageId,
+          memory_thread_id: id,
+          role,
+          content,
+          token_count: tokenCount,
+          metadata: JSON.stringify(messageMetadata),
+          created_at: now
+        });
+
+        await updateItem("memory_threads", id, { updated_at: now });
+      } catch {
+        useLibSQL = true;
+      }
+    } else {
+      useLibSQL = true;
+    }
+
+    if (useLibSQL) {
+      const db = getLibSQLClient();
+
+      const threadResult = await db.execute({
+        sql: `SELECT id FROM memory_threads WHERE id = ?`,
+        args: [id]
+      });
+
+      if (threadResult.rows.length === 0) {
+        return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      }
+
+      await db.execute({
+        sql: `INSERT INTO messages (id, memory_thread_id, role, content, token_count, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [messageId, id, role, content, tokenCount, JSON.stringify(messageMetadata), now]
+      });
+
+      await db.execute({
+        sql: `UPDATE memory_threads SET updated_at = ? WHERE id = ?`,
+        args: [now, id]
+      });
+    }
+
     await logEvent({
+      traceId: messageId,
       name: "message_created",
       metadata: {
         messageId,
@@ -170,7 +228,7 @@ export async function POST(
         timestamp: now
       }
     });
-    
+
     return NextResponse.json({
       id: messageId,
       threadId: id,

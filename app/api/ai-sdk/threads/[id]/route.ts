@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
 import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { getItemById, updateItem, deleteItem, getData, UpstashAdapterError } from '@/lib/memory/upstash/supabase-adapter';
 
 /**
  * GET /api/ai-sdk/threads/[id]
@@ -17,32 +18,63 @@ export async function GET(
     const url = new URL(request.url);
     const includeMessages = url.searchParams.get("messages") === "true";
     const messageLimit = parseInt(url.searchParams.get("limit") || "100");
-    
+    const provider = getMemoryProvider();
+    if (provider === 'upstash') {
+      try {
+        const thread = await getItemById('memory_threads', id);
+        if (!thread) {
+          return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+        }
+        const formattedThread = {
+          id: thread.id,
+          name: thread.name,
+          metadata: thread.metadata || {},
+          createdAt: thread.created_at,
+          updatedAt: thread.updated_at
+        };
+        if (includeMessages) {
+          const messages = await getData('messages', {
+            filters: [
+              { field: 'thread_id', operator: 'eq', value: id }
+            ],
+            orderBy: { column: 'created_at', ascending: true },
+            limit: messageLimit
+          });
+          // Format messages
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (formattedThread as any).messages = messages.map((msg) => ({
+            id: msg.id,
+            threadId: msg.thread_id,
+            role: msg.role,
+            content: msg.content,
+            metadata: msg.metadata || {},
+            createdAt: msg.created_at
+          }));
+        }
+        return NextResponse.json(formattedThread);
+      } catch (err) {
+        if (!(err instanceof UpstashAdapterError)) throw err;
+        // Fallback to LibSQL
+      }
+    }
+    // LibSQL fallback
     const db = getLibSQLClient();
-    
-    // Get thread
     const threadResult = await db.execute({
       sql: `SELECT * FROM memory_threads WHERE id = ?`,
       args: [id]
     });
-    
     if (threadResult.rows.length === 0) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
     }
-    
     const thread = threadResult.rows[0];
-    
-    // Parse metadata
     let metadata = {};
     try {
-      metadata = typeof thread.metadata === 'string' 
-        ? JSON.parse(thread.metadata) 
-        : thread.metadata || {};
-    } catch (e) {
-      console.error('Error parsing thread metadata:', e);
-    }
-    
-    // Format thread
+      if (typeof thread.metadata === 'string') {
+        metadata = JSON.parse(thread.metadata);
+      } else if (typeof thread.metadata === 'object' && thread.metadata !== null && !(thread.metadata instanceof ArrayBuffer)) {
+        metadata = thread.metadata;
+      }
+    } catch { metadata = {}; }
     const formattedThread = {
       id: thread.id,
       name: thread.name,
@@ -50,46 +82,31 @@ export async function GET(
       createdAt: thread.created_at,
       updatedAt: thread.updated_at
     };
-    
-    // Include messages if requested
     if (includeMessages) {
-      const messagesResult = await db.execute({
-        sql: `
-          SELECT * FROM messages 
-          WHERE memory_thread_id = ? 
-          ORDER BY created_at ASC
-          LIMIT ?
-        `,
+      const msgResult = await db.execute({
+        sql: `SELECT * FROM messages WHERE thread_id = ? ORDER BY created_at ASC LIMIT ?`,
         args: [id, messageLimit]
       });
-      
-      // Format messages
-      const messages = messagesResult.rows.map((msg: any) => {
-        let metadata = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (formattedThread as any).messages = msgResult.rows.map((msg) => {
+        let msgMeta = {};
         try {
-          metadata = typeof msg.metadata === 'string' 
-            ? JSON.parse(msg.metadata) 
-            : msg.metadata || {};
-        } catch (e) {
-          console.error('Error parsing message metadata:', e);
-        }
-        
+          if (typeof msg.metadata === 'string') {
+            msgMeta = JSON.parse(msg.metadata);
+          } else if (typeof msg.metadata === 'object' && msg.metadata !== null && !(msg.metadata instanceof ArrayBuffer)) {
+            msgMeta = msg.metadata;
+          }
+        } catch { msgMeta = {}; }
         return {
           id: msg.id,
+          threadId: msg.thread_id,
           role: msg.role,
           content: msg.content,
-          metadata,
+          metadata: msgMeta,
           createdAt: msg.created_at
         };
       });
-      
-      return NextResponse.json({
-        ...formattedThread,
-        messages,
-        messageCount: messages.length
-      });
     }
-    
     return NextResponse.json(formattedThread);
   } catch (error) {
     return handleApiError(error);
@@ -109,67 +126,62 @@ export async function PATCH(
     const { id } = params;
     const body = await request.json();
     const { name, metadata } = body;
-    
+    const provider = getMemoryProvider();
+    if (provider === 'upstash') {
+      try {
+        const thread = await getItemById('memory_threads', id);
+        if (!thread) {
+          return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+        }
+        const existingMetadata = thread.metadata || {};
+        const updatedMetadata = metadata ? { ...existingMetadata, ...metadata } : existingMetadata;
+        const now = new Date().toISOString();
+        const updated = await updateItem('memory_threads', id, {
+          name: name ?? thread.name,
+          metadata: updatedMetadata,
+          updated_at: now
+        });
+        return NextResponse.json({
+          id: updated.id,
+          name: updated.name,
+          metadata: updated.metadata || {},
+          createdAt: updated.created_at,
+          updatedAt: updated.updated_at
+        });
+      } catch (err) {
+        if (!(err instanceof UpstashAdapterError)) throw err;
+        // Fallback to LibSQL
+      }
+    }
+    // LibSQL fallback
     const db = getLibSQLClient();
-    
-    // Check if thread exists
     const threadResult = await db.execute({
       sql: `SELECT * FROM memory_threads WHERE id = ?`,
       args: [id]
     });
-    
     if (threadResult.rows.length === 0) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
     }
-    
     const thread = threadResult.rows[0];
-    
-    // Parse existing metadata
     let existingMetadata = {};
     try {
-      existingMetadata = typeof thread.metadata === 'string' 
-        ? JSON.parse(thread.metadata) 
-        : thread.metadata || {};
-    } catch (e) {
-      console.error('Error parsing thread metadata:', e);
-    }
-    
-    // Merge metadata if provided
-    const updatedMetadata = metadata 
-      ? { ...existingMetadata, ...metadata } 
-      : existingMetadata;
-    
-    // Update thread
-    const now = new Date().toISOString();
-    
-    await db.execute({
-      sql: `
-        UPDATE memory_threads
-        SET 
-          ${name ? 'name = ?,' : ''} 
-          metadata = ?,
-          updated_at = ?
-        WHERE id = ?
-      `,
-      args: name 
-        ? [name, JSON.stringify(updatedMetadata), now, id] 
-        : [JSON.stringify(updatedMetadata), now, id]
-    });
-    
-    // Log thread update
-    await logEvent({
-      name: "thread_updated",
-      metadata: {
-        threadId: id,
-        name: name || thread.name,
-        timestamp: now
+      if (typeof thread.metadata === 'string') {
+        existingMetadata = JSON.parse(thread.metadata);
+      } else if (typeof thread.metadata === 'object' && thread.metadata !== null && !(thread.metadata instanceof ArrayBuffer)) {
+        existingMetadata = thread.metadata;
       }
+    } catch { existingMetadata = {}; }
+    const updatedMetadata = metadata ? { ...existingMetadata, ...metadata } : existingMetadata;
+    const now = new Date().toISOString();
+    await db.execute({
+      sql: `UPDATE memory_threads SET name = ?, metadata = ?, updated_at = ? WHERE id = ?`,
+      args: [name ?? thread.name, JSON.stringify(updatedMetadata), now, id]
     });
-    
     return NextResponse.json({
-      id,
-      name: name || thread.name,
+      id: thread.id,
+      name: name ?? thread.name,
       metadata: updatedMetadata,
+      createdAt: thread.created_at,
       updatedAt: now
     });
   } catch (error) {
@@ -188,40 +200,28 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
-    
-    const db = getLibSQLClient();
-    
-    // Check if thread exists
-    const threadResult = await db.execute({
-      sql: `SELECT * FROM memory_threads WHERE id = ?`,
-      args: [id]
-    });
-    
-    if (threadResult.rows.length === 0) {
-      return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+    const provider = getMemoryProvider();
+    if (provider === 'upstash') {
+      try {
+        const deleted = await deleteItem('memory_threads', id);
+        // Optionally delete messages as well (if needed)
+        // await deleteItem('messages', { thread_id: id });
+        return NextResponse.json({ success: !!deleted });
+      } catch (err) {
+        if (!(err instanceof UpstashAdapterError)) throw err;
+        // Fallback to LibSQL
+      }
     }
-    
-    // Delete messages first
+    // LibSQL fallback
+    const db = getLibSQLClient();
     await db.execute({
-      sql: `DELETE FROM messages WHERE memory_thread_id = ?`,
+      sql: `DELETE FROM messages WHERE thread_id = ?`,
       args: [id]
     });
-    
-    // Delete thread
     await db.execute({
       sql: `DELETE FROM memory_threads WHERE id = ?`,
       args: [id]
     });
-    
-    // Log thread deletion
-    await createTrace({
-      name: "thread_deleted",
-      metadata: {
-        threadId: id,
-        timestamp: new Date().toISOString()
-      }
-    });
-    
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleApiError(error);

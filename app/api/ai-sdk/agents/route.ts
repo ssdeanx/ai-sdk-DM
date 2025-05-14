@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { createTrace } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getMemoryProvider } from "@/lib/memory/factory";

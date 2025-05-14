@@ -424,46 +424,99 @@ The AI SDK chat implementation follows a comprehensive flow from frontend to bac
 
 ```mermaid
 graph TD
-graph TD
 
-    50263["End User<br>External Actor"]
-    subgraph 50254["External Systems"]
-        50255["External Tool APIs"]
-        50291["OpenAI API Service<br>External AI Provider"]
-        50292["Anthropic API Service<br>External AI Provider"]
-        50293["Google AI Services<br>Vertex AI, Generative AI"]
-        50294["Langfuse Platform<br>External Observability"]
-        50295["OpenTelemetry Collector<br>External Observability"]
-        50296["Supabase BaaS<br>Auth, Realtime, Storage"]
-        50297["Upstash Platform<br>QStash, Redis"]
+    56805["User<br>External Actor"]
+    subgraph 56790["External Systems & Dependencies"]
+        56839["External AI Model Providers<br>OpenAI, Anthropic, Google AI/Vertex"]
+        56840["Langfuse Platform<br>External Observability Service"]
+        56841["Upstash Platform<br>Redis, QStash, Vector DB"]
+        56842["Supabase Platform Services<br>Auth, DB Hosting"]
+        56843["GitHub<br>OAuth, SCM"]
     end
-    subgraph 50256["AI SDK Platform"]
-        50257["Shared Kernel"]
-        50258["Data Persistence Layer"]
-        50259["AI SDK Core Library"]
-        50261["Backend API Service"]
-        50262["Frontend Application"]
-        %% Edges at this level (grouped by source)
-        50259["AI SDK Core Library"] -->|retrieves model config from| 50258["Data Persistence Layer"]
-        50261["Backend API Service"] -->|accesses| 50258["Data Persistence Layer"]
+    subgraph 56791["AI SDK System"]
+        subgraph 56792["Data Persistence Layer"]
+            56836["Supabase Database Schema<br>PostgreSQL, Drizzle ORM"]
+            56837["LibSQL Database Schema<br>SQLite, Drizzle ORM"]
+            56838["DB Admin &amp; Migration Scripts<br>Node.js, Drizzle"]
+        end
+        subgraph 56793["Core SDK Logic"]
+            56810["Shared Data Types<br>TypeScript"]
+            subgraph 56794["Observability Services"]
+                56833["Tracing Framework<br>TypeScript"]
+                56834["Langfuse Adapter<br>TypeScript"]
+                56835["OpenTelemetry Adapter<br>TypeScript"]
+            end
+            subgraph 56795["Workflow Services"]
+                56832["Workflow Engine<br>TypeScript"]
+            end
+            subgraph 56796["Agent Services"]
+                56829["Agent Framework &amp; Registry<br>TypeScript"]
+                56830["Agent Execution Service<br>TypeScript"]
+                56831["Multi-Agent Orchestrator<br>TypeScript"]
+            end
+            subgraph 56797["Memory Services"]
+                56825["Memory Orchestrator<br>TypeScript"]
+                subgraph 56798["Memory Storage Adapters"]
+                    56826["LibSQL Memory Adapter<br>TypeScript"]
+                    56827["Supabase Memory Adapter<br>TypeScript"]
+                    56828["Upstash Memory Adapter<br>TypeScript"]
+                end
+            end
+            subgraph 56799["Tooling Services"]
+                56817["Tool Management &amp; Execution<br>TypeScript"]
+                subgraph 56800["Tool Categories"]
+                    56818["Web Tools<br>TypeScript"]
+                    56819["RAG Tools<br>TypeScript"]
+                    56820["Data Tools<br>TypeScript"]
+                    56821["File Tools<br>TypeScript"]
+                    56822["Code Tools<br>TypeScript"]
+                    56823["GraphQL Tools<br>TypeScript"]
+                    56824["Agentic Tools Collection<br>TypeScript"]
+                end
+            end
+            subgraph 56801["AI Integration Services"]
+                56811["AI Model Facade<br>TypeScript"]
+                56816["AI SDK Provider &amp; Model Registry<br>TypeScript"]
+                subgraph 56802["AI Provider Clients"]
+                    56812["OpenAI Client<br>TypeScript"]
+                    56813["Anthropic Client<br>TypeScript"]
+                    56814["Google AI Client<br>TypeScript"]
+                    56815["Vertex AI Client<br>TypeScript"]
+                end
+            end
+            %% Edges at this level (grouped by source)
+            56829["Agent Framework &amp; Registry<br>TypeScript"] -->|uses| 56810["Shared Data Types<br>TypeScript"]
+        end
+        subgraph 56803["Frontend Application"]
+            56806["Web Application Shell<br>Next.js, React"]
+            subgraph 56804["Frontend Services & Components"]
+                56807["API Route Handlers<br>Next.js"]
+                56808["UI Component Library<br>React, TailwindCSS"]
+                56809["Custom React Hooks<br>React"]
+            end
+            %% Edges at this level (grouped by source)
+            56806["Web Application Shell<br>Next.js, React"] -->|makes requests to| 56807["API Route Handlers<br>Next.js"]
+            56806["Web Application Shell<br>Next.js, React"] -->|uses| 56808["UI Component Library<br>React, TailwindCSS"]
+            56806["Web Application Shell<br>Next.js, React"] -->|uses| 56809["Custom React Hooks<br>React"]
+        end
     end
     %% Edges at this level (grouped by source)
-    50259["AI SDK Core Library"] -->|connects to| 50255["External Tool APIs"]
-    50259["AI SDK Core Library"] -->|connects to| 50291["OpenAI API Service<br>External AI Provider"]
-    50259["AI SDK Core Library"] -->|connects to| 50292["Anthropic API Service<br>External AI Provider"]
-    50259["AI SDK Core Library"] -->|connects to| 50293["Google AI Services<br>Vertex AI, Generative AI"]
-    50259["AI SDK Core Library"] -->|sends traces/logs to| 50294["Langfuse Platform<br>External Observability"]
-    50259["AI SDK Core Library"] -->|sends traces/metrics to| 50295["OpenTelemetry Collector<br>External Observability"]
-    50259["AI SDK Core Library"] -->|uses for queuing| 50297["Upstash Platform<br>QStash, Redis"]
-    50261["Backend API Service"] -->|handles auth via| 50296["Supabase BaaS<br>Auth, Realtime, Storage"]
-    50263["End User<br>External Actor"] -->|interacts with| 50262["Frontend Application"]
-    50262["Frontend Application"] -->|fetches data via| 50296["Supabase BaaS<br>Auth, Realtime, Storage"]
-    50262["Frontend Application"] -->|sends messages to| 50261["Backend API Service"]
-    50262["Frontend Application"] -->|sends messages to| 50259["AI SDK Core Library"]
-    50261["Backend API Service"] -->|sends messages to| 50259["AI SDK Core Library"]
-    50261["Backend API Service"] -->|sends messages to| 50258["Data Persistence Layer"]
-    50258["Data Persistence Layer"] -->|persists| 50259["AI SDK Core Library"]
-    50258["Data Persistence Layer"] -->|persists| 50261["Backend API Service"]
+    56838["DB Admin &amp; Migration Scripts<br>Node.js, Drizzle"] -->|creates admin user via| 56842["Supabase Platform Services<br>Auth, DB Hosting"]
+    56805["User<br>External Actor"] -->|interacts with| 56806["Web Application Shell<br>Next.js, React"]
+    56807["API Route Handlers<br>Next.js"] -->|authenticates via| 56842["Supabase Platform Services<br>Auth, DB Hosting"]
+    56807["API Route Handlers<br>Next.js"] -->|integrates for auth| 56843["GitHub<br>OAuth, SCM"]
+    56809["Custom React Hooks<br>React"] -->|interacts with| 56842["Supabase Platform Services<br>Auth, DB Hosting"]
+    56808["UI Component Library<br>React, TailwindCSS"] -->|uses for auth UI| 56843["GitHub<br>OAuth, SCM"]
+    56832["Workflow Engine<br>TypeScript"] -->|uses for queuing| 56841["Upstash Platform<br>Redis, QStash, Vector DB"]
+    56834["Langfuse Adapter<br>TypeScript"] -->|sends data to| 56840["Langfuse Platform<br>External Observability Service"]
+    56835["OpenTelemetry Adapter<br>TypeScript"] -->|sends data to| 56841["Upstash Platform<br>Redis, QStash, Vector DB"]
+    56817["Tool Management &amp; Execution<br>TypeScript"] -->|stores execution logs in| 56841["Upstash Platform<br>Redis, QStash, Vector DB"]
+    56828["Upstash Memory Adapter<br>TypeScript"] -->|connects to| 56841["Upstash Platform<br>Redis, QStash, Vector DB"]
+    56812["OpenAI Client<br>TypeScript"] -->|calls| 56839["External AI Model Providers<br>OpenAI, Anthropic, Google AI/Vertex"]
+    56813["Anthropic Client<br>TypeScript"] -->|calls| 56839["External AI Model Providers<br>OpenAI, Anthropic, Google AI/Vertex"]
+    56814["Google AI Client<br>TypeScript"] -->|calls| 56839["External AI Model Providers<br>OpenAI, Anthropic, Google AI/Vertex"]
+    56815["Vertex AI Client<br>TypeScript"] -->|calls| 56839["External AI Model Providers<br>OpenAI, Anthropic, Google AI/Vertex"]
+
 ```
 
 ---

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
 import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
 import { v4 as uuidv4 } from "uuid";
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { getData, createItem, UpstashAdapterError, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
 
 /**
  * GET /api/ai-sdk/threads
@@ -15,72 +16,90 @@ export async function GET(request: Request) {
     const search = url.searchParams.get("search") || "";
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    
+    const provider = getMemoryProvider();
+    let threads: Array<TableRow<'memory_threads'>> = [];
+    let count = 0;
+    let hasMore = false;
+
+    if (provider === 'upstash') {
+      try {
+        // Upstash: get threads with source 'ai-sdk-ui'
+        const filters: FilterOptions[] = [
+          { field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' }
+        ];
+        if (search) {
+          filters.push({ field: 'name', operator: 'ilike', value: `%${search}%` });
+        }
+        const options: QueryOptions = { filters, limit, offset, orderBy: { column: 'updated_at', ascending: false } };
+        const upstashThreads = await getData('memory_threads', options);
+        threads = upstashThreads.map((thread) => ({
+          id: thread.id,
+          name: thread.name,
+          metadata: thread.metadata || {},
+          createdAt: thread.created_at,
+          updatedAt: thread.updated_at,
+          message_count: thread.message_count || 0
+        }));
+        // Upstash: get total count
+        const allThreads = await getData('memory_threads', { filters: [{ field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' }] });
+        count = allThreads.length;
+        hasMore = threads.length === limit;
+        return NextResponse.json({ threads, count, hasMore });
+      } catch (err) {
+        if (!(err instanceof UpstashAdapterError)) throw err;
+        // Fallback to LibSQL
+      }
+    }
+
+    // LibSQL fallback
     const db = getLibSQLClient();
-    
-    // Build query
     let sql = `
       SELECT 
         t.id, t.name, t.metadata, t.created_at, t.updated_at,
         (SELECT COUNT(*) FROM messages WHERE memory_thread_id = t.id) as message_count
       FROM memory_threads t
     `;
-    
-    const args = [];
-    
-    // Add filter for AI SDK UI threads
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const args: any[] = [];
     sql += ` WHERE json_extract(t.metadata, '$.source') = 'ai-sdk-ui'`;
-    
-    // Add search filter if provided
     if (search) {
-      sql += ` AND (t.name LIKE ? OR t.id LIKE ?)`;
-      args.push(`%${search}%`, `%${search}%`);
+      sql += ` AND t.name LIKE ?`;
+      args.push(`%${search}%`);
     }
-    
-    // Add order by and pagination
     sql += ` ORDER BY t.updated_at DESC LIMIT ? OFFSET ?`;
     args.push(limit, offset);
-    
-    const result = await db.execute({
-      sql,
-      args
-    });
-    
-    // Format threads
-    const threads = result.rows.map((thread: any) => {
-      let metadata = {};
-      try {
-        metadata = typeof thread.metadata === 'string' 
-          ? JSON.parse(thread.metadata) 
-          : thread.metadata || {};
-      } catch (e) {
-        console.error('Error parsing thread metadata:', e);
+    const result = await db.execute({ sql, args });
+    threads = result.rows.map((thread) => {
+      let parsedMetadata: Record<string, unknown> = {};
+      if (typeof thread.metadata === 'string') {
+        try {
+          parsedMetadata = JSON.parse(thread.metadata);
+        } catch {
+          parsedMetadata = {};
+        }
+      } else if (
+        typeof thread.metadata === 'object' &&
+        thread.metadata !== null &&
+        !(thread.metadata instanceof ArrayBuffer)
+      ) {
+        parsedMetadata = thread.metadata as Record<string, unknown>;
       }
-      
       return {
         id: thread.id,
         name: thread.name,
-        messageCount: thread.message_count,
-        metadata,
+        metadata: parsedMetadata,
         createdAt: thread.created_at,
-        updatedAt: thread.updated_at
+        updatedAt: thread.updated_at,
+        message_count: thread.message_count || 0
       };
     });
-    
-    // Get total count
     const countResult = await db.execute({
-      sql: `
-        SELECT COUNT(*) as count 
-        FROM memory_threads 
-        WHERE json_extract(metadata, '$.source') = 'ai-sdk-ui'
-      `
+      sql: `SELECT COUNT(*) as count FROM memory_threads WHERE json_extract(metadata, '$.source') = 'ai-sdk-ui'`,
+      args: []
     });
-    
-    return NextResponse.json({
-      threads,
-      count: countResult.rows[0].count,
-      hasMore: threads.length === limit
-    });
+    count = Number(countResult.rows[0].count) || 0;
+    hasMore = threads.length === limit;
+    return NextResponse.json({ threads, count, hasMore });
   } catch (error) {
     return handleApiError(error);
   }
@@ -95,49 +114,34 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { name = 'New Chat', metadata = {} } = body;
-    
-    const db = getLibSQLClient();
-    
-    // Create thread ID
+    const provider = getMemoryProvider();
     const id = uuidv4();
     const now = new Date().toISOString();
-    
-    // Merge metadata with source
-    const threadMetadata = {
-      ...metadata,
-      source: 'ai-sdk-ui',
-      created_at: now
-    };
-    
-    // Insert thread
+    const threadMetadata = { ...metadata, source: 'ai-sdk-ui', created_at: now };
+
+    if (provider === 'upstash') {
+      try {
+        await createItem('memory_threads', {
+          id,
+          name,
+          metadata: threadMetadata,
+          created_at: now,
+          updated_at: now
+        });
+        return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
+      } catch (err) {
+        if (!(err instanceof UpstashAdapterError)) throw err;
+        // Fallback to LibSQL
+      }
+    }
+
+    // LibSQL fallback
+    const db = getLibSQLClient();
     await db.execute({
-      sql: `
-        INSERT INTO memory_threads (id, name, metadata, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-      `,
+      sql: `INSERT INTO memory_threads (id, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?)` ,
       args: [id, name, JSON.stringify(threadMetadata), now, now]
     });
-    
-    // Create trace for thread creation
-    await createTrace({
-      name: "thread_created",
-      userId: id,
-      metadata: {
-        threadId: id,
-        name,
-        source: 'ai-sdk-ui',
-        timestamp: now
-      }
-    });
-    
-    return NextResponse.json({
-      id,
-      name,
-      messageCount: 0,
-      metadata: threadMetadata,
-      createdAt: now,
-      updatedAt: now
-    });
+    return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
   } catch (error) {
     return handleApiError(error);
   }

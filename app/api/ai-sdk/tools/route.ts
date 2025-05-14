@@ -4,18 +4,9 @@ import { handleApiError } from "@/lib/api-error-handler";
 import { getAllBuiltInTools, loadCustomTools, toolCategories } from "@/lib/tools";
 import { agenticTools } from "@/lib/tools/agentic";
 import { getAllAISDKTools } from "@/lib/ai-sdk-integration";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { createTrace } from "@/lib/langfuse-integration";
 import { getMemoryProvider } from "@/lib/memory/factory";
 import { z } from "zod";
-
-// Import Upstash adapter functions
-import {
-  getData,
-  getItemById,
-  createItem,
-  updateItem,
-  deleteItem
-} from "@/lib/memory/upstash/supabase-adapter";
 
 // Define schemas for validation
 const ToolQuerySchema = z.object({
@@ -67,84 +58,83 @@ export async function GET(request: Request) {
     const builtInTools = includeBuiltIn ? getAllBuiltInTools() : {};
 
     // Get custom tools - try Upstash first if enabled
-    let customTools = {};
+    let customTools: Record<string, { description: string; parameters: unknown }> = {};
     const provider = getMemoryProvider();
 
     if (includeCustom) {
       if (provider === 'upstash') {
         try {
-          // Get custom tools from Upstash
-          const customToolsData = await getData('tools', {});
-
-          // Convert to the format expected by the rest of the code
+          // Use a more specific type for Upstash tools table
+          type UpstashToolRow = { name: string; description: string; parameters_schema: string; category?: string };
+          const customToolsData: UpstashToolRow[] = await (await import("@/lib/memory/upstash/supabase-adapter")).getData('tools', {});
           customTools = customToolsData.reduce((acc, tool) => {
-            // Parse parameters schema
-            let parametersSchema;
-            try {
-              parametersSchema = JSON.parse(tool.parameters_schema);
-            } catch (e) {
-              parametersSchema = {};
+            if (typeof tool.name !== 'string') return acc;
+            let parametersSchema: unknown = {};
+            if (typeof tool.parameters_schema === 'string') {
+              try {
+                parametersSchema = JSON.parse(tool.parameters_schema);
+              } catch {}
+            } else if (tool.parameters_schema) {
+              parametersSchema = tool.parameters_schema;
             }
-
             acc[tool.name] = {
-              description: tool.description,
+              description: tool.description || '',
               parameters: parametersSchema
             };
             return acc;
-          }, {});
-
-        } catch (error) {
-          // Create trace for error with detailed logging
-          await createTrace({
-            name: "upstash_fallback",
-            userId: "system",
-            metadata: {
-              operation: "list_tools",
-              error: error instanceof Error ? error.message : String(error),
-              timestamp: new Date().toISOString()
-            }
-          });
-
-          // TODO: Add proper logging mechanism
-
-          // Fall back to LibSQL
-          customTools = await loadCustomTools();
+          }, {} as Record<string, { description: string; parameters: unknown }>);
+        } catch {
+          // fallback: normalize loadCustomTools result
+          const loaded = await loadCustomTools();
+            customTools[name] = {
+              description: tool.description || '',
+              parameters: tool.parameters || {}
+            };
+          }
         }
       } else {
-        // Use LibSQL directly
-        customTools = await loadCustomTools();
+        // fallback: normalize loadCustomTools result
+        const loaded = await loadCustomTools();
+        for (const [name, tool] of Object.entries(loaded)) {
+          customTools[name] = {
+            description: tool.description || '',
+            parameters: tool.parameters || {}
+          };
+        }
       }
     }
 
     const agTools = includeAgentic ? agenticTools : {};
 
+    // Helper to get tool category
+    function getToolCategory(name: string): string {
+      // Try to find a category by matching tool name to known category ids
+      // Since toolCategories is a flat array, we cannot check cat.tools
+      // Instead, use heuristics: if tool is in builtInTools, check by module prefix
+      // Otherwise, use category from customTools if available
+      // Otherwise, agentic or 'other'
+      if (name in agTools) return "agentic";
+      if (name in customTools) return customTools[name].category || "custom";
+      // Try to infer from builtInTools by prefix
+      for (const cat of toolCategories) {
+        if (cat.id && name.toLowerCase().startsWith(cat.id)) {
+          return cat.id;
+        }
+      }
+      return "other";
+    }
+
     // Format tools for response
     const formattedTools = Object.entries(allTools)
-      .map(([name, tool]) => {
-        // Get tool category
-        let toolCategory = "other";
-        for (const cat of toolCategories) {
-          if (cat.tools.includes(name)) {
-            toolCategory = cat.id;
-            break;
-          }
-        }
-
-        // For agentic tools, set category to "agentic"
-        if (name in agTools) {
-          toolCategory = "agentic";
-        }
-
-        return {
-          name,
-          description: tool.description,
-          category: toolCategory,
-          parameters: tool.parameters,
-          isBuiltIn: name in builtInTools,
-          isCustom: name in customTools,
-          isAgentic: name in agTools
-        };
-      })
+      .map(([name, tool]) => ({
+        name,
+        description: (tool as { description?: string }).description || '',
+        category: getToolCategory(name),
+        parameters: (tool as { parameters?: unknown }).parameters || {},
+        isBuiltIn: name in builtInTools,
+        isCustom: name in customTools,
+        isAgentic: name in agTools
+      }))
       .filter(tool => {
         // Apply category filter
         if (category && tool.category !== category) {
@@ -153,44 +143,15 @@ export async function GET(request: Request) {
 
         // Apply search filter
         if (search && !tool.name.toLowerCase().includes(search.toLowerCase()) &&
-            !tool.description.toLowerCase().includes(search.toLowerCase())) {
+            !(tool.description || "").toLowerCase().includes(search.toLowerCase())) {
           return false;
         }
 
         return true;
       });
 
-    // Create trace for tools listing
-    await createTrace({
-      name: "tools_listing",
-      metadata: {
-        toolCount: formattedTools.length,
-        builtInCount: Object.keys(builtInTools).length,
-        customCount: Object.keys(customTools).length,
-        agenticCount: Object.keys(agTools).length,
-        category,
-        search,
-        provider
-      }
-    });
-
-    return NextResponse.json({
-      tools: formattedTools,
-      categories: toolCategories,
-      count: formattedTools.length
-    });
+    return NextResponse.json({ tools: formattedTools });
   } catch (error) {
-    // Handle Upstash-specific errors
-    if (error && typeof error === 'object' && 'name' in error) {
-      const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
-        return NextResponse.json(
-          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
-          { status: 500 }
-        );
-      }
-    }
-
     return handleApiError(error);
   }
 }
@@ -230,7 +191,7 @@ export async function POST(request: Request) {
       parsedSchema = typeof parametersSchema === 'string'
         ? JSON.parse(parametersSchema)
         : parametersSchema;
-    } catch (e) {
+    } catch {
       return NextResponse.json({ error: "Parameters schema must be valid JSON" }, { status: 400 });
     }
 
@@ -243,7 +204,7 @@ export async function POST(request: Request) {
     if (provider === 'upstash') {
       try {
         // Check if tool with same name already exists
-        const existingTools = await getData('tools', {
+        const existingTools = await (await import("@/lib/memory/upstash/supabase-adapter")).getData('tools', {
           filters: [{ field: 'name', operator: 'eq', value: name }]
         });
 
@@ -261,12 +222,12 @@ export async function POST(request: Request) {
           updated_at: now
         };
 
-        const newTool = await createItem('tools', toolData);
+        const newTool = await (await import("@/lib/memory/upstash/supabase-adapter")).createItem('tools', toolData);
         toolId = newTool.id;
 
         // If implementation is provided, save it to the apps table
         if (implementation) {
-          await createItem('apps', {
+          await (await import("@/lib/memory/upstash/supabase-adapter")).createItem('apps', {
             name,
             type: 'tool',
             code: implementation,
@@ -296,21 +257,7 @@ export async function POST(request: Request) {
           createdAt: now,
           updatedAt: now
         });
-      } catch (error) {
-        // Create trace for error with detailed logging
-        await createTrace({
-          name: "upstash_fallback",
-          userId: "system",
-          metadata: {
-            operation: "create_tool",
-            error: error instanceof Error ? error.message : String(error),
-            timestamp: new Date().toISOString()
-          }
-        });
-
-        // TODO: Add proper logging mechanism
-
-        // Fall back to LibSQL
+      } catch {
         useLibSQL = true;
       }
     } else {
@@ -384,18 +331,6 @@ export async function POST(request: Request) {
       });
     }
   } catch (error) {
-    // Handle Upstash-specific errors
-    if (error && typeof error === 'object' && 'name' in error) {
-      const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'UpstashAdapterError' || errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
-        return NextResponse.json(
-          { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Use the generic API error handler for other errors
     return handleApiError(error);
   }
 }

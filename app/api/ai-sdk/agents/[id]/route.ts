@@ -308,13 +308,13 @@ export async function PATCH(
     // Fall back to LibSQL/Supabase if needed
     if (useLibSQL || provider === 'libsql') {
       // Get Supabase client
-      const supabase = getSupabaseClient();
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase: any = getSupabaseClient();
       try {
         // Check if agent exists
         const { data: agent, error: checkError } = await supabase
           .from("agents")
-          .select("*")
+          .select()
           .eq("id", id)
           .single();
 
@@ -334,7 +334,7 @@ export async function PATCH(
         updateData.updated_at = new Date().toISOString();
 
         // Update agent
-        const { data: updateResult, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from("agents")
           .update(updateData)
           .eq("id", id)
@@ -362,17 +362,16 @@ export async function PATCH(
             interface ToolAssociation {
               agent_id: string;
               tool_id: string;
+              created_at?: string;
             }
             const toolAssociations: ToolAssociation[] = toolIds.map((toolId: string) => ({
               agent_id: id,
-              tool_id: toolId
+              tool_id: toolId,
+              created_at: new Date().toISOString()
             }));
-
+            const { error: insertError } = await supabase
               .from("agent_tools")
-
-              .insert(toolAssociations)
-              .select();
-
+              .insert(toolAssociations);
             if (insertError) {
               throw insertError;
             }
@@ -483,9 +482,11 @@ export async function PATCH(
     }
 
     // Use the generic API error handler for other errors
+    return handleApiError(error);
   }
+}
 
-}/**
+/**
  * DELETE /api/ai-sdk/agents/[id]
  *
  * Delete an agent
@@ -556,35 +557,24 @@ export async function DELETE(
 
     // Fall back to LibSQL/Supabase if needed
     if (useLibSQL) {
-      // Get Supabase client
-      const supabase = getSupabaseClient();
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase: any = getSupabaseClient();
       try {
         // Check if agent exists first
         const checkResult = await supabase.from("agents").select("id").eq("id", id).single();
         const existingAgent = checkResult.data;
         const checkError = checkResult.error;
-
         if (checkError || !existingAgent) {
           return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
-
         // Delete agent tools first (foreign key constraint)
-        const toolsDeleteResult = await supabase.from("agent_tools").delete().eq("agent_id", id);
-        const toolsError = toolsDeleteResult.error;
-
-        if (toolsError) {
-          console.warn("Error deleting agent tools:", toolsError);
-        }
-
+        await supabase.from("agent_tools").delete().eq("agent_id", id);
         // Delete agent
         const deleteResult = await supabase.from("agents").delete().eq("id", id);
         const error = deleteResult.error;
-
         if (error) {
           throw error;
         }
-
         success = true;
       } catch (error) {
         throw error;
