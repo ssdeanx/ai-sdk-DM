@@ -16,12 +16,13 @@ import { InteractiveMap, type Location as InteractiveMapLocation, type Interacti
 import { InteractiveForm, type FormField as InteractiveFormField, type InteractiveFormProps } from './interactive-form';
 import { AudioPlayer, type AudioPlayerProps } from './audio-player';
 import { ModelViewer, type ModelViewerProps } from './model-viewer';
+import { CanvasDisplay } from './canvasDisplay';
 
 // --- Zod Schemas for Component Props ---
 
 const ImageDisplayPropsSchema: z.ZodType<ImageDisplayProps> = z.object({
   src: z.string().min(1, "Image source (src) is required."),
-  alt: z.string().default(""), // Matches existing behavior m[2]||''
+  alt: z.string(),
   className: z.string().optional(),
 });
 
@@ -29,13 +30,12 @@ const AIImageGeneratorPropsSchema: z.ZodType<AIImageGeneratorProps> = z.object({
   initialPrompt: z.string().min(1, "Initial prompt is required."),
 });
 
-const ComputerUsePropsSchema: z.ZodType<ComputerUseProps> = z.object({
+const ComputerUsePropsSchema: z.ZodType<Omit<ComputerUseProps, 'onRun'>> = z.object({
   title: z.string().min(1, "Task title is required."),
   content: z.string().min(1, "Task content is required."),
   isTerminal: z.boolean().optional(),
   isRunnable: z.boolean().optional(),
   className: z.string().optional(),
-  onRun: z.function().optional(),
 });
 
 const DataPointSchema: z.ZodType<DataPoint> = z.object({
@@ -46,11 +46,14 @@ const DataPointSchema: z.ZodType<DataPoint> = z.object({
   y: z.number().optional(),
   z: z.number().optional(),
   size: z.number().optional(),
-}).catchall(z.any());
+});
 
 const DataSeriesSchema: z.ZodType<DataSeries> = z.object({
   name: z.string(),
-  data: z.array(z.union([DataPointSchema, z.number()])),
+  data: z.union([
+    z.array(DataPointSchema),
+    z.array(z.number())
+  ]),
   color: z.string().optional(),
   type: z.string().optional(),
 });
@@ -76,22 +79,27 @@ const DataVisualizationPropsSchema: z.ZodType<DataVisualizationProps> = z.object
 
 const VisualizationWithTracingPropsSchema: z.ZodType<VisualizationWithTracingProps> = z.object({
   title: z.string().optional(),
-  data: z.any().refine((val) => val !== undefined, { message: "data is required" }),
+  data: z.union([
+    z.array(DataPointSchema),
+    z.array(DataSeriesSchema),
+    z.record(z.unknown()),
+    z.number(),
+    z.string()
+  ]),
   type: z.string().optional(),
   className: z.string().optional(),
 });
 
-const DataTableColumnSchema: z.ZodType<DataTableColumn> = z.object({
+const DataTableColumnSchema: z.ZodType<Omit<DataTableColumn, 'render'> & { render?: undefined }> = z.object({
   key: z.string(),
   title: z.string(),
   sortable: z.boolean().optional(),
   filterable: z.boolean().optional(),
-  render: z.function().optional() as z.ZodOptional<z.ZodType<(value: any, row: any) => React.ReactNode>>,
-}).catchall(z.any());
+});
 
-const DataTablePropsSchema: z.ZodType<DataTableProps> = z.object({
+const DataTablePropsSchema: z.ZodType<Omit<DataTableProps, 'columns'> & { columns: Array<Omit<DataTableColumn, 'render'>> }> = z.object({
   title: z.string().optional(),
-  data: z.array(z.any()),
+  data: z.array(z.record(z.unknown())),
   columns: z.array(DataTableColumnSchema),
   className: z.string().optional(),
   pagination: z.boolean().optional(),
@@ -116,7 +124,7 @@ const InteractiveMapLocationSchema: z.ZodType<InteractiveMapLocation> = z.object
   lng: z.number(),
   title: z.string().optional(),
   description: z.string().optional(),
-}).catchall(z.any());
+});
 
 const InteractiveMapPropsSchema: z.ZodType<InteractiveMapProps> = z.object({
   title: z.string().optional(),
@@ -126,7 +134,7 @@ const InteractiveMapPropsSchema: z.ZodType<InteractiveMapProps> = z.object({
   className: z.string().optional(),
 });
 
-const InteractiveFormFieldSchema: z.ZodType<InteractiveFormField> = z.object({
+const InteractiveFormFieldSchema: z.ZodType<Omit<InteractiveFormField, 'validation'> & { validation?: { pattern?: string; min?: number; max?: number; minLength?: number; maxLength?: number; errorMessage?: string } }> = z.object({
   id: z.string(),
   type: z.enum(['text', 'textarea', 'number', 'email', 'checkbox', 'radio', 'select', 'date']),
   label: z.string(),
@@ -141,16 +149,14 @@ const InteractiveFormFieldSchema: z.ZodType<InteractiveFormField> = z.object({
     maxLength: z.number().optional(),
     errorMessage: z.string().optional(),
   }).optional(),
-}).catchall(z.any());
+});
 
-const InteractiveFormPropsSchema: z.ZodType<InteractiveFormProps> = z.object({
+const InteractiveFormPropsSchema: z.ZodType<Omit<InteractiveFormProps, 'onSubmit' | 'onCancel'> & { onSubmit?: undefined; onCancel?: undefined }> = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   fields: z.array(InteractiveFormFieldSchema),
   submitLabel: z.string().optional(),
   cancelLabel: z.string().optional(),
-  onSubmit: z.function().optional() as z.ZodOptional<z.ZodType<(data: Record<string, any>) => void>>,
-  onCancel: z.function().optional() as z.ZodOptional<z.ZodType<() => void>>,
   className: z.string().optional(),
 });
 
@@ -168,6 +174,14 @@ const ModelViewerPropsSchema: z.ZodType<ModelViewerProps> = z.object({
   autoRotate: z.boolean().optional(),
   backgroundColor: z.string().optional(),
   className: z.string().optional(),
+});
+
+const CanvasDisplayPropsSchema = z.object({
+  width: z.number().optional(),
+  height: z.number().optional(),
+  className: z.string().optional(),
+  style: z.any().optional(),
+  children: z.any().optional(),
 });
 
 // --- Error Display Component ---
@@ -255,8 +269,9 @@ export function renderContent(content: string): React.ReactNode {
             return <DataVisualization key={key} {...result.data} />;
           }
           return <ParseErrorDisplay key={key} componentName="DataVisualization" errorMessage="Invalid props after JSON parse." validationErrors={result.error.format()} originalText={m[0]} />;
-        } catch (e: any) {
-          return <ParseErrorDisplay key={key} componentName="DataVisualization" errorMessage={`JSON parsing error: ${e.message}`} originalText={m[0]} />;
+        } catch (e: unknown) {
+          const message = e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : 'Unknown error';
+          return <ParseErrorDisplay key={key} componentName="DataVisualization" errorMessage={`JSON parsing error: ${message}`} originalText={m[0]} />;
         }
       }
     },
@@ -271,8 +286,9 @@ export function renderContent(content: string): React.ReactNode {
             return <VisualizationWithTracing key={key} data={result.data.data} type={result.data.type} />;
           }
           return <ParseErrorDisplay key={key} componentName="VisualizationWithTracing" errorMessage="Invalid props after JSON parse." validationErrors={result.error.format()} originalText={m[0]} />;
-        } catch (e: any) {
-          return <ParseErrorDisplay key={key} componentName="VisualizationWithTracing" errorMessage={`JSON parsing error: ${e.message}`} originalText={m[0]} />;
+        } catch (e: unknown) {
+          const message = e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : 'Unknown error';
+          return <ParseErrorDisplay key={key} componentName="VisualizationWithTracing" errorMessage={`JSON parsing error: ${message}`} originalText={m[0]} />;
         }
       }
     },
@@ -288,8 +304,9 @@ export function renderContent(content: string): React.ReactNode {
             return <DataTable key={key} data={result.data.data} columns={result.data.columns || []} />;
           }
           return <ParseErrorDisplay key={key} componentName="DataTable" errorMessage="Invalid props after JSON parse." validationErrors={result.error.format()} originalText={m[0]} />;
-        } catch (e: any) {
-          return <ParseErrorDisplay key={key} componentName="DataTable" errorMessage={`JSON parsing error: ${e.message}`} originalText={m[0]} />;
+        } catch (e: unknown) {
+          const message = e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : 'Unknown error';
+          return <ParseErrorDisplay key={key} componentName="DataTable" errorMessage={`JSON parsing error: ${message}`} originalText={m[0]} />;
         }
       }
     },
@@ -337,8 +354,9 @@ export function renderContent(content: string): React.ReactNode {
             return <InteractiveMap key={key} {...result.data} />;
           }
           return <ParseErrorDisplay key={key} componentName="InteractiveMap" errorMessage="Invalid props after parsing." validationErrors={result.error.format()} originalText={m[0]} />;
-        } catch (e: any) {
-          return <ParseErrorDisplay key={key} componentName="InteractiveMap" errorMessage={`Attribute parsing error: ${e.message}`} originalText={m[0]} />;
+        } catch (e: unknown) {
+          const message = e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : 'Unknown error';
+          return <ParseErrorDisplay key={key} componentName="InteractiveMap" errorMessage={`Attribute parsing error: ${message}`} originalText={m[0]} />;
         }
       }
     },
@@ -357,8 +375,9 @@ export function renderContent(content: string): React.ReactNode {
             return <InteractiveForm key={key} {...{ ...result.data, fields: result.data.fields || [] }} />;
           }
           return <ParseErrorDisplay key={key} componentName="InteractiveForm" errorMessage="Invalid props after parsing." validationErrors={result.error.format()} originalText={m[0]} />;
-        } catch (e: any) {
-          return <ParseErrorDisplay key={key} componentName="InteractiveForm" errorMessage={`Attribute parsing error: ${e.message}`} originalText={m[0]} />;
+        } catch (e: unknown) {
+          const message = e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : 'Unknown error';
+          return <ParseErrorDisplay key={key} componentName="InteractiveForm" errorMessage={`Attribute parsing error: ${message}`} originalText={m[0]} />;
         }
       }
     },
@@ -392,6 +411,21 @@ export function renderContent(content: string): React.ReactNode {
           return <ModelViewer key={key} {...result.data} />;
         }
         return <ParseErrorDisplay key={key} componentName="ModelViewer" errorMessage="Invalid props." validationErrors={result.error.format()} originalText={m[0]} />;
+      }
+    },
+    {
+      regex: /<CanvasDisplay(?:\s+width="(\d+)")?(?:\s+height="(\d+)")?(?:\s+className="([^"]*)")?\s*>([\s\S]*?)<\/CanvasDisplay>/g,
+      render: (m: RegExpExecArray, key: string | number) => {
+        const width = m[1] ? parseInt(m[1], 10) : undefined;
+        const height = m[2] ? parseInt(m[2], 10) : undefined;
+        const className = m[3] || undefined;
+        const children = m[4] ? m[4] : undefined;
+        const props = { width, height, className, children };
+        const result = CanvasDisplayPropsSchema.safeParse(props);
+        if (result.success) {
+          return <CanvasDisplay key={key} {...result.data}>{children}</CanvasDisplay>;
+        }
+        return <ParseErrorDisplay key={key} componentName="CanvasDisplay" errorMessage="Invalid props." validationErrors={result.error.format()} originalText={m[0]} />;
       }
     },
   ];
