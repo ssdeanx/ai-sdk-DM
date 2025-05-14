@@ -1,0 +1,499 @@
+{
+  "@context": [
+    "https://schema.org",
+    { "feature": "https://schema.org/hasFeature" }
+  ],
+  "@type": "Graph",
+  "name": "Upstash Memory Adapter Knowledge Graph",
+  "description": "Living knowledge graph for the /lib/memory/upstash folder, capturing entities (files, types, features), relationships, onboarding, navigation, and AI agent support.",
+  "version": "1.0.0",
+  "generatedAt": "2025-05-14T00:00:00Z",
+  "@graph": [
+    {
+      "@id": "lib/memory/upstash/agent-state-store.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/agent-state-store.ts",
+      "exports": ["saveAgentState", "loadAgentState", "listThreadAgentStates", "deleteAgentState", "deleteThreadAgentStates", "createAgentState", "getAllAgentStates", "AgentStateStoreError", "AgentStateSchema", "StoredAgentStateSchema"],
+      "features": [
+        "Agent state management in Redis",
+        "Zod schema validation for agent state objects",
+        "Error handling with custom error classes",
+        "CRUD for agent state keyed by agent/thread",
+        "Integration with upstashLogger for all errors and state changes",
+        "Supports fallback to Supabase/LibSQL for agent state if Upstash unavailable"
+      ],
+      "types": ["AgentState", "StoredAgentState", "AgentStateStoreError"],
+      "zodSchemas": ["AgentStateSchema", "StoredAgentStateSchema"],
+      "consumers": ["memoryStore.ts", "index.ts", "API: /api/agent-state/*"],
+      "dependencies": ["upstashClients.ts", "upstash-logger.ts", "upstashTypes.ts"],
+      "testFiles": ["tests/upstash/agent-state-store.test.ts"],
+      "docs": ["README.md#agent-state-store.ts"],
+      "examples": ["How to save/load agent state for a thread"],
+      "changelog": ["Initial implementation", "Added Zod validation", "Integrated upstashLogger", "Added fallback logic"],
+      "todo": [
+        "Remove all any types (see README)",
+        "Remove all direct console statements, use upstashLogger",
+        "Add @upstash/query support for agent state search if needed",
+        "Add more robust error handling and type safety",
+        "Add tests for agent state operations"
+      ],
+      "status": "incomplete",
+      "observations": [
+        "Type errors present (see get_errors)",
+        "Direct console usage found",
+        "No advanced search support yet"
+      ],
+      "usageNotes": "Use for all agent state persistence. Always validate with Zod. Log all errors.",
+      "onboarding": "See README.md for setup and usage. Ensure fallback logic is robust.",
+      "navigation": "Imported by memoryStore.ts and index.ts.",
+      "troubleshooting": "Check for type errors and missing logger usage.",
+      "graphNotes": "Central node for agent state in Upstash graph."
+    },
+    {
+      "@id": "lib/memory/upstash/index.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/index.ts",
+      "exports": [
+        "getRedisClient", "getVectorClient", "checkUpstashAvailability", "createRedisThread", "getRedisThreadById", "updateRedisThread", "listRedisThreads", "deleteRedisThread", "createRedisMessage", "getRedisMessageById", "getRedisMessagesByThreadId", "deleteRedisMessage", "upsertEmbeddings", "searchSimilarEmbeddings", "getEmbeddingsByIds", "deleteEmbeddingsByIds", "resetVectorIndex", "getVectorIndexInfo", "logInfo", "logWarn", "logError", "logDebug", "getLogs", "deleteLogs", "clearLogs", "saveAgentState", "loadAgentState", "listThreadAgentStates", "deleteAgentState", "deleteThreadAgentStates", "createAgentState", "getAllAgentStates", "MemoryProcessor", "MemoryProcessorError", "RedisClientError", "VectorClientError", "streamProcessor", "StreamProcessor", "StreamProcessorError", "getData", "getItemById", "createItem", "updateItem", "deleteItem", "vectorSearch", "upsertSupabaseVectors", "VectorDataSchema", "VectorSearchOptionsSchema", "createSupabaseClient"
+      ],
+      "features": [
+        "Barrel export for Upstash memory module",
+        "Exports all Upstash memory, vector, logging, and adapter utilities",
+        "Centralizes all exports for easy import",
+        "Ensures type safety and up-to-date exports"
+      ],
+      "consumers": ["lib/memory/memory.ts", "API: /api/memory/*"],
+      "dependencies": [
+        "agent-state-store.ts", "memory-processor.ts", "memoryStore.ts", "redis-store.ts", "stream-processor.ts", "supabase-adapter-factory.ts", "supabase-adapter.ts", "upstash-logger.ts", "upstashClients.ts", "upstashTypes.ts", "vector-store.ts"
+      ],
+      "testFiles": ["tests/upstash/index.test.ts"],
+      "docs": ["README.md#index.ts"],
+      "examples": ["How to import all Upstash memory features"],
+      "changelog": ["Initial barrel export", "Added new exports as features grew"],
+      "todo": [
+        "Remove/replace all broken exports (see README errors)",
+        "Ensure all exports are up-to-date and type-safe",
+        "Add documentation for new/advanced exports"
+      ],
+      "status": "incomplete",
+      "observations": ["Some exports may be broken or missing (see README)", "Needs regular update as features evolve"],
+      "usageNotes": "Use this file to import any Upstash memory feature.",
+      "onboarding": "Check README for export list and update policy.",
+      "navigation": "Barrel for all Upstash memory files.",
+      "troubleshooting": "If an export is missing, check this file and README.",
+      "graphNotes": "Central export node."
+    },
+    {
+      "@id": "lib/memory/upstash/memory-processor.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/memory-processor.ts",
+      "exports": ["MemoryProcessor", "MemoryProcessorError"],
+      "features": [
+        "Streaming and processing memory data from Upstash",
+        "Optimized persona and agent state streaming"
+      ],
+      "types": ["MemoryProcessor", "MemoryProcessorError"],
+      "zodSchemas": [],
+      "consumers": ["index.ts"],
+      "dependencies": ["upstashClients.ts", "upstashTypes.ts"],
+      "testFiles": [],
+      "docs": ["README.md section: memory-processor.ts"],
+      "examples": [],
+      "status": "incomplete",
+      "version": "1.0.0",
+      "changelog": "Initial implementation. Needs @upstash/query support for streaming/semantic search if needed.",
+      "links": [],
+      "todo": [
+        "Add @upstash/query support for streaming/semantic search if needed",
+        "Add tests for memory processing"
+      ],
+      "observations": "No errors, but lacks advanced streaming/search features.",
+      "usageNotes": "Used for efficient memory streaming.",
+      "graphNotes": "Supports persona/agent state streaming.",
+      "onboarding": "Understand streaming patterns and Upstash integration.",
+      "navigation": "See consumers and dependencies.",
+      "troubleshooting": "Check for missing streaming/search features.",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/memoryStore.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/memoryStore.ts",
+      "exports": ["getRedisClient", "getVectorClient", "isUpstashAvailable", "createThread", "getThread", "listThreads", "deleteThread", "saveMessage", "getMessages", "storeEmbedding", "searchEmbeddings"],
+      "features": [
+        "Singleton Redis/Vector client management",
+        "Thread/message CRUD in Redis",
+        "Vector embedding storage/search"
+      ],
+      "types": ["Thread", "Message", "Embedding"],
+      "zodSchemas": [],
+      "consumers": ["index.ts"],
+      "dependencies": ["upstashClients.ts", "redis-store.ts", "vector-store.ts"],
+      "testFiles": [],
+      "docs": ["README.md section: memoryStore.ts"],
+      "examples": [],
+      "status": "incomplete",
+      "version": "1.0.0",
+      "changelog": "Needs type safety, logging, and advanced search features.",
+      "links": [],
+      "todo": [
+        "Remove all any types (see errors)",
+        "Remove all direct console statements, use upstashLogger",
+        "Add @upstash/query support for advanced memory/thread/message search",
+        "Add more robust error handling and type safety",
+        "Add tests for memory operations and advanced search"
+      ],
+      "observations": "Needs type safety and logging improvements.",
+      "usageNotes": "High-level memory operations.",
+      "graphNotes": "Central to memory CRUD.",
+      "onboarding": "Understand Upstash client usage and CRUD patterns.",
+      "navigation": "See dependencies for lower-level stores.",
+      "troubleshooting": "Check for type errors and missing logger usage.",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/redis-store.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/redis-store.ts",
+      "exports": ["createRedisThread", "getRedisThreadById", "updateRedisThread", "listRedisThreads", "deleteRedisThread", "createRedisMessage", "getRedisMessageById", "getRedisMessagesByThreadId", "deleteRedisMessage", "hybridThreadSearch", "withObservability", "getThreadMutex"],
+      "features": ["Typed thread/message storage in Redis", "RediSearch integration", "Observability and concurrency helpers"],
+      "status": "complete",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/stream-processor.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/stream-processor.ts",
+      "exports": ["StreamProcessor", "StreamProcessorError", "streamProcessor", "StreamProcessorOptionsSchema", "RedisStreamOptionsSchema", "VectorStreamOptionsSchema"],
+      "features": ["Streaming utilities for Upstash Redis/Vector", "Batching, error handling, and transform streams"],
+      "status": "complete",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/supabase-adapter-factory.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/supabase-adapter-factory.ts",
+      "exports": ["createSupabaseClient"],
+      "features": ["Factory for Supabase-compatible clients using Upstash"],
+      "consumers": ["factory.ts", "supabase.ts", "memory.ts", "db.ts", "libsql.ts"],
+      "dependencies": ["supabase-adapter.ts"],
+      "status": "complete",
+      "relationships": [
+        { "type": "factory", "target": "lib/memory/factory.ts" },
+        { "type": "consumer", "target": "lib/memory/supabase.ts" },
+        { "type": "consumer", "target": "lib/memory/memory.ts" },
+        { "type": "consumer", "target": "lib/memory/db.ts" },
+        { "type": "consumer", "target": "lib/memory/libsql.ts" },
+        { "type": "adapter", "target": "lib/memory/upstash/supabase-adapter.ts" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/supabase-adapter.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/supabase-adapter.ts",
+      "exports": ["getData", "getItemById", "createItem", "updateItem", "deleteItem", "vectorSearch", "upsertVectors", "upsertSupabaseVectors", "upsertTexts", "semanticSearch", "upstashQuery"],
+      "features": ["Supabase compatibility layer using Upstash", "Advanced query/filter/order support", "Vector and semantic search"],
+      "consumers": ["supabase-adapter-factory.ts", "supabase.ts", "factory.ts", "memory.ts", "db.ts", "libsql.ts"],
+      "dependencies": ["upstashClients.ts", "upstashTypes.ts", "upstash-logger.ts", "vector-store.ts"],
+      "status": "complete",
+      "relationships": [
+        { "type": "adapter", "target": "lib/memory/upstash/supabase-adapter-factory.ts" },
+        { "type": "consumer", "target": "lib/memory/supabase.ts" },
+        { "type": "consumer", "target": "lib/memory/factory.ts" },
+        { "type": "consumer", "target": "lib/memory/memory.ts" },
+        { "type": "consumer", "target": "lib/memory/db.ts" },
+        { "type": "consumer", "target": "lib/memory/libsql.ts" }
+      ]
+    },
+    {
+      "@id": "lib/memory/supabase.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/supabase.ts",
+      "exports": ["getRedisClient", "getVectorClient", "isUpstashAvailable", "getSupabaseClient", "getDrizzleClient", "isSupabaseAvailable", "getData", "getItemById", "createItem", "updateItem", "deleteItem", "getModelConfig", "getModels", "isSupabaseClient", "isUpstashClient", "type ClientType", "type ErrorType"],
+      "features": ["Supabase and Upstash integration layer", "Unified API for memory, vector, and CRUD operations", "Fallback logic for Upstash/Supabase/LibSQL"],
+      "consumers": ["factory.ts", "memory.ts", "db.ts", "libsql.ts"],
+      "dependencies": ["upstash/memoryStore.ts", "upstashClients.ts", "upstash/supabase-adapter-factory.ts", "upstash/supabase-adapter.ts"],
+      "status": "complete",
+      "relationships": [
+        { "type": "adapter", "target": "lib/memory/upstash/supabase-adapter.ts" },
+        { "type": "factory", "target": "lib/memory/factory.ts" },
+        { "type": "consumer", "target": "lib/memory/memory.ts" },
+        { "type": "consumer", "target": "lib/memory/db.ts" },
+        { "type": "consumer", "target": "lib/memory/libsql.ts" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/upstash-logger.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/upstash-logger.ts",
+      "exports": ["logInfo", "logWarn", "logError", "logDebug", "getLogs", "deleteLogs", "clearLogs", "LoggerError", "LogLevelSchema", "LogEntrySchema"],
+      "features": ["Persistent logging in Redis Streams", "Log level/type safety", "Capped log streams"],
+      "status": "complete",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/upstashClients.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/upstashClients.ts",
+      "exports": ["getRedisClient", "getVectorClient", "getUpstashQueryClient", "isUpstashRedisAvailable", "isUpstashVectorAvailable", "shouldUseUpstashAdapter", "checkUpstashAvailability", "validateRedisConfig", "validateVectorConfig", "RedisConfigSchema", "VectorConfigSchema", "EnvVarsSchema", "UpstashClientError"],
+      "features": ["Singleton client management for Redis/Vector/Query", "Config validation", "Error handling"],
+      "status": "complete",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/upstashTypes.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/upstashTypes.ts",
+      "exports": ["RedisClientError", "VectorStoreError", "VectorMetadata", "VectorDocument", "VectorMetadataSchema", "VectorDocumentSchema", "RedisClientConfig", "VectorStoreConfig", "VectorQueryOptions", "VectorQueryResult", "VectorFetchResult", "RedisPipeline", "VectorIndexConfig", "RedisType", "IndexType", "VectorType", "ZodType"],
+      "features": ["Type and error definitions for Upstash clients and vector store", "Zod schemas for metadata and config"],
+      "status": "complete",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/vector-store.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/memory/upstash/vector-store.ts",
+      "exports": ["upsertEmbeddings", "searchSimilarEmbeddings", "getEmbeddingsByIds", "deleteEmbeddingsByIds", "resetVectorIndex", "getVectorIndexInfo", "storeTextEmbedding", "searchTextStore", "hybridSearch", "EmbeddingMetadataSchema", "EmbeddingVectorSchema", "SearchEmbeddingsOptionsSchema", "EmbeddingSearchResultSchema"],
+      "features": ["Vector operations for Upstash VectorDB", "Zod schemas for embeddings and search", "Hybrid and semantic search"],
+      "status": "complete",
+      "relationships": [
+        { "type": "memory", "target": "memory" }
+      ]
+    }
+  ],
+  "meta": {
+    "source": "auto-generated from README.md, memory.json, and codebase as of 2025-05-14",
+    "updateStrategy": "automated extraction and continuous update via CI/CD and AI agent workflows",
+    "intendedUse": [
+      "Continuous improvement and documentation enforcement"
+    ],
+    "diamondCore": "A diamond core file is one that is absolutely central to the Upstash memory system's integrity, reliability, and extensibility. Bugs or design flaws here have system-wide impact. These files require the highest level of review, testing, and documentation.",
+    "backup": "LibSQL and Supabase are backup/fallback backends. All features must work with Upstash as primary, and degrade gracefully to backup if needed."
+  },
+  "onboarding": {
+    "purpose": "This onboarding is for AI agents (and advanced human contributors). Its goal is to ensure robust, error-free, and continuously improving Upstash memory adapter development. All steps are designed for AI agent reliability, self-improvement, and persistent insight.",
+    "audience": "AI agents (Copilot, LLMs, automated CI/CD bots)",
+    "corePrinciples": [
+      "Type safety and Zod validation are required for all modules.",
+      "After every file edit, always use get_errors to check for errors before considering the task complete.",
+      "All direct console statements must be replaced with upstashLogger or equivalent.",
+      "Every file must have comprehensive tests, docs, and usage examples.",
+      "Knowledge graph and README must be updated with every significant change.",
+      "Unused imports, types, and variables in diamond core files must be implemented and used if possible, not removed unless absolutely certain they are dead code. Removing them can break critical system behavior.",
+      "Use semantic/graph search and mental models for navigation, troubleshooting, and continuous improvement.",
+      "Apply mental models (see 'mentalModels' section) to break down, analyze, and solve coding and architectural problems.",
+      "Onboarding and troubleshooting should be agent-friendly, with step-by-step guidance and references to code, docs, and graph nodes.",
+      "Continuous improvement: treat every error, warning, or TODO as a learning opportunity and update the knowledge graph accordingly.",
+      "For diamond core files, always prefer refactoring to implementation over removal. Only remove code if it is provably unused and not referenced anywhere in the system."
+    ],
+    "steps": [
+      "Read the README.md in full, focusing on the Implementation Guide, Feature Table, and Best Practices.",
+      "Review the @graph array for a map of all files, features, and relationships.",
+      "For each file, check the 'todo', 'status', and 'observations' fields to identify what is needed for production-readiness.",
+      "Use the 'mentalModels' section to select the best approach for the current coding or troubleshooting task.",
+      "After editing any file, run get_errors and update the knowledge graph and README as needed.",
+      "If a file is incomplete, follow the taskList for actionable steps to bring it to production-grade.",
+      "If stuck, use mental models like Rubber Ducking, First Principles, or Feedback Loops to analyze and resolve the issue.",
+      "Document all lessons learned and improvements in the notepad and changelog sections."
+    ],
+    "navigation": {
+      "crossref": "Use 'relationships' to see which files import, use, or export others.",
+      "byFile": "Use the @graph array to locate files, their features, status, and relationships.",
+      "byFeature": "Search for features (e.g., vector search, CRUD, logging) in the 'features' fields.",
+      "byType": "Find types and Zod schemas in each file and referenced in each file's 'exports'.",
+      "byStatus": "Track progress using the 'status' and 'todo' fields for each entity.",
+      "integrationNotes": "supabase-adapter.ts connects to supabase.ts, which in turn interacts with memory.ts, db.ts, and libsql.ts. When integrating Upstash with Supabase and LibSQL, ensure all adapters and backends are mapped in the knowledge graph, and use mental models to guide troubleshooting and design."
+    },
+    "mentalModels": {
+      "description": "A curated set of mental models for software development, debugging, and codebase improvement. Use these models to break down complex problems, verify assumptions, and drive continuous improvement. Each model below includes a summary, practical usage, and tips for applying it to the Upstash/Supabase/LibSQL integration context.",
+      "models": [
+        {
+          "name": "Rubber Ducking",
+          "summary": "Rubber ducking is the practice of explaining your code, logic, or problem step-by-step to an inanimate object or another person. This process forces you to clarify your thinking, often revealing hidden bugs or misunderstandings.",
+          "application": "When stuck or debugging, write out your reasoning in the notepad, as comments, or in the knowledge graph. For Upstash/Supabase/LibSQL integration, use rubber ducking to walk through the data flow between adapters (e.g., supabase-adapter.ts to supabase.ts to memory.ts/db.ts/libsql.ts) and spot mismatches or missing logic.",
+          "bestFor": ["Debugging complex bugs", "Explaining code to others", "Onboarding new contributors"],
+          "howToUse": "Start by describing the problem or feature as if teaching it to someone new. For integration, narrate how a request flows from the API through supabase-adapter.ts, into supabase.ts, and down to memory.ts/db.ts/libsql.ts. Note any unclear steps or assumptions—these are likely sources of bugs or missing features."
+        },
+        {
+          "name": "First Principles Thinking",
+          "summary": "First principles thinking means breaking down a problem into its most basic elements and reasoning up from there, rather than relying on analogy or existing patterns.",
+          "application": "Use for architectural decisions, refactoring, or when existing solutions are insufficient. For Upstash/Supabase/LibSQL, break down the requirements for memory, vector, and logging into their core primitives, then design the integration from scratch, ensuring each adapter and backend is used optimally.",
+          "bestFor": ["Major refactors", "Designing new features", "Fixing systemic issues"],
+          "howToUse": "List out the fundamental requirements (e.g., persistent storage, fast vector search, fallback logic). For each, ask: what is the simplest way to achieve this with Upstash, Supabase, and LibSQL? Build the integration up from these basics, ensuring no unnecessary complexity or legacy assumptions are carried over."
+        },
+        {
+          "name": "Feedback Loops",
+          "summary": "Feedback loops involve making a change, testing it, gathering results, and iterating. This is essential for continuous improvement and robust integration.",
+          "application": "After every change (especially in integration code), run tests, check for errors, and update docs/knowledge graph. For Upstash/Supabase/LibSQL, use feedback loops to validate that data flows correctly through all adapters and backends, and that fallback logic works as intended.",
+          "bestFor": ["Test-driven development", "CI/CD automation", "Knowledge graph updates"],
+          "howToUse": "After implementing or updating an adapter (e.g., supabase-adapter.ts), run integration tests that exercise all code paths (Upstash primary, Supabase/LibSQL fallback). Log results, fix issues, and repeat until all paths are robust. Document lessons learned in the knowledge graph."
+        },
+        {
+          "name": "Circle of Competence",
+          "summary": "Circle of competence means knowing what you understand well and when to seek help or research. This is critical for complex integrations.",
+          "application": "If you are not familiar with a backend (e.g., LibSQL), consult documentation, experts, or use semantic search before making changes. For diamond core files, never make risky changes without full understanding.",
+          "bestFor": ["Critical/diamond core files", "Unfamiliar code", "Cross-team collaboration"],
+          "howToUse": "Before editing integration points (supabase-adapter.ts, supabase.ts, memory.ts, db.ts, libsql.ts), review all related docs and code. If unsure, ask for help or do a deep dive before proceeding."
+        },
+        {
+          "name": "5 Whys",
+          "summary": "The 5 Whys technique involves asking 'why?' repeatedly (typically five times) to drill down to the root cause of a problem.",
+          "application": "Use for persistent bugs or integration failures. For example, if data is not syncing between Upstash and Supabase, ask why at each layer (API, adapter, backend) until the true cause is found.",
+          "bestFor": ["Root cause analysis", "Production incidents", "Complex bugfixes"],
+          "howToUse": "When a test fails or a bug appears in the integration, ask why at each step (e.g., why did supabase-adapter.ts not forward the request? Why did supabase.ts not persist the data? etc.) until you reach the underlying issue."
+        },
+        {
+          "name": "Inversion",
+          "summary": "Inversion means thinking about what would cause your system to fail, and then designing to avoid those outcomes.",
+          "application": "For Upstash/Supabase/LibSQL, consider what would break the integration (e.g., network failures, schema mismatches, missing fallback logic) and proactively add error handling, retries, and tests.",
+          "bestFor": ["Error handling", "Security reviews", "Test coverage"],
+          "howToUse": "List all possible failure modes for each integration point. Add code and tests to handle or prevent each one."
+        },
+        {
+          "name": "Occam's Razor",
+          "summary": "Occam's Razor is the principle that the simplest solution is usually best. Avoid unnecessary complexity, especially in integration code.",
+          "application": "When connecting Upstash, Supabase, and LibSQL, prefer the simplest, most direct data flow and fallback logic. Only add complexity if it is justified by requirements.",
+          "bestFor": ["Refactoring", "API design", "Performance tuning"],
+          "howToUse": "Review integration code for unnecessary indirection or abstraction. Simplify wherever possible, and document why any complexity is required."
+        },
+        {
+          "name": "Mindmaps & Hill Charts",
+          "summary": "Mindmaps and hill charts are visual tools for mapping out dependencies, progress, and relationships. They are invaluable for onboarding and integration planning.",
+          "application": "Use mindmaps to visualize how supabase-adapter.ts, supabase.ts, memory.ts, db.ts, and libsql.ts connect and interact. Use hill charts to track progress on integration and testing.",
+          "bestFor": ["Project planning", "Onboarding", "Dependency analysis"],
+          "howToUse": "Draw a diagram showing the flow of data and control between all adapters and backends. Update as the architecture evolves."
+        },
+        {
+          "name": "Parkinson's Law",
+          "summary": "Parkinson's Law states that work expands to fill the time available. Set clear deadlines and constraints to keep integration work focused and efficient.",
+          "application": "Timebox integration tasks (e.g., connecting supabase-adapter.ts to supabase.ts and memory.ts) to avoid endless refactoring or scope creep.",
+          "bestFor": ["Sprint planning", "Bugfixes", "Feature delivery"],
+          "howToUse": "Set a deadline for each integration milestone. If a task is taking too long, review for unnecessary complexity or blockers."
+        },
+        {
+          "name": "Lean Startup",
+          "summary": "Lean Startup is about building, measuring, and learning quickly. For integrations, ship small, test, and iterate.",
+          "application": "For Upstash/Supabase/LibSQL, implement the minimal integration first (e.g., basic CRUD from supabase-adapter.ts to supabase.ts to memory.ts), then add features and fallback logic incrementally.",
+          "bestFor": ["Prototyping", "New features", "Continuous delivery"],
+          "howToUse": "Start with a working MVP for the integration. Add tests and features in small increments, validating each step."
+        }
+      ],
+      "usageNotes": "For Upstash/Supabase/LibSQL integration, always map out the relationships between supabase-adapter.ts, supabase.ts, memory.ts, db.ts, and libsql.ts. Use the above models to guide design, debugging, and onboarding. Document integration points and lessons learned in the knowledge graph."
+    }
+  },
+  "taskList": {
+    "completed": [
+      "Created initial upstash.json knowledge graph with entities, features, and relationships."
+    ],
+    "current": [
+      "For each file, remove all 'any' types and replace with precise types or Zod schemas.",
+      "Replace all direct console statements with upstashLogger or equivalent.",
+      "Ensure every file has comprehensive tests, docs, and usage examples.",
+      "Add @upstash/query support for advanced search, streaming, and filtering where relevant.",
+      "Update the knowledge graph and README after every significant change.",
+      "For each incomplete file, follow the 'todo' and 'observations' fields for actionable next steps.",
+      "Apply relevant mental models (see onboarding.mentalModels) to break down and solve each task.",
+      "After every edit, run get_errors and update the knowledge graph accordingly.",
+      "For diamond core files, always implement unused imports/types/vars if possible, and only remove if absolutely certain they are not needed."
+    ],
+    "longTerm": [
+      "Incorporate new onboarding, semantic search, and mental model techniques as they emerge.",
+      "Continuously improve type safety, logging, and test coverage across all modules.",
+      "Expand the knowledge graph to include per-function and per-type nodes for even richer context.",
+      "Automate knowledge graph updates via CI/CD and agent workflows.",
+      "Develop and document custom mental models as the project evolves."
+    ],
+    "fileSpecific": {
+      "agent-state-store.ts": [
+        "Remove all any types.",
+        "Replace all direct console statements with upstashLogger.",
+        "Add @upstash/query support for agent state search if needed.",
+        "Add more robust error handling and type safety.",
+        "Add tests for agent state operations."
+      ],
+      "vector-store.ts": [
+        "Remove all direct console statements, use upstashLogger.",
+        "Use precise types for metadata, results, and errors.",
+        "Add @upstash/query integration for hybrid search, advanced filtering.",
+        "Add more robust error handling and logging.",
+        "Add tests for hybrid and filtered search."
+      ],
+      "upstash-logger.ts": [
+        "Replace all any types with precise types.",
+        "Remove unused types/vars.",
+        "Remove all console statements, use upstashLogger only.",
+        "Ensure all log entry parsing is type-safe.",
+        "Add advanced log querying (e.g., by level, time range).",
+        "Add tests for log streaming and retrieval."
+      ],
+      "redis-store.ts": [
+        "Remove all any types.",
+        "Remove unused @ts-expect-error.",
+        "Use @upstash/query for advanced thread/message search (RediSearch, full-text, filters).",
+        "Add more type-safe helpers for RediSearch results.",
+        "Remove all direct console statements, use upstashLogger.",
+        "Add tests for thread/message search and RediSearch integration."
+      ],
+      "supabase-adapter.ts": [
+        "Fix: Property 'sql' does not exist on type 'Query' (update to use correct @upstash/query API).",
+        "Remove unused importsv (Query), implement uuidv4.",
+        "Add create/update/delete item support for full Supabase compatibility.",
+        "Add more advanced query support (RediSearch, full-text, filters).",
+        "Add more robust error handling and type safety.",
+        "Add tests for all CRUD and query operations."
+      ],
+      "supabase-adapter-factory.ts": [
+        "Remove all any types.",
+        "implement all unused imports/vars.",
+        "Add @upstash/query support for advanced table/vector operations.",
+        "Add more robust error handling and type safety.",
+        "Add tests for all factory-generated clients."
+      ],
+      "stream-processor.ts": [
+        "Remove all any types.",
+        "Remove all direct console statements, use upstashLogger.",
+        "Remove unused imports/vars.",
+        "Add @upstash/query support for streaming queries.",
+        "Add more robust error handling and type safety.",
+        "Add tests for streaming and batch processing."
+      ],
+      "memoryStore.ts": [
+        "Remove all any types.",
+        "Remove all direct console statements, use upstashLogger.",
+        "Add @upstash/query support for advanced memory/thread/message search.",
+        "Add more robust error handling and type safety.",
+        "Add tests for memory operations and advanced search."
+      ],
+      "memory-processor.ts": [
+        "Add @upstash/query support for streaming/semantic search if needed.",
+        "Add tests for memory processing."
+      ],
+      "index.ts": [
+        "Remove/replace all broken exports (see errors: missing exports from supabase-adapter).",
+        "Ensure all exports are up-to-date and type-safe.",
+        "Add documentation for new/advanced exports."
+      ]
+    },
+    "completingAllFiles": [
+      "For each file, ensure all 'any' types are replaced, all logging is via upstashLogger, and all unused imports/types/vars are either implemented or justified for removal.",
+      "Every file must have up-to-date tests, documentation, and usage examples.",
+      "All advanced search, streaming, and filtering features should use @upstash/query where possible.",
+      "Knowledge graph and README must be updated after every significant change.",
+      "Apply the most relevant mental models (see below) to each file's refactor, bugfix, or feature implementation."
+    ]
+  }
+}

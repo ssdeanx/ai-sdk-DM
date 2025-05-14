@@ -73,6 +73,8 @@ lib/memory/
 ├── vector-store.ts        # Helpers for HNSW index init, storeTextEmbedding, searchTextStore
 ├── store-embedding.ts     # Batch save embeddings helper for multiple texts
 ├── memory-processors.ts   # Modular message processing pipeline (pruning, filtering)
+├── factory.ts             # Memory provider factory, adapter pattern
+├── index.ts               # Barrel export
 └── README.md              # This file: overview, onboarding, and AI assistant guide
 
 # Related Tracing & Observability Files
@@ -83,75 +85,82 @@ lib/
 └── tracing.ts             # Core tracing utilities
 ```
 
-### 2.1 db.ts
+---
 
-- Exports `getLibSQLClient()`:
-  - Initializes a LibSQL client using `LIBSQL_DATABASE_URL` and `LIBSQL_AUTH_TOKEN`.
-  - Throws if the URL is not configured.
-- Exports `isDatabaseAvailable()`:
-  - Checks connectivity by executing a simple `SELECT 1`.
-- Exports `query(sql, params)` & `transaction(queries)`:
-  - Wrap low-level SQL operations with error handling and batched execution.
+## File-by-File Status & Detailed TODO Checklist
 
-### 2.2 libsql.ts
+### db.ts
+- [x] Type-safe LibSQL client and helpers
+- [x] Error handling and transaction support
+- [ ] Add/expand tests for query/transaction helpers
 
-- Exports `createLibSQLClient()`:
-  - Alias to `getLibSQLClient` for raw memory tables under `memory` (legacy vs. agent-memory distinction).
-- Provides direct functions on a `memory` table (thread_id, role, content, metadata):
-  - `getMemory(threadId)`, `addMemory(threadId, role, content, metadata)`, `getThreads()`, `deleteThread(threadId)`.
-- Use when you need fast, unstructured key/value style memory operations.
+### drizzle.ts
+- [x] Type-safe Drizzle ORM integration
+- [x] Supabase support
+- [ ] Add/expand tests for Drizzle queries and model config
 
-### 2.3 drizzle.ts
+### libsql.ts
+- [x] Raw memory operations (get/add/delete thread/message)
+- [x] Fast key/value access
+- [ ] Add/expand tests for memory ops
 
-- Exports `getDrizzleClient()`:
-  - Initializes a Drizzle ORM client using `DATABASE_URL`.
-  - Throws if the connection string is not configured.
-- Exports `isDrizzleAvailable()`:
-  - Checks connectivity by executing a simple query.
-- Exports `getDataWithDrizzle(table, options)`:
-  - Provides a generic function for querying data with filtering, sorting, and pagination.
-- Exports `getModelConfigWithDrizzle(modelId)`:
-  - Retrieves a model configuration by ID using Drizzle.
+### memory.ts
+- [x] High-level memory API (threads, messages, embeddings, state, summarization, semantic search)
+- [x] Orchestrates all memory flows
+- [ ] Add/expand tests for thread/message/semantic search
 
-### 2.4 supabase.ts
+### supabase.ts
+- [x] Supabase client with Drizzle integration
+- [x] Upstash adapter support and fallback logic
+- [ ] Fix all type errors in CRUD and cache logic (see get_errors)
+- [ ] Refine TableRow/TableInsert types for .eq/.insert/.update
+- [ ] Improve error handling for details/hint/code fields
+- [ ] Add/expand tests for CRUD and vector search
 
-- Exports `getSupabaseClient()`:
-  - Initializes a Supabase client using `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-  - Throws if the credentials are not configured.
-- Exports `getDrizzleClient()`:
-  - Initializes a Drizzle ORM client for Supabase.
-  - Uses `DATABASE_URL` environment variable for direct Postgres connection.
-  - Integrates with schema definitions in `db/supabase/schema.ts`.
-- Exports `isSupabaseAvailable()`:
-  - Checks connectivity by executing a simple query.
-- Exports `getData()`, `getItemById()`, `createItem()`, `updateItem()`, `deleteItem()`:
-  - Generic CRUD operations for Supabase tables with filtering, sorting, and pagination.
-  - Supports transaction safety and error handling.
-- Exports `getModelConfig()`, `getModels()`:
-  - Model-specific operations with Drizzle integration.
-  - Caches results for performance optimization.
-- Exports `getAgentConfig()`, `getAgents()`, `getAgentTools()`:
-  - Agent-specific operations with relationship handling.
-- Exports `getSetting()`:
-  - Retrieves a setting by category and key with default value support.
+### vector-store.ts
+- [x] HNSW index, vector search, embedding storage
+- [x] Type safety
+- [ ] Add/expand tests for vector search and info
 
-### 2.5 memory.ts
+### store-embedding.ts
+- [x] Batch embedding save
+- [x] Type safety
+- [ ] Add/expand tests for batch embedding
 
-- High-level orchestrator for agent conversations:
-  - **Thread lifecycle**:
-    - `createMemoryThread(name, options)`: creates new thread row.
-    - `getMemoryThread(id)`, `listMemoryThreads(filters)`, `deleteMemoryThread(id)`.
-  - **Messages**:
-    - `saveMessage(thread_id, role, content, options)`: supports token counting, embedding generation, metadata, and updates thread timestamp.
-    - `loadMessages(thread_id, limit)`: retrieves ordered messages with full metadata.
-  - **Token & Embedding**:
-    - `countTokens(text, model)`: wraps `js-tiktoken` with fallback.
-    - `generateEmbedding(text)`, `saveEmbedding(vector, model)`: uses `@xenova/transformers` and persists to `embeddings` table.
-  - **State Management**:
-    - `loadAgentState(thread_id, agent_id)`, `saveAgentState(thread_id, agent_id, state)`: store JSON blobs in `agent_states` table.
-  - **Summarization & Search**:
-    - `generateThreadSummary(thread_id)`: calls `generateAIResponse` to summarize a conversation.
-    - `semanticSearchMemory(query, options)`: performs cosine-similarity search over embeddings.
+### memory-processors.ts
+- [x] Message processing pipeline (pruning, filtering)
+- [x] Type safety
+- [ ] Add/expand tests for message processing
+
+### factory.ts
+- [x] Memory provider factory, adapter pattern
+- [x] Type safety
+- [ ] Remove unused exports (see get_errors)
+- [ ] Clean up unused imports/vars
+- [ ] Add/expand tests for memory provider factory
+
+### index.ts
+- [x] Barrel export
+- [ ] Ensure all exports are up-to-date and type-safe
+
+---
+
+## Feature Coverage Table
+
+| File                | Type Safety | CRUD | Vector | Caching | Fallback | Tests | Error Handling |
+|---------------------|:-----------:|:----:|:------:|:-------:|:--------:|:-----:|:--------------:|
+| db.ts               |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
+| drizzle.ts          |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
+| libsql.ts           |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
+| memory.ts           |     ✅      |  ✅  |   ✅   |   ⚠️    |    ✅    |   ⚠️  |      ✅        |
+| supabase.ts         |     ⚠️      |  ✅  |   ✅   |   ✅    |    ✅    |   ⚠️  |      ⚠️        |
+| vector-store.ts     |     ✅      |  ❌  |   ✅   |   ❌    |    ❌    |   ⚠️  |      ✅        |
+| store-embedding.ts  |     ✅      |  ❌  |   ✅   |   ❌    |    ❌    |   ⚠️  |      ✅        |
+| memory-processors.ts|     ✅      |  ❌  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
+| factory.ts          |     ⚠️      |  ✅  |   ✅   |   ⚠️    |    ✅    |   ⚠️  |      ✅        |
+| index.ts            |     ✅      |  ❌  |   ❌   |   ❌    |    ❌    |   ❌  |      ❌        |
+
+Legend: ✅ = Complete, ⚠️ = Needs work, ❌ = Not present
 
 ---
 

@@ -1,0 +1,345 @@
+{
+  "@context": [
+    "https://schema.org",
+    { "@base": "file:///c:/Users/dm/Documents/ai-sdk-DM/" },
+    { "@language": "en" },
+    { "xsd": "http://www.w3.org/2001/XMLSchema#" },
+    { "feature": "https://schema.org/hasFeature" },
+    { "generatedAt": { "@type": "xsd:dateTime" } },
+    { "version": { "@type": "xsd:string" } }
+  ],
+  "@type": "Graph",
+  "name": { "@value": "Memory Layer Knowledge Graph", "@language": "en" },
+  "description": { "@value": "Living knowledge graph for the /lib/memory folder, capturing entities (files, types, features), relationships, onboarding, navigation, and AI agent support.", "@language": "en" },
+  "version": { "@value": "0.1.0", "@type": "xsd:string" },
+  "generatedAt": { "@value": "2025-05-14T00:00:00Z", "@type": "xsd:dateTime" },
+  "@graph": [
+    {
+      "@id": "lib/memory/db.ts",
+      "@type": ["CodeFile", "proj:DiamondCoreComponent"],
+      "path": { "@value": "lib/memory/db.ts", "@language": "en" },
+      "exports": { "@list": ["getLibSQLClient", "isDatabaseAvailable", "query", "transaction"] },
+      "features": { "@value": ["LibSQL client", "query helpers", "transaction support", "error handling"], "@language": "en" },
+      "featuresFull": { "@value": [
+        "Functions: getLibSQLClient, isDatabaseAvailable, query, transaction",
+        "Types: LibSQLClient, TransactionResult",
+        "Implements: database connection validation, error handling, atomic transactions"
+      ], "@language": "en" },
+      "types": { "@value": ["LibSQLClient", "TransactionResult"], "@language": "en" },
+      "interfaces": [],
+      "zodSchemas": [],
+      "consumers": { "@value": ["libsql.ts", "memory.ts", "factory.ts"], "@language": "en" },
+      "dependencies": [],
+      "testFiles": [],
+      "docs": [],
+      "examples": [],
+      "status": { "@value": "complete", "@language": "en" },
+      "diamondCore": true,
+      "version": { "@value": "1.0.0", "@type": "xsd:string" },
+      "changelog": { "@list": [
+        { "date": { "@value": "2025-05-14", "@type": "xsd:dateTime" }, "change": { "@value": "Refactored for diamond core reliability, added granular relationships, and advanced usage examples.", "@language": "en" } }
+      ] },
+      "links": {
+        "code": { "@value": "lib/memory/db.ts", "@language": "en" },
+        "docs": { "@value": "", "@language": "en" },
+        "tests": { "@value": "", "@language": "en" }
+      },
+      "todo": [],
+      "observations": { "@value": [
+        "Critical for all LibSQL-based persistence. Ensure robust error handling and connection validation.",
+        "Missing advanced examples for complex transaction workflows.",
+        "This file is a diamond core of the memory system. All database operations depend on its reliability and correctness."
+      ], "@language": "en" },
+      "relationships": [
+        { "type": { "@value": "usedBy", "@language": "en" }, "target": { "@value": "libsql.ts", "@language": "en" } },
+        { "type": { "@value": "usedBy", "@language": "en" }, "target": { "@value": "memory.ts", "@language": "en" } },
+        { "type": { "@value": "usedBy", "@language": "en" }, "target": { "@value": "factory.ts", "@language": "en" } },
+        { "type": { "@value": "usedBy", "@language": "en" }, "target": { "@value": "lib/memory/factory.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/db/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/system/status/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/dashboard/activity/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/dashboard/metrics/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/dashboard/stats/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/agents/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/threads/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/tools/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/tools/execute/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/threads/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/agents/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/agents/[id]/run/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/threads/[id]/messages/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/ai-sdk/chat/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/crud/[table]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/apps/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/apps/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/assistant/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/auth/callback/admin-github/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/auth/callback/github/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/auth/signin/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/auth/signup/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/blog/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/blog/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/chat/ai-sdk/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/chat/ai-sdk/threads/[id]/messages/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/chat/ai-sdk/threads/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/chat/ai-sdk/threads/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/chat/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/content/architecture/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/content/code-examples/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/content/cta/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/content/features/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/content/footer/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/content/hero/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/mdx/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/mdx/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/models/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/models/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/models/seed/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/networks/[id]/agents/[agentId]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/networks/[id]/agents/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/networks/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/networks/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/observability/costs/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/observability/evaluations/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/observability/metrics/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/observability/performance/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/observability/traces/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/settings/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/tools/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/tools/execute/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/tools/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/workflows/[id]/execute/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/workflows/[id]/pause/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/workflows/[id]/resume/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/workflows/[id]/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/workflows/[id]/steps/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/workflows/route.ts", "@language": "en" } }
+      ],
+      "onboarding": { "@value": "Use as the canonical entry point for LibSQL client and transaction helpers. Always check for connection errors and validate credentials before running queries. See README for usage patterns.", "@language": "en" },
+      "navigation": { "@value": "Start here for any low-level SQL or transaction troubleshooting. If you see DB errors in logs, check this file first.", "@language": "en" },
+      "troubleshooting": { "@value": "If queries fail, check environment variables and DB connectivity. Use isDatabaseAvailable() for health checks.", "@language": "en" },
+      "usageNotes": { "@value": "Wrap all multi-step memory operations in transaction() for atomicity.", "@language": "en" },
+      "graphNotes": { "@value": "Critical for all LibSQL-based persistence. All memory flows eventually depend on this file. All memory, workflows, and assistant API routes are now fully mapped and deduplicated.", "@language": "en" }
+    },
+    {
+      "@id": "lib/memory/memory.ts",
+      "@type": ["CodeFile"],
+      "path": { "@value": "lib/memory/memory.ts", "@language": "en" },
+      "exports": { "@list": ["MemoryProvider", "MemoryConfig"] },
+      "features": { "@value": ["Memory provider abstraction", "Configuration management"], "@language": "en" },
+      "featuresFull": { "@value": [
+        "Functions: MemoryProvider, MemoryConfig",
+        "Implements: memory provider abstraction, configuration management"
+      ], "@language": "en" },
+      "types": { "@value": ["MemoryProvider", "MemoryConfig"], "@language": "en" },
+      "interfaces": [],
+      "zodSchemas": [],
+      "consumers": { "@value": ["factory.ts"], "@language": "en" },
+      "dependencies": [],
+      "testFiles": [],
+      "docs": [],
+      "examples": [],
+      "status": { "@value": "in-progress", "@language": "en" },
+      "diamondCore": false,
+      "version": { "@value": "0.1.0", "@type": "xsd:string" },
+      "changelog": { "@list": [
+        { "date": { "@value": "2025-05-14", "@type": "xsd:dateTime" }, "change": { "@value": "Initial implementation of memory provider abstraction and configuration management.", "@language": "en" } }
+      ] },
+      "links": {
+        "code": { "@value": "lib/memory/memory.ts", "@language": "en" },
+        "docs": { "@value": "", "@language": "en" },
+        "tests": { "@value": "", "@language": "en" }
+      },
+      "todo": [],
+      "observations": { "@value": [
+        "Critical for memory provider abstraction. Ensure robust configuration management.",
+        "Missing advanced examples for complex memory workflows."
+      ], "@language": "en" },
+      "relationships": [
+        { "type": { "@value": "usedBy", "@language": "en" }, "target": { "@value": "lib/memory/factory.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/memory/config/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/memory/upstash-adapter/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/memory/upstash-config/route.ts", "@language": "en" } }
+      ],
+      "onboarding": { "@value": "Use as the entry point for memory provider abstraction and configuration management. See README for usage patterns.", "@language": "en" },
+      "navigation": { "@value": "Start here for memory provider abstraction and configuration troubleshooting.", "@language": "en" },
+      "troubleshooting": { "@value": "If memory provider fails, check configuration settings and dependencies.", "@language": "en" },
+      "usageNotes": { "@value": "Wrap all memory operations in MemoryProvider for abstraction.", "@language": "en" },
+      "graphNotes": { "@value": "Critical for memory provider abstraction. All memory flows depend on this file.", "@language": "en" }
+    },
+    {
+      "@id": "lib/memory/factory.ts",
+      "@type": ["CodeFile"],
+      "path": { "@value": "lib/memory/factory.ts", "@language": "en" },
+      "exports": { "@list": ["createMemoryProvider"] },
+      "features": { "@value": ["Factory pattern for memory providers"], "@language": "en" },
+      "featuresFull": { "@value": [
+        "Functions: createMemoryProvider",
+        "Implements: factory pattern for memory providers"
+      ], "@language": "en" },
+      "types": { "@value": ["createMemoryProvider"], "@language": "en" },
+      "interfaces": [],
+      "zodSchemas": [],
+      "consumers": { "@value": ["memory.ts"], "@language": "en" },
+      "dependencies": [],
+      "testFiles": [],
+      "docs": [],
+      "examples": [],
+      "status": { "@value": "in-progress", "@language": "en" },
+      "diamondCore": false,
+      "version": { "@value": "0.1.0", "@type": "xsd:string" },
+      "changelog": { "@list": [
+        { "date": { "@value": "2025-05-14", "@type": "xsd:dateTime" }, "change": { "@value": "Initial implementation of factory pattern for memory providers.", "@language": "en" } }
+      ] },
+      "links": {
+        "code": { "@value": "lib/memory/factory.ts", "@language": "en" },
+        "docs": { "@value": "", "@language": "en" },
+        "tests": { "@value": "", "@language": "en" }
+      },
+      "todo": [],
+      "observations": { "@value": [
+        "Critical for factory pattern implementation. Ensure robust memory provider creation.",
+        "Missing advanced examples for complex factory workflows."
+      ], "@language": "en" },
+      "relationships": [
+        { "type": { "@value": "usedBy", "@language": "en" }, "target": { "@value": "lib/memory/memory.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/memory/config/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/memory/upstash-adapter/route.ts", "@language": "en" } },
+        { "type": { "@value": "apiRouteFor", "@language": "en" }, "target": { "@value": "app/api/memory/upstash-config/route.ts", "@language": "en" } }
+      ],
+      "onboarding": { "@value": "Use as the entry point for factory pattern implementation. See README for usage patterns.", "@language": "en" },
+      "navigation": { "@value": "Start here for factory pattern implementation and troubleshooting.", "@language": "en" },
+      "troubleshooting": { "@value": "If factory pattern fails, check dependencies and implementation.", "@language": "en" },
+      "usageNotes": { "@value": "Wrap all factory operations in createMemoryProvider for abstraction.", "@language": "en" },
+      "graphNotes": { "@value": "Critical for factory pattern implementation. All memory flows depend on this file.", "@language": "en" }
+    }
+  ],
+  "meta": {
+    "source": { "@value": "auto-generated from README.md, upstash.json, and codebase as of 2025-05-14", "@language": "en" },
+    "updateStrategy": { "@value": "automated extraction and continuous update via CI/CD and AI agent workflows", "@language": "en" },
+    "automation": {
+      "strategy": { "@value": "pre-commit hook + CI/CD bot", "@language": "en" },
+      "lastAutomated": { "@value": "2025-05-14T00:00:00Z", "@type": "xsd:dateTime" }
+    },
+    "intendedUse": { "@value": [
+      "AI agent onboarding and navigation",
+      "Human contributor onboarding",
+      "Feature coverage and TODO tracking",
+      "Semantic/graph search for code and docs",
+      "Continuous improvement and documentation enforcement"
+    ], "@language": "en" },
+    "diamondCore": { "@value": "A diamond core file is one that is absolutely central to the memory system's integrity, reliability, and extensibility. Bugs or design flaws here have system-wide impact. These files require the highest level of review, testing, and documentation.", "@language": "en" }
+  },
+  "onboarding": {
+    "purpose": { "@value": "This onboarding is for AI agents (and advanced human contributors). Its goal is to ensure robust, error-free, and continuously improving memory layer development. All steps are designed for AI agent reliability, self-improvement, and persistent insight.", "@language": "en" },
+    "audience": { "@value": "AI agents (Copilot, LLMs, automated CI/CD bots)", "@language": "en" },
+    "corePrinciples": { "@value": [
+      "Type safety and Zod validation are required for all modules.",
+      "After every file edit, always use get_error to check for errors before considering the task complete.",
+      "Always cross-reference changes with all consumer files (memory.ts, factory.ts, supabase.ts).",
+      "Update onboarding, knowledge graph, and README with new features, patterns, and lessons learned.",
+      "Use semantic/graph search and mental models for navigation, troubleshooting, and continuous improvement."
+    ], "@language": "en" },
+    "steps": { "@value": [
+      "Read the README.md in full, focusing on the Implementation Guide, Feature Table, and Best Practices.",
+      "Review the entities and relationships in this memory.json knowledge graph for a map of the codebase.",
+      "Use semantic/graph search to answer 'how do I...?' questions about types, modules, and workflows.",
+      "Follow the Production Readiness Checklist in the README before merging changes.",
+      "Update this knowledge graph and README with new features, patterns, and lessons learned.",
+      "After editing any file, you must use get_error before considering the task complete to ensure the file is error-free.",
+      "After any change, check all consumer files (memory.ts, factory.ts, supabase.ts) for compatibility and update as needed."
+    ], "@language": "en" },
+    "navigation": {
+      "byFile": { "@value": "Use the 'entities' array to locate files, their features, status, and relationships.", "@language": "en" },
+      "byFeature": { "@value": "Search for features (e.g., vector search, CRUD, cache) in the 'features' fields.", "@language": "en" },
+      "byType": { "@value": "Find types and Zod schemas in each file and referenced in each file's 'exports'.", "@language": "en" },
+      "byStatus": { "@value": "Track progress using the 'status' and 'todo' fields for each entity.", "@language": "en" },
+      "crossref": { "@value": "Use 'relationships' to see which files import, use, or export others.", "@language": "en" }
+    },
+    "mentalModels": {
+      "coreModels": { "@value": [
+        "Redundancy: Build in robustness and fallback (e.g., Upstash fallback, error handling).",
+        "Bottlenecks: Identify and address performance or architectural bottlenecks (e.g., query speed, cache hit rate).",
+        "Emergence: Expect non-linear behavior from component interactions (e.g., hybrid search, streaming).",
+        "First Principles: Always define types and contracts first (see type exports, Zod schemas).",
+        "Pattern Recognition: Use semantic/graph search to spot code smells, anti-patterns, and repeated errors.",
+        "Continuous Learning: Update docs and knowledge graph as new best practices emerge.",
+        "Layered Abstraction: Design each module with clear boundaries and interfaces, enabling easy replacement or extension.",
+        "Defensive Programming: Always validate inputs/outputs, handle unexpected states, and fail safely.",
+        "Idempotency: Ensure repeated operations (e.g., message save, thread creation) do not cause side effects or data corruption.",
+        "Observability: Instrument all critical paths with tracing, logging, and metrics for rapid debugging and optimization.",
+        "Testability: Write code that is easy to test in isolation, with clear contracts and minimal side effects.",
+        "Separation of Concerns: Keep persistence, business logic, and API layers distinct for maintainability.",
+        "Graceful Degradation: Ensure all features degrade cleanly if a backend (Supabase, LibSQL, Redis) is unavailable.",
+        "Human-in-the-Loop: Design for easy manual inspection, override, and debugging by human operators.",
+        "Explicit Contracts: Document all function signatures, types, and error cases for every exported API.",
+        "Fail Fast: Surface errors early and clearly, with actionable messages for both humans and agents.",
+        "Self-Healing: Where possible, auto-recover from transient errors (e.g., reconnect, retry, fallback).",
+        "Traceability: Every important operation should be traceable from input to output, with context for debugging.",
+        "Least Privilege: Minimize access and permissions for each module, especially for DB and cache operations.",
+        "Extensibility: Design APIs and data models to allow for future features (e.g., new memory types, new backends).",
+        "Consistency: Ensure all modules follow the same conventions for error handling, logging, and type safety."
+      ], "@language": "en" },
+      "debugging": { "@value": [
+        "Check the Feature Coverage Table in README to find missing type safety, logging, or advanced query support.",
+        "Use the Implementation Guide for step-by-step refactoring or feature addition.",
+        "For new features, update both code and docs immediately."
+      ], "@language": "en" },
+      "semanticSearch": { "@value": [
+        "Leverage this knowledge graph and README for semantic/graph search (for both AI and human agents).",
+        "Use types, features, and relationships as search keys for onboarding and troubleshooting.",
+        "Document new patterns and lessons in both README and memory.json for future searchability."
+      ], "@language": "en" },
+      "codeSmells": { "@value": [
+        "Any use of 'any' is a code smell—replace with types/Zod.",
+        "Unused imports, types, or variables should be implemented before being removed. Only remove if you are certain they are not needed (see TODOs in each entity).",
+        "Missing or outdated documentation in README or memory.json is a process smell."
+      ], "@language": "en" }
+    }
+  },
+  "notepad": {
+    "purpose": { "@value": "Persistent notes, reminders, and troubleshooting tips for AI agents. Use this to record lessons learned, common pitfalls, and debugging strategies.", "@language": "en" },
+    "entries": { "@value": [
+      "Always check for type errors and remove all 'any' usage.",
+      "If a change breaks a consumer (memory.ts, factory.ts, supabase.ts), update onboarding and docs immediately.",
+      "Document new patterns, fixes, and lessons here for future agent runs.",
+      "If you encounter a recurring error, add a note here with the fix or workaround.",
+      "Use this notepad to leave yourself reminders for long-term improvements or TODOs."
+    ], "@language": "en" }
+  },
+  "taskList": {
+    "completed": { "@value": [
+      "Refactored db.ts, drizzle.ts, libsql.ts, memory.ts for type safety and error handling.",
+      "Drafted comprehensive README.md with onboarding, advanced usage, and AI agent guidance.",
+      "Created initial memory.json knowledge graph with entities, features, and relationships."
+    ], "@language": "en" },
+    "current": { "@value": [
+      "Expand memory.json with onboarding, navigation, crossref, and mental models.",
+      "Fix all outstanding type/lint errors and remove any from all modules.",
+      "Implement and document advanced features (vector search, hybrid search, etc.).",
+      "For every memory file: strictly remove all 'any' types, unused imports/vars; ensure all types are Zod-validated and shared; add/expand tests for all modules, especially for advanced query and hybrid search; update and fix all broken exports in index.ts; add more usage examples and documentation for advanced features in README.md; keep README.md and memory.json in sync as features are added and errors are fixed.",
+      "Automate extraction and continuous update of the knowledge graph via CI/CD and AI agent workflows.",
+      "Continuously expand tests and documentation as features are added and errors are fixed.",
+      "Incorporate new onboarding, semantic search, and mental model techniques as they emerge.",
+      "Ensure all changes are validated with get_error after every file edit and before completion."
+    ], "@language": "en" },
+    "longTerm": { "@value": [
+      "Automate extraction and continuous update of the knowledge graph via CI/CD and AI agent workflows.",
+      "Continuously expand tests and documentation as features are added and errors are fixed.",
+      "Incorporate new onboarding, semantic search, and mental model techniques as they emerge."
+    ], "@language": "en" },
+    "fileSpecific": {
+      "supabase.ts": { "@value": [
+        "Fix all type errors in CRUD and cache logic (see get_errors).",
+        "Refine TableRow/TableInsert types for .eq/.insert/.update.",
+        "Improve error handling for details/hint/code fields.",
+        "Add/expand tests for CRUD and vector search."
+      ], "@language": "en" },
+      "factory.ts": { "@value": [
+        "Remove unused exports (see get_errors).",
+        "Clean up unused imports/vars.",
+        "Add/expand tests for memory provider factory."
+      ], "@language": "en" }
+    }
+  }
+}

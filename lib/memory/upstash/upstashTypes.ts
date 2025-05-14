@@ -1,6 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { Index, Vector, QueryResult, FetchResult, IndexConfig as UpstashVectorIndexConfig } from "@upstash/vector";
-import { z } from 'zod'; // Add zod import
+import { z } from 'zod';
 
 // --- Client Types & Errors ---
 
@@ -30,24 +30,24 @@ export class VectorStoreError extends Error {
 
 /**
  * Metadata for an embedding. Can be any JSON-serializable object.
+ * Strictly typed, with extension fields as unknown for type safety.
  */
-export interface VectorMetadata { // Renamed from EmbeddingMetadata for consistency
-  text?: string; // The original text chunk, often useful to store
+export interface VectorMetadata {
+  text?: string;
   source_url?: string;
   document_id?: string;
   chunk_id?: string;
   user_id?: string;
-  created_at?: string; // ISO 8601 timestamp
-  [key: string]: any; // Allow other arbitrary metadata
+  created_at?: string;
+  [key: string]: unknown; // Use unknown for extension fields
 }
 
 /**
  * Represents a vector document to be upserted into the Upstash Vector database.
  * Includes the vector, its ID, and associated metadata.
+ * Uses strict types from @upstash/vector and VectorMetadata.
  */
-export interface VectorDocument extends Vector { // Renamed from EmbeddingVector
-  // id: string; // Already in Vector type from @upstash/vector
-  // vector: number[]; // Already in Vector type
+export interface VectorDocument extends Vector {
   metadata?: VectorMetadata;
   // data?: string; // The 'data' field from @upstash/vector's Vector type can be used for string content
 }
@@ -55,7 +55,7 @@ export interface VectorDocument extends Vector { // Renamed from EmbeddingVector
 // --- Zod Schemas ---
 
 /**
- * Schema for vector metadata
+ * Schema for vector metadata (strict, extension fields as unknown)
  */
 export const VectorMetadataSchema = z.object({
   text: z.string().optional(),
@@ -64,7 +64,7 @@ export const VectorMetadataSchema = z.object({
   chunk_id: z.string().optional(),
   user_id: z.string().optional(),
   created_at: z.string().optional(),
-}).catchall(z.any());
+}).catchall(z.unknown());
 
 /**
  * Schema for vector document
@@ -107,7 +107,7 @@ export interface VectorStoreConfig {
  */
 export interface VectorQueryOptions {
   topK?: number;
-  filter?: Record<string, any>;
+  filter?: Record<string, unknown>;
   includeMetadata?: boolean;
   includeVectors?: boolean;
   namespace?: string;

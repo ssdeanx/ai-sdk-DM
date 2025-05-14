@@ -1,4 +1,6 @@
 /**
+ * 
+ * 
  * Generic CRUD API route for Supabase tables
  * @module app/api/crud/[table]/route
  */
