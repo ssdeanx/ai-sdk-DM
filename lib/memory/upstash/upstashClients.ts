@@ -1,12 +1,19 @@
-import { Redis } from '@upstash/redis';
-import { Index, type IndexConfig as UpstashVectorIndexConfig } from "@upstash/vector";
 import { z } from 'zod';
 import { upstashLogger } from './upstash-logger';
 import { Query } from '@upstash/query';
-import { RediSearchHybridQuery, QStashTaskPayload, WorkflowNode, AdvancedLogQueryOptions, UpstashEntityBase, UpstashEntitySchema, ThreadEntity, ThreadEntitySchema, MessageEntity, MessageEntitySchema, AgentStateEntity, AgentStateEntitySchema, ToolExecutionEntity, ToolExecutionEntitySchema, WorkflowNodeEntity, WorkflowNodeEntitySchema, LogEntryEntity, LogEntryEntitySchema, RediSearchHybridResult } from './upstashTypes';
+import { Redis } from '@upstash/redis';
+import { Index } from '@upstash/vector';
+import {
+  RediSearchHybridQuery,
+  QStashTaskPayload,
+  WorkflowNode,
+  UpstashEntityBase,
+  UpstashEntitySchema,
+  VectorIndexConfig,
+  RediSearchHybridResult
+} from './upstashTypes';
 
-// Re-export IndexConfig for convenience if consumers need to specify it.
-export type IndexConfig = UpstashVectorIndexConfig;
+export type IndexConfig = VectorIndexConfig;
 
 // --- Zod Schemas ---
 
@@ -50,7 +57,6 @@ export class UpstashClientError extends Error {
   constructor(message: string, public cause?: unknown) {
     super(message);
     this.name = 'UpstashClientError';
-    // Maintain proper prototype chain
     Object.setPrototypeOf(this, UpstashClientError.prototype);
   }
 }
@@ -61,7 +67,7 @@ export class UpstashClientError extends Error {
  * @returns Validated environment variables
  * @throws UpstashClientError if validation fails
  */
-function validateEnvVars() {
+export function validateEnvVars() {
   try {
     const result = EnvVarsSchema.safeParse(process.env);
     if (!result.success) {
@@ -88,7 +94,6 @@ export const getRedisClient = (): Redis => {
     return redisClientInstance;
   }
 
-  // Validate environment variables
   const env = validateEnvVars();
   const url = env.UPSTASH_REDIS_REST_URL;
   const token = env.UPSTASH_REDIS_REST_TOKEN;
@@ -99,7 +104,6 @@ export const getRedisClient = (): Redis => {
   }
 
   try {
-    // Validate Redis configuration
     const configValidation = RedisConfigSchema.safeParse({ url, token });
     if (!configValidation.success) {
       upstashLogger.error('upstashClients', `Invalid Redis configuration: ${configValidation.error.message}`);
@@ -129,9 +133,7 @@ export const getRedisClient = (): Redis => {
  * @throws {UpstashClientError} if Vector credentials are not found or initialization fails.
  */
 export const getVectorClient = (config?: IndexConfig): Index => {
-  // If a config is provided, or no instance exists, create/re-create one.
   if (config || !vectorClientInstance) {
-    // Validate environment variables
     const env = validateEnvVars();
     const url = env.UPSTASH_VECTOR_REST_URL;
     const token = env.UPSTASH_VECTOR_REST_TOKEN;
@@ -142,7 +144,6 @@ export const getVectorClient = (config?: IndexConfig): Index => {
     }
 
     try {
-      // Validate Vector configuration
       const configToValidate = {
         url,
         token,
@@ -155,14 +156,11 @@ export const getVectorClient = (config?: IndexConfig): Index => {
         throw new UpstashClientError(`Invalid Vector configuration: ${configValidation.error.message}`);
       }
 
-      // Create a new instance if config is provided or none exists
       const newInstance = new Index({
         url,
         token,
         ...config
       });
-      // If config was provided, this new instance becomes the singleton for subsequent calls without config.
-      // If no config was provided but instance didn't exist, it also becomes the singleton.
       vectorClientInstance = newInstance;
       upstashLogger.info('upstashClients', 'Upstash Vector client initialized.');
       return vectorClientInstance;
@@ -171,7 +169,6 @@ export const getVectorClient = (config?: IndexConfig): Index => {
       throw new UpstashClientError("Failed to initialize Upstash Vector client.", error);
     }
   }
-  // No new config, and an instance exists, so return the existing one.
   return vectorClientInstance;
 };
 
@@ -184,24 +181,16 @@ export const getVectorClient = (config?: IndexConfig): Index => {
 export const getUpstashQueryClient = (): Query => {
   if (upstashQueryClient) return upstashQueryClient;
   const env = validateEnvVars();
-  // Use 'url' and 'token' as required by your installed @upstash/query version
-  // Some versions may not require token, check docs and runtime
   const url = env.UPSTASH_REDIS_REST_URL;
   const token = env.UPSTASH_REDIS_REST_TOKEN;
   if (!url) {
     upstashLogger.error('upstashClients', 'Upstash Query URL not found. Please set UPSTASH_REDIS_REST_URL environment variable.');
     throw new UpstashClientError('Upstash Query URL not found.');
   }
-  try {
-    // If token is required, pass it; otherwise, just url
-    // @ts-expect-error: Accept both { url } and { url, token } for compatibility
-    upstashQueryClient = token ? new Query({ url, token }) : new Query({ url });
-    upstashLogger.info('upstashClients', 'Upstash Query client initialized.');
-    return upstashQueryClient;
-  } catch (error: unknown) {
-    upstashLogger.error('upstashClients', 'Failed to initialize Upstash Query client.', error instanceof Error ? error : { message: String(error) });
-    throw new UpstashClientError('Failed to initialize Upstash Query client.', error);
-  }
+  // Correct config for @upstash/query: expects { url, token }
+  upstashQueryClient = new Query({ url, token });
+  upstashLogger.info('upstashClients', 'Upstash Query client initialized.');
+  return upstashQueryClient;
 };
 
 /**
@@ -209,7 +198,7 @@ export const getUpstashQueryClient = (): Query => {
  * @returns Whether Upstash Redis is available
  */
 export function isUpstashRedisAvailable(): boolean {
-  return !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REST_TOKEN;
+  return !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
 }
 
 /**
@@ -245,12 +234,10 @@ export const checkUpstashAvailability = async (): Promise<{
   let redisError: UpstashClientError | Error | unknown = undefined;
   let vectorError: UpstashClientError | Error | unknown = undefined;
 
-  // Check if Redis is available based on environment variables
   if (!isUpstashRedisAvailable()) {
     redisError = new UpstashClientError("Upstash Redis environment variables not set");
     redisAvailable = false;
   } else {
-    // Check Redis connection
     try {
       const redis = getRedisClient();
       await redis.ping();
@@ -263,12 +250,10 @@ export const checkUpstashAvailability = async (): Promise<{
     }
   }
 
-  // Check if Vector is available based on environment variables
   if (!isUpstashVectorAvailable()) {
     vectorError = new UpstashClientError("Upstash Vector environment variables not set");
     vectorAvailable = false;
   } else {
-    // Check Vector connection
     try {
       const vector = getVectorClient();
       await vector.info();
@@ -331,8 +316,6 @@ export function validateVectorConfig(config: unknown): z.infer<typeof VectorConf
   }
 }
 
-// --- Upstash as Main DB, Fallback Detection ---
-
 /**
  * Returns true if Upstash should be used as the main DB (not just a cache or fallback).
  * Controlled by env var USE_UPSTASH_ADAPTER=true.
@@ -348,51 +331,6 @@ export function isUpstashMainDb(): boolean {
 export function shouldFallbackToBackup(): boolean {
   return !isUpstashMainDb() && !!process.env.SUPABASE_URL && !!process.env.SUPABASE_KEY;
 }
-
-// --- Advanced Upstash Command Support ---
-// Add RediSearch/Hybrid Query client helper
-export const runRediSearchHybridQuery = async (query: RediSearchHybridQuery) => {
-  const client = getUpstashQueryClient();
-  // Use the correct method for RediSearch/hybrid queries (e.g., search, hybridSearch, or similar)
-  // If not available, throw a clear error for now
-  if (typeof (client as any).ftSearch === 'function') {
-    return (client as any).ftSearch(query.index, query.query, {
-      vector: query.vector,
-      filters: query.filters,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-      offset: query.offset,
-      limit: query.limit,
-    });
-  } else if (typeof (client as any).search === 'function') {
-    // Use generic search if available
-    return (client as any).search(query.index, query.query, {
-      vector: query.vector,
-      filters: query.filters,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-      offset: query.offset,
-      limit: query.limit,
-    });
-  } else {
-    throw new UpstashClientError('No RediSearch/hybrid search method found on Query client. Please update @upstash/query or implement advanced search integration.');
-  }
-};
-
-// QStash/Workflow client placeholder (to be implemented as needed)
-export const enqueueQStashTask = async (payload: QStashTaskPayload) => {
-  // Integrate with QStash API as needed
-  // Placeholder for enqueueing a workflow/task
-  return { status: 'enqueued', id: payload.id };
-};
-
-export const trackWorkflowNode = async (node: WorkflowNode) => {
-  // Integrate with Workflow API as needed
-  // Placeholder for tracking workflow node status
-  return { status: node.status, id: node.id };
-}
-
-// --- Generic CRUD for Upstash Entities ---
 
 /**
  * Helper: Serialize entity for Redis hset
@@ -411,8 +349,8 @@ function serializeEntityForRedis<T extends UpstashEntityBase>(entity: T): Record
   return result;
 }
 
-/**
- * Generic create or update for any Upstash entity type.
+/** 
+ * Generic create or update for any Upstash entity type. 
  * @param entityType - e.g. 'thread', 'message', 'agent_state', etc.
  * @param entity - The entity object (must match schema)
  * @param schema - The Zod schema for validation
@@ -465,17 +403,15 @@ export async function upstashListEntities<T extends UpstashEntityBase>(
   options?: { limit?: number; offset?: number; filters?: Record<string, unknown>; sortBy?: string; sortOrder?: 'ASC' | 'DESC' },
   schema: z.ZodType<T> = UpstashEntitySchema as z.ZodType<T>
 ): Promise<T[]> {
-  // Use RediSearch/Hybrid query if available, else fallback to scan
   if (options?.filters || options?.sortBy) {
     const query: RediSearchHybridQuery = {
       index: entityType,
       query: '*',
       ...options,
     };
-    const results: RediSearchHybridResult[] = await runRediSearchHybridQuery(query);
+    const results = await runRediSearchHybridQuery(query) as RediSearchHybridResult[];
     return results.map(r => schema.parse(r.fields));
   } else {
-    // Fallback: scan all keys of this type
     const redis = getRedisClient();
     const pattern = `${entityType}:*`;
     let cursor = 0;
@@ -495,15 +431,37 @@ export async function upstashListEntities<T extends UpstashEntityBase>(
   }
 }
 
-// --- Ensure all exports are up-to-date and type-safe ---
-// (No changes needed, all exports are already present and type-safe)
-
-// --- Onboarding/graph extraction doc ---
 /**
- * This file is the canonical entry point for Upstash client management.
- * - Always use getRedisClient/getVectorClient/getUpstashQueryClient for singleton access.
- * - All config is validated with Zod and errors are logged with upstashLogger.
- * - Use isUpstashMainDb() to check if Upstash is the main DB.
- * - Use shouldFallbackToBackup() to check if fallback to Supabase/LibSQL is allowed.
- * - All changes here must be reflected in upstash.json and README.md.
+ * Add RediSearch/Hybrid Query client helper
  */
+export const runRediSearchHybridQuery = async (query: RediSearchHybridQuery) => {
+  const client: Query = getUpstashQueryClient();
+  type FtSearchFn = (index: string, query: string, options: Record<string, unknown>) => Promise<unknown>;
+  type SearchFn = (index: string, query: string, options: Record<string, unknown>) => Promise<unknown>;
+  const options = {
+    vector: query.vector,
+    filters: query.filters,
+    sortBy: query.sortBy,
+    sortOrder: query.sortOrder,
+    offset: query.offset,
+    limit: query.limit,
+  };
+  if (typeof ((client as unknown) as { ftSearch?: FtSearchFn }).ftSearch === 'function') {
+    return ((client as unknown) as { ftSearch: FtSearchFn }).ftSearch(query.index, query.query, options);
+  } else if (typeof ((client as unknown) as { search?: SearchFn }).search === 'function') {
+    return ((client as unknown) as { search: SearchFn }).search(query.index, query.query, options);
+  } else {
+    throw new UpstashClientError('No RediSearch/hybrid search method found on Query client. Please update @upstash/query or implement advanced search integration.');
+  }
+};
+
+/**
+ * QStash/Workflow client placeholder (to be implemented as needed)
+ */
+export const enqueueQStashTask = async (payload: QStashTaskPayload) => {
+  return { status: 'enqueued', id: payload.id };
+};
+
+export const trackWorkflowNode = async (node: WorkflowNode) => {
+  return { status: node.status, id: node.id };
+};

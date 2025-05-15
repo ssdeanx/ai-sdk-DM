@@ -1,10 +1,54 @@
 import { generateId } from 'ai';
-import { getRedisClient, shouldFallbackToBackup, getUpstashQueryClient, runRediSearchHybridQuery, enqueueQStashTask, trackWorkflowNode } from './upstashClients';
-import { Thread, Message, ThreadMetadata, RedisHashData, RedisStoreError, RediSearchHybridQuery, RediSearchHybridResult, QStashTaskPayload, WorkflowNode, UpstashEntityBase } from './upstashTypes';
-import { logError } from './upstash-logger';
 import { createItem, getItemById, updateItem, deleteItem, getData } from './supabase-adapter';
 import { z } from 'zod';
-import { Query } from '@upstash/query';
+import { logError } from './upstash-logger';
+
+import {
+  // Error classes
+  RedisStoreError,
+  // Zod schemas
+  ThreadEntitySchema,
+  MessageEntitySchema,
+  AgentStateEntitySchema,
+  ToolExecutionEntitySchema,
+  WorkflowNodeEntitySchema,
+  LogEntryEntitySchema,
+  LogEntrySchema,
+  AdvancedLogQueryOptionsSchema,
+  AgentStateSchema,
+  StoredAgentStateSchema,
+  ThreadSearchResultSchema,
+  MessageSearchResultSchema,
+  // Types
+  ThreadMetadata,
+  Thread,
+  Message,
+  RedisHashData,
+  RediSearchHybridQuery,
+  RediSearchHybridResult,
+  QStashTaskPayload,
+  WorkflowNode,
+  AgentState,
+  ToolExecutionEntity,
+  LogEntry,
+  ListEntitiesOptions,
+  UpstashEntityBase,
+  UserEntity,
+  WorkflowEntity,
+  WorkflowNodeEntity,
+  LogEntryEntity,
+  AgentStateEntity,
+  MessageEntity,
+  ThreadEntity
+} from './upstashTypes';
+
+import {
+  getRedisClient,
+  runRediSearchHybridQuery,
+  enqueueQStashTask,
+  trackWorkflowNode,
+  shouldFallbackToBackup
+} from './upstashClients';
 
 // --- Constants for Redis Keys ---
 const THREAD_PREFIX = "thread:";
@@ -359,12 +403,14 @@ export async function updateRedisEntity<T extends { metadata?: Record<string, un
 export async function deleteRedisEntity(entityType: string, id: string): Promise<boolean> {
   try {
     const redis = getRedisClient();
-    await redis.del(`${entityType}:${id}`);
+    const key = `${entityType}:${id}`;
+    await redis.del(key);
     await redis.srem(`${entityType}:ids`, id);
     return true;
   } catch (err) {
     await logError('redis-store', `Failed to delete entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
+      // Fallback to Supabase/LibSQL
       return deleteItem(entityType, id);
     }
     throw new RedisStoreError(`Failed to delete entity: ${entityType}`, err);
@@ -375,10 +421,10 @@ export async function deleteRedisEntity(entityType: string, id: string): Promise
  * Generic list/search for any entity type (with optional filters, order, pagination)
  */
 export interface ListEntitiesOptions {
+  filters?: Array<{ field: string; operator: string; value: unknown }>;
+  orderBy?: { column: string; ascending?: boolean };
   limit?: number;
   offset?: number;
-  filters?: Record<string, unknown>;
-  orderBy?: { column: string; ascending?: boolean };
   select?: string[];
 }
 
@@ -388,31 +434,28 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
 ): Promise<T[]> {
   try {
     const redis = getRedisClient();
-    const ids = (await redis.smembers(`${entityType}:ids`)) as string[];
-    const paged = ids.slice(options?.offset || 0, (options?.offset || 0) + (options?.limit || ids.length));
-    const entities: T[] = [];
-    for (const id of paged) {
-      const entity = await getRedisEntityById<T>(entityType, id);
-      if (entity) entities.push(entity);
+    const ids = await redis.smembers(`${entityType}:ids`);
+    if (!ids || ids.length === 0) return [];
+    const pipeline = redis.pipeline();
+    for (const id of ids) {
+      pipeline.hgetall(`${entityType}:${id}`);
     }
-    // TODO: Add advanced filtering/order/select using @upstash/query if needed
+    const results = await pipeline.exec();
+    let entities = (results as Array<Record<string, unknown> | null>).map((data) => {
+      if (!data) return null;
+      return parseRedisHashData<T>(data as RedisHashData);
+    }).filter((e): e is T => !!e);
+    // Apply filters, order, pagination, select
+    if (options?.filters) entities = applyFilters(entities, options.filters);
+    if (options?.orderBy) entities = applyOrdering(entities, options.orderBy);
+    entities = applyPagination(entities, options?.limit, options?.offset);
+    if (options?.select) entities = entities.map(e => selectFields(e, options.select) as T);
     return entities;
   } catch (err) {
     await logError('redis-store', `Failed to list entities: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      // Convert ListEntitiesOptions to QueryOptions for fallback
-      const queryOptions = options
-        ? {
-            limit: options.limit,
-            offset: options.offset,
-            select: options.select,
-            orderBy: options.orderBy,
-            filters: options.filters
-              ? Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }))
-              : undefined,
-          }
-        : undefined;
-      return getData(entityType, queryOptions) as Promise<T[]>;
+      // Fallback to Supabase/LibSQL
+      return getData(entityType, options) as Promise<T[]>;
     }
     throw new RedisStoreError(`Failed to list entities: ${entityType}`, err);
   }
@@ -420,31 +463,26 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
 
 // Example: Use pipelining for batch operations
 export async function batchGetThreads(threadIds: string[]): Promise<(Thread | null)[]> {
-  const redis = getRedisClient();
-  const pipeline = redis.pipeline();
-  for (const id of threadIds) {
-    pipeline.hgetall(`${THREAD_PREFIX}${id}`);
+  try {
+    const redis = getRedisClient();
+    const pipeline = redis.pipeline();
+    for (const threadId of threadIds) {
+      pipeline.hgetall(`${THREAD_PREFIX}${threadId}`);
+    }
+    const results = await pipeline.exec();
+    return (results as Array<Record<string, unknown> | null>).map((data) => {
+      if (!data) return null;
+      try {
+        return parseRedisHashData<Thread>(data as RedisHashData);
+      } catch (e) {
+        logError('redis-store', 'Thread parse error', toLoggerError(e));
+        return null;
+      }
+    });
+  } catch (err) {
+    await logError('redis-store', 'Error in batchGetThreads', toLoggerError(err));
+    throw new RedisStoreError('Error in batchGetThreads', err);
   }
-  const results = await pipeline.exec();
-  return (results as [unknown, unknown][]).map((result, idx) => {
-    const [err, data] = result;
-    if (err) {
-      logError('redis-store', 'Error in batchGetThreads', toLoggerError(err));
-      return null;
-    }
-    try {
-      return z.object({
-        id: z.string(),
-        name: z.string().optional(),
-        user_id: z.string().optional(),
-        agent_id: z.string().optional(),
-        metadata: z.string().optional(),
-      }).parse(data) as Thread;
-    } catch (e) {
-      logError('redis-store', 'Thread parse error', toLoggerError(e));
-      return null;
-    }
-  });
 }
 
 // --- RediSearch: Advanced Query Support for API Integration ---
@@ -461,23 +499,73 @@ export async function searchThreadsByMetadata(
   options?: { limit?: number; offset?: number }
 ): Promise<Thread[]> {
   try {
-    // Fetch all thread IDs from Redis
-    const redis = getRedisClient();
-    const threadIds = (await redis.zrange(THREADS_SET, 0, -1, { rev: true })) as string[];
-    const threads: Thread[] = [];
-    for (const threadId of threadIds) {
-      const thread = await getRedisThreadById(threadId);
-      if (!thread) continue;
-      // Filter by query fields
-      if (Object.entries(query).every(([k, v]) => thread[k as keyof Thread] === v)) {
-        threads.push(thread);
-      }
-    }
+    const threads = await listRedisThreads(1000, 0); // Get all threads (or a large page)
+    const matches = threads.filter(thread => {
+      if (!thread.metadata) return false;
+      return Object.entries(query).every(([k, v]) => {
+        return thread.metadata && thread.metadata[k] === v;
+      });
+    });
     const offset = options?.offset ?? 0;
-    const limit = options?.limit ?? 20;
-    return threads.slice(offset, offset + limit);
+    const limit = options?.limit ?? 10;
+    return matches.slice(offset, offset + limit);
   } catch (err) {
     await logError('redis-store', 'Failed RediSearch query', toLoggerError(err));
     throw new RedisStoreError('Failed RediSearch query', err);
   }
+}
+
+// --- Helper functions for filtering, ordering, pagination, select ---
+function applyFilters<T>(items: T[], filters?: Array<{ field: string; operator: string; value: unknown }>): T[] {
+  if (!filters || filters.length === 0) return items;
+  return items.filter(item => {
+    return filters.every(filter => {
+      const value = (item as Record<string, unknown>)[filter.field];
+      switch (filter.operator) {
+        case 'eq': return value === filter.value;
+        case 'neq': return value !== filter.value;
+        case 'gt': return typeof value === 'number' && typeof filter.value === 'number' && value > filter.value;
+        case 'gte': return typeof value === 'number' && typeof filter.value === 'number' && value >= filter.value;
+        case 'lt': return typeof value === 'number' && typeof filter.value === 'number' && value < filter.value;
+        case 'lte': return typeof value === 'number' && typeof filter.value === 'number' && value <= filter.value;
+        case 'like': return typeof value === 'string' && typeof filter.value === 'string' && value.includes(filter.value);
+        case 'ilike': return typeof value === 'string' && typeof filter.value === 'string' && value.toLowerCase().includes(filter.value.toLowerCase());
+        case 'in': return Array.isArray(filter.value) && filter.value.includes(value);
+        case 'is': return value === filter.value;
+        default: return false;
+      }
+    });
+  });
+}
+
+function applyOrdering<T>(items: T[], orderBy?: { column: string; ascending?: boolean }): T[] {
+  if (!orderBy) return items;
+  const { column, ascending = true } = orderBy;
+  return [...items].sort((a, b) => {
+    const aValue = (a as Record<string, unknown>)[column];
+    const bValue = (b as Record<string, unknown>)[column];
+    if (aValue === bValue) return 0;
+    if (aValue === null || aValue === undefined) return ascending ? 1 : -1;
+    if (bValue === null || bValue === undefined) return ascending ? -1 : 1;
+    if (ascending) return aValue > bValue ? 1 : -1;
+    return aValue < bValue ? 1 : -1;
+  });
+}
+
+function applyPagination<T>(items: T[], limit?: number, offset?: number): T[] {
+  let result = items;
+  if (offset !== undefined && offset > 0) result = result.slice(offset);
+  if (limit !== undefined && limit > 0) result = result.slice(0, limit);
+  return result;
+}
+
+function selectFields<T extends object>(item: T, select?: string[]): Partial<T> {
+  if (!select || select.length === 0) return item;
+  const result: Partial<T> = {};
+  for (const field of select) {
+    if (field in item) {
+      result[field as keyof T] = item[field as keyof T];
+    }
+  }
+  return result;
 }

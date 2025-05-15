@@ -1,4 +1,4 @@
-import { streamText, generateText } from "ai"
+import { streamText, generateText, generateId } from "ai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createVertex } from "@ai-sdk/google-vertex"
 import { createOpenAI } from "@ai-sdk/openai"
@@ -8,6 +8,7 @@ import { getRedisClient, getVectorClient } from "./memory/upstash/upstashClients
 import { shouldUseUpstash } from "./memory/supabase"
 import { getEncoding } from "js-tiktoken"
 import { pipeline } from "@xenova/transformers"
+import { upstashLogger } from "./memory/upstash/upstash-logger"
 
 // Initialize Google AI provider with enhanced capabilities
 export function getGoogleAI(apiKey: string, baseURL?: string) {
@@ -102,7 +103,7 @@ export async function streamAIResponse(
 
     return result
   } catch (error) {
-    console.error("Error streaming AI response:", error)
+    upstashLogger.error({ msg: "Error streaming AI response", error })
     throw error
   }
 }
@@ -161,7 +162,7 @@ export async function generateAIResponse(
 
     return result
   } catch (error) {
-    console.error("Error generating AI response:", error)
+    upstashLogger.error({ msg: "Error generating AI response", error })
     throw error
   }
 }
@@ -188,7 +189,7 @@ export function countTokens(text: string, modelName = "gpt-4") {
     const tokens = encoding.encode(text)
     return tokens.length
   } catch (error) {
-    console.error("Error counting tokens:", error)
+    upstashLogger.error({ msg: "Error counting tokens", error })
     // Fallback to approximate token count (1 token ≈ 4 characters)
     return Math.ceil(text.length / 4)
   }
@@ -211,7 +212,7 @@ export async function generateEmbedding(text: string) {
 
     return result.data
   } catch (error) {
-    console.error("Error generating embedding:", error)
+    upstashLogger.error({ msg: "Error generating embedding", error })
     throw error
   }
 }
@@ -219,7 +220,7 @@ export async function generateEmbedding(text: string) {
 // Save embedding to database
 export async function saveEmbedding(vector: Float32Array, model = "all-MiniLM-L6-v2") {
   try {
-    const id = crypto.randomUUID();
+    const id = generateId();
 
     if (shouldUseUpstash()) {
       // Use Upstash Vector
@@ -229,17 +230,17 @@ export async function saveEmbedding(vector: Float32Array, model = "all-MiniLM-L6
       const vectorArray = Array.from(vector);
 
       // Upsert to Upstash Vector
-      // Note: The exact API might differ based on Upstash Vector implementation
-      // This is a generic implementation that should be adjusted based on actual API
-      await vectorClient.upsert([{
-        id,
-        vector: vectorArray,
-        metadata: {
-          model,
-          dimensions: vector.length,
-          created_at: new Date().toISOString()
-        }
-      }]);
+      await vectorClient.upsert([
+        {
+          id,
+          vector: vectorArray,
+          metadata: {
+            model,
+            dimensions: vector.length,
+            created_at: new Date().toISOString(),
+          },
+        },
+      ]);
     } else {
       // Use LibSQL
       const db = getLibSQLClient();
@@ -258,7 +259,7 @@ export async function saveEmbedding(vector: Float32Array, model = "all-MiniLM-L6
 
     return id;
   } catch (error) {
-    console.error("Error saving embedding:", error);
+    upstashLogger.error({ msg: "Error saving embedding", error })
     throw error;
   }
 }
@@ -274,30 +275,24 @@ export async function performVectorSearch(vector: Float32Array, limit = 5) {
       const vectorArray = Array.from(vector);
 
       // Perform similarity search using Upstash Vector API
-      // Note: The exact API might differ based on Upstash Vector implementation
-      // This is a generic implementation that should be adjusted based on actual API
       const results = await vectorClient.query({
         vector: vectorArray,
         topK: limit,
-        includeMetadata: true
+        includeMetadata: true,
       });
 
       // Format results to match the expected output
       return results.map((result: any) => ({
         id: result.id,
-        similarity: result.score || 0
+        similarity: result.score || 0,
       }));
     } else {
       // Use LibSQL
       const db = getLibSQLClient();
 
-      // This is a simplified approach - in a real implementation, you would use
-      // a vector database or extension that supports efficient similarity search
-      // For now, we'll retrieve all embeddings and compute similarity in JS
-
       const result = await db.execute({
         sql: `SELECT id, vector FROM embeddings`,
-        args: []
+        args: [],
       });
 
       const similarities = result.rows.map((row) => {
@@ -317,7 +312,7 @@ export async function performVectorSearch(vector: Float32Array, limit = 5) {
       return similarities.slice(0, limit);
     }
   } catch (error) {
-    console.error("Error performing vector search:", error);
+    upstashLogger.error({ msg: "Error performing vector search", error })
     throw error;
   }
 }

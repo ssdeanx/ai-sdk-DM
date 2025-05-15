@@ -35,6 +35,8 @@ import { modelRegistry, ModelSettings } from "./models/model-registry";
 import { getModelById, getModelByModelId } from "./models/model-service";
 import { z } from "zod";
 import { shouldUseUpstash } from "./memory/supabase";
+import { upstashLogger } from "./memory/upstash/upstash-logger";
+import type { ChatMessage, ToolDefinition, MetadataRecord } from "./memory/upstash/upstashTypes";
 
 // --- Zod Schemas ---
 
@@ -44,15 +46,15 @@ import { shouldUseUpstash } from "./memory/supabase";
 export const AISDKOptionsSchema = z.object({
   provider: z.enum(['google', 'openai', 'anthropic']),
   modelId: z.string().min(1),
-  messages: z.array(z.any()),
+  messages: z.array(z.custom<ChatMessage>()),
   temperature: z.number().min(0).max(2).optional().default(0.7),
   maxTokens: z.number().int().positive().optional(),
-  tools: z.record(z.any()).optional().default({}),
+  tools: z.record(z.custom<ToolDefinition>()).optional().default({}),
   apiKey: z.string().optional(),
   baseURL: z.string().optional(),
   traceName: z.string().optional(),
   userId: z.string().optional(),
-  metadata: z.record(z.any()).optional().default({}),
+  metadata: z.record(z.custom<MetadataRecord>()).optional().default({}),
   middleware: z.union([
     z.custom<LanguageModelV1Middleware>(),
     z.array(z.custom<LanguageModelV1Middleware>())
@@ -97,28 +99,21 @@ export class AISDKIntegrationError extends Error {
  */
 async function getModelConfiguration(modelId: string): Promise<ModelSettings | undefined> {
   try {
-    // Check registry first
     let model = modelRegistry.getModel(modelId);
-
     if (!model) {
-      // Try to fetch from database (Upstash or Supabase)
-      // Note: getModelById and getModelByModelId already handle Upstash/Supabase selection internally
-      // based on shouldUseUpstash() in the model-service.ts implementation
       const dbModel = await getModelById(modelId);
       if (dbModel) {
         model = dbModel;
       } else {
-        // Try to fetch by model_id
         const modelIdModel = await getModelByModelId(modelId);
         if (modelIdModel) {
           model = modelIdModel;
         }
       }
     }
-
     return model;
   } catch (error) {
-    console.warn(`Error getting model configuration for ${modelId}:`, error);
+    upstashLogger.warn({ msg: `Error getting model configuration for ${modelId}`, error });
     return undefined;
   }
 }
@@ -171,16 +166,9 @@ export async function getAllAISDKTools({
   includeCustom?: boolean
   includeAgentic?: boolean
 } = {}) {
-  // Get built-in tools
   const builtInTools = includeBuiltIn ? getAllBuiltInTools() : {};
-
-  // Get custom tools
   const customTools = includeCustom ? await loadCustomTools() : {};
-
-  // Get agentic tools
   const agTools = includeAgentic ? agenticTools : {};
-
-  // Combine all tools
   return {
     ...builtInTools,
     ...customTools,
@@ -250,15 +238,15 @@ export async function streamWithAISDK({
 }: {
   provider: "google" | "openai" | "anthropic";
   modelId: string;
-  messages: any[];
+  messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, ToolDefinition>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: MetadataRecord;
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
@@ -267,8 +255,7 @@ export async function streamWithAISDK({
   };
   responseModalities?: Array<"TEXT" | "IMAGE">;
   cachedContent?: string;
-}): Promise<StreamTextResult<Record<string, any>, never>> {
-  // Create a trace for this operation
+}): Promise<StreamTextResult<Record<string, never>, never>> {
   const traceObj = await createTrace({
     name: traceName || `${provider}_stream`,
     userId,
@@ -282,15 +269,10 @@ export async function streamWithAISDK({
       messageCount: messages.length
     }
   });
-
   const traceId = traceObj?.id;
-
   try {
-    // Extract persona ID from metadata if available
     const personaId = metadata?.personaId || metadata?.persona_id;
     let startTime = Date.now();
-
-    // Stream based on provider
     let result;
     switch (provider) {
       case "google":
@@ -316,7 +298,6 @@ export async function streamWithAISDK({
           middleware
         });
         break;
-
       case "openai":
         result = await streamOpenAIWithTracing({
           modelId,
@@ -336,7 +317,6 @@ export async function streamWithAISDK({
           middleware
         });
         break;
-
       case "anthropic":
         result = await streamAnthropicWithTracing({
           modelId,
@@ -356,18 +336,13 @@ export async function streamWithAISDK({
           middleware
         });
         break;
-
       default:
-        throw new Error(`Unsupported provider: ${provider}`);
+        throw new AISDKIntegrationError(`Unsupported provider: ${provider}`);
     }
-
-    // Update persona score if a persona ID was provided
     if (personaId) {
       try {
         const endTime = Date.now();
         const latency = endTime - startTime;
-
-        // Update persona score asynchronously (don't await)
         personaManager.recordPersonaUsage(personaId, {
           success: true,
           latency,
@@ -377,17 +352,14 @@ export async function streamWithAISDK({
             executionTime: latency.toString()
           }
         }).catch(error => {
-          console.error(`Error updating persona score for ${personaId}:`, error);
+          upstashLogger.warn({ msg: `Error updating persona score for ${personaId}`, error });
         });
       } catch (scoreError) {
-        // Log but don't throw - we don't want to fail the main operation
-        console.error(`Error updating persona score:`, scoreError);
+        upstashLogger.warn({ msg: `Error updating persona score`, error: scoreError });
       }
     }
-
     return result;
   } catch (error) {
-    // Log the error
     if (traceId) {
       await logEvent({
         traceId,
@@ -398,8 +370,8 @@ export async function streamWithAISDK({
         }
       });
     }
-
-    throw error;
+    upstashLogger.error({ msg: "Error in streamWithAISDK", error });
+    throw new AISDKIntegrationError("Error in streamWithAISDK", error);
   }
 }
 
@@ -436,18 +408,17 @@ export async function generateWithAISDK({
 }: {
   provider: "google" | "openai" | "anthropic"
   modelId: string
-  messages: any[]
+  messages: ChatMessage[]
   temperature?: number
   maxTokens?: number
-  tools?: Record<string, any>
+  tools?: Record<string, ToolDefinition>
   apiKey?: string
   baseURL?: string
   traceName?: string
   userId?: string
-  metadata?: any
+  metadata?: MetadataRecord
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
-}): Promise<GenerateTextResult<Record<string, any>, never>> {
-  // Create a trace for this operation
+}): Promise<GenerateTextResult<Record<string, never>, never>> {
   const traceObj = await createTrace({
     name: traceName || `${provider}_generate`,
     userId,
@@ -461,15 +432,10 @@ export async function generateWithAISDK({
       messageCount: messages.length
     }
   });
-
   const traceId = traceObj?.id;
-
   try {
-    // Extract persona ID from metadata if available
     const personaId = metadata?.personaId || metadata?.persona_id;
     let startTime = Date.now();
-
-    // Generate based on provider
     let result;
     switch (provider) {
       case "google":
@@ -491,7 +457,6 @@ export async function generateWithAISDK({
           middleware
         });
         break;
-
       case "openai":
         result = await generateOpenAIWithTracing({
           modelId,
@@ -509,7 +474,6 @@ export async function generateWithAISDK({
           }
         });
         break;
-
       case "anthropic":
         result = await generateAnthropicWithTracing({
           modelId,
@@ -527,18 +491,13 @@ export async function generateWithAISDK({
           }
         });
         break;
-
       default:
-        throw new Error(`Unsupported provider: ${provider}`);
+        throw new AISDKIntegrationError(`Unsupported provider: ${provider}`);
     }
-
-    // Update persona score if a persona ID was provided
     if (personaId) {
       try {
         const endTime = Date.now();
         const latency = endTime - startTime;
-
-        // Update persona score asynchronously (don't await)
         personaManager.recordPersonaUsage(personaId, {
           success: true,
           latency,
@@ -548,17 +507,14 @@ export async function generateWithAISDK({
             executionTime: latency.toString()
           }
         }).catch(error => {
-          console.error(`Error updating persona score for ${personaId}:`, error);
+          upstashLogger.warn({ msg: `Error updating persona score for ${personaId}`, error });
         });
       } catch (scoreError) {
-        // Log but don't throw - we don't want to fail the main operation
-        console.error(`Error updating persona score:`, scoreError);
+        upstashLogger.warn({ msg: `Error updating persona score`, error: scoreError });
       }
     }
-
     return result;
   } catch (error) {
-    // Log the error
     if (traceId) {
       await logEvent({
         traceId,
@@ -569,7 +525,7 @@ export async function generateWithAISDK({
         }
       });
     }
-
-    throw error;
+    upstashLogger.error({ msg: "Error in generateWithAISDK", error });
+    throw new AISDKIntegrationError("Error in generateWithAISDK", error);
   }
 }

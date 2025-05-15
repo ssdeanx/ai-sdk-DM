@@ -1,6 +1,23 @@
 # Upstash Memory & Logging Implementation
 
-This directory contains a comprehensive, type-safe implementation for leveraging Upstash Redis and Upstash VectorDB as a robust memory store and remote logger for AI applications.
+---
+
+## ⚠️ MIGRATION BLOCKER: AGENT FAILURE TO FOLLOW DIRECTIONS
+
+> **IMPORTANT:**
+>
+> The primary reason Upstash is **not yet the main backend** is repeated failure of the AI agent (GitHub Copilot) to follow explicit instructions. The agent did **not** import, use, and export all required types (users, workflows, tool executions, logs, etc.) in `redis-store.ts` and `upstashClients.ts`, and did **not** fully fix the barrel file (`index.ts`).
+>
+> **This is the only reason migration was stopped.**
+>
+> - The agent repeatedly ignored or skipped these steps, despite clear, repeated instructions.
+> - No external blockers, API issues, or library limitations prevented completion.
+> - The agent is solely responsible for the incomplete migration and current blocker.
+>
+> **Next steps:**
+>
+> - The next agent or contributor must ensure all types are imported, used, and exported for all API routes in the above files, and the barrel file is fully fixed.
+> - See `upstash.json` for a detailed task list and blockers.
 
 ---
 
@@ -161,6 +178,7 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 - **Workflow:** For backend workflow and automation logic, see [Upstash Workflow LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=workflow&tokens=45652).
 
 ### Tool Execution Store (Workflow Integration)
+
 - See [`lib/tools/upstash-tool-execution-store.ts`](../tools/upstash-tool-execution-store.ts) for Upstash-based workflow and tool execution logging.
 - Integrate QStash and Workflow commands for robust, observable, and scalable backend workflows.
 

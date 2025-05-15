@@ -1,5 +1,3 @@
-import { Redis } from "@upstash/redis";
-import { Index, Vector } from "@upstash/vector";
 import { z } from 'zod';
 
 // --- Error Classes ---
@@ -462,6 +460,3 @@ export const MessageSearchResultSchema = z.object({
   score: z.number().optional(),
 });
 export type MessageSearchResult = z.infer<typeof MessageSearchResultSchema>;
-
-// --- Export for completeness ---
-export type { VectorQueryOptions as QueryOptions, VectorQueryResult as QueryResult, VectorFetchResult as FetchResult, RediSearchHybridQuery, RediSearchHybridResult, QStashTaskPayload, WorkflowNode, AdvancedLogQueryOptions };

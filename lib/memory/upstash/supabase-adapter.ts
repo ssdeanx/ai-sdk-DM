@@ -22,6 +22,24 @@ import {
 import { upstashLogger } from './upstash-logger';
 import { z } from 'zod';
 import { generateEmbedding } from '../../ai-integration';
+import {
+  createRedisEntity,
+  getRedisEntityById,
+  updateRedisEntity,
+  deleteRedisEntity,
+  listRedisEntities,
+  batchGetThreads,
+  searchThreadsByMetadata,
+  ListEntitiesOptions
+} from './redis-store';
+import {
+  Thread,
+  Message,
+  AgentState,
+  ToolExecutionEntity,
+  WorkflowNode,
+  LogEntry
+} from './upstashTypes';
 
 // --- Helper Functions ---
 
@@ -109,7 +127,7 @@ function applyOrdering<T>(items: T[], orderBy?: { column: string; ascending?: bo
     if (aValue === null || aValue === undefined) return ascending ? 1 : -1;
     if (bValue === null || bValue === undefined) return ascending ? -1 : 1;
     if (ascending) return aValue > bValue ? 1 : -1;
-    return aValue < bValue ? 1 : -1;
+    return aValue < bValue ? -1 : 1;
   });
 }
 
@@ -435,3 +453,54 @@ export async function semanticSearch(
     throw new VectorStoreError('Failed to perform semantic search');
   }
 }
+
+// --- Enhanced Generic Entity CRUD API ---
+export const entityApi = {
+  create: createRedisEntity,
+  getById: getRedisEntityById,
+  update: updateRedisEntity,
+  delete: deleteRedisEntity,
+  list: listRedisEntities,
+  batchGetThreads,
+  searchThreadsByMetadata,
+  upsertTexts,
+  semanticSearch
+};
+
+// --- Enhanced Table CRUD helpers ---
+export async function upsertItem<T extends TableRow>(tableName: string, item: T): Promise<T> {
+  const found = await getItemById(tableName, item.id);
+  if (found) return updateItem(tableName, item.id, item) as Promise<T>;
+  return createItem(tableName, item) as Promise<T>;
+}
+
+export async function existsItem(tableName: string, id: string): Promise<boolean> {
+  const found = await getItemById(tableName, id);
+  return !!found;
+}
+
+export async function countItems(tableName: string, options?: QueryOptions): Promise<number> {
+  const all = await getData(tableName, options);
+  return all.length;
+}
+
+export async function batchGetItems<T extends TableRow>(tableName: string, ids: string[]): Promise<(T | null)[]> {
+  if (tableName === 'thread') {
+    return batchGetThreads(ids) as Promise<(T | null)[]>;
+  }
+  return Promise.all(ids.map(id => getItemById(tableName, id) as Promise<T | null>));
+}
+
+// --- Export all types for downstream use ---
+export type {
+  ListEntitiesOptions,
+  Thread,
+  Message,
+  AgentState,
+  ToolExecutionEntity,
+  WorkflowNode,
+  LogEntry,
+  VectorDocument,
+  VectorMetadata,
+  VectorQueryOptions
+};

@@ -4,6 +4,7 @@ import type { Index, Vector, QueryResult, FetchResult } from '@upstash/vector';
 import { generateEmbedding } from '../../ai-integration';
 import { z } from 'zod';
 import { RediSearchHybridQuery, RediSearchHybridResult, QStashTaskPayload, WorkflowNode, UpstashEntityBase } from './upstashTypes';
+import { upstashLogger } from './upstash-logger';
 
 // --- Zod Schemas ---
 
@@ -67,7 +68,7 @@ export interface EmbeddingMetadata {
   chunk_id?: string;
   user_id?: string;
   created_at?: string; // ISO 8601 timestamp
-  [key: string]: any; // Allow other arbitrary metadata
+  [key: string]: unknown; // Allow other arbitrary metadata
 }
 
 /**
@@ -101,9 +102,10 @@ export interface EmbeddingSearchResult extends QueryResult {
 
 // --- Error Handling ---
 export class VectorStoreError extends Error {
-  constructor(message: string, public cause?: any) {
+  constructor(message: string, public cause?: unknown) {
     super(message);
     this.name = "VectorStoreError";
+    Object.setPrototypeOf(this, VectorStoreError.prototype);
   }
 }
 
@@ -117,13 +119,13 @@ export class VectorStoreError extends Error {
  */
 export async function upsertEmbeddings(
   embeddings: EmbeddingVector | EmbeddingVector[]
-): Promise<any> { // The Upstash SDK returns `Promise<string>` for upsert, often "OK"
+): Promise<string> {
   const vectorDb: Index = getVectorClient();
   try {
     const result = await vectorDb.upsert(embeddings);
-    return result;
-  } catch (error) {
-    console.error("Error upserting embeddings to Upstash Vector:", error);
+    return result as string;
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error upserting embeddings to Upstash Vector', error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError("Failed to upsert embeddings", error);
   }
 }
@@ -150,9 +152,9 @@ export async function searchSimilarEmbeddings(
       includeMetadata,
       filter,
     });
-    return results as EmbeddingSearchResult[]; // Cast to ensure metadata type
-  } catch (error) {
-    console.error("Error searching embeddings in Upstash Vector:", error);
+    return results as EmbeddingSearchResult[];
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error searching embeddings in Upstash Vector', error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError("Failed to search embeddings", error);
   }
 }
@@ -175,24 +177,29 @@ export async function getEmbeddingsByIds(
     const normalizedIds = Array.isArray(ids) ? ids : [ids];
     const results = await vectorDb.fetch(normalizedIds, { includeVectors, includeMetadata });
     return results as Array<FetchResult<EmbeddingMetadata> | null> | FetchResult<EmbeddingMetadata> | null;
-  } catch (error) {
-    console.error("Error fetching embeddings by ID from Upstash Vector:", error);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error fetching embeddings by ID from Upstash Vector', error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError("Failed to fetch embeddings by ID", error);
   }
 }
+
 /**
  * Deletes one or more embedding vectors by their IDs.
  * @param ids An array of vector IDs or a single vector ID.
  * @returns A promise that resolves with the result of the delete operation from Upstash.
  * @throws VectorStoreError if deletion fails.
  */
-export async function deleteEmbeddingsByIds(ids: string | string[]): Promise<any> { // Upstash SDK returns `Promise<number>` (count of deleted vectors)
+export async function deleteEmbeddingsByIds(ids: string | string[]): Promise<number> {
   const vectorDb: Index = getVectorClient();
   try {
     const result = await vectorDb.delete(ids);
-    return result;
-  } catch (error) {
-    console.error("Error deleting embeddings by ID from Upstash Vector:", error);
+    // Upstash Vector returns { deleted: number }
+    if (typeof result === 'object' && result !== null && 'deleted' in result) {
+      return (result as { deleted: number }).deleted;
+    }
+    throw new VectorStoreError('Unexpected response from Upstash Vector delete', result);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error deleting embeddings by ID from Upstash Vector', error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError("Failed to delete embeddings by ID", error);
   }
 }
@@ -206,8 +213,8 @@ export async function resetVectorIndex(): Promise<void> {
   const vectorDb: Index = getVectorClient();
   try {
     await vectorDb.reset();
-  } catch (error) {
-    console.error("Error resetting Upstash Vector index:", error);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error resetting Upstash Vector index', error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError("Failed to reset vector index", error);
   }
 }
@@ -217,13 +224,13 @@ export async function resetVectorIndex(): Promise<void> {
  * @returns A promise that resolves with the index information.
  * @throws VectorStoreError if fetching info fails.
  */
-export async function getVectorIndexInfo(): Promise<any> { // Upstash SDK returns `Promise<InfoResult>`
+export async function getVectorIndexInfo(): Promise<unknown> {
   const vectorDb: Index = getVectorClient();
   try {
     const info = await vectorDb.info();
     return info;
-  } catch (error) {
-    console.error("Error fetching Upstash Vector index info:", error);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error fetching Upstash Vector index info', error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError("Failed to fetch vector index info", error);
   }
 }
@@ -281,8 +288,8 @@ export async function storeTextEmbedding(
     await upsertEmbeddings(vectorData);
 
     return id;
-  } catch (error) {
-    console.error('Error storing text embedding:', error);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error storing text embedding', error instanceof Error ? error : { message: String(error) });
     if (error instanceof VectorStoreError) {
       throw error;
     }
@@ -333,8 +340,8 @@ export async function searchTextStore(
     const results = await searchSimilarEmbeddings(embeddingArray, searchOptions);
 
     return results;
-  } catch (error) {
-    console.error('Error searching text store:', error);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error searching text store', error instanceof Error ? error : { message: String(error) });
     if (error instanceof VectorStoreError) {
       throw error;
     }
@@ -404,8 +411,8 @@ export async function hybridSearch(
     // Sort by combined score and limit results
     rerankedResults.sort((a, b) => b.score - a.score);
     return rerankedResults.slice(0, limit);
-  } catch (error) {
-    console.error('Error performing hybrid search:', error);
+  } catch (error: unknown) {
+    upstashLogger.error('vector-store', 'Error performing hybrid search', error instanceof Error ? error : { message: String(error) });
     if (error instanceof VectorStoreError) {
       throw error;
     }
@@ -419,6 +426,7 @@ export async function advancedVectorHybridSearch(query: RediSearchHybridQuery): 
     const results = await runRediSearchHybridQuery(query);
     return results as RediSearchHybridResult[];
   } catch (err) {
+    upstashLogger.error('vector-store', 'Failed advanced hybrid search', err instanceof Error ? err : { message: String(err) });
     throw new VectorStoreError('Failed advanced hybrid search', err);
   }
 }
