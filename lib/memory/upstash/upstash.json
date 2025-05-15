@@ -36,7 +36,15 @@
         "Remove all direct console statements, use upstashLogger",
         "Add @upstash/query support for agent state search if needed",
         "Add more robust error handling and type safety",
-        "Add tests for agent state operations"
+        "Add tests for agent state operations",
+        "Infer all types from usage and add to types field",
+        "List all exported/imported functions, consts, and methods",
+        "Map all API routes that depend on this file (legacy and new)",
+        "Add/expand reasoning tools and document addUsage for each",
+        "Refactor legacy API routes to use new ai-sdk-ui endpoints",
+        "Ensure test coverage for all CRUD and fallback logic",
+        "Document migration status and code smells",
+        "Link onboarding and troubleshooting docs for new contributors"
       ],
       "status": "incomplete",
       "observations": [
@@ -63,19 +71,103 @@
         "Semantic search can help map agent state usage and dependencies across the codebase.",
         "All changes must be reflected in the knowledge graph and README for traceability."
       ],
+      "tags": [
+        "upstash",
+        "agent-state",
+        "memory",
+        "ai-sdk-core",
+        "ai-sdk-ui",
+        "observability",
+        "analytics",
+        "fallback",
+        "supabase",
+        "libsql",
+        "zod",
+        "tracing",
+        "OpenTelemetry",
+        "Langfuse",
+        "integration",
+        "backend",
+        "frontend",
+        "project:ai-sdk-DM",
+        "knowledge-graph",
+        "onboarding",
+        "tool-logging",
+        "state-debugging",
+        "context7",
+        "documentation",
+        "dynamic-docs",
+        "integration-tool",
+        "search",
+        "vector",
+        "ratelimit",
+        "qstash",
+        "redis",
+        "logging",
+        "metrics",
+        "monitoring",
+        "troubleshooting",
+        "types",
+        "functions",
+        "const",
+        "methods",
+        "imports",
+        "exports",
+        "inferred-types",
+        "api-routes",
+        "legacy-api",
+        "ai-sdk-ui",
+        "test-coverage",
+        "migration-status"
+      ],
       "connections": [
         { "with": "memoryStore.ts", "purpose": "agent state CRUD and fallback integration" },
         { "with": "upstash-logger.ts", "purpose": "logging for all agent state ops" },
         { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility for agent state" },
         { "with": "upstashTypes.ts", "purpose": "type safety and Zod validation for agent state" },
         { "with": "stream-processor.ts", "purpose": "streaming agent state changes for analytics and observability" },
-        { "with": "tools.json", "purpose": "agent state analytics and tool execution logging" }
+        { "with": "tools.json", "purpose": "agent state analytics and tool execution logging" },
+        { "with": "otel-tracing.ts", "purpose": "OpenTelemetry tracing for agent state ops" },
+        { "with": "langfuse-integration.ts", "purpose": "Langfuse observability and metrics for agent state" },
+        { "with": "README.md", "purpose": "project onboarding and knowledge graph documentation" },
+        { "with": "lib/README.md", "purpose": "backend onboarding and architecture" },
+        { "with": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "with": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "with": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "with": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
-      "usageNotes": "Use for all agent state persistence. Always validate with Zod. Log all errors.",
-      "onboarding": "See README.md for setup and usage. Ensure fallback logic is robust.",
-      "navigation": "Imported by memoryStore.ts and index.ts.",
-      "troubleshooting": "Check for type errors and missing logger usage.",
-      "graphNotes": "Central node for agent state in Upstash graph.",
+      "apiRoutes": [
+        "/api/ai-sdk/agents",
+        "/api/ai-sdk/threads",
+        "/api/ai-sdk/dashboard",
+        "/api/ai-sdk/system",
+        "/api/ai-sdk/apps",
+        "/api/ai-sdk/mdx",
+        "/api/ai-sdk/settings",
+        "/api/ai-sdk/observability",
+        "/api/ai-sdk/content",
+        "/api/ai-sdk/blog",
+        "/api/ai-sdk/auth"
+      ],
+      "reasoningTools": [
+        {
+          "name": "debuggingapproach",
+          "addUsage": "Use for step-by-step debugging of agent state flows and fallback logic. Document findings in troubleshooting section."
+        },
+        {
+          "name": "metacognitivemonitoring",
+          "addUsage": "Apply for monitoring error patterns and log analysis. Integrate with upstashLogger and analytics."
+        },
+        {
+          "name": "codesmells",
+          "addUsage": "Run periodically to flag direct console usage, any types, and missing error handling. Document in migration status."
+        }
+      ],
+      "usageNotes": "Use for all agent state persistence. Always validate with Zod. Log all errors. Integrate with OpenTelemetry and Langfuse for observability. Ensure fallback to Supabase/LibSQL is robust. Update knowledge graph and onboarding docs with any changes.",
+      "onboarding": "See README.md, lib/README.md, and the documentation graph (see below) for setup, usage, and project context. Ensure fallback logic, observability, and analytics are implemented. Cross-reference all changes in the knowledge graph.",
+      "navigation": "Imported by memoryStore.ts, index.ts, and referenced in project onboarding docs.",
+      "troubleshooting": "Check for type errors, missing logger usage, and incomplete tracing/observability integration. Validate fallback logic and knowledge graph updates.",
+      "graphNotes": "Central node for agent state in Upstash and ai-sdk-DM knowledge graph. Connects to ai-sdk-core, ai-sdk-ui, OpenTelemetry, Langfuse, and project onboarding. For a full list of available documentation, see the documentation graph below.",
       "relationships": [
         { "type": "memory", "target": "memory" },
         { "type": "api-route", "target": "app/api/ai-sdk/agents" },
@@ -91,7 +183,15 @@
         { "type": "api-route", "target": "app/api/ai-sdk/auth" },
         { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+        { "type": "fallback", "target": "lib/memory/supabase.ts" },
+        { "type": "observability", "target": "otel-tracing.ts" },
+        { "type": "analytics", "target": "langfuse-integration.ts" },
+        { "type": "docs", "target": "README.md" },
+        { "type": "docs", "target": "lib/README.md" },
+        { "type": "integration", "target": "ai-sdk-core" },
+        { "type": "integration", "target": "ai-sdk-ui" },
+        { "type": "integration", "target": "OpenTelemetry" },
+        { "type": "integration", "target": "Langfuse" }
       ],
       "mentalModels": [
         "First Principles Thinking",
@@ -143,7 +243,17 @@
         { "with": "upstash-logger.ts", "purpose": "barrel export for logging utilities" },
         { "with": "upstashClients.ts", "purpose": "barrel export for Upstash clients" },
         { "with": "upstashTypes.ts", "purpose": "barrel export for shared types and schemas" },
-        { "with": "vector-store.ts", "purpose": "barrel export for vector operations" }
+        { "with": "vector-store.ts", "purpose": "barrel export for vector operations" },
+        { "with": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "with": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "with": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "with": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+      ],
+      "onboardingTools": [
+        "onboarding:get-library-docs",
+        "onboarding:resolve-library-id",
+        "onboarding:git_files",
+        "context7"
       ],
       "usageNotes": "Use this file to import any Upstash memory feature.",
       "onboarding": "Check README for export list and update policy.",
@@ -199,7 +309,11 @@
         { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+        { "type": "fallback", "target": "lib/memory/supabase.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "memoryStore.ts", "purpose": "thread/message CRUD, search, and RediSearch" },
@@ -256,7 +370,11 @@
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+        { "type": "fallback", "target": "lib/memory/supabase.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "memoryStore.ts", "purpose": "embedding storage/search for all entities" },
@@ -307,7 +425,11 @@
         { "type": "api-route", "target": "app/api/ai-sdk/auth" },
         { "type": "api-route", "target": "app/api/ai-sdk/users" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" }
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "agent-state-store.ts", "purpose": "logging for agent state ops" },
@@ -356,7 +478,11 @@
         { "type": "api-route", "target": "app/api/ai-sdk/models" },
         { "type": "api-route", "target": "app/api/ai-sdk/tools" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" }
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "redis-store.ts", "purpose": "client management for Redis" },
@@ -408,7 +534,11 @@
         { "type": "used-by", "target": "lib/memory/upstash/redis-store.ts" },
         { "type": "used-by", "target": "lib/memory/upstash/vector-store.ts" },
         { "type": "used-by", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "used-by", "target": "lib/memory/upstash/upstashClients.ts" }
+        { "type": "used-by", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "supabase-adapter.ts", "purpose": "type safety for fallback and all API routes" },
@@ -461,7 +591,11 @@
         { "type": "uses", "target": "lib/memory/upstash/vector-store.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+        { "type": "fallback", "target": "lib/memory/supabase.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "index.ts", "purpose": "barrel export for all memory ops" },
@@ -513,7 +647,11 @@
         { "type": "api-route", "target": "app/api/ai-sdk/models" },
         { "type": "api-route", "target": "app/api/ai-sdk/tools" },
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" }
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "index.ts", "purpose": "barrel export for streaming ops for all entities" }
@@ -558,7 +696,11 @@
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+        { "type": "fallback", "target": "lib/memory/supabase.ts" },
+        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
+        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
+        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
+        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
       ],
       "connections": [
         { "with": "supabase-adapter.ts", "purpose": "factory for fallback clients for all entities" }
@@ -708,22 +850,166 @@
       "name": "Available Tools for Upstash Integration and Project Automation",
       "description": "A list of tool IDs available for documentation management, code analysis, project context, and terminal interaction. Use these tools for onboarding, automation, and troubleshooting in the Upstash memory adapter and related modules.",
       "tools": [
-        "add_documentation",
-        "update_documentation",
-        "think",
-        "open_project",
-        "read_context",
-        "get_chunk_count",
-        "set_profile",
-        "get_profile_context",
-        "generate_outline",
-        "search_documentation",
-        "list_documentation",
-        "get_library_docs",
-        "resolve_library_id",
-        "write_to_terminal",
-        "read_terminal_output",
-        "send_control_character"
+        {
+          "id": "add_documentation",
+          "usageNotes": "Use to add new documentation sources to the project knowledge base. Essential when onboarding new libraries, APIs, or workflows. Helps keep documentation up-to-date for all contributors.",
+          "when": "When integrating new features, libraries, or after major refactors.",
+          "how": "Provide the name and URL of the documentation. Optionally, add tags or topics.",
+          "why": "Ensures all agents and developers have access to the latest docs for onboarding and troubleshooting.",
+          "relationships": ["update_documentation", "search_documentation"],
+          "connections": ["README.md", "knowledge graph", "onboarding flows"],
+          "observations": "Critical for legacy route refactoring—add docs for old APIs before migration."
+        },
+        {
+          "id": "update_documentation",
+          "usageNotes": "Update existing documentation entries when APIs, libraries, or workflows change. Keeps the knowledge base current and accurate.",
+          "when": "After library upgrades, API changes, or process updates.",
+          "how": "Specify the doc to update and provide the new content or URL.",
+          "why": "Prevents outdated or incorrect docs from causing confusion during refactoring or onboarding.",
+          "relationships": ["add_documentation", "search_documentation"],
+          "connections": ["README.md", "knowledge graph"],
+          "observations": "Use after refactoring legacy routes to document new patterns."
+        },
+        {
+          "id": "think",
+          "usageNotes": "Use for structured, step-by-step reasoning, brainstorming, or planning. Ideal for breaking down complex refactors or migrations.",
+          "when": "Before major code changes, during debugging, or when planning migrations.",
+          "how": "Write out your reasoning, hypotheses, and next steps. Use as a digital rubber duck.",
+          "why": "Improves code quality and reduces errors by clarifying logic before implementation.",
+          "relationships": ["debuggingapproach", "sequentialthinking"],
+          "connections": ["mentalModels", "reasoningTools"],
+          "observations": "Use to plan legacy route refactors and document migration steps."
+        },
+        {
+          "id": "open_project",
+          "usageNotes": "Open or switch to a different project context. Useful for multi-repo or multi-module work.",
+          "when": "When onboarding, troubleshooting, or migrating code across projects.",
+          "how": "Specify the project or workspace to open.",
+          "why": "Ensures all tools and context are aligned with the current project.",
+          "relationships": ["set_profile", "get_profile_context"],
+          "connections": ["workspace", "project settings"],
+          "observations": "Switch context before refactoring routes that span multiple modules."
+        },
+        {
+          "id": "read_context",
+          "usageNotes": "Read and analyze code files or directories. Supports advanced filtering and chunking for large codebases.",
+          "when": "When reviewing legacy code, planning refactors, or onboarding new contributors.",
+          "how": "Specify the path, file types, and whether to recurse into subdirectories.",
+          "why": "Enables deep code analysis and understanding before making changes.",
+          "relationships": ["get_chunk_count", "generate_outline"],
+          "connections": ["codebase", "file system"],
+          "observations": "Use to map out legacy route logic before migration."
+        },
+        {
+          "id": "get_chunk_count",
+          "usageNotes": "Determine how many chunks a large file or directory will be split into for analysis.",
+          "when": "Before reading or analyzing large files or directories.",
+          "how": "Provide the same parameters as read_context.",
+          "why": "Prevents timeouts and enables efficient, incremental code analysis.",
+          "relationships": ["read_context"],
+          "connections": ["large files", "code analysis"],
+          "observations": "Essential for legacy codebases with large files."
+        },
+        {
+          "id": "set_profile",
+          "usageNotes": "Set the active profile for context generation. Profiles can tailor context for different teams, workflows, or environments.",
+          "when": "When switching between different types of work (e.g., backend vs. frontend refactoring).",
+          "how": "Specify the profile name or settings.",
+          "why": "Ensures context and tools are optimized for the current task.",
+          "relationships": ["get_profile_context", "open_project"],
+          "connections": ["profiles", "context generation"],
+          "observations": "Switch profiles before refactoring routes with different requirements."
+        },
+        {
+          "id": "get_profile_context",
+          "usageNotes": "Retrieve repository or project context based on the current profile. Useful for onboarding, troubleshooting, or planning migrations.",
+          "when": "After setting or switching profiles.",
+          "how": "Call after set_profile to get tailored context.",
+          "why": "Provides relevant information and settings for the current workflow.",
+          "relationships": ["set_profile"],
+          "connections": ["profiles", "context generation"],
+          "observations": "Use to gather context before legacy route migration."
+        },
+        {
+          "id": "generate_outline",
+          "usageNotes": "Generate a code outline for a file, showing its structure (classes, functions, imports, etc).",
+          "when": "When onboarding, reviewing, or refactoring code.",
+          "how": "Specify the file path.",
+          "why": "Quickly understand file structure and dependencies before making changes.",
+          "relationships": ["read_context"],
+          "connections": ["codebase", "file system"],
+          "observations": "Use to plan refactors of legacy route files."
+        },
+        {
+          "id": "search_documentation",
+          "usageNotes": "Search all indexed documentation for relevant information, best practices, or code examples.",
+          "when": "When troubleshooting, onboarding, or planning migrations.",
+          "how": "Provide a query string describing what you need.",
+          "why": "Finds authoritative answers and patterns for legacy and new code.",
+          "relationships": ["add_documentation", "update_documentation", "list_documentation"],
+          "connections": ["documentation index", "knowledge base"],
+          "observations": "Use to find migration guides or best practices for refactoring routes."
+        },
+        {
+          "id": "list_documentation",
+          "usageNotes": "List all available documentation sources in the project knowledge base.",
+          "when": "When onboarding, auditing, or updating documentation.",
+          "how": "Call without parameters to get a full list.",
+          "why": "Ensures you know what docs are available before searching or updating.",
+          "relationships": ["search_documentation", "add_documentation"],
+          "connections": ["documentation index", "knowledge base"],
+          "observations": "Audit docs before refactoring legacy routes to ensure coverage. Always use add_documentation to add new docs and update_documentation to revise existing docs. Use list_documentation to verify what is present before adding or updating."
+        },
+        {
+          "id": "get_library_docs",
+          "usageNotes": "Fetch up-to-date documentation for a library or npm package using a Context7-compatible library ID. Use after resolving the library ID with resolve_library_id.",
+          "when": "When integrating or updating libraries, or troubleshooting package usage.",
+          "how": "Resolve the library ID, then fetch docs for setup, usage, or advanced features.",
+          "why": "Ensures you follow the latest best practices and avoid deprecated patterns.",
+          "relationships": ["resolve_library_id"],
+          "connections": ["npm packages", "library docs"],
+          "observations": "Use to update legacy route dependencies to modern libraries."
+        },
+        {
+          "id": "resolve_library_id",
+          "usageNotes": "Resolve an npm package name to a Context7-compatible library ID, required for get_library_docs.",
+          "when": "Before fetching docs for a new or updated package.",
+          "how": "Provide the npm package name.",
+          "why": "Ensures you fetch the correct documentation for the right package version.",
+          "relationships": ["get_library_docs"],
+          "connections": ["npm packages", "library docs"],
+          "observations": "Use before updating legacy route dependencies."
+        },
+        {
+          "id": "write_to_terminal",
+          "usageNotes": "Send commands to the integrated terminal for automation, testing, or deployment.",
+          "when": "When running scripts, tests, or deployment commands, especially during migrations.",
+          "how": "Provide the command string and any required parameters.",
+          "why": "Automates repetitive or complex command line tasks, reducing manual errors.",
+          "relationships": ["read_terminal_output", "send_control_character"],
+          "connections": ["terminal", "command line"],
+          "observations": "Use to automate migration scripts or test legacy route changes."
+        },
+        {
+          "id": "read_terminal_output",
+          "usageNotes": "Read and analyze output from the integrated terminal. Useful for verifying command results or debugging.",
+          "when": "After running scripts, tests, or deployments.",
+          "how": "Specify the terminal session or command to read output from.",
+          "why": "Validates that automated tasks completed successfully.",
+          "relationships": ["write_to_terminal"],
+          "connections": ["terminal", "command line"],
+          "observations": "Check migration or test results after refactoring routes."
+        },
+        {
+          "id": "send_control_character",
+          "usageNotes": "Send control characters (e.g., Ctrl+C) to the terminal to interrupt or control processes.",
+          "when": "When stopping scripts, tests, or deployments, or handling long-running processes.",
+          "how": "Specify the control character and target terminal session.",
+          "why": "Provides fine-grained control over terminal automation and process management.",
+          "relationships": ["write_to_terminal", "read_terminal_output"],
+          "connections": ["terminal", "command line"],
+          "observations": "Interrupt or manage migration scripts during legacy route refactoring."
+        }
       ],
       "usageNotes": "Use these tool IDs in automation, onboarding, and troubleshooting workflows. For codebase analysis, use read_context and get_chunk_count. For documentation, use add_documentation, update_documentation, search_documentation, and list_documentation. For terminal automation, use write_to_terminal, read_terminal_output, and send_control_character.",
       "examples": [
@@ -731,7 +1017,7 @@
         "add_documentation: { name: 'Upstash VectorDB', url: 'https://upstash.com/docs/vector' }",
         "read_context: { path: 'lib/memory/upstash/', fileTypes: 'ts', recursive: true }"
       ],
-      "bestPractices": "Reference this list when building new onboarding flows, troubleshooting, or automating project tasks. Update this list as new tools become available."
+      "bestPractices": "Reference this list when building new onboarding flows, troubleshooting, or automating project tasks. Always use add_documentation for new sources and update_documentation for changes. Use list_documentation to check current docs before making changes. Update this list as new tools become available."
     }
   ],
   "meta": {
@@ -913,7 +1199,7 @@
     "fileSpecific": {
       "agent-state-store.ts": [
         "Remove all any types.",
-        "Replace all direct console statements with upstashLogger.",
+        "Remove all direct console statements, use upstashLogger.",
         "Add @upstash/query support for agent state search if needed.",
         "Add more robust error handling and type safety.",
         "Add tests for agent state operations."

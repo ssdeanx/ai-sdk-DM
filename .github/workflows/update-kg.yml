@@ -1,0 +1,63 @@
+name: Update Knowledge Graph
+
+on:
+  push:
+    branches:
+      - main # Or your primary development branch
+    paths:
+      # Files from the Upstash Memory Adapter Knowledge Graph
+      - 'lib/memory/upstash/agent-state-store.ts'
+      - 'lib/memory/upstash/index.ts'
+      - 'lib/memory/upstash/redis-store.ts'
+      - 'lib/memory/upstash/vector-store.ts'
+      - 'lib/memory/upstash/upstash-logger.ts'
+      - 'lib/memory/upstash/upstashClients.ts'
+      - 'lib/memory/upstash/upstashTypes.ts'
+      - 'lib/memory/upstash/memoryStore.ts'
+      - 'lib/memory/upstash/stream-processor.ts'
+      - 'lib/memory/upstash/supabase-adapter-factory.ts'
+      # The knowledge graph also mentions lib/middleware.ts
+      - 'lib/middleware.ts'
+      # And the sources for the KG itself
+      - 'README.md' # If changes here should trigger KG update
+      - 'memory.json' # If changes here should trigger KG update
+      # The KG JSON file itself (if you want changes to it to also trigger, though usually it's an output)
+      # - 'path/to/your/knowledge-graph.json' # Uncomment and adjust if direct edits to KG should re-verify or trigger something
+
+jobs:
+  update-kg:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Important: Allows the job to commit back to the repo
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Updated to v4
+        with:
+          # Fetch full history to allow diffing if needed by your script
+          fetch-depth: 0
+
+      - name: Set up Node.js # Or your script's environment
+        uses: actions/setup-node@v4 # Updated to v4
+        with:
+          node-version: '20' # Specify a current LTS Node.js version, adjust as needed
+
+      - name: Install dependencies # If your script has them
+        run: npm ci # Prefer npm ci for CI environments if you have a package-lock.json
+
+      - name: Generate Knowledge Graph
+        run: node ./scripts/generate-kg.js # Path to your script
+        # Or: npm run generate-kg
+
+      - name: Commit and push if KG changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Add the KG file (replace with your actual KG filename)
+          git add path/to/your/knowledge-graph.json # Ensure this path is correct
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: Auto-update knowledge graph"
+            git push
+          else
+            echo "Knowledge graph is up-to-date."
+          fi

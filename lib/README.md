@@ -452,6 +452,8 @@ export default function Page() {
 }
 ```
 
+---
+
 ## 6. Troubleshooting
 
 - **Supabase failures**: Validate `SUPABASE_URL`/`SUPABASE_ANON_KEY`, inspect table schemas.
@@ -465,5 +467,16 @@ export default function Page() {
 - **Streaming issues**: Ensure proper handling of stream backpressure and client disconnections.
 
 ---
+
+## 8. Knowledge Graph, Metadata, and Integration Tags
+
+- All core modules (Upstash, ai-sdk-core, ai-sdk-ui, OpenTelemetry, Langfuse) are now cross-referenced in the knowledge graph and onboarding docs.
+- Each major component includes:
+  - Detailed tags for memory, observability, analytics, fallback, tracing, onboarding, and project context.
+  - Explicit connections to related files (e.g., memoryStore.ts, upstash-logger.ts, otel-tracing.ts, langfuse-integration.ts, README.md, openhands.md).
+  - Usage notes and troubleshooting guidance for onboarding and maintenance.
+  - Relationships for fallback, observability, analytics, docs, and integration.
+- See `lib/memory/upstash/upstash.json` for the canonical metadata and relationship schema.
+- Update this section and the knowledge graph with any new modules or integration points.
 
 Refer to folder-specific READMEs (`agents/README.md`, `tools/README.md`, `memory/README.md`) for deeper context, or the top-level [docs/](../docs/) directory for detailed guides.

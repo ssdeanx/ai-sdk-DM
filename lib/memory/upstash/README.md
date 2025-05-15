@@ -18,6 +18,77 @@ The Upstash implementation provides a modular, production-grade, and feature-ric
 
 ---
 
+# Upstash Knowledge Graph & Tooling Overview
+
+This section mirrors the canonical knowledge graph in `upstash.json` and serves as the single source of truth for onboarding, refactoring, and AI agent support. All contributors and AI agents should reference this section for:
+
+- **Todos, tags, features, API routes, onboarding/tooling, and reasoning tools**
+- **Deduplicated tool list with usage notes, when/how/why, and relationships**
+- **File-by-file status, todos, and feature coverage table**
+- **Onboarding, troubleshooting, best practices, and mental models**
+
+---
+
+## 📚 Available Tools for Upstash Integration & Project Automation
+
+Below is a deduplicated list of all available tools (from the knowledge graph's onboarding:tool-list), with usage notes, when/how/why to use, and relationships. Use these for onboarding, automation, troubleshooting, and continuous improvement.
+
+| Tool ID                | When to Use                                      | How to Use / Notes                                                                 | Why / Relationships / Connections |
+|------------------------|--------------------------------------------------|------------------------------------------------------------------------------------|-----------------------------------|
+| add_documentation      | Onboarding new libs/APIs, after refactors        | Provide name & URL. Optionally add tags/topics.                                    | Keeps docs up-to-date. Related: update_documentation, search_documentation |
+| update_documentation   | After API/library/workflow changes               | Specify doc to update and new content/URL.                                         | Prevents outdated docs. Related: add_documentation, search_documentation |
+| think                  | Before major changes, debugging, migration       | Write out reasoning, hypotheses, next steps. Use as digital rubber duck.           | Improves code quality. Related: debuggingapproach, sequentialthinking |
+| open_project           | Onboarding, troubleshooting, multi-repo work     | Specify project/workspace to open.                                                 | Ensures context alignment. Related: set_profile, get_profile_context |
+| read_context           | Reviewing legacy code, onboarding, refactoring   | Specify path, file types, recurse.                                                 | Enables deep code analysis. Related: get_chunk_count, generate_outline |
+| get_chunk_count        | Before reading/analyzing large files/dirs        | Provide same params as read_context.                                               | Prevents timeouts. Related: read_context |
+| set_profile            | Switching work types (backend/frontend, etc)     | Specify profile name/settings.                                                     | Optimizes context/tools. Related: get_profile_context, open_project |
+| get_profile_context    | After setting/switching profiles                 | Call after set_profile.                                                            | Gathers context for migration. Related: set_profile |
+| generate_outline       | Onboarding, reviewing, refactoring code          | Specify file path.                                                                 | Understand file structure. Related: read_context |
+| search_documentation   | Troubleshooting, onboarding, migration           | Provide query string.                                                              | Finds best practices. Related: add_documentation, update_documentation, list_documentation |
+| list_documentation     | Onboarding, auditing, updating docs              | Call without params for full list.                                                 | Audits docs. Related: search_documentation, add_documentation |
+| get_library_docs       | Integrating/updating libs, troubleshooting       | Resolve library ID, then fetch docs.                                               | Latest best practices. Related: resolve_library_id |
+| resolve_library_id     | Before fetching docs for new/updated package     | Provide npm package name.                                                          | Ensures correct docs. Related: get_library_docs |
+| write_to_terminal      | Running scripts/tests/deployments, migrations    | Provide command string/params.                                                     | Automates CLI tasks. Related: read_terminal_output, send_control_character |
+| read_terminal_output   | After running scripts/tests/deployments          | Specify terminal session/command.                                                  | Validates automation. Related: write_to_terminal |
+| send_control_character | Stopping/controlling scripts/processes           | Specify control char & terminal session.                                           | Manages automation. Related: write_to_terminal, read_terminal_output |
+
+**Best Practices:**
+
+- Always use `add_documentation` for new sources and `update_documentation` for changes.
+- Use `list_documentation` to check docs before making changes.
+- Reference this list when building onboarding flows, troubleshooting, or automating tasks.
+
+---
+
+## 📊 File-by-File Status, Todos, Tags, API Routes, and Reasoning Tools
+
+The following table summarizes the status, todos, tags, API routes, and reasoning tools for each Upstash entity. For full details, see `upstash.json`.
+
+| File                      | Status      | Todos (Key)                                              | Tags (Key)                | API Routes (Key)                | Reasoning Tools (Key)                |
+|---------------------------|-------------|----------------------------------------------------------|---------------------------|----------------------------------|--------------------------------------|
+| agent-state-store.ts      | incomplete  | Remove all any, console; add query, tests, type safety   | upstash, agent-state, ... | /api/ai-sdk/agents, ...          | debuggingapproach, metacognitivemonitoring, codesmells |
+| redis-store.ts            | incomplete  | Remove any, console; add query, tests, helpers           | upstash, redis, ...       | /api/ai-sdk/threads, ...         | debuggingapproach, sequentialthinking, codesmells      |
+| vector-store.ts           | incomplete  | Remove console; add query, tests, type safety, logging   | upstash, vector, ...      | /api/ai-sdk/embeddings, ...      | scientificmethod, decisionframework, codesmells        |
+| upstash-logger.ts         | incomplete  | Remove any, console; add type-safe parsing, tests        | upstash, logging, ...     | /api/ai-sdk/logs, ...            | metacognitivemonitoring, codesmells                   |
+| upstashClients.ts         | incomplete  | Add advanced query usage docs/examples                   | upstash, client, ...      | /api/ai-sdk/*                    | debuggingapproach, metacognitivemonitoring            |
+| upstashTypes.ts           | incomplete  | Expand types for RediSearch/query, add granular types    | upstash, types, ...       |                                  | debuggingapproach, metacognitivemonitoring, codesmells |
+| memoryStore.ts            | incomplete  | Remove any, console; add query, tests, error handling    | upstash, memory, ...      | /api/ai-sdk/threads, ...         | debuggingapproach, decisionframework, codesmells       |
+| stream-processor.ts       | incomplete  | Remove any, console; add query, tests, error handling    | upstash, streaming, ...   | /api/ai-sdk/streams, ...         | sequentialthinking, scientificmethod, codesmells       |
+| memory-processor.ts       | incomplete  | Add query for streaming/semantic search, add tests       | upstash, memory, ...      |                                  | debuggingapproach, codesmells                          |
+| supabase-adapter.ts       | incomplete  | Fix Query API, add CRUD, error handling, tests           | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
+| supabase-adapter-factory.ts| incomplete | Remove any, add query, error handling, tests             | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
+| index.ts                  | incomplete  | Remove broken exports, update/type-safe exports           | upstash, barrel, ...      | /api/ai-sdk/*                    | debuggingapproach, codesmells                          |
+
+**Legend:** See `upstash.json` for full tag and route lists. All files must:
+
+- Remove all `any` types and direct `console` statements
+- Use Zod schemas and upstashLogger for type safety and logging
+- Add/expand tests and docs for all features
+- Use @upstash/query for advanced search, streaming, and filtering
+- Update the knowledge graph and README after every significant change
+
+---
+
 ## Features
 
 - **Typed API**: Strongly-typed interfaces for all data models and function signatures.
