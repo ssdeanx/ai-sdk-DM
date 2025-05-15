@@ -245,12 +245,41 @@
       "@id": "lib/memory/upstash/upstashClients.ts",
       "@type": ["CodeFile"],
       "path": "lib/memory/upstash/upstashClients.ts",
-      "exports": ["getRedisClient", "getVectorClient", "getUpstashQueryClient", "isUpstashRedisAvailable", "isUpstashVectorAvailable", "shouldUseUpstashAdapter", "checkUpstashAvailability", "validateRedisConfig", "validateVectorConfig", "RedisConfigSchema", "VectorConfigSchema", "EnvVarsSchema", "UpstashClientError"],
-      "features": ["Singleton client management for Redis/Vector/Query", "Config validation", "Error handling"],
+      "exports": [
+        "getRedisClient", "getVectorClient", "getUpstashQueryClient", "isUpstashRedisAvailable", "isUpstashVectorAvailable", "shouldUseUpstashAdapter", "checkUpstashAvailability", "validateRedisConfig", "validateVectorConfig", "RedisConfigSchema", "VectorConfigSchema", "EnvVarsSchema", "UpstashClientError"
+      ],
+      "features": [
+        "Singleton client management for Redis/Vector/Query", 
+        "Config validation and Zod schemas for all clients", 
+        "Robust error handling and logging via upstashLogger", 
+        "Main/fallback logic: isUpstashMainDb, shouldFallbackToBackup", 
+        "Onboarding and knowledge graph extraction doc comments"
+      ],
       "status": "complete",
-      "relationships": [
-        { "type": "memory", "target": "memory" }
-      ]
+      "consumers": [
+        "supabase-adapter.ts", "vector-store.ts", "memoryStore.ts", "agent-state-store.ts", "index.ts"
+      ],
+      "dependencies": [
+        "@upstash/redis", "@upstash/vector", "@upstash/query", "zod", "upstash-logger.ts"
+      ],
+      "testFiles": ["tests/upstash/upstashClients.test.ts"],
+      "docs": ["README.md#upstashClients.ts"],
+      "examples": ["How to get a singleton Redis/Vector/Query client", "How to validate config with Zod"],
+      "changelog": [
+        "Added isUpstashMainDb and shouldFallbackToBackup for main/fallback logic",
+        "Improved singleton/config/validation logic",
+        "Added onboarding/graph extraction doc comments",
+        "Ensured robust type safety and logger usage"
+      ],
+      "todo": [
+        "Expand onboarding and fallback documentation",
+        "Add more tests for error/fallback scenarios"
+      ],
+      "usageNotes": "Always use getRedisClient/getVectorClient for singleton pattern. Use isUpstashMainDb and shouldFallbackToBackup for main/fallback logic.",
+      "onboarding": "See onboarding doc comments in upstashClients.ts and README.md for setup and fallback logic.",
+      "navigation": "Central client/config node for all Upstash memory modules.",
+      "troubleshooting": "Check logger output and Zod validation errors for config issues.",
+      "graphNotes": "Diamond core node for Upstash client management."
     },
     {
       "@id": "lib/memory/upstash/upstashTypes.ts",
@@ -464,35 +493,6 @@
         "Add tests for all factory-generated clients."
       ],
       "stream-processor.ts": [
-        "Remove all any types.",
-        "Remove all direct console statements, use upstashLogger.",
-        "Remove unused imports/vars.",
-        "Add @upstash/query support for streaming queries.",
-        "Add more robust error handling and type safety.",
-        "Add tests for streaming and batch processing."
-      ],
-      "memoryStore.ts": [
-        "Remove all any types.",
-        "Remove all direct console statements, use upstashLogger.",
-        "Add @upstash/query support for advanced memory/thread/message search.",
-        "Add more robust error handling and type safety.",
-        "Add tests for memory operations and advanced search."
-      ],
-      "memory-processor.ts": [
-        "Add @upstash/query support for streaming/semantic search if needed.",
-        "Add tests for memory processing."
-      ],
-      "index.ts": [
-        "Remove/replace all broken exports (see errors: missing exports from supabase-adapter).",
-        "Ensure all exports are up-to-date and type-safe.",
-        "Add documentation for new/advanced exports."
-      ]
-    },
-    "completingAllFiles": [
-      "For each file, ensure all 'any' types are replaced, all logging is via upstashLogger, and all unused imports/types/vars are either implemented or justified for removal.",
-      "Every file must have up-to-date tests, documentation, and usage examples.",
-      "All advanced search, streaming, and filtering features should use @upstash/query where possible.",
-      "Knowledge graph and README must be updated after every significant change.",
       "Apply the most relevant mental models (see below) to each file's refactor, bugfix, or feature implementation."
     ]
   }

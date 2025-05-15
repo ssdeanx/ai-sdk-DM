@@ -1,142 +1,150 @@
 import { Redis } from "@upstash/redis";
-import { Index, Vector, QueryResult, FetchResult, IndexConfig as UpstashVectorIndexConfig } from "@upstash/vector";
+import { Index, Vector } from "@upstash/vector";
 import { z } from 'zod';
 
-// --- Client Types & Errors ---
-
-/**
- * Custom error class for Redis client operations.
- */
+// --- Error Classes ---
 export class RedisClientError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public cause?: unknown) {
     super(message);
-    this.name = "RedisClientError";
-    Object.setPrototypeOf(this, RedisClientError.prototype);
+    this.name = 'RedisClientError';
   }
 }
 
-// --- Vector Store Types & Errors ---
-
-/**
- * Custom error class for Vector store operations.
- */
 export class VectorStoreError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public cause?: unknown) {
     super(message);
-    this.name = "VectorStoreError";
-    Object.setPrototypeOf(this, VectorStoreError.prototype);
+    this.name = 'VectorStoreError';
   }
 }
 
-/**
- * Metadata for an embedding. Can be any JSON-serializable object.
- * Strictly typed, with extension fields as unknown for type safety.
- */
-export interface VectorMetadata {
-  text?: string;
-  source_url?: string;
-  document_id?: string;
-  chunk_id?: string;
-  user_id?: string;
-  created_at?: string;
-  [key: string]: unknown; // Use unknown for extension fields
-}
-
-/**
- * Represents a vector document to be upserted into the Upstash Vector database.
- * Includes the vector, its ID, and associated metadata.
- * Uses strict types from @upstash/vector and VectorMetadata.
- */
-export interface VectorDocument extends Vector {
-  metadata?: VectorMetadata;
-  // data?: string; // The 'data' field from @upstash/vector's Vector type can be used for string content
+export class RedisStoreError extends Error {
+  constructor(message: string, public cause?: unknown) {
+    super(message);
+    this.name = 'RedisStoreError';
+    if (cause) this.stack += '\nCaused by: ' + (cause instanceof Error ? cause.stack : String(cause));
+  }
 }
 
 // --- Zod Schemas ---
+export const VectorMetadataSchema = z.record(z.any()).and(
+  z.object({
+    text: z.string().optional(),
+    source_url: z.string().optional(),
+    document_id: z.string().optional(),
+    chunk_id: z.string().optional(),
+    user_id: z.string().optional(),
+    created_at: z.string().optional(),
+  }).partial()
+);
 
-/**
- * Schema for vector metadata (strict, extension fields as unknown)
- */
-export const VectorMetadataSchema = z.object({
-  text: z.string().optional(),
-  source_url: z.string().optional(),
-  document_id: z.string().optional(),
-  chunk_id: z.string().optional(),
-  user_id: z.string().optional(),
-  created_at: z.string().optional(),
-}).catchall(z.unknown());
-
-/**
- * Schema for vector document
- */
 export const VectorDocumentSchema = z.object({
   id: z.string(),
   vector: z.array(z.number()),
   metadata: VectorMetadataSchema.optional(),
-  data: z.string().optional(),
+  sparseVector: z
+    .object({
+      indices: z.array(z.number()),
+      values: z.array(z.number()),
+    })
+    .optional(),
 });
 
-// --- Redis Client Configuration ---
+// --- Types ---
+export type VectorMetadata = z.infer<typeof VectorMetadataSchema>;
+export type VectorDocument = z.infer<typeof VectorDocumentSchema>;
 
-/**
- * Configuration options for Redis client.
- */
 export interface RedisClientConfig {
   url: string;
   token: string;
-  cache?: boolean;
 }
 
-// --- Vector Store Configuration ---
-
-/**
- * Configuration options for Vector store.
- */
 export interface VectorStoreConfig {
   url: string;
   token: string;
-  indexName: string;
   dimensions?: number;
   similarity?: 'cosine' | 'euclidean' | 'dot';
+  indexName?: string;
 }
 
-// --- Query Types ---
-
-/**
- * Options for vector search queries.
- */
 export interface VectorQueryOptions {
   topK?: number;
-  filter?: Record<string, unknown>;
-  includeMetadata?: boolean;
   includeVectors?: boolean;
-  namespace?: string;
+  includeMetadata?: boolean;
+  filter?: Record<string, unknown>;
 }
 
-/**
- * Result of a vector search query.
- */
-export type VectorQueryResult = QueryResult;
+export interface VectorQueryResult {
+  id: string;
+  score: number;
+  vector?: number[];
+  metadata?: VectorMetadata;
+}
 
-/**
- * Result of fetching vectors by IDs.
- */
-export type VectorFetchResult = FetchResult;
+export interface VectorFetchResult<T = VectorMetadata> {
+  id: string;
+  vector?: number[];
+  metadata?: T;
+}
 
-// --- Utility Types ---
+export type RedisPipeline = Array<{ command: string; args: unknown[] }>;
 
-/**
- * Type for Redis pipeline operations.
- */
-export type RedisPipeline = ReturnType<Redis['pipeline']>;
+export interface VectorIndexConfig {
+  name: string;
+  dimensions: number;
+  similarity: 'cosine' | 'euclidean' | 'dot';
+}
 
-/**
- * Type for Upstash Vector index configuration.
- */
-export type VectorIndexConfig = UpstashVectorIndexConfig;
-
-// Use all imported types to prevent unused import warnings
-export type RedisType = Redis;
-export type IndexType = Index;
-export type VectorType = Vector;
+export type RedisType = 'hash' | 'set' | 'zset' | 'stream';
+export type IndexType = 'flat' | 'hnsw';
+export type VectorType = 'dense' | 'sparse';
 export type ZodType = typeof z;
+
+// --- Additional Types for Query/Hybrid Search ---
+export interface VectorSearchOptions {
+  query: number[] | string;
+  topK?: number;
+  filter?: Record<string, unknown>;
+  includeVectors?: boolean;
+  includeMetadata?: boolean;
+}
+
+export interface VectorSearchResult {
+  id: string;
+  score: number;
+  vector?: number[];
+  metadata?: VectorMetadata;
+}
+
+// --- Upstash Memory Types ---
+export type ThreadMetadata = Record<string, unknown>;
+
+export interface MessageMetadata {
+  [key: string]: unknown;
+  tool_calls?: Record<string, unknown>;
+  tool_invocation_id?: string;
+}
+
+export interface Thread {
+  id: string;
+  name?: string | null;
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+  user_id?: string | null;
+  agent_id?: string | null;
+  metadata?: ThreadMetadata | null;
+}
+
+export interface Message {
+  id: string;
+  thread_id: string;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+  created_at: string; // ISO 8601 timestamp
+  metadata?: MessageMetadata | null;
+  name?: string; // Optional name, e.g., for tool calls/results
+}
+
+export type RedisHashData = Record<string, string | number | boolean | null>;
+
+// --- Export for completeness ---
+export type { VectorQueryOptions as QueryOptions, VectorQueryResult as QueryResult, VectorFetchResult as FetchResult };

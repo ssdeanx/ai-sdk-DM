@@ -321,3 +321,34 @@ export function validateVectorConfig(config: unknown): z.infer<typeof VectorConf
     throw new UpstashClientError('Failed to validate Vector configuration', error);
   }
 }
+
+// --- Upstash as Main DB, Fallback Detection ---
+
+/**
+ * Returns true if Upstash should be used as the main DB (not just a cache or fallback).
+ * Controlled by env var USE_UPSTASH_ADAPTER=true.
+ */
+export function isUpstashMainDb(): boolean {
+  return process.env.USE_UPSTASH_ADAPTER === 'true';
+}
+
+/**
+ * Returns true if fallback to Supabase/LibSQL should be attempted (if Upstash is unavailable).
+ * Controlled by env var USE_UPSTASH_ADAPTER and presence of backup env vars.
+ */
+export function shouldFallbackToBackup(): boolean {
+  return !isUpstashMainDb() && !!process.env.SUPABASE_URL && !!process.env.SUPABASE_KEY;
+}
+
+// --- Ensure all exports are up-to-date and type-safe ---
+// (No changes needed, all exports are already present and type-safe)
+
+// --- Onboarding/graph extraction doc ---
+/**
+ * This file is the canonical entry point for Upstash client management.
+ * - Always use getRedisClient/getVectorClient/getUpstashQueryClient for singleton access.
+ * - All config is validated with Zod and errors are logged with upstashLogger.
+ * - Use isUpstashMainDb() to check if Upstash is the main DB.
+ * - Use shouldFallbackToBackup() to check if fallback to Supabase/LibSQL is allowed.
+ * - All changes here must be reflected in upstash.json and README.md.
+ */

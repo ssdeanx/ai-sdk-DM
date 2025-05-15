@@ -1,1 +1,666 @@
-{}
+{
+  "@context": [
+    "https://schema.org",
+    { "feature": "https://schema.org/hasFeature" }
+  ],
+  "@type": "Graph",
+  "name": "DeanmachinesAI Tool System Knowledge Graph",
+  "description": "Comprehensive, standards-compliant, agent-friendly knowledge graph for the /lib/tools backend, supporting onboarding, troubleshooting, and continuous improvement.",
+  "version": "1.0.0",
+  "generatedAt": "2025-05-14T00:00:00Z",
+  "@graph": [
+    {
+      "@id": "lib/tools/agentic/ai-sdk.ts",
+      "@type": ["CodeFile", "AgenticTool"],
+      "path": "lib/tools/agentic/ai-sdk.ts",
+      "exports": ["createAISDKTools"],
+      "features": ["Converts Agentic AI functions to Vercel AI SDK-compatible tools object"],
+      "status": "errors-present",
+      "errors": [],
+      "relationships": [
+        { "type": "used-by", "target": "lib/tools/agentic/index.ts" }
+      ],
+      "observations": ["Always use createAISDKTools to wrap AIFunctionsProvider instances for agentic tools."],
+      "mentalModels": [
+        "First Principles: Define clear contracts for agentic tool conversion.",
+        "Testability: Ensure all conversions are covered by tests for edge cases.",
+        "Explicit Contracts: Document function signatures and expected tool shapes.",
+        "Feedback Loops: Validate output with downstream consumers (SDK, registry).",
+        "Pattern Recognition: Watch for subtle type mismatches and integration bugs."
+      ],
+      "wiringPatterns": [
+        "Import via barrels and index.ts for unified access.",
+        "Register in toolRegistry.ts and initialize in toolInitializer.ts.",
+        "Wire into API routes (./app/api/ai-sdk/*) and SDK consumers.",
+        "Document usage and integration in README and tools.json."
+      ],
+      "diagnostics": {
+        "commonErrors": [
+          "Missing Zod schema or discriminated union.",
+          "Not registered in toolRegistry.ts or not initialized.",
+          "Barrel or index.ts missing export.",
+          "Type mismatch in API route wiring."
+        ],
+        "troubleshooting": [
+          "Check get_errors output after every edit.",
+          "Validate all exports and imports in barrels and index.ts.",
+          "Ensure all types are Zod-validated and shared.",
+          "Cross-reference README and tools.json for integration notes."
+        ],
+        "selfHealing": [
+          "Fallback to default tool suite if custom tool fails.",
+          "Auto-recover from transient registry/initializer errors."
+        ]
+      ],
+      "testCoverage": {
+        "status": "partial",
+        "missingCases": ["Edge-case input validation", "Error propagation"],
+        "testFiles": ["tests/tools/agentic/ai-sdk.test.ts"]
+      },
+      "changeHistory": [
+        { "date": "2025-05-14", "change": "Initial refactor for knowledge graph compliance." },
+        { "date": "2025-05-13", "change": "Added Zod validation and discriminated unions." }
+      ],
+      "riskAssessment": {
+        "riskLevel": "high",
+        "risks": ["Central registry failure impacts all tool flows."],
+        "mitigations": ["Extensive tests, fallback logic, and observability."]
+      },
+      "mentalModelMap": [
+        "First Principles", "Testability", "Explicit Contracts"
+      ]
+    },
+    {
+      "@id": "lib/tools/agentic/index.ts",
+      "@type": ["BarrelFile"],
+      "path": "lib/tools/agentic/index.ts",
+      "exports": ["WikipediaTools", "RedditTools", "ArXivTools", "CalculatorTools"],
+      "features": ["Provides stable import paths for agentic tools"],
+      "status": "errors-present",
+      "errors": [],
+      "relationships": [
+        { "type": "barrel-for", "target": "lib/tools/agentic/ai-sdk.ts" }
+      ],
+      "observations": ["Re-exports all agentic tools for unified access."],
+      "mentalModels": [
+        "Consistency: Ensure all agentic tools are re-exported and up to date.",
+        "Layered Abstraction: Keep barrel logic separate from tool logic.",
+        "Feedback Loops: Test all imports/exports after changes.",
+        "Rubber Ducking: Explain the barrel's wiring to catch missing exports.",
+        "Graceful Degradation: Handle missing or broken exports cleanly."
+      ],
+      "wiringPatterns": [
+        "Import via barrels and index.ts for unified access.",
+        "Register in toolRegistry.ts and initialize in toolInitializer.ts.",
+        "Wire into API routes (./app/api/ai-sdk/*) and SDK consumers.",
+        "Document usage and integration in README and tools.json."
+      ],
+      "diagnostics": {
+        "commonErrors": [
+          "Missing Zod schema or discriminated union.",
+          "Not registered in toolRegistry.ts or not initialized.",
+          "Barrel or index.ts missing export.",
+          "Type mismatch in API route wiring."
+        ],
+        "troubleshooting": [
+          "Check get_errors output after every edit.",
+          "Validate all exports and imports in barrels and index.ts.",
+          "Ensure all types are Zod-validated and shared.",
+          "Cross-reference README and tools.json for integration notes."
+        ],
+        "selfHealing": [
+          "Fallback to default tool suite if custom tool fails.",
+          "Auto-recover from transient registry/initializer errors."
+        ]
+      ],
+      "testCoverage": {
+        "status": "partial",
+        "missingCases": ["Edge-case input validation", "Error propagation"],
+        "testFiles": ["tests/tools/agentic/index.test.ts"]
+      },
+      "changeHistory": [
+        { "date": "2025-05-14", "change": "Initial refactor for knowledge graph compliance." },
+        { "date": "2025-05-13", "change": "Added Zod validation and discriminated unions." }
+      ]
+    },
+    {
+      "@id": "lib/tools/api-tools.ts",
+      "@type": ["BarrelFile"],
+      "path": "lib/tools/api-tools.ts",
+      "exports": ["ApiTools"],
+      "features": ["Provides stable import paths for API tools"],
+      "status": "errors-present",
+      "errors": [],
+      "relationships": [
+        { "type": "barrel-for", "target": "lib/tools/api/tools.ts" }
+      ],
+      "observations": ["Re-exports all API tools for unified access."],
+      "mentalModels": [
+        "Consistency: Keep exports in sync with ./api/tools.ts.",
+        "Explicit Contracts: Document all re-exported symbols.",
+        "Feedback Loops: Test import paths in all consumers.",
+        "Pattern Recognition: Watch for drift between barrels and source files.",
+        "Layered Abstraction: Separate API tool logic from barrel wiring."
+      ],
+      "wiringPatterns": [
+        "Import via barrels and index.ts for unified access.",
+        "Register in toolRegistry.ts and initialize in toolInitializer.ts.",
+        "Wire into API routes (./app/api/ai-sdk/*) and SDK consumers.",
+        "Document usage and integration in README and tools.json."
+      ],
+      "diagnostics": {
+        "commonErrors": [
+          "Missing Zod schema or discriminated union.",
+          "Not registered in toolRegistry.ts or not initialized.",
+          "Barrel or index.ts missing export.",
+          "Type mismatch in API route wiring."
+        ],
+        "troubleshooting": [
+          "Check get_errors output after every edit.",
+          "Validate all exports and imports in barrels and index.ts.",
+          "Ensure all types are Zod-validated and shared.",
+          "Cross-reference README and tools.json for integration notes."
+        ],
+        "selfHealing": [
+          "Fallback to default tool suite if custom tool fails.",
+          "Auto-recover from transient registry/initializer errors."
+        ]
+      ],
+      "testCoverage": {
+        "status": "partial",
+        "missingCases": ["Edge-case input validation", "Error propagation"],
+        "testFiles": ["tests/tools/api-tools.test.ts"]
+      },
+      "changeHistory": [
+        { "date": "2025-05-14", "change": "Initial refactor for knowledge graph compliance." },
+        { "date": "2025-05-13", "change": "Added Zod validation and discriminated unions." }
+      ]
+    },
+    {
+      "@id": "lib/tools/toolRegistry.ts",
+      "@type": ["RegistryFile", "DiamondCore"],
+      "path": "lib/tools/toolRegistry.ts",
+      "exports": ["ToolRegistry", "toolRegistry"],
+      "features": ["Central registry for managing, categorizing, and validating all tools"],
+      "status": "errors-present",
+      "errors": [],
+      "dependencies": ["toolInitializer.ts", "upstash-tool-execution-store.ts", "zod", "ai"],
+      "consumedBy": ["ai-sdk-integration.ts", "ai-sdk-tracing.ts", "ai-integration.ts", "./app/api/ai-sdk/*"],
+      "relationships": [
+        { "type": "registry-for", "target": "lib/tools/agentic/" },
+        { "type": "registry-for", "target": "lib/tools/api/" },
+        { "type": "registry-for", "target": "lib/tools/code/" },
+        { "type": "registry-for", "target": "lib/tools/data/" },
+        { "type": "registry-for", "target": "lib/tools/file/" },
+        { "type": "registry-for", "target": "lib/tools/graphql/" },
+        { "type": "registry-for", "target": "lib/tools/rag/" },
+        { "type": "registry-for", "target": "lib/tools/web/" }
+      ],
+      "observations": ["Registry is critical for agent/SDK tool orchestration."],
+      "mentalModels": [
+        "Defensive Programming: Validate all tool registrations and lookups.",
+        "Observability: Instrument registry operations for debugging.",
+        "Explicit Contracts: Document registry APIs and expected behaviors.",
+        "Feedback Loops: Test registry with all tool suites and consumers.",
+        "Layered Abstraction: Keep registry logic distinct from tool logic."
+      ],
+      "wiringPatterns": [
+        "Import via barrels and index.ts for unified access.",
+        "Register in toolRegistry.ts and initialize in toolInitializer.ts.",
+        "Wire into API routes (./app/api/ai-sdk/*) and SDK consumers.",
+        "Document usage and integration in README and tools.json."
+      ],
+      "diagnostics": {
+        "commonErrors": [
+          "Missing Zod schema or discriminated union.",
+          "Not registered in toolRegistry.ts or not initialized.",
+          "Barrel or index.ts missing export.",
+          "Type mismatch in API route wiring."
+        ],
+        "troubleshooting": [
+          "Check get_errors output after every edit.",
+          "Validate all exports and imports in barrels and index.ts.",
+          "Ensure all types are Zod-validated and shared.",
+          "Cross-reference README and tools.json for integration notes."
+        ],
+        "selfHealing": [
+          "Fallback to default tool suite if custom tool fails.",
+          "Auto-recover from transient registry/initializer errors."
+        ]
+      ],
+      "testCoverage": {
+        "status": "partial",
+        "missingCases": ["Edge-case input validation", "Error propagation"],
+        "testFiles": ["tests/tools/toolRegistry.test.ts"]
+      },
+      "changeHistory": [
+        { "date": "2025-05-14", "change": "Initial refactor for knowledge graph compliance." },
+        { "date": "2025-05-13", "change": "Added Zod validation and discriminated unions." }
+      ],
+      "riskAssessment": {
+        "riskLevel": "high",
+        "risks": ["Central registry failure impacts all tool flows."],
+        "mitigations": ["Extensive tests, fallback logic, and observability."]
+      }
+    },
+    {
+      "@id": "lib/tools/toolInitializer.ts",
+      "@type": ["InitializerFile", "DiamondCore"],
+      "path": "lib/tools/toolInitializer.ts",
+      "exports": [
+        "initializeTools",
+        "initializeBuiltInTools",
+        "initializeCustomTools",
+        "initializeAgenticTools"
+      ],
+      "features": [
+        "Handles initialization of built-in, custom, and agentic tools",
+        "Supports Upstash, Supabase, and future DBs via adapters",
+        "Observability via tracing and event logging",
+        "Type-safe, Zod-validated tool loading"
+      ],
+      "status": "diamond-core",
+      "errors": [],
+      "dependencies": [
+        "web-tools.ts",
+        "code-tools.ts",
+        "data-tools.ts",
+        "file-tools.ts",
+        "api-tools.ts",
+        "rag-tools.ts",
+        "agentic/index.ts",
+        "zod",
+        "ai"
+      ],
+      "consumedBy": [
+        "toolRegistry.ts",
+        "index.ts",
+        "ai-sdk-integration.ts",
+        "ai-sdk-tracing.ts",
+        "ai-integration.ts",
+        "./app/api/ai-sdk/*"
+      ],
+      "relationships": [
+        { "type": "initializer-for", "target": "lib/tools/agentic/" },
+        { "type": "initializer-for", "target": "lib/tools/api/" },
+        { "type": "initializer-for", "target": "lib/tools/code/" },
+        { "type": "initializer-for", "target": "lib/tools/data/" },
+        { "type": "initializer-for", "target": "lib/tools/file/" },
+        { "type": "initializer-for", "target": "lib/tools/graphql/" },
+        { "type": "initializer-for", "target": "lib/tools/rag/" },
+        { "type": "initializer-for", "target": "lib/tools/web/" }
+      ],
+      "observations": [
+        "Initializer wires up all tool suites for agentic and SDK use.",
+        "Critical for onboarding new DB adapters (Upstash, Supabase, etc)."
+      ],
+      "mentalModels": [
+        "Defensive Programming: Validate all tool initializations.",
+        "Observability: Log initialization steps for debugging.",
+        "Explicit Contracts: Document initialization APIs and expected behaviors.",
+        "Feedback Loops: Test initialization with all tool suites and consumers.",
+        "Layered Abstraction: Keep initialization logic distinct from tool logic."
+      ],
+      "wiringPatterns": [
+        "Call from barrels and index.ts for unified access.",
+        "Register all tools in toolRegistry.ts after initialization.",
+        "Wire into API routes and SDK consumers.",
+        "Document usage and integration in README and tools.json."
+      ],
+      "diagnostics": {
+        "commonErrors": [
+          "Missing or broken DB adapter integration (Upstash, Supabase, etc)",
+          "Not all tool suites initialized or exported",
+          "Type mismatch in tool loading or registry wiring"
+        ],
+        "troubleshooting": [
+          "Check get_errors output after every edit.",
+          "Validate all exports and imports in barrels and index.ts.",
+          "Ensure all types are Zod-validated and shared.",
+          "Cross-reference README and tools.json for integration notes."
+        ],
+        "selfHealing": [
+          "Fallback to default tool suite if custom tool fails.",
+          "Auto-recover from transient DB/adapter errors."
+        ]
+      ],
+      "testCoverage": {
+        "status": "partial",
+        "missingCases": ["Adapter fallback logic", "Edge-case DB errors"],
+        "testFiles": ["tests/tools/toolInitializer.test.ts"]
+      ],
+      "changeHistory": [
+        { "date": "2025-05-14", "change": "Initial diamond core node for knowledge graph compliance." }
+      ],
+      "riskAssessment": {
+        "riskLevel": "high",
+        "risks": ["Initialization failure blocks all tool usage.", "Adapter bugs can break all DB-backed tools."],
+        "mitigations": ["Extensive tests, fallback logic, and observability.", "Document adapter integration and error handling."]
+      },
+      "mentalModelMap": [
+        "Defensive Programming", "Observability", "Explicit Contracts"
+      ]
+    },
+    {
+      "@id": "lib/tools/upstash-tool-execution-store.ts",
+      "@type": ["AdapterFile", "DiamondCore"],
+      "path": "lib/tools/upstash-tool-execution-store.ts",
+      "exports": ["logToolExecution", "getToolExecution", "listToolExecutions", "getToolStats", "ToolExecutionDataSchema", "ToolStatsSchema", "ToolExecutionStoreError"],
+      "features": [
+        "Tool execution logging and analytics",
+        "Zod schemas for execution data and stats",
+        "Upstash Redis integration",
+        "Observability and error tracking for all tool calls"
+      ],
+      "status": "diamond-core",
+      "errors": [],
+      "dependencies": ["zod", "upstash-redis", "toolRegistry.ts", "toolInitializer.ts"],
+      "consumedBy": ["toolRegistry.ts", "toolInitializer.ts", "rag/tools.ts", "ai-sdk-integration.ts", "ai-sdk-tracing.ts"],
+      "relationships": [
+        { "type": "adapter-for", "target": "lib/tools/rag/" },
+        { "type": "adapter-for", "target": "lib/tools/toolRegistry.ts" },
+        { "type": "adapter-for", "target": "lib/tools/toolInitializer.ts" }
+      ],
+      "observations": [
+        "Central for tool execution observability and error tracking.",
+        "Upstash is the main DB for tool execution state and analytics."
+      ],
+      "mentalModels": [
+        "Defensive Programming: Validate all execution logs and schemas.",
+        "Observability: Instrument logging operations for debugging.",
+        "Explicit Contracts: Document logging APIs and expected behaviors.",
+        "Feedback Loops: Test logging with all tool suites and consumers.",
+        "Layered Abstraction: Keep logging logic distinct from tool logic."
+      ],
+      "wiringPatterns": [
+        "Call from registry, initializer, and tool suites for execution logging.",
+        "Wire into API routes and SDK for analytics and observability.",
+        "Document usage and integration in README and tools.json."
+      ],
+      "diagnostics": {
+        "commonErrors": [
+          "Upstash not available or misconfigured",
+          "Zod schema validation errors",
+          "Execution log not written or retrieved",
+          "Type mismatch in analytics consumers"
+        ],
+        "troubleshooting": [
+          "Check Upstash connection and credentials.",
+          "Validate all Zod schemas and types.",
+          "Cross-reference README and tools.json for integration notes."
+        ],
+        "selfHealing": [
+          "Fallback to in-memory logging if Upstash is unavailable.",
+          "Auto-recover from transient Redis errors."
+        ]
+      ],
+      "testCoverage": {
+        "status": "partial",
+        "missingCases": ["Upstash outage handling", "Edge-case analytics errors"],
+        "testFiles": ["tests/tools/upstash-tool-execution-store.test.ts"]
+      ],
+      "changeHistory": [
+        { "date": "2025-05-14", "change": "Initial diamond core node for Upstash adapter and analytics." }
+      ],
+      "riskAssessment": {
+        "riskLevel": "high",
+        "risks": ["Upstash outage or adapter bug breaks all tool execution logging and analytics."],
+        "mitigations": ["Extensive tests, fallback logic, and observability.", "Document Upstash integration and error handling."]
+      },
+      "mentalModelMap": [
+        "Defensive Programming", "Observability", "Explicit Contracts"
+      ]
+    }
+  ],
+  "meta": {
+    "source": { "@value": "auto-generated from README.md, error reports, and codebase as of 2025-05-14", "@language": "en" },
+    "updateStrategy": { "@value": "automated extraction and continuous update via CI/CD and AI agent workflows", "@language": "en" },
+    "automation": {
+      "strategy": { "@value": "pre-commit hook + CI/CD bot", "@language": "en" },
+      "lastAutomated": { "@value": "2025-05-14T00:00:00Z", "@type": "xsd:dateTime" }
+    },
+    "intendedUse": { "@value": [
+      "AI agent onboarding and navigation",
+      "Human contributor onboarding",
+      "Feature coverage and TODO tracking",
+      "Semantic/graph search for code and docs",
+      "Continuous improvement and documentation enforcement"
+    ], "@language": "en" },
+    "diamondCore": { "@value": "A diamond core file is one that is absolutely central to the tool system's integrity, reliability, and extensibility. Bugs or design flaws here have system-wide impact. These files require the highest level of review, testing, and documentation.", "@language": "en" }
+  },
+  "onboarding": {
+    "purpose": { "@value": "This onboarding is for AI agents and advanced human contributors. Its goal is to ensure robust, error-free, and continuously improving tool system development. All steps are designed for reliability, self-improvement, and persistent insight.", "@language": "en" },
+    "audience": { "@value": "AI agents (Copilot, LLMs, automated CI/CD bots)", "@language": "en" },
+    "corePrinciples": { "@value": [
+      "Type safety and Zod validation are required for all tool modules.",
+      "After every file edit, always use get_error to check for errors before considering the task complete.",
+      "Always cross-reference changes with all consumer files (toolRegistry.ts, toolInitializer.ts, upstash-tool-execution-store.ts, barrels, and agentic tools).",
+      "Update onboarding, knowledge graph, and README with new features, patterns, and lessons learned.",
+      "Use semantic/graph search and mental models for navigation, troubleshooting, and continuous improvement."
+    ], "@language": "en" },
+    "steps": { "@value": [
+      "Read the README.md in full, focusing on the Implementation Guide, Feature Table, and Best Practices.",
+      "Review the entities and relationships in this tools.json knowledge graph for a map of the codebase.",
+      "Use semantic/graph search to answer 'how do I...?' questions about types, modules, and workflows.",
+      "Follow the Production Readiness Checklist in the README before merging changes.",
+      "Update this knowledge graph and README with new features, patterns, and lessons learned.",
+      "After editing any file, you must use get_error before considering the task complete to ensure the file is error-free.",
+      "After any change, check all consumer files (toolRegistry.ts, toolInitializer.ts, upstash-tool-execution-store.ts, barrels, and agentic tools) for compatibility and update as needed.",
+      "Wire up all tools in toolRegistry.ts and toolInitializer.ts for agentic and SDK use.",
+      "Ensure all tools are accessible from ai-sdk-integration.ts, ai-sdk-tracing.ts, ai-integration.ts, and ./app/api/ai-sdk routes."
+    ], "@language": "en" },
+    "wiring": { "@value": [
+      "Register every tool suite and tool in toolRegistry.ts for discoverability and agentic access.",
+      "Initialize all built-in, custom, and agentic tools in toolInitializer.ts.",
+      "Export all tools via barrels (e.g., api-tools.ts, code-tools.ts) and index.ts for stable imports.",
+      "Integrate upstash-tool-execution-store.ts for execution logging and observability.",
+      "Ensure all tools are available to ai-sdk-integration.ts, ai-sdk-tracing.ts, ai-integration.ts, and ./app/api/ai-sdk routes by exporting from index.ts and wiring in registry/initializer.",
+      "For new tools, follow the README onboarding: implement with Zod schemas, discriminated-union result types, and robust error handling."
+    ], "@language": "en" },
+    "troubleshooting": { "@value": [
+      "If a tool is not available in the SDK or API, check for missing registration in toolRegistry.ts or toolInitializer.ts.",
+      "If execution logging is missing, ensure upstash-tool-execution-store.ts is integrated and schemas are correct.",
+      "If type errors occur, check for missing or incorrect Zod schemas and discriminated-union result types.",
+      "If barrels are missing exports, update the barrel files to re-export all expected symbols.",
+      "For integration with ai-sdk-integration.ts, ai-sdk-tracing.ts, ai-integration.ts, and ./app/api/ai-sdk, ensure all tools are exported from index.ts and properly registered."
+    ], "@language": "en" },
+    "usageNotes": { "@value": "Use this knowledge graph for onboarding, troubleshooting, and wiring all tool modules for agentic and SDK use. Always validate with get_error and update documentation as you go.", "@language": "en" },
+    "graphNotes": { "@value": "Critical for tool system wiring and agentic workflows. All AI SDK and API flows depend on correct tool registration and initialization.", "@language": "en" }
+  },
+  "navigation": {
+    "byFile": { "@value": "Use the '@graph' array to locate files, their features, status, and relationships.", "@language": "en" },
+    "byFeature": { "@value": "Search for features (e.g., web search, code execution, RAG, file ops) in the 'features' fields.", "@language": "en" },
+    "byType": { "@value": "Find types and Zod schemas in each file and referenced in each file's 'exports'.", "@language": "en" },
+    "byStatus": { "@value": "Track progress using the 'status' and 'todo' fields for each entity.", "@language": "en" },
+    "crossref": { "@value": "Use 'relationships' to see which files import, use, or export others, and how tools are wired to ai-sdk-integration.ts, ai-sdk-tracing.ts, ai-integration.ts, and ./app/api/ai-sdk routes.", "@language": "en" },
+    "insightAccumulation": { "@value": "Every time you reference or use this knowledge graph, you accumulate insights about file relationships, error patterns, and wiring strategies. This builds stronger context awareness for both agents and humans, enabling more accurate troubleshooting, smarter code navigation, and continuous improvement. Insight accumulation is a key differentiator of modern knowledge graphs (2025), supporting real-time decision making, error reduction, and adaptive learning across the tool system.", "@language": "en" },
+    "integrationNotes": { "@value": "This is your personal notepad for integration and wiring insights. As you accumulate insights (see 'insightAccumulation'), you should adapt and update the mental models in this knowledge graph to reflect new patterns, lessons learned, and best practices. Use this section to jot down integration pain points, wiring tips, and any changes needed to mental models based on real-world experience.", "@language": "en" }
+  },
+  "mentalModels": {
+    "coreModels": { "@value": [
+      "Redundancy: Build in robustness and fallback (e.g., upstash fallback, error handling).",
+      "Bottlenecks: Identify and address performance or architectural bottlenecks (e.g., tool registry, tool initialization, execution logging).",
+      "Emergence: Expect non-linear behavior from tool/agent interactions (e.g., multi-tool chains, parallel execution).",
+      "First Principles: Always define types and contracts first (see type exports, Zod schemas).",
+      "Pattern Recognition: Use semantic/graph search to spot code smells, anti-patterns, and repeated errors.",
+      "Continuous Learning: Update docs and knowledge graph as new best practices emerge.",
+      "Layered Abstraction: Design each tool suite with clear boundaries and interfaces, enabling easy replacement or extension.",
+      "Defensive Programming: Always validate inputs/outputs, handle unexpected states, and fail safely.",
+      "Idempotency: Ensure repeated tool calls do not cause side effects or data corruption.",
+      "Observability: Instrument all critical paths with tracing, logging, and metrics for rapid debugging and optimization.",
+      "Testability: Write code that is easy to test in isolation, with clear contracts and minimal side effects.",
+      "Separation of Concerns: Keep tool logic, registry, and API layers distinct for maintainability.",
+      "Graceful Degradation: Ensure all features degrade cleanly if a backend (Supabase, LibSQL, Redis, Upstash) is unavailable.",
+      "Human-in-the-Loop: Design for easy manual inspection, override, and debugging by human operators.",
+      "Explicit Contracts: Document all function signatures, types, and error cases for every exported API.",
+      "Fail Fast: Surface errors early and clearly, with actionable messages for both humans and agents.",
+      "Self-Healing: Where possible, auto-recover from transient errors (e.g., reconnect, retry, fallback).",
+      "Traceability: Every important operation should be traceable from input to output, with context for debugging.",
+      "Least Privilege: Minimize access and permissions for each module, especially for DB and cache operations.",
+      "Extensibility: Design APIs and data models to allow for future features (e.g., new tool types, new backends).",
+      "Consistency: Ensure all modules follow the same conventions for error handling, logging, and type safety."
+    ], "@language": "en" },
+    "debugging": { "@value": [
+      "Check the Feature Coverage Table in README to find missing type safety, logging, or advanced tool support.",
+      "Use the Implementation Guide for step-by-step refactoring or feature addition.",
+      "For new features, update both code and docs immediately."
+    ], "@language": "en" },
+    "semanticSearch": { "@value": [
+      "Leverage this knowledge graph and README for semantic/graph search (for both AI and human agents).",
+      "Use types, features, and relationships as search keys for onboarding and troubleshooting.",
+      "Document new patterns and lessons in both README and tools.json for future searchability."
+    ], "@language": "en" },
+    "codeSmells": { "@value": [
+      "Any use of 'any' is a code smell—replace with types/Zod.",
+      "Unused imports, types, or variables should be implemented before being removed. Only remove if you are certain they are not needed (see TODOs in each entity).",
+      "Missing or outdated documentation in README or tools.json is a process smell."
+    ], "@language": "en" }
+  },
+  "notepad": {
+    "purpose": { "@value": "Persistent notes, reminders, and troubleshooting tips for AI agents. Use this to record lessons learned, common pitfalls, and debugging strategies.", "@language": "en" },
+    "entries": { "@value": [
+      "Always check for type errors and remove all 'any' usage.",
+      "If a change breaks a consumer (toolRegistry.ts, toolInitializer.ts, upstash-tool-execution-store.ts, barrels, or agentic tools), update onboarding and docs immediately.",
+      "Document new patterns, fixes, and lessons here for future agent runs.",
+      "If you encounter a recurring error, add a note here with the fix or workaround.",
+      "Use this notepad to leave yourself reminders for long-term improvements or TODOs."
+    ], "@language": "en" }
+  },
+  "taskList": {
+    "completed": { "@value": [
+      "Refactored all tool barrels and registry/initializer for type safety and error handling.",
+      "Drafted comprehensive README.md with onboarding, advanced usage, and AI agent guidance.",
+      "Created initial tools.json knowledge graph with entities, features, and relationships."
+    ], "@language": "en" },
+    "current": { "@value": [
+      "Expand tools.json with onboarding, navigation, crossref, and mental models.",
+      "Fix all outstanding type/lint errors and remove any from all modules.",
+      "Implement and document advanced features (multi-tool chains, parallel execution, execution logging, etc.).",
+      "For every tool file: strictly remove all 'any' types, unused imports/vars; ensure all types are Zod-validated and shared; add/expand tests for all modules, especially for advanced tool and registry logic; update and fix all broken exports in barrels and index.ts; add more usage examples and documentation for advanced features in README.md; keep README.md and tools.json in sync as features are added and errors are fixed.",
+      "Automate extraction and continuous update of the knowledge graph via CI/CD and AI agent workflows.",
+      "Continuously expand tests and documentation as features are added and errors are fixed.",
+      "Incorporate new onboarding, semantic search, and mental model techniques as they emerge.",
+      "Ensure all changes are validated with get_error after every file edit and before completion.",
+      "Wire all tools for use in ai-sdk-integration.ts, ai-sdk-tracing.ts, ai-integration.ts, and ./app/api/ai-sdk routes."
+    ], "@language": "en" },
+    "longTerm": { "@value": [
+      "Automate extraction and continuous update of the knowledge graph via CI/CD and AI agent workflows.",
+      "Continuously expand tests and documentation as features are added and errors are fixed.",
+      "Incorporate new onboarding, semantic search, and mental model techniques as they emerge.",
+      "Achieve full-stack, production-grade wiring: ensure every tool is discoverable, validated, and functional from registry/initializer through API routes, memory, agent flows, and into ai/react frontend components and page files, with seamless error handling, observability, and test coverage.",
+      "Ensure all tools, memory, and agent flows are robustly integrated and validated end-to-end, supporting advanced agentic workflows and memory persistence in production.",
+      "Maintain flawless, professional-grade user and agent experience across all routes, SDK, and UI layers."
+    ], "@language": "en" },
+    "fileSpecific": {
+      "toolRegistry.ts": { "@value": [
+        "Fix all type errors in registry logic (see get_errors).",
+        "Refine Tool generics and registry types for exhaustive type safety.",
+        "Improve error handling for registration and lookup failures.",
+        "Add/expand tests for registry and initialization logic.",
+        "Document registry API and usage patterns in README and tools.json.",
+        "Ensure registry supports dynamic tool loading and hot-reload for agent workflows."
+      ], "@language": "en" },
+      "toolInitializer.ts": { "@value": [
+        "Remove all 'any' types and unused imports/vars.",
+        "Add/expand tests for tool initialization and custom tool loading.",
+        "Document initialization API and usage patterns in README and tools.json.",
+        "Ensure initializer supports dynamic tool injection for agent and memory flows."
+      ], "@language": "en" },
+      "upstash-tool-execution-store.ts": { "@value": [
+        "Fix all type errors in execution logging and schema logic (see get_errors).",
+        "Refine Zod schemas for execution data and stats.",
+        "Replace all direct console statements with structured logging or observability events.",
+        "Add/expand tests for execution logging and error handling.",
+        "Document logging and observability patterns in README and tools.json.",
+        "Ensure execution store supports tracing and analytics for agent/memory workflows."
+      ], "@language": "en" },
+      "barrels and index.ts": { "@value": [
+        "Ensure all barrels re-export all expected symbols.",
+        "Fix any missing or broken exports in index.ts for unified tool access.",
+        "Document barrel and index wiring patterns in README and tools.json.",
+        "Ensure barrels and index.ts are always in sync with tool suite changes."
+      ], "@language": "en" },
+      "api routes (./app/api/ai-sdk/*)": { "@value": [
+        "Map and document all API routes that consume tools, memory, or agent flows.",
+        "Ensure all routes are robustly typed, validated, and error-handled.",
+        "Add/expand tests for all API routes, especially for agent/memory integration.",
+        "Document route-to-tool/agent/memory wiring in README and tools.json.",
+        "Ensure all API routes are discoverable and testable from the knowledge graph."
+      ], "@language": "en" },
+      "ai/react frontend components": { "@value": [
+        "Map and document all ai/react components that consume tools, memory, or agent flows.",
+        "Ensure all components are robustly typed, validated, and error-handled.",
+        "Add/expand tests for all components, especially for agent/memory/tool integration.",
+        "Document component-to-tool/agent/memory wiring in README and tools.json.",
+        "Ensure all frontend components are discoverable and testable from the knowledge graph."
+      ], "@language": "en" },
+      "page files": { "@value": [
+        "Map and document all page files that consume ai/react components, tools, memory, or agent flows.",
+        "Ensure all page files are robustly typed, validated, and error-handled.",
+        "Add/expand tests for all page files, especially for agent/memory/tool integration.",
+        "Document page-to-component/tool/agent/memory wiring in README and tools.json.",
+        "Ensure all page files are discoverable and testable from the knowledge graph."
+      ], "@language": "en" }
+    }
+  },
+  "enhancements": {
+    "@value": [
+      "Add per-tool and per-suite usage examples, including advanced/edge-case scenarios, directly in the knowledge graph for agentic onboarding and troubleshooting.",
+      "For each @graph node, include a 'wiringPatterns' field describing best-practice integration patterns (e.g., how to wire into API routes, SDK, and frontend).",
+      "Add a 'diagnostics' field to each node for common error signatures, troubleshooting steps, and self-healing strategies.",
+      "Include a 'testCoverage' field for each node, tracking test status, missing cases, and links to relevant test files.",
+      "Add a 'changeHistory' field to each node, summarizing major changes, refactors, and lessons learned (auto-populated from git log or PRs).",
+      "Integrate a 'riskAssessment' field for diamond core files, highlighting architectural risks, mitigation strategies, and review requirements.",
+      "For agentic tools, add a 'mentalModelMap' linking each tool to the core mental models and onboarding steps it exemplifies.",
+      "Add a 'quickStart' section at the top-level for new contributors/agents, with a 5-step guide to wiring, testing, and validating a new tool end-to-end.",
+      "Include a 'glossary' section for all key terms, types, and patterns referenced in the knowledge graph, README, and codebase.",
+      "Add a 'selfCheck' checklist for agents to run before/after any wiring or refactor, ensuring all best practices are followed and all diagnostics are green.",
+      "ENFORCE: All @graph nodes must include wiringPatterns, diagnostics, testCoverage, changeHistory, and (if applicable) riskAssessment and mentalModelMap fields.",
+      "ENFORCE: All usage examples, edge-cases, and advanced scenarios must be documented per tool and suite.",
+      "ENFORCE: All onboarding, navigation, and glossary sections must be kept in sync with codebase and README changes.",
+      "ENFORCE: All selfCheck items must be validated before merge or release."
+    ],
+    "@language": "en"
+  },
+  "quickStart": {
+    "@value": [
+      "1. Read the README and this knowledge graph's onboarding section.",
+      "2. Add your new tool to the appropriate suite, with Zod schemas and discriminated-union result types.",
+      "3. Register and initialize your tool in toolRegistry.ts and toolInitializer.ts, and export via barrels and index.ts.",
+      "4. Wire your tool into API routes and/or SDK, and add usage examples and tests.",
+      "5. Run get_error, check diagnostics, and update documentation, onboarding, and the knowledge graph as needed.",
+      "6. For every new tool or change, update wiringPatterns, diagnostics, testCoverage, changeHistory, and riskAssessment/mentalModelMap as needed in the knowledge graph node."
+    ],
+    "@language": "en"
+  },
+  "glossary": {
+    "@value": [
+      "Diamond Core: A file or module that is central to the system's integrity and reliability.",
+      "Barrel File: A file that re-exports modules for unified import paths.",
+      "Agentic Tool: A tool designed for agent workflows, often with advanced orchestration or memory.",
+      "Zod Schema: A runtime validation schema for type safety and input/output validation.",
+      "Discriminated Union: A TypeScript pattern for robust, type-safe result handling.",
+      "Observability: Instrumentation for tracing, logging, and debugging critical paths.",
+      "Self-Healing: Code patterns that auto-recover from transient errors or failures.",
+      "Wiring: The process of connecting tools, registries, initializers, and consumers (API, SDK, frontend)."
+    ],
+    "@language": "en"
+  },
+  "selfCheck": {
+    "@value": [
+      "[ ] All new/changed files are represented in @graph with actionable fields and mental models.",
+      "[ ] All tools are registered, initialized, and exported via barrels and index.ts.",
+      "[ ] All Zod schemas and discriminated unions are present and validated.",
+      "[ ] All diagnostics and testCoverage fields are green or have actionable TODOs.",
+      "[ ] All onboarding, navigation, and glossary sections are up to date.",
+      "[ ] All API routes, SDK, and frontend integrations are documented and tested.",
+      "[ ] All diamond core files have riskAssessment and changeHistory fields updated.",
+      "[ ] All enhancements and best practices in this section are followed.",
+      "[ ] All @graph nodes have wiringPatterns, diagnostics, testCoverage, changeHistory, and (if applicable) riskAssessment and mentalModelMap fields completed and up to date.",
+      "[ ] All usage examples and edge-cases are documented per tool and suite.",
+      "[ ] All onboarding, navigation, and glossary sections are in sync with codebase and README.",
+      "[ ] All enhancements and ENFORCE items are validated before merge/release."
+    ],
+    "@language": "en"
+  }
+}

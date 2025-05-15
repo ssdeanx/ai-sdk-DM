@@ -1,1 +1,446 @@
-{}
+{
+  "@context": [
+    "https://schema.org",
+    { "feature": "https://schema.org/hasFeature" }
+  ],
+  "@type": "Graph",
+  "name": "AI Agent System Knowledge Graph",
+  "description": "Living knowledge graph for the /lib/agents folder, capturing entities (files, types, features), relationships, onboarding, navigation, and AI agent support.",
+  "version": "1.0.0",
+  "generatedAt": "2025-05-14T00:00:00Z",
+  "@graph": [
+    {
+      "@id": "lib/agents/agent-service.ts",
+      "@type": ["CodeFile", "DiamondCore"],
+      "path": "lib/agents/agent-service.ts",
+      "exports": ["runAgent", "listAgents", "getAgent"],
+      "features": [
+        "Run agent with memory thread",
+        "List and fetch agents",
+        "Integrates with Supabase, LibSQL, Upstash",
+        "Type-safe agent execution and persona integration"
+      ],
+      "types": ["Agent", "RunResult", "AgentRunOptions"],
+      "zodSchemas": ["AgentSchema", "RunResultSchema", "AgentRunOptionsSchema"],
+      "consumers": ["index.ts", "registry.ts", "API: /api/agents/*"],
+      "dependencies": ["agent.types.ts", "baseAgent.ts", "registry.ts", "personas/*", "memory/*", "ai-sdk-integration"],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected any in model and tool handling",
+        "Unused variables and schemas",
+        "Unexpected console statements (should use observability hooks)",
+        "Type safety issues in agent state and tool execution"
+      ],
+      "relationships": [
+        { "type": "consumer", "target": "lib/agents/index.ts" },
+        { "type": "consumer", "target": "lib/agents/registry.ts" },
+        { "type": "type", "target": "lib/agents/agent.types.ts" },
+        { "type": "persona", "target": "lib/agents/personas/persona-manager.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/baseAgent.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/agent.types.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/personas/persona-manager.ts" }
+      ],
+      "observations": [
+        "Critical for agent execution and persona integration.",
+        "Type safety and observability are required for reliability.",
+        "Directly impacts all agent API routes and downstream consumers."
+      ],
+      "usageNotes": "All agent execution and tool logic must be strictly typed. Replace all 'any' and console statements with proper types and logging.",
+      "onboarding": "See README.md for agent execution, persona, and memory integration patterns.",
+      "troubleshooting": "Check for type errors, unused variables, and missing observability hooks.",
+      "mentalModels": ["Rubber Ducking", "First Principles Thinking", "Feedback Loops", "5 Whys", "Inversion"]
+    },
+    {
+      "@id": "lib/agents/agent.types.ts",
+      "@type": ["CodeFile", "DiamondCore"],
+      "path": "lib/agents/agent.types.ts",
+      "exports": ["Agent", "AgentSchema", "ToolConfig", "ToolConfigSchema", "AgentState", "AgentStateSchema", "RunResult", "RunResultSchema", "AgentRunTokenUsage", "AgentRunTokenUsageSchema", "AgentRunFinishReason", "AgentRunFinishReasonSchema", "AgentRunToolInvocation", "AgentRunToolInvocationSchema", "AgentRunFinishData"],
+      "features": [
+        "Type and schema definitions for agents, tools, state, and results",
+        "Zod schemas for all agent and persona types"
+      ],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected any in AgentState, RunResult, AgentRunToolInvocation, AgentRunOptions, AgentHooks, AgentPersona",
+        "Type safety issues in memory and toolChoice fields"
+      ],
+      "relationships": [
+        { "type": "type", "target": "lib/agents/agent-service.ts" },
+        { "type": "type", "target": "lib/agents/baseAgent.ts" },
+        { "type": "type", "target": "lib/agents/registry.ts" },
+        { "type": "type", "target": "lib/agents/personas/persona-manager.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/baseAgent.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/agent-service.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/personas/persona-manager.ts" }
+      ],
+      "observations": [
+        "Defines all core agent and persona types; type safety is foundational.",
+        "Errors here propagate to all agent and persona modules."
+      ],
+      "usageNotes": "All types must be strictly typed. Replace all 'any' with precise types or generics.",
+      "onboarding": "See README.md for type usage and schema enforcement.",
+      "troubleshooting": "Check for type errors in all agent and persona interfaces.",
+      "mentalModels": ["First Principles Thinking", "Occam's Razor", "Feedback Loops", "Circle of Competence"]
+    },
+    {
+      "@id": "lib/agents/baseAgent.ts",
+      "@type": ["CodeFile", "DiamondCore"],
+      "path": "lib/agents/baseAgent.ts",
+      "exports": ["BaseAgent"],
+      "features": [
+        "Core agent class with lifecycle hooks, tool initialization, run logic",
+        "Persona and tool integration",
+        "Type-safe config and hooks via Zod",
+        "Integrates with memory, provider, and persona subsystems"
+      ],
+      "consumers": ["registry.ts", "agent-service.ts", "multiAgent.ts"],
+      "dependencies": ["agent.types.ts", "personas/*", "tools/toolRegistry.ts", "tools/toolInitializer.ts", "memory/*", "ai-sdk-integration", "ai-sdk-tracing"],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected any in tool initialization and params",
+        "Unexpected console statements (should use observability hooks)",
+        "Type safety issues in tool and agent config handling"
+      ],
+      "relationships": [
+        { "type": "consumer", "target": "lib/agents/registry.ts" },
+        { "type": "consumer", "target": "lib/agents/agent-service.ts" },
+        { "type": "consumer", "target": "lib/agents/multiAgent.ts" },
+        { "type": "type", "target": "lib/agents/agent.types.ts" },
+        { "type": "persona", "target": "lib/agents/personas/persona-manager.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/agent-service.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/agent.types.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/personas/persona-manager.ts" }
+      ],
+      "observations": [
+        "Implements core agent lifecycle and integration logic.",
+        "Type and config errors here can break all agent runs."
+      ],
+      "usageNotes": "All tool and agent config types must be strictly typed. Replace all 'any' and console statements with proper types and logging.",
+      "onboarding": "See README.md for lifecycle, persona, and tool integration patterns.",
+      "troubleshooting": "Check for type errors and missing observability hooks.",
+      "mentalModels": ["Rubber Ducking", "First Principles Thinking", "Feedback Loops", "Inversion", "Mindmaps & Hill Charts"]
+    },
+    {
+      "@id": "lib/agents/personas/persona-manager.ts",
+      "@type": ["CodeFile", "DiamondCore"],
+      "path": "lib/agents/personas/persona-manager.ts",
+      "exports": ["PersonaManager", "personaManager"],
+      "features": [
+        "Dynamic persona management",
+        "File-based and Upstash Redis storage",
+        "Usage and feedback tracking",
+        "Type-safe persona CRUD and feedback"
+      ],
+      "consumers": ["personas/index.ts", "agent-service.ts"],
+      "dependencies": ["persona-library.ts", "upstash-persona-store.ts", "persona-score-manager.ts", "persona-streaming-service.ts", "persona-library-extended.ts"],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected any in file loading and error handling",
+        "Unexpected console statements (should use observability hooks)",
+        "Type safety issues in userPreferences and file IO"
+      ],
+      "relationships": [
+        { "type": "consumer", "target": "lib/agents/personas/index.ts" },
+        { "type": "consumer", "target": "lib/agents/agent-service.ts" },
+        { "type": "type", "target": "lib/agents/personas/persona-library.ts" },
+        { "type": "utility", "target": "lib/agents/personas/persona-library-utils.ts" },
+        { "type": "persistence", "target": "lib/agents/personas/upstash-persona-store.ts" },
+        { "type": "metrics", "target": "lib/agents/personas/persona-score-manager.ts" },
+        { "type": "streaming", "target": "lib/agents/personas/persona-streaming-service.ts" },
+        { "type": "extension", "target": "lib/agents/personas/persona-library-extended.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/agent-service.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/baseAgent.ts" },
+        { "type": "diamond-core-peer", "target": "lib/agents/agent.types.ts" }
+      ],
+      "observations": [
+        "Central for persona CRUD, feedback, and persistence.",
+        "Type and logging issues here impact all persona flows."
+      ],
+      "usageNotes": "All persona CRUD and feedback must be strictly typed. Replace all 'any' and console statements with proper types and logging.",
+      "onboarding": "See README.md for persona management and feedback patterns.",
+      "troubleshooting": "Check for type errors and missing observability hooks.",
+      "mentalModels": ["Rubber Ducking", "5 Whys", "Feedback Loops", "Circle of Competence", "Lean Startup"]
+    },
+    {
+      "@id": "lib/agents/registry.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/agents/registry.ts",
+      "exports": ["AgentRegistry", "agentRegistry"],
+      "features": [
+        "Registry for managing agent instances",
+        "LRU cache for agent configs and tools",
+        "Supabase integration",
+        "Type-safe agent loading and cache management"
+      ],
+      "consumers": ["index.ts", "agent-service.ts"],
+      "dependencies": ["baseAgent.ts", "agent.types.ts", "tools/toolRegistry.ts", "memory/*"],
+      "status": "complete",
+      "relationships": [
+        { "type": "consumer", "target": "lib/agents/index.ts" },
+        { "type": "consumer", "target": "lib/agents/agent-service.ts" },
+        { "type": "type", "target": "lib/agents/agent.types.ts" },
+        { "type": "agent", "target": "lib/agents/baseAgent.ts" }
+      ],
+      "usageNotes": "Ensure LRU cache and agent loading are robust and observable.",
+      "onboarding": "See README.md for registry and cache usage patterns.",
+      "troubleshooting": "Check for cache misses and agent loading errors."
+    },
+    {
+      "@id": "lib/agents/multiAgent.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/agents/multiAgent.ts",
+      "exports": ["MultiAgentOrchestrator", "multiAgentOrchestrator", "Workflow", "WorkflowStep", "CreateWorkflowOptions", "AgentCommunicationOptions"],
+      "features": [
+        "Multi-agent orchestration",
+        "Agent-to-agent communication",
+        "Workflow management",
+        "Type-safe workflow and step definitions"
+      ],
+      "consumers": ["index.ts"],
+      "dependencies": ["baseAgent.ts", "agent.types.ts"],
+      "status": "complete",
+      "relationships": [
+        { "type": "consumer", "target": "lib/agents/index.ts" },
+        { "type": "type", "target": "lib/agents/agent.types.ts" },
+        { "type": "agent", "target": "lib/agents/baseAgent.ts" }
+      ],
+      "usageNotes": "Use for orchestrating complex agent workflows. All workflow types must be strictly typed.",
+      "onboarding": "See README.md for multi-agent orchestration patterns.",
+      "troubleshooting": "Check for workflow execution and agent communication errors."
+    },
+    {
+      "@id": "lib/agents/personas/persona-library.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/agents/personas/persona-library.ts",
+      "exports": ["GeminiSafetyCategory", "GeminiSafetyThreshold", "GeminiCapability", "PersonaDefinitionSchema", "MicroPersonaDefinitionSchema", "SafetySettingSchema", "ExampleDialogueSchema", "PersonaScoreSchema", "ScoreUpdateDataSchema", "GeminiModelIdSchema", "validatePersonaDefinition", "validateMicroPersonaDefinition", "composePersona", "basePersonas", "specializedPersonas", "personaLibraryDefault"],
+      "features": [
+        "Persona and micro-persona type/schema definitions",
+        "Gemini model integration",
+        "Type-safe persona validation and composition"
+      ],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected console statements (should use observability hooks)",
+        "Minor const/coding style issues"
+      ],
+      "relationships": [
+        { "type": "type", "target": "lib/agents/personas/persona-manager.ts" },
+        { "type": "type", "target": "lib/agents/personas/persona-library-utils.ts" }
+      ],
+      "usageNotes": "All persona types and schemas must be strictly typed. Replace all console statements with proper logging.",
+      "onboarding": "See README.md for persona type and schema usage.",
+      "troubleshooting": "Check for validation and logging errors."
+    },
+    {
+      "@id": "lib/agents/personas/persona-score-manager.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/agents/personas/persona-score-manager.ts",
+      "exports": ["PersonaScoreManager", "personaScoreManager", "PersonaScoreSchema", "ScoreUpdateDataSchema", "TokenUsageSchema"],
+      "features": [
+        "Persona scoring and metrics management",
+        "Supabase and tracing integration",
+        "Type-safe score and analytics handling"
+      ],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected any in Supabase table usage",
+        "Unexpected console statements (should use observability hooks)",
+        "Type safety issues in score and feedback handling",
+        "Unused imports and coding style issues"
+      ],
+      "relationships": [
+        { "type": "metrics", "target": "lib/agents/personas/persona-manager.ts" },
+        { "type": "persistence", "target": "lib/agents/personas/upstash-persona-score.ts" }
+      ],
+      "usageNotes": "All score and feedback logic must be strictly typed. Replace all 'any' and console statements with proper types and logging.",
+      "onboarding": "See README.md for persona scoring and analytics patterns.",
+      "troubleshooting": "Check for type errors and missing observability hooks."
+    },
+    {
+      "@id": "lib/agents/personas/persona-library-utils.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/agents/personas/persona-library-utils.ts",
+      "exports": ["initializePersonaLibrary", "getAllPersonaDefinitions", "createTaskProvider", "getPersonaByTaskType", "exportPersonaLibraryToFiles"],
+      "features": [
+        "Persona library utilities",
+        "Initialization, management, and integration with Gemini models",
+        "Type-safe persona utility functions"
+      ],
+      "status": "errors-present",
+      "errors": [
+        "Unexpected any in function signatures",
+        "Unexpected console statements (should use observability hooks)",
+        "Unused imports and coding style issues"
+      ],
+      "relationships": [
+        { "type": "utility", "target": "lib/agents/personas/persona-manager.ts" },
+        { "type": "type", "target": "lib/agents/personas/persona-library.ts" }
+      ],
+      "usageNotes": "All persona utility functions must be strictly typed. Replace all 'any' and console statements with proper types and logging.",
+      "onboarding": "See README.md for persona utility usage patterns.",
+      "troubleshooting": "Check for type errors and missing observability hooks."
+    }
+  ],
+  "meta": {
+    "source": "auto-generated from README.md, agents.json, and codebase as of 2025-05-14",
+    "updateStrategy": "automated extraction and continuous update via CI/CD and AI agent workflows",
+    "intendedUse": ["Continuous improvement and documentation enforcement"]
+  },
+  "onboarding": {
+    "purpose": "This onboarding is for AI agents (and advanced human contributors). Its goal is to ensure robust, error-free, and continuously improving agent and persona system development. All steps are designed for AI agent reliability, self-improvement, and persistent insight.",
+    "audience": "AI agents (Copilot, LLMs, automated CI/CD bots)",
+    "corePrinciples": [
+      "Type safety and Zod validation are required for all modules.",
+      "After every file edit, always use get_errors to check for errors before considering the task complete.",
+      "All direct console statements must be replaced with proper logging or observability hooks.",
+      "Every file must have comprehensive tests, docs, and usage examples.",
+      "Knowledge graph and README must be updated with every significant change.",
+      "Unused imports, types, and variables in core files must be implemented and used if possible, not removed unless absolutely certain they are dead code.",
+      "Use semantic/graph search and mental models for navigation, troubleshooting, and continuous improvement.",
+      "Apply mental models (see 'mentalModels' section) to break down, analyze, and solve coding and architectural problems.",
+      "Onboarding and troubleshooting should be agent-friendly, with step-by-step guidance and references to code, docs, and graph nodes.",
+      "Continuous improvement: treat every error, warning, or TODO as a learning opportunity and update the knowledge graph accordingly."
+    ],
+    "steps": [
+      "Read the README.md in full, focusing on the Purpose, Goals, and Example Prompt sections.",
+      "Review the @graph array for a map of all files, features, and relationships.",
+      "For each file, check the 'status' and 'features' fields to identify what is needed for production-readiness.",
+      "Use the 'mentalModels' section to select the best approach for the current coding or troubleshooting task.",
+      "After editing any file, run get_errors and update the knowledge graph and README as needed.",
+      "If a file is incomplete, follow the taskList for actionable steps to bring it to production-grade.",
+      "If stuck, use mental models like Rubber Ducking, First Principles, or Feedback Loops to analyze and resolve the issue.",
+      "Document all lessons learned and improvements in the notepad and changelog sections."
+    ],
+    "navigation": {
+      "crossref": "Use 'relationships' to see which files import, use, or export others.",
+      "byFile": "Use the @graph array to locate files, their features, status, and relationships.",
+      "byFeature": "Search for features (e.g., persona management, agent orchestration) in the 'features' fields.",
+      "byType": "Find types and Zod schemas in each file and referenced in each file's 'exports'.",
+      "byStatus": "Track progress using the 'status' and 'features' fields for each entity.",
+      "integrationNotes": "The agent system connects Supabase, memory, personas, and tools. When integrating new features, ensure all adapters and backends are mapped in the knowledge graph, and use mental models to guide troubleshooting and design."
+    },
+    "fileSpecific": {
+      "agent-service.ts": [
+        "Ensure all agent run logic is type-safe and robust.",
+        "Integrate with memory and persona subsystems.",
+        "Add/expand tests for agent execution and error handling."
+      ],
+      "baseAgent.ts": [
+        "Implement lifecycle hooks and tool initialization.",
+        "Ensure persona and tool configs are validated with Zod.",
+        "Add/expand tests for agent instantiation and run logic."
+      ],
+      "registry.ts": [
+        "Ensure LRU cache is robust and observable.",
+        "Add/expand tests for agent registration and cache stats."
+      ],
+      "multiAgent.ts": [
+        "Expand workflow and agent-to-agent communication features.",
+        "Add/expand tests for multi-agent orchestration."
+      ],
+      "personas/persona-manager.ts": [
+        "Ensure persona registration and feedback tracking are robust.",
+        "Add/expand tests for persona CRUD and usage tracking."
+      ],
+      "personas/persona-score-manager.ts": [
+        "Ensure scoring metrics are accurate and up-to-date.",
+        "Add/expand tests for score updates and analytics."
+      ],
+      "personas/persona-library-utils.ts": [
+        "Expand utility functions for persona management.",
+        "Add/expand tests for library initialization and export."
+      ],
+      "personas/upstash-persona-store.ts": [
+        "Ensure Redis persistence is robust and error-handled.",
+        "Add/expand tests for persona and micro-persona storage."
+      ]
+    }
+  },
+  "mentalModels": {
+    "description": "A curated set of mental models for agent and persona system development, debugging, and improvement. Use these models to break down complex problems, verify assumptions, and drive continuous improvement. Each model below includes a summary, practical usage, and tips for applying it to the agent/persona context.",
+    "models": [
+      {
+        "name": "Rubber Ducking",
+        "summary": "Explain your code, logic, or problem step-by-step to clarify thinking and reveal hidden bugs.",
+        "application": "When stuck or debugging, narrate the agent/persona flow (e.g., agent-service.ts → baseAgent.ts → persona-manager.ts) and spot mismatches or missing logic.",
+        "bestFor": ["Debugging complex bugs", "Explaining code to others", "Onboarding new contributors"],
+        "howToUse": "Describe the data flow and state transitions for an agent run, noting any unclear steps or assumptions."
+      },
+      {
+        "name": "First Principles Thinking",
+        "summary": "Break down a problem into its most basic elements and reason up from there.",
+        "application": "For architectural decisions or refactoring, break down agent, persona, and tool requirements into core primitives, then design the integration from scratch.",
+        "bestFor": ["Major refactors", "Designing new features", "Fixing systemic issues"],
+        "howToUse": "List out the fundamental requirements (e.g., agent state, persona selection, tool orchestration). For each, ask: what is the simplest way to achieve this?"
+      },
+      {
+        "name": "Feedback Loops",
+        "summary": "Make a change, test it, gather results, and iterate for continuous improvement.",
+        "application": "After every change (especially in agent/persona code), run tests, check for errors, and update docs/knowledge graph.",
+        "bestFor": ["Test-driven development", "CI/CD automation", "Knowledge graph updates"],
+        "howToUse": "After editing or adding a feature, run all tests and update the knowledge graph with lessons learned."
+      },
+      {
+        "name": "Circle of Competence",
+        "summary": "Know what you understand well and when to seek help or research.",
+        "application": "If unfamiliar with a subsystem (e.g., persona scoring), consult docs or experts before making changes.",
+        "bestFor": ["Critical/core files", "Unfamiliar code", "Cross-team collaboration"],
+        "howToUse": "If unsure about a file or feature, review its node in the knowledge graph and related docs before editing."
+      },
+      {
+        "name": "5 Whys",
+        "summary": "Ask 'why?' repeatedly to drill down to the root cause of a problem.",
+        "application": "Use for persistent bugs or integration failures (e.g., why did agent run fail? Why did persona selection not work?).",
+        "bestFor": ["Root cause analysis", "Production incidents", "Complex bugfixes"],
+        "howToUse": "For a failed agent run, ask why at each step (e.g., why did agent-service.ts not load the agent? Why did baseAgent.ts not initialize tools? etc.) until the root cause is found."
+      },
+      {
+        "name": "Inversion",
+        "summary": "Think about what would cause your system to fail, and design to avoid those outcomes.",
+        "application": "Consider what would break agent/persona flows (e.g., missing persona, tool init failure) and proactively add error handling, retries, and tests.",
+        "bestFor": ["Error handling", "Security reviews", "Test coverage"],
+        "howToUse": "List all possible failure modes for each integration point. Add code and tests to handle or prevent each one."
+      },
+      {
+        "name": "Occam's Razor",
+        "summary": "The simplest solution is usually best. Avoid unnecessary complexity, especially in integration code.",
+        "application": "Prefer the simplest, most direct data flow and fallback logic for agent/persona orchestration.",
+        "bestFor": ["Refactoring", "API design", "Performance tuning"],
+        "howToUse": "Review code for unnecessary indirection or abstraction. Simplify wherever possible, and document why any complexity is required."
+      },
+      {
+        "name": "Mindmaps & Hill Charts",
+        "summary": "Visual tools for mapping out dependencies, progress, and relationships.",
+        "application": "Use mindmaps to visualize how agent-service.ts, baseAgent.ts, registry.ts, and persona-manager.ts connect and interact.",
+        "bestFor": ["Project planning", "Onboarding", "Dependency analysis"],
+        "howToUse": "Draw a diagram showing the flow of data and control between all agent and persona modules. Update as the architecture evolves."
+      },
+      {
+        "name": "Parkinson's Law",
+        "summary": "Work expands to fill the time available. Set clear deadlines and constraints to keep work focused and efficient.",
+        "application": "Timebox integration tasks (e.g., connecting agent-service.ts to registry.ts and persona-manager.ts) to avoid endless refactoring or scope creep.",
+        "bestFor": ["Sprint planning", "Bugfixes", "Feature delivery"],
+        "howToUse": "Set a deadline for each integration milestone. If a task is taking too long, review for unnecessary complexity or blockers."
+      },
+      {
+        "name": "Lean Startup",
+        "summary": "Build, measure, and learn quickly. For integrations, ship small, test, and iterate.",
+        "application": "Implement the minimal integration first (e.g., basic agent run and persona selection), then add features and fallback logic incrementally.",
+        "bestFor": ["Prototyping", "New features", "Continuous delivery"],
+        "howToUse": "Start with a working MVP for the integration. Add tests and features in small increments, validating each step."
+      }
+    ],
+    "usageNotes": "For agent/persona integration, always map out the relationships between agent-service.ts, baseAgent.ts, registry.ts, and persona-manager.ts. Use the above models to guide design, debugging, and onboarding. Document integration points and lessons learned in the knowledge graph."
+  },
+  "taskList": {
+    "completed": [
+      "Created initial agents.json knowledge graph with entities, features, and relationships."
+    ],
+    "current": [
+      "For each file, ensure all types are precise and all logging is via proper observability hooks.",
+      "Every file must have comprehensive tests, docs, and usage examples.",
+      "Knowledge graph and README must be updated after every significant change.",
+      "Apply the most relevant mental models (see below) to each file's refactor, bugfix, or feature implementation."
+    ]
+  }
+}

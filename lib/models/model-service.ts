@@ -8,10 +8,13 @@
  */
 
 import { z } from 'zod';
-import { getData, getItemById, createItem, updateItem, deleteItem, shouldUseUpstash, isSupabaseClient, isUpstashClient, getSupabaseClient } from '../memory/supabase';
-import { modelRegistry, ModelSettings, ModelSettingsInput, ModelSettingsUpdate, ModelSettingsSchema } from './model-registry';
+import { createSupabaseClient, isUpstashClient, isSupabaseClient, getData, getItemById, createItem, updateItem, deleteItem } from '../memory/upstash/supabase-adapter-factory';
+import { shouldUseUpstash } from '../memory/supabase';
+import { upstashLogger } from '../memory/upstash/upstash-logger';
+import { ModelSettings, ModelSettingsInput, ModelSettingsUpdate } from '../../types/model-settings';
+import { ModelSettingsSchema } from './model-registry';
 import { v4 as uuidv4 } from 'uuid';
-import { createSupabaseClient } from '../memory/upstash/supabase-adapter-factory';
+import { modelRegistry } from './model-registry';
 
 // Define Zod schema for database options
 export const DatabaseOptionsSchema = z.object({
@@ -52,7 +55,6 @@ export const SupabaseModelSchema = z.object({
   updated_at: z.string()
 });
 
-
 // --- Error Handling ---
 
 /**
@@ -82,99 +84,30 @@ export class ModelServiceError extends Error {
  * @throws ModelServiceError if fetching fails
  */
 export async function getAllModels(options?: z.infer<typeof DatabaseOptionsSchema>): Promise<ModelSettings[]> {
-  // Validate options with Zod if provided
   const validatedOptions = options ? DatabaseOptionsSchema.parse(options) : undefined;
   try {
-    // Get models from Supabase or Upstash
     let modelsData: any[] = [];
-
     if (shouldUseUpstash()) {
-      // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-
-      // Verify client type for type safety
       if (isUpstashClient(supabaseClient)) {
-        console.log("Using Upstash Supabase client for models");
-
-        let query = supabaseClient.from('models');
-
-        // Apply filters if provided
-        if (validatedOptions?.filters) {
-          for (const [key, value] of Object.entries(validatedOptions.filters)) {
-            query = query.filter(key, 'eq', value);
-          }
-        }
-
-        // Apply ordering if provided
-        if (validatedOptions?.orderBy) {
-          query = query.order(validatedOptions.orderBy.column, validatedOptions.orderBy.ascending);
-        } else {
-          query = query.order('name', true);
-        }
-
-        // Apply pagination if provided
-        if (validatedOptions?.limit) {
-          query = query.limit(validatedOptions.limit);
-        }
-
-        if (validatedOptions?.offset) {
-          query = query.offset(validatedOptions.offset);
-        }
-
-        modelsData = await query.getAll();
+        modelsData = await supabaseClient.from('models').getAll(validatedOptions);
       } else {
-        throw new Error("Expected Upstash client but got different client type");
+        modelsData = await getData('models', validatedOptions);
       }
     } else {
-      // Use regular Supabase with getData function
-      console.log("Using standard Supabase client with getData for models");
-
-      // Create options for getData
-      const getDataOptions: any = {};
-
-      if (validatedOptions?.orderBy) {
-        getDataOptions.orderBy = {
-          column: validatedOptions.orderBy.column,
-          ascending: validatedOptions.orderBy.ascending
-        };
-      }
-
-      if (validatedOptions?.limit) {
-        getDataOptions.limit = validatedOptions.limit;
-      }
-
-      if (validatedOptions?.offset) {
-        getDataOptions.offset = validatedOptions.offset;
-      }
-
-      if (validatedOptions?.filters) {
-        getDataOptions.match = validatedOptions.filters;
-      }
-
-      // Use getData function with validated options
-      modelsData = await getData('models', getDataOptions as any);
+      modelsData = await getData('models', validatedOptions);
     }
-
-    // Validate models
     const models: ModelSettings[] = [];
-
     for (const model of modelsData) {
       try {
-        const validatedModel = ModelSettingsSchema.parse(model);
-        models.push(validatedModel);
-
-        // Register model with registry
-        modelRegistry.registerModel(validatedModel);
+        models.push(ModelSettingsSchema.parse(model));
       } catch (validationError) {
-        console.warn(`Invalid model data for ${model.id || 'unknown model'}:`, validationError);
+        upstashLogger.error('model-service', 'Invalid model data', validationError);
       }
     }
-
     return models;
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', 'Failed to get all models', error);
     throw new ModelServiceError(`Failed to get all models`, error);
   }
 }
@@ -188,58 +121,30 @@ export async function getAllModels(options?: z.infer<typeof DatabaseOptionsSchem
  */
 export async function getModelById(id: string): Promise<ModelSettings | null> {
   try {
-    // Check registry first
     const registryModel = modelRegistry.getModel(id);
-
-    if (registryModel) {
-      return registryModel;
-    }
-
-    // Get model from Supabase or Upstash
+    if (registryModel) return registryModel;
     let modelData: any = null;
-
     if (shouldUseUpstash()) {
-      // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-
-      // Verify client type for type safety
       if (isUpstashClient(supabaseClient)) {
-        console.log("Using Upstash Supabase client for model by ID");
         modelData = await supabaseClient.from('models').getById(id);
       } else {
-        throw new Error("Expected Upstash client but got different client type");
+        modelData = await getItemById('models', id);
       }
     } else {
-      // Use regular Supabase with getItemById
-      console.log("Using standard Supabase client with getItemById for model by ID");
-
-      try {
-        // Use getItemById function
-        modelData = await getItemById('models', id);
-      } catch (error) {
-        throw new ModelServiceError(`Error fetching model by ID: ${error instanceof Error ? error.message : String(error)}`, error);
-      }
+      modelData = await getItemById('models', id);
     }
-
-    if (!modelData) {
-      return null;
-    }
-
-    // Validate model
+    if (!modelData) return null;
     try {
       const validatedModel = ModelSettingsSchema.parse(modelData);
-
-      // Register model with registry
       modelRegistry.registerModel(validatedModel);
-
       return validatedModel;
     } catch (validationError) {
+      upstashLogger.error('model-service', `Invalid model data for ${id}`, validationError);
       throw new ModelServiceError(`Invalid model data for ${id}`, validationError);
     }
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', `Failed to get model by ID ${id}`, error);
     throw new ModelServiceError(`Failed to get model by ID ${id}`, error);
   }
 }
@@ -253,78 +158,34 @@ export async function getModelById(id: string): Promise<ModelSettings | null> {
  */
 export async function getModelByModelId(modelId: string): Promise<ModelSettings | null> {
   try {
-    // Check registry first
     const registryModels = Array.from(modelRegistry['models'].values());
     const registryModel = registryModels.find(model => model.model_id === modelId);
-
-    if (registryModel) {
-      return registryModel;
-    }
-
-    // Get model from Supabase or Upstash
+    if (registryModel) return registryModel;
     let modelData: any = null;
-
     if (shouldUseUpstash()) {
-      // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-
-      // Verify client type for type safety
       if (isUpstashClient(supabaseClient)) {
-        console.log("Using Upstash Supabase client for model by model_id");
-
-        // Get all models and filter by model_id
-        const models = await supabaseClient.from('models').getAll();
-        modelData = models.find(model => model.model_id === modelId) || null;
+        const allModels = await supabaseClient.from('models').getAll();
+        modelData = allModels.find((m: any) => m.model_id === modelId);
       } else {
-        throw new Error("Expected Upstash client but got different client type");
+        const allModels = await getData('models');
+        modelData = allModels.find((m: any) => m.model_id === modelId);
       }
     } else {
-      // Use regular Supabase
-      const supabaseClient = getSupabaseClient();
-
-      // Verify client type for type safety
-      if (isSupabaseClient(supabaseClient)) {
-        console.log("Using standard Supabase client for model by model_id");
-
-        const { data, error } = await supabaseClient
-          .from('models')
-          .select('*')
-          .eq('model_id', modelId)
-          .single();
-
-        if (error) {
-          if (error.code === 'PGRST116') {
-            // Record not found
-            return null;
-          }
-          throw new ModelServiceError(`Error fetching model by model_id: ${error.message}`, error);
-        }
-
-        modelData = data;
-      } else {
-        throw new Error("Expected Supabase client but got different client type");
-      }
+      const allModels = await getData('models');
+      modelData = allModels.find((m: any) => m.model_id === modelId);
     }
-
-    if (!modelData) {
-      return null;
-    }
-
-    // Validate model
+    if (!modelData) return null;
     try {
       const validatedModel = ModelSettingsSchema.parse(modelData);
-
-      // Register model with registry
       modelRegistry.registerModel(validatedModel);
-
       return validatedModel;
     } catch (validationError) {
+      upstashLogger.error('model-service', `Invalid model data for model_id ${modelId}`, validationError);
       throw new ModelServiceError(`Invalid model data for model_id ${modelId}`, validationError);
     }
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', `Failed to get model by model_id ${modelId}`, error);
     throw new ModelServiceError(`Failed to get model by model_id ${modelId}`, error);
   }
 }
@@ -344,11 +205,7 @@ export async function createModel(model: ModelSettingsInput): Promise<ModelSetti
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    // Validate model
     const validatedModel = ModelSettingsSchema.parse(modelData);
-
-    // Convert number values to strings for Supabase compatibility
     const supabaseModelData = {
       ...validatedModel,
       max_tokens: validatedModel.max_tokens.toString(),
@@ -360,51 +217,21 @@ export async function createModel(model: ModelSettingsInput): Promise<ModelSetti
       input_cost_per_token: validatedModel.input_cost_per_token.toString(),
       output_cost_per_token: validatedModel.output_cost_per_token.toString()
     };
-
-    // Validate with Supabase model schema
-    const supabaseModel = SupabaseModelSchema.parse(supabaseModelData);
-
+    SupabaseModelSchema.parse(supabaseModelData);
     if (shouldUseUpstash()) {
-      // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-
-      // Verify client type for type safety
       if (isUpstashClient(supabaseClient)) {
-        console.log("Using Upstash Supabase client for creating model");
-
-        const result = await supabaseClient.from('models').create(supabaseModel);
-
-        if (!result) {
-          throw new ModelServiceError("Failed to create model with Upstash");
-        }
-
-        // Register model with registry
-        modelRegistry.registerModel(validatedModel);
-
-        return validatedModel;
+        await supabaseClient.from('models').create(validatedModel);
       } else {
-        throw new Error("Expected Upstash client but got different client type");
+        await createItem('models', validatedModel);
       }
     } else {
-      // Use regular Supabase with createItem
-      console.log("Using standard Supabase client with createItem for creating model");
-
-      try {
-        // Use createItem function
-        await createItem('models', supabaseModel as any);
-
-        // Register model with registry
-        modelRegistry.registerModel(validatedModel);
-
-        return validatedModel;
-      } catch (error) {
-        throw new ModelServiceError(`Error creating model: ${error instanceof Error ? error.message : String(error)}`, error);
-      }
+      await createItem('models', validatedModel);
     }
+    modelRegistry.registerModel(validatedModel);
+    return validatedModel;
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', 'Failed to create model', error);
     throw new ModelServiceError(`Failed to create model`, error);
   }
 }
@@ -419,14 +246,8 @@ export async function createModel(model: ModelSettingsInput): Promise<ModelSetti
  */
 export async function updateModel(id: string, updates: ModelSettingsUpdate): Promise<ModelSettings> {
   try {
-    // Get existing model
     const existingModel = await getModelById(id);
-
-    if (!existingModel) {
-      throw new ModelServiceError(`Model with ID ${id} not found`);
-    }
-
-    // Create a schema for model updates
+    if (!existingModel) throw new ModelServiceError(`Model not found: ${id}`);
     const ModelUpdatesSchema = z.object({
       name: z.string().optional(),
       provider: z.string().optional(),
@@ -451,104 +272,34 @@ export async function updateModel(id: string, updates: ModelSettingsUpdate): Pro
       status: z.string().optional(),
       updated_at: z.string()
     });
-
-    // Convert number values to strings for Supabase compatibility
     const supabaseUpdatesData: Record<string, any> = {
       ...updates,
       updated_at: new Date().toISOString(),
     };
-
-    // Convert number fields to strings if they exist in the updates
-    if (updates.input_cost_per_token !== undefined) {
-      supabaseUpdatesData.input_cost_per_token = updates.input_cost_per_token.toString();
-    }
-
-    if (updates.output_cost_per_token !== undefined) {
-      supabaseUpdatesData.output_cost_per_token = updates.output_cost_per_token.toString();
-    }
-
-    if (updates.default_temperature !== undefined) {
-      supabaseUpdatesData.default_temperature = updates.default_temperature.toString();
-    }
-
-    if (updates.default_top_p !== undefined) {
-      supabaseUpdatesData.default_top_p = updates.default_top_p.toString();
-    }
-
-    if (updates.default_frequency_penalty !== undefined) {
-      supabaseUpdatesData.default_frequency_penalty = updates.default_frequency_penalty.toString();
-    }
-
-    if (updates.default_presence_penalty !== undefined) {
-      supabaseUpdatesData.default_presence_penalty = updates.default_presence_penalty.toString();
-    }
-
-    if (updates.max_tokens !== undefined) {
-      supabaseUpdatesData.max_tokens = updates.max_tokens.toString();
-    }
-
-    if (updates.context_window !== undefined) {
-      supabaseUpdatesData.context_window = updates.context_window.toString();
-    }
-
-    // Validate with Zod schema
-    const supabaseUpdates = ModelUpdatesSchema.parse(supabaseUpdatesData);
-
+    if (updates.input_cost_per_token !== undefined) supabaseUpdatesData.input_cost_per_token = updates.input_cost_per_token.toString();
+    if (updates.output_cost_per_token !== undefined) supabaseUpdatesData.output_cost_per_token = updates.output_cost_per_token.toString();
+    if (updates.default_temperature !== undefined) supabaseUpdatesData.default_temperature = updates.default_temperature.toString();
+    if (updates.default_top_p !== undefined) supabaseUpdatesData.default_top_p = updates.default_top_p.toString();
+    if (updates.default_frequency_penalty !== undefined) supabaseUpdatesData.default_frequency_penalty = updates.default_frequency_penalty.toString();
+    if (updates.default_presence_penalty !== undefined) supabaseUpdatesData.default_presence_penalty = updates.default_presence_penalty.toString();
+    if (updates.max_tokens !== undefined) supabaseUpdatesData.max_tokens = updates.max_tokens.toString();
+    if (updates.context_window !== undefined) supabaseUpdatesData.context_window = updates.context_window.toString();
+    ModelUpdatesSchema.parse(supabaseUpdatesData);
     if (shouldUseUpstash()) {
-      // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-
-      // Verify client type for type safety
       if (isUpstashClient(supabaseClient)) {
-        console.log("Using Upstash Supabase client for updating model");
-
-        const result = await supabaseClient.from('models').update(id, supabaseUpdates);
-
-        if (!result) {
-          throw new ModelServiceError("Failed to update model with Upstash");
-        }
-
-        // Get updated model
-        const updatedModel = await getModelById(id);
-
-        if (!updatedModel) {
-          throw new ModelServiceError(`Failed to retrieve updated model ${id}`);
-        }
-
-        // Update model in registry
-        modelRegistry.registerModel(updatedModel);
-
-        return updatedModel;
+        await supabaseClient.from('models').update(id, updates);
       } else {
-        throw new Error("Expected Upstash client but got different client type");
+        await updateItem('models', id, updates);
       }
     } else {
-      // Use regular Supabase with updateItem
-      console.log("Using standard Supabase client with updateItem for updating model");
-
-      try {
-        // Use updateItem function
-        await updateItem('models', id, supabaseUpdates as any);
-
-        // Get updated model
-        const updatedModel = await getModelById(id);
-
-        if (!updatedModel) {
-          throw new ModelServiceError(`Failed to retrieve updated model ${id}`);
-        }
-
-        // Update model in registry
-        modelRegistry.registerModel(updatedModel);
-
-        return updatedModel;
-      } catch (error) {
-        throw new ModelServiceError(`Error updating model: ${error instanceof Error ? error.message : String(error)}`, error);
-      }
+      await updateItem('models', id, updates);
     }
+    const updatedModel = { ...existingModel, ...updates, updated_at: supabaseUpdatesData.updated_at };
+    modelRegistry.registerModel(updatedModel as ModelSettings);
+    return updatedModel as ModelSettings;
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', `Failed to update model ${id}`, error);
     throw new ModelServiceError(`Failed to update model ${id}`, error);
   }
 }
@@ -563,52 +314,18 @@ export async function updateModel(id: string, updates: ModelSettingsUpdate): Pro
 export async function deleteModel(id: string): Promise<boolean> {
   try {
     if (shouldUseUpstash()) {
-      // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-
-      // Verify client type for type safety
       if (isUpstashClient(supabaseClient)) {
-        console.log("Using Upstash Supabase client for deleting model");
-
-        const result = await supabaseClient.from('models').delete(id);
-
-        if (!result) {
-          throw new ModelServiceError("Failed to delete model with Upstash");
-        }
-
-        // Remove from registry if it exists
-        if (modelRegistry.getModel(id)) {
-          // The model registry doesn't have an unregister method, so we can't remove it
-          console.log(`Model ${id} deleted but cannot be removed from registry`);
-        }
-
-        return true;
+        await supabaseClient.from('models').delete(id);
       } else {
-        throw new Error("Expected Upstash client but got different client type");
+        await deleteItem('models', id);
       }
     } else {
-      // Use regular Supabase with deleteItem
-      console.log("Using standard Supabase client with deleteItem for deleting model");
-
-      try {
-        // Use deleteItem function
-        await deleteItem('models', id);
-
-        // Remove from registry if it exists
-        if (modelRegistry.getModel(id)) {
-          // The model registry doesn't have an unregister method, so we can't remove it
-          console.log(`Model ${id} deleted but cannot be removed from registry`);
-        }
-
-        return true;
-      } catch (error) {
-        throw new ModelServiceError(`Error deleting model: ${error instanceof Error ? error.message : String(error)}`, error);
-      }
+      await deleteItem('models', id);
     }
+    return true;
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', `Failed to delete model ${id}`, error);
     throw new ModelServiceError(`Failed to delete model ${id}`, error);
   }
 }
@@ -622,42 +339,16 @@ export async function deleteModel(id: string): Promise<boolean> {
  */
 export async function getLanguageModel(modelId: string): Promise<any> {
   try {
-    // Check registry first
     const registryModel = modelRegistry.getModel(modelId);
-
-    if (registryModel) {
-      // Get language model from registry
-      const languageModel = modelRegistry.getLanguageModel(registryModel.id);
-
-      if (languageModel) {
-        return languageModel;
-      }
-    }
-
-    // Try to fetch from database
+    if (registryModel) return modelRegistry.getLanguageModel(modelId);
     let dbModel = await getModelById(modelId);
-
-    if (!dbModel) {
-      // Try to fetch by model_id
-      dbModel = await getModelByModelId(modelId);
-    }
-
-    if (!dbModel) {
-      throw new ModelServiceError(`Model ${modelId} not found`);
-    }
-
-    // Get language model from registry
+    if (!dbModel) dbModel = await getModelByModelId(modelId);
+    if (!dbModel) throw new ModelServiceError(`Model not found: ${modelId}`);
     const languageModel = modelRegistry.getLanguageModel(dbModel.id);
-
-    if (!languageModel) {
-      throw new ModelServiceError(`Failed to get language model for ${modelId}`);
-    }
-
+    if (!languageModel) throw new ModelServiceError(`Language model not found for ${modelId}`);
     return languageModel;
   } catch (error) {
-    if (error instanceof ModelServiceError) {
-      throw error;
-    }
+    upstashLogger.error('model-service', `Failed to get language model for ${modelId}`, error);
     throw new ModelServiceError(`Failed to get language model for ${modelId}`, error);
   }
 }

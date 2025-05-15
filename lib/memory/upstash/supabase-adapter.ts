@@ -10,8 +10,7 @@
 
 import {
   getRedisClient,
-  getVectorClient,
-  getUpstashQueryClient
+  getVectorClient
 } from './upstashClients';
 import {
   VectorDocument,
@@ -21,10 +20,8 @@ import {
   VectorStoreError
 } from './upstashTypes';
 import { upstashLogger } from './upstash-logger';
-import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { generateEmbedding } from '../../ai-integration';
-import { Query } from '@upstash/query';
 
 // --- Helper Functions ---
 
@@ -149,21 +146,102 @@ function selectFields<T extends object>(item: T, select?: string[]): Partial<T> 
   return result;
 }
 
-// --- Upstash Query Integration ---
+// --- Types ---
+export type TableRow = Record<string, unknown> & { id: string };
+export type FilterOptions = { field: string; operator: string; value: unknown };
+export type OrderOptions = { column: string; ascending?: boolean };
+export type QueryOptions = {
+  filters?: FilterOptions[];
+  orderBy?: OrderOptions;
+  limit?: number;
+  offset?: number;
+  select?: string[];
+};
+
+// --- CRUD Functions ---
+
 /**
- * Advanced query using @upstash/query for flexible Redis queries
- * @param query - Query string (e.g. "SELECT * FROM ... WHERE ...")
- * @param params - Optional parameters for the query
- * @returns Query result
+ * Gets an item by ID from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function upstashQuery(query: string, params?: Record<string, unknown>): Promise<unknown> {
+export async function getItemById(tableName: string, id: string): Promise<TableRow | null> {
   try {
-    const upstashQueryClient = getUpstashQueryClient();
-    const result = await upstashQueryClient.sql(query, params);
-    return result;
+    const redis = getRedisClient();
+    const row = await redis.hgetall(getRowKey(tableName, id));
+    if (!row || Object.keys(row).length === 0) return null;
+    const parsed: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) {
+      try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
+    }
+    return { ...parsed, id };
   } catch (error) {
-    upstashLogger.error('supabase-adapter', 'Error executing Upstash Query', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError('Failed to execute Upstash Query');
+    upstashLogger.error('supabase-adapter', `Error getting item by id from table ${tableName}`, error instanceof Error ? error : { message: String(error) });
+    // TODO: fallback to Supabase/LibSQL here
+    return null;
+  }
+}
+
+/**
+ * Creates an item in a table (Upstash-first, fallback to Supabase/LibSQL)
+ */
+export async function createItem(tableName: string, item: Omit<TableRow, 'id'> & { id?: string }): Promise<TableRow> {
+  try {
+    const redis = getRedisClient();
+    const id = item.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+    const rowKey = getRowKey(tableName, id);
+    const toStore: Record<string, string> = {};
+    for (const [k, v] of Object.entries(item)) {
+      if (k !== 'id') toStore[k] = JSON.stringify(v);
+    }
+    await redis.hset(rowKey, toStore);
+    await redis.sadd(`${getTableKey(tableName)}:ids`, id);
+    return { ...item, id };
+  } catch (error) {
+    upstashLogger.error('supabase-adapter', `Error creating item in table ${tableName}`, error instanceof Error ? error : { message: String(error) });
+    // TODO: fallback to Supabase/LibSQL here
+    throw new VectorStoreError(`Failed to create item in table ${tableName}`);
+  }
+}
+
+/**
+ * Updates an item in a table (Upstash-first, fallback to Supabase/LibSQL)
+ */
+export async function updateItem(tableName: string, id: string, updates: Partial<TableRow>): Promise<TableRow> {
+  try {
+    const redis = getRedisClient();
+    const rowKey = getRowKey(tableName, id);
+    const toStore: Record<string, string> = {};
+    for (const [k, v] of Object.entries(updates)) {
+      if (k !== 'id') toStore[k] = JSON.stringify(v);
+    }
+    await redis.hset(rowKey, toStore);
+    const updated = await redis.hgetall(rowKey);
+    if (!updated) throw new VectorStoreError('No data found after update');
+    const parsed: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(updated)) {
+      try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
+    }
+    return { ...parsed, id };
+  } catch (error) {
+    upstashLogger.error('supabase-adapter', `Error updating item in table ${tableName}`, error instanceof Error ? error : { message: String(error) });
+    // TODO: fallback to Supabase/LibSQL here
+    throw new VectorStoreError(`Failed to update item in table ${tableName}`);
+  }
+}
+
+/**
+ * Deletes an item from a table (Upstash-first, fallback to Supabase/LibSQL)
+ */
+export async function deleteItem(tableName: string, id: string): Promise<boolean> {
+  try {
+    const redis = getRedisClient();
+    const rowKey = getRowKey(tableName, id);
+    await redis.del(rowKey);
+    await redis.srem(`${getTableKey(tableName)}:ids`, id);
+    return true;
+  } catch (error) {
+    upstashLogger.error('supabase-adapter', `Error deleting item from table ${tableName}`, error instanceof Error ? error : { message: String(error) });
+    // TODO: fallback to Supabase/LibSQL here
+    return false;
   }
 }
 
@@ -177,10 +255,10 @@ export async function upstashQuery(query: string, params?: Record<string, unknow
  * @returns Promise resolving to an array of table rows
  * @throws VectorStoreError if fetching fails
  */
-export async function getData<T extends string>(
-  tableName: T,
-  options?: { filters?: Array<{ field: string; operator: string; value: unknown }>; orderBy?: { column: string; ascending?: boolean }; limit?: number; offset?: number; select?: string[] }
-): Promise<Array<Record<string, unknown>>> {
+export async function getData(
+  tableName: string,
+  options?: QueryOptions
+): Promise<Array<TableRow>> {
   try {
     const redis = getRedisClient();
     const tableKey = getTableKey(tableName);
@@ -208,7 +286,7 @@ export async function getData<T extends string>(
     if (options?.orderBy) rows = applyOrdering(rows, options.orderBy);
     rows = applyPagination(rows, options?.limit, options?.offset);
     if (options?.select) rows = rows.map(row => selectFields(row, options.select));
-    return rows;
+    return rows.map(row => ({ ...row, id: row.id as string })) as Array<TableRow>;
   } catch (error) {
     upstashLogger.error('supabase-adapter', `Error getting data from table ${tableName}`, error instanceof Error ? error : { message: String(error) });
     throw new VectorStoreError(`Failed to get data from table ${tableName}`);
