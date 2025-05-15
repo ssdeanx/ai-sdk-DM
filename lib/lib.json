@@ -10,9 +10,9 @@
     { "version": { "@type": "xsd:string" } },
     { "generatedAt": { "@type": "xsd:dateTime" } },
     { "meta": { "@id": "proj:graphMeta" } },
-      { "source": { "@id": "proj:sourceInformation" } },
-      { "updateStrategy": { "@id": "proj:updateStrategyDescription" } },
-      { "intendedUse": { "@id": "proj:intendedUseList", "@container": "@list" } },
+    { "source": { "@id": "proj:sourceInformation" } },
+    { "updateStrategy": { "@id": "proj:updateStrategyDescription" } },
+    { "intendedUse": { "@id": "proj:intendedUseList", "@container": "@list" } },
     { "CodeFile": { "@id": "proj:CodeFile" } },
     { "DiamondCore": { "@id": "proj:DiamondCoreDesignation" } },
     { "path": { "@id": "proj:filePath" } },
@@ -25,33 +25,33 @@
     { "status": { "@id": "proj:currentStatus" } },
     { "errors": { "@id": "proj:errorMessages", "@container": "@list" } },
     { "relationships": { "@id": "proj:codeRelationships", "@container": "@list" } },
-      {"relationshipKind": { "@id": "proj:relationshipKind" }},
-      {"relationshipTarget": { "@id": "schema:target", "@type": "@id" }},
+    { "relationshipKind": { "@id": "proj:relationshipKind" } },
+    { "relationshipTarget": { "@id": "schema:target", "@type": "@id" } },
     { "observations": { "@id": "proj:developerObservations", "@container": "@list" } },
     { "usageNotes": { "@id": "proj:usageNotes" } },
     { "fileOnboarding": { "@id": "proj:fileOnboardingNotes" } },
     { "troubleshooting": { "@id": "proj:troubleshootingNotes" } },
     { "fileMentalModels": { "@id": "proj:associatedMentalModels", "@container": "@set" } },
     { "graphOnboarding": { "@id": "proj:graphOnboardingInformation" } },
-      { "purpose": { "@id": "proj:purposeStatement" } },
-      { "audience": { "@id": "proj:targetAudience" } },
-      { "corePrinciples": { "@id": "proj:corePrinciples", "@container": "@list" } },
-      { "steps": { "@id": "proj:onboardingSteps", "@container": "@list" } },
+    { "purpose": { "@id": "proj:purposeStatement" } },
+    { "audience": { "@id": "proj:targetAudience" } },
+    { "corePrinciples": { "@id": "proj:corePrinciples", "@container": "@list" } },
+    { "steps": { "@id": "proj:onboardingSteps", "@container": "@list" } },
     { "graphMentalModels": { "@id": "proj:graphMentalModelsCollection" } },
-      { "models": { "@id": "proj:modelList", "@container": "@list" } },
-        { "summary": { "@id": "proj:modelSummary" }},
+    { "models": { "@id": "proj:modelList", "@container": "@list" } },
+    { "summary": { "@id": "proj:modelSummary" } },
     { "graphNavigation": { "@id": "proj:navigationGuide" } },
-      { "crossref": { "@id": "proj:crossReferenceNote" } },
-      { "byFile": { "@id": "proj:navigationByFile" } },
-      { "byFeature": { "@id": "proj:navigationByFeature" } },
-      { "byType": { "@id": "proj:navigationByType" } },
-      { "byStatus": { "@id": "proj:navigationByStatus" } },
-      { "integrationNotes": { "@id": "proj:integrationNotes" } },
-      { "insightAccumulation": { "@id": "proj:insightAccumulationNote" } },
+    { "crossref": { "@id": "proj:crossReferenceNote" } },
+    { "byFile": { "@id": "proj:navigationByFile" } },
+    { "byFeature": { "@id": "proj:navigationByFeature" } },
+    { "byType": { "@id": "proj:navigationByType" } },
+    { "byStatus": { "@id": "proj:navigationByStatus" } },
+    { "integrationNotes": { "@id": "proj:integrationNotes" } },
+    { "insightAccumulation": { "@id": "proj:insightAccumulationNote" } },
     { "graphTaskList": { "@id": "proj:projectTaskList" } },
-      { "completed": { "@id": "proj:completedTasks", "@container": "@list" } },
-      { "current": { "@id": "proj:currentTasks", "@container": "@list" } },
-      { "wiringTasks": { "@id": "proj:wiringTasks", "@container": "@list" } }
+    { "completed": { "@id": "proj:completedTasks", "@container": "@list" } },
+    { "current": { "@id": "proj:currentTasks", "@container": "@list" } },
+    { "wiringTasks": { "@id": "proj:wiringTasks", "@container": "@list" } }
   ],
   "@type": "Graph",
   "name": "DeanmachinesAI Core Backend Knowledge Graph",
@@ -61,10 +61,10 @@
   "meta": {
     "source": "auto-generated from README.md, error reports, and codebase as of 2025-05-14",
     "intendedUse": [
-        "Agent onboarding",
-        "Troubleshooting",
-        "Continuous improvement",
-        "Documentation enforcement"
+      "Agent onboarding",
+      "Troubleshooting",
+      "Continuous improvement",
+      "Documentation enforcement"
     ]
   },
   "@graph": [
@@ -304,30 +304,49 @@
       "@id": "lib/middleware.ts",
       "@type": ["CodeFile"],
       "path": "lib/middleware.ts",
-      "exports": ["RequestMiddleware", "ResponseMiddleware", "createMiddleware", "createCachingMiddleware", "createLoggingMiddleware", "createReasoningMiddleware", "createSimulationMiddleware", "createDefaultSettingsMiddleware", "createMiddlewareFromOptions", "createContextInjectionMiddleware", "createContentFilteringMiddleware", "createErrorHandlingMiddleware", "createRequestResponseMiddlewareFromOptions"],
+      "exports": [
+        "RequestMiddleware", "ResponseMiddleware", "createMiddleware", "createCachingMiddleware", "createLoggingMiddleware", "createReasoningMiddleware", "createSimulationMiddleware", "createDefaultSettingsMiddleware", "createMiddlewareFromOptions", "createContextInjectionMiddleware", "createContentFilteringMiddleware", "createErrorHandlingMiddleware", "createRequestResponseMiddlewareFromOptions", "createCompleteMiddleware"
+      ],
       "features": [
-        "Language model and request-response middleware system",
-        "Caching, logging, reasoning, simulation, and error handling middleware",
-        "Composable and type-safe middleware factories"
+        "Composable and type-safe middleware factories for AI SDK and API routes",
+        "Caching, logging, reasoning extraction, simulation, default settings, context injection, content filtering, error handling",
+        "LRU cache for response caching, stream simulation for cached results",
+        "Request/response middleware for context injection, filtering, and error handling",
+        "Integration-ready for Upstash-backed API and memory routes"
       ],
       "types": ["RequestMiddleware", "ResponseMiddleware", "LanguageModelV1Middleware"],
-      "zodSchemas": [],
-      "consumers": ["ai-sdk-integration.ts", "ai-sdk-tracing.ts", "tracing.ts"],
-      "dependencies": ["zod", "ai-sdk-integration.ts", "tracing.ts"],
-      "status": "complete",
+      "consumers": [
+        "lib/ai-sdk-integration.ts", "lib/ai-sdk-tracing.ts", "lib/ai.ts", "lib/ai-integration.ts", "lib/tracing.ts", "lib/langfuse-integration.ts"
+      ],
+      "dependencies": ["zod", "LRUCache", "ReadableStream", "TransformStream"],
+      "status": "incomplete",
       "errors": [],
       "relationships": [
-        { "type": "middleware", "target": "lib/ai-sdk-integration.ts" },
-        { "type": "tracing", "target": "lib/tracing.ts" }
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "api-route", "target": "app/api/ai-sdk/*" }
       ],
       "observations": [
-        "Middleware is central for extensibility and observability.",
-        "All middleware must be type-safe and composable."
+        "Middleware enables composable, type-safe enhancements for all AI SDK and API routes.",
+        "Caching middleware can be extended to use Upstash as a distributed cache for multi-instance deployments.",
+        "All logging should use upstashLogger for observability and analytics.",
+        "Reasoning extraction and simulation middleware can be used for advanced debugging and LLM evaluation.",
+        "Request/response middleware can inject context, filter content, and handle errors for all API routes.",
+        "Integration with Upstash memory and logging modules is recommended for production deployments.",
+        "Should be reviewed with reasoningTools (sequentialthinking, debuggingapproach, codesmells) for middleware coverage and gaps.",
+        "Onboarding should include examples of Upstash-backed caching and logging middleware.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
       ],
-      "usageNotes": "Use to enhance AI SDK and tracing with custom logic.",
-      "onboarding": "See README.md for middleware patterns and advanced usage.",
-      "troubleshooting": "Check for missing or misconfigured middleware in AI flows.",
-      "mentalModels": ["First Principles Thinking", "Feedback Loops"]
+      "usageNotes": "Use to compose caching, logging, and reasoning middleware for all AI SDK and API routes. Prefer Upstash for distributed cache/logging in production.",
+      "onboarding": "See README.md and ai-sdk.dev/cookbook/next/caching-middleware for usage and integration patterns.",
+      "troubleshooting": "Check for missing Upstash integration and logger usage.",
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Sequential Thinking",
+        "Rubber Ducking"
+      ]
     },
     {
       "@id": "lib/api-error-handler.ts",

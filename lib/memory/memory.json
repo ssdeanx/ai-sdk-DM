@@ -2,6 +2,7 @@
   "@context": [
     "https://schema.org",
     { "@base": "file:///c:/Users/dm/Documents/ai-sdk-DM/" },
+    { "proj": "https://github.com/ssdeanx/ai-sdk-DM/ns#" },
     { "@language": "en" },
     { "xsd": "http://www.w3.org/2001/XMLSchema#" },
     { "feature": "https://schema.org/hasFeature" },

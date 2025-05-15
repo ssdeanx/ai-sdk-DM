@@ -1,11 +1,12 @@
 {
   "@context": [
     "https://schema.org",
+    { "proj": "https://github.com/ssdeanx/ai-sdk-DM/ns#" },
     { "feature": "https://schema.org/hasFeature" }
   ],
   "@type": "Graph",
   "name": "Upstash Memory Adapter Knowledge Graph",
-  "description": "Living knowledge graph for the /lib/memory/upstash folder, capturing entities (files, types, features), relationships, onboarding, navigation, and AI agent support.",
+  "description": "Living knowledge graph for the /lib/memory/upstash folder, capturing entities (files, types, features), relationships, onboarding, navigation, and AI agent support. Upstash must handle ALL API logic and data for all entities, not just memory, and all business logic must be routed through Upstash-first APIs with fallback only.",
   "version": "1.0.0",
   "generatedAt": "2025-05-14T00:00:00Z",
   "@graph": [
@@ -41,13 +42,64 @@
       "observations": [
         "Type errors present (see get_errors)",
         "Direct console usage found",
-        "No advanced search support yet"
+        "No advanced search support yet",
+        "Agent state is persisted in Upstash, with fallback to Supabase/LibSQL if unavailable",
+        "API routes for agents/threads depend on this module for state management",
+        "Directly depends on upstashTypes.ts for type safety and Zod validation.",
+        "All agent state CRUD operations are logged via upstashLogger.",
+        "Fallback to Supabase/LibSQL is triggered on Upstash errors.",
+        "Should be tested with reasoningTools (debuggingapproach, metacognitivemonitoring) for robust error handling.",
+        "Semantic search can be used to trace agent state usage across API routes.",
+        "Code smells: Any direct console usage or 'any' types should be flagged and refactored.",
+        "Integration with memoryStore.ts and index.ts is critical for system-wide agent state consistency.",
+        "All changes should be reflected in the knowledge graph and README for traceability.",
+        "@upstash/query can be used for advanced agent state search and analytics.",
+        "RediSearch integration is possible for full-text and filtered agent state queries.",
+        "All agent state changes should be observable via upstashLogger and analytics routes.",
+        "Fallback logic must be tested for all CRUD/search paths, with logs for each failure mode.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of agent state flows, fallback triggers, and log analysis.",
+        "Observability and analytics are critical for agent state debugging and system health monitoring.",
+        "Semantic search can help map agent state usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "connections": [
+        { "with": "memoryStore.ts", "purpose": "agent state CRUD and fallback integration" },
+        { "with": "upstash-logger.ts", "purpose": "logging for all agent state ops" },
+        { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility for agent state" },
+        { "with": "upstashTypes.ts", "purpose": "type safety and Zod validation for agent state" },
+        { "with": "stream-processor.ts", "purpose": "streaming agent state changes for analytics and observability" },
+        { "with": "tools.json", "purpose": "agent state analytics and tool execution logging" }
       ],
       "usageNotes": "Use for all agent state persistence. Always validate with Zod. Log all errors.",
       "onboarding": "See README.md for setup and usage. Ensure fallback logic is robust.",
       "navigation": "Imported by memoryStore.ts and index.ts.",
       "troubleshooting": "Check for type errors and missing logger usage.",
-      "graphNotes": "Central node for agent state in Upstash graph."
+      "graphNotes": "Central node for agent state in Upstash graph.",
+      "relationships": [
+        { "type": "memory", "target": "memory" },
+        { "type": "api-route", "target": "app/api/ai-sdk/agents" },
+        { "type": "api-route", "target": "app/api/ai-sdk/threads" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Rubber Ducking",
+        "Inversion",
+        "Mindmaps & Hill Charts"
+      ]
     },
     {
       "@id": "lib/memory/upstash/index.ts",
@@ -76,232 +128,610 @@
         "Add documentation for new/advanced exports"
       ],
       "status": "incomplete",
-      "observations": ["Some exports may be broken or missing (see README)", "Needs regular update as features evolve"],
+      "observations": [
+        "Central export node for all Upstash memory features",
+        "All API routes under app/api/ai-sdk/* import from here for memory/vector/logging/agent state ops",
+        "Fallback to Supabase/LibSQL handled via supabase-adapter exports"
+      ],
+      "connections": [
+        { "with": "agent-state-store.ts", "purpose": "barrel export for agent state operations" },
+        { "with": "memory-processor.ts", "purpose": "barrel export for memory processing" },
+        { "with": "memoryStore.ts", "purpose": "barrel export for memory CRUD" },
+        { "with": "redis-store.ts", "purpose": "barrel export for Redis operations" },
+        { "with": "stream-processor.ts", "purpose": "barrel export for streaming operations" },
+        { "with": "supabase-adapter.ts", "purpose": "barrel export for Supabase fallback" },
+        { "with": "upstash-logger.ts", "purpose": "barrel export for logging utilities" },
+        { "with": "upstashClients.ts", "purpose": "barrel export for Upstash clients" },
+        { "with": "upstashTypes.ts", "purpose": "barrel export for shared types and schemas" },
+        { "with": "vector-store.ts", "purpose": "barrel export for vector operations" }
+      ],
       "usageNotes": "Use this file to import any Upstash memory feature.",
       "onboarding": "Check README for export list and update policy.",
       "navigation": "Barrel for all Upstash memory files.",
       "troubleshooting": "If an export is missing, check this file and README.",
-      "graphNotes": "Central export node."
-    },
-    {
-      "@id": "lib/memory/upstash/memory-processor.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/memory-processor.ts",
-      "exports": ["MemoryProcessor", "MemoryProcessorError"],
-      "features": [
-        "Streaming and processing memory data from Upstash",
-        "Optimized persona and agent state streaming"
-      ],
-      "types": ["MemoryProcessor", "MemoryProcessorError"],
-      "zodSchemas": [],
-      "consumers": ["index.ts"],
-      "dependencies": ["upstashClients.ts", "upstashTypes.ts"],
-      "testFiles": [],
-      "docs": ["README.md section: memory-processor.ts"],
-      "examples": [],
-      "status": "incomplete",
-      "version": "1.0.0",
-      "changelog": "Initial implementation. Needs @upstash/query support for streaming/semantic search if needed.",
-      "links": [],
-      "todo": [
-        "Add @upstash/query support for streaming/semantic search if needed",
-        "Add tests for memory processing"
-      ],
-      "observations": "No errors, but lacks advanced streaming/search features.",
-      "usageNotes": "Used for efficient memory streaming.",
-      "graphNotes": "Supports persona/agent state streaming.",
-      "onboarding": "Understand streaming patterns and Upstash integration.",
-      "navigation": "See consumers and dependencies.",
-      "troubleshooting": "Check for missing streaming/search features.",
+      "graphNotes": "Central export node.",
       "relationships": [
-        { "type": "memory", "target": "memory" }
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/memoryStore.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/memoryStore.ts",
-      "exports": ["getRedisClient", "getVectorClient", "isUpstashAvailable", "createThread", "getThread", "listThreads", "deleteThread", "saveMessage", "getMessages", "storeEmbedding", "searchEmbeddings"],
-      "features": [
-        "Singleton Redis/Vector client management",
-        "Thread/message CRUD in Redis",
-        "Vector embedding storage/search"
+        { "type": "barrel", "target": "lib/memory/upstash/*" },
+        { "type": "api-route", "target": "app/api/ai-sdk/*" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "consumer", "target": "lib/memory/memory.ts" },
+        { "type": "consumer", "target": "app/api/ai-sdk/threads" },
+        { "type": "consumer", "target": "app/api/ai-sdk/messages" },
+        { "type": "consumer", "target": "app/api/ai-sdk/agents" },
+        { "type": "consumer", "target": "app/api/ai-sdk/logs" },
+        { "type": "consumer", "target": "app/api/ai-sdk/analytics" }
       ],
-      "types": ["Thread", "Message", "Embedding"],
-      "zodSchemas": [],
-      "consumers": ["index.ts"],
-      "dependencies": ["upstashClients.ts", "redis-store.ts", "vector-store.ts"],
-      "testFiles": [],
-      "docs": ["README.md section: memoryStore.ts"],
-      "examples": [],
-      "status": "incomplete",
-      "version": "1.0.0",
-      "changelog": "Needs type safety, logging, and advanced search features.",
-      "links": [],
-      "todo": [
-        "Remove all any types (see errors)",
-        "Remove all direct console statements, use upstashLogger",
-        "Add @upstash/query support for advanced memory/thread/message search",
-        "Add more robust error handling and type safety",
-        "Add tests for memory operations and advanced search"
-      ],
-      "observations": "Needs type safety and logging improvements.",
-      "usageNotes": "High-level memory operations.",
-      "graphNotes": "Central to memory CRUD.",
-      "onboarding": "Understand Upstash client usage and CRUD patterns.",
-      "navigation": "See dependencies for lower-level stores.",
-      "troubleshooting": "Check for type errors and missing logger usage.",
-      "relationships": [
-        { "type": "memory", "target": "memory" }
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Occam's Razor",
+        "Mindmaps & Hill Charts"
       ]
     },
     {
       "@id": "lib/memory/upstash/redis-store.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/redis-store.ts",
-      "exports": ["createRedisThread", "getRedisThreadById", "updateRedisThread", "listRedisThreads", "deleteRedisThread", "createRedisMessage", "getRedisMessageById", "getRedisMessagesByThreadId", "deleteRedisMessage", "hybridThreadSearch", "withObservability", "getThreadMutex"],
-      "features": ["Typed thread/message storage in Redis", "RediSearch integration", "Observability and concurrency helpers"],
-      "status": "complete",
       "relationships": [
-        { "type": "memory", "target": "memory" }
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/stream-processor.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/stream-processor.ts",
-      "exports": ["StreamProcessor", "StreamProcessorError", "streamProcessor", "StreamProcessorOptionsSchema", "RedisStreamOptionsSchema", "VectorStreamOptionsSchema"],
-      "features": ["Streaming utilities for Upstash Redis/Vector", "Batching, error handling, and transform streams"],
-      "status": "complete",
-      "relationships": [
-        { "type": "memory", "target": "memory" }
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/supabase-adapter-factory.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/supabase-adapter-factory.ts",
-      "exports": ["createSupabaseClient"],
-      "features": ["Factory for Supabase-compatible clients using Upstash"],
-      "consumers": ["factory.ts", "supabase.ts", "memory.ts", "db.ts", "libsql.ts"],
-      "dependencies": ["supabase-adapter.ts"],
-      "status": "complete",
-      "relationships": [
-        { "type": "factory", "target": "lib/memory/factory.ts" },
-        { "type": "consumer", "target": "lib/memory/supabase.ts" },
-        { "type": "consumer", "target": "lib/memory/memory.ts" },
-        { "type": "consumer", "target": "lib/memory/db.ts" },
-        { "type": "consumer", "target": "lib/memory/libsql.ts" },
-        { "type": "adapter", "target": "lib/memory/upstash/supabase-adapter.ts" }
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/supabase-adapter.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/supabase-adapter.ts",
-      "exports": ["getData", "getItemById", "createItem", "updateItem", "deleteItem", "vectorSearch", "upsertVectors", "upsertSupabaseVectors", "upsertTexts", "semanticSearch", "upstashQuery"],
-      "features": ["Supabase compatibility layer using Upstash", "Advanced query/filter/order support", "Vector and semantic search"],
-      "consumers": ["supabase-adapter-factory.ts", "supabase.ts", "factory.ts", "memory.ts", "db.ts", "libsql.ts"],
-      "dependencies": ["upstashClients.ts", "upstashTypes.ts", "upstash-logger.ts", "vector-store.ts"],
-      "status": "complete",
-      "relationships": [
-        { "type": "adapter", "target": "lib/memory/upstash/supabase-adapter-factory.ts" },
-        { "type": "consumer", "target": "lib/memory/supabase.ts" },
-        { "type": "consumer", "target": "lib/memory/factory.ts" },
-        { "type": "consumer", "target": "lib/memory/memory.ts" },
-        { "type": "consumer", "target": "lib/memory/db.ts" },
-        { "type": "consumer", "target": "lib/memory/libsql.ts" }
-      ]
-    },
-    {
-      "@id": "lib/memory/supabase.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/supabase.ts",
-      "exports": ["getRedisClient", "getVectorClient", "isUpstashAvailable", "getSupabaseClient", "getDrizzleClient", "isSupabaseAvailable", "getData", "getItemById", "createItem", "updateItem", "deleteItem", "getModelConfig", "getModels", "isSupabaseClient", "isUpstashClient", "type ClientType", "type ErrorType"],
-      "features": ["Supabase and Upstash integration layer", "Unified API for memory, vector, and CRUD operations", "Fallback logic for Upstash/Supabase/LibSQL"],
-      "consumers": ["factory.ts", "memory.ts", "db.ts", "libsql.ts"],
-      "dependencies": ["upstash/memoryStore.ts", "upstashClients.ts", "upstash/supabase-adapter-factory.ts", "upstash/supabase-adapter.ts"],
-      "status": "complete",
-      "relationships": [
-        { "type": "adapter", "target": "lib/memory/upstash/supabase-adapter.ts" },
-        { "type": "factory", "target": "lib/memory/factory.ts" },
-        { "type": "consumer", "target": "lib/memory/memory.ts" },
-        { "type": "consumer", "target": "lib/memory/db.ts" },
-        { "type": "consumer", "target": "lib/memory/libsql.ts" }
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/upstash-logger.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/upstash-logger.ts",
-      "exports": ["logInfo", "logWarn", "logError", "logDebug", "getLogs", "deleteLogs", "clearLogs", "LoggerError", "LogLevelSchema", "LogEntrySchema"],
-      "features": ["Persistent logging in Redis Streams", "Log level/type safety", "Capped log streams"],
-      "status": "complete",
-      "relationships": [
-        { "type": "memory", "target": "memory" }
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/upstashClients.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/upstashClients.ts",
-      "exports": [
-        "getRedisClient", "getVectorClient", "getUpstashQueryClient", "isUpstashRedisAvailable", "isUpstashVectorAvailable", "shouldUseUpstashAdapter", "checkUpstashAvailability", "validateRedisConfig", "validateVectorConfig", "RedisConfigSchema", "VectorConfigSchema", "EnvVarsSchema", "UpstashClientError"
+        { "type": "api-route", "target": "app/api/ai-sdk/threads" },
+        { "type": "api-route", "target": "app/api/ai-sdk/messages" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "fallback", "target": "lib/memory/supabase.ts" }
       ],
-      "features": [
-        "Singleton client management for Redis/Vector/Query", 
-        "Config validation and Zod schemas for all clients", 
-        "Robust error handling and logging via upstashLogger", 
-        "Main/fallback logic: isUpstashMainDb, shouldFallbackToBackup", 
-        "Onboarding and knowledge graph extraction doc comments"
+      "connections": [
+        { "with": "memoryStore.ts", "purpose": "thread/message CRUD, search, and RediSearch" },
+        { "with": "upstash-logger.ts", "purpose": "logging for all thread/message ops" },
+        { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility" }
       ],
-      "status": "complete",
-      "consumers": [
-        "supabase-adapter.ts", "vector-store.ts", "memoryStore.ts", "agent-state-store.ts", "index.ts"
+      "observations": [
+        "Handles thread/message CRUD for all entities, not just memory.",
+        "Integrates with upstashLogger for all error and operation logging.",
+        "Uses upstashTypes.ts for type safety and Zod validation.",
+        "Fallback logic to Supabase/LibSQL must be tested for all CRUD/search paths.",
+        "Should leverage reasoningTools (debuggingapproach, sequentialthinking) for troubleshooting complex data flows.",
+        "Semantic search can help map thread/message relationships across the codebase.",
+        "Code smells: Look for any direct console statements, unused types, or missing error handling.",
+        "RediSearch and advanced filtering should be documented and tested for all entity types.",
+        "@upstash/query can be used for advanced thread/message search and analytics.",
+        "RediSearch integration is possible for full-text and filtered thread/message queries.",
+        "All thread/message changes should be observable via upstashLogger and analytics routes.",
+        "Fallback logic must be tested for all CRUD/search paths, with logs for each failure mode.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of thread/message flows, fallback triggers, and log analysis.",
+        "Observability and analytics are critical for thread/message debugging and system health monitoring.",
+        "Semantic search can help map thread/message usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
       ],
-      "dependencies": [
-        "@upstash/redis", "@upstash/vector", "@upstash/query", "zod", "upstash-logger.ts"
-      ],
-      "testFiles": ["tests/upstash/upstashClients.test.ts"],
-      "docs": ["README.md#upstashClients.ts"],
-      "examples": ["How to get a singleton Redis/Vector/Query client", "How to validate config with Zod"],
-      "changelog": [
-        "Added isUpstashMainDb and shouldFallbackToBackup for main/fallback logic",
-        "Improved singleton/config/validation logic",
-        "Added onboarding/graph extraction doc comments",
-        "Ensured robust type safety and logger usage"
-      ],
-      "todo": [
-        "Expand onboarding and fallback documentation",
-        "Add more tests for error/fallback scenarios"
-      ],
-      "usageNotes": "Always use getRedisClient/getVectorClient for singleton pattern. Use isUpstashMainDb and shouldFallbackToBackup for main/fallback logic.",
-      "onboarding": "See onboarding doc comments in upstashClients.ts and README.md for setup and fallback logic.",
-      "navigation": "Central client/config node for all Upstash memory modules.",
-      "troubleshooting": "Check logger output and Zod validation errors for config issues.",
-      "graphNotes": "Diamond core node for Upstash client management."
-    },
-    {
-      "@id": "lib/memory/upstash/upstashTypes.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/upstashTypes.ts",
-      "exports": ["RedisClientError", "VectorStoreError", "VectorMetadata", "VectorDocument", "VectorMetadataSchema", "VectorDocumentSchema", "RedisClientConfig", "VectorStoreConfig", "VectorQueryOptions", "VectorQueryResult", "VectorFetchResult", "RedisPipeline", "VectorIndexConfig", "RedisType", "IndexType", "VectorType", "ZodType"],
-      "features": ["Type and error definitions for Upstash clients and vector store", "Zod schemas for metadata and config"],
-      "status": "complete",
-      "relationships": [
-        { "type": "memory", "target": "memory" }
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Inversion",
+        "Occam's Razor",
+        "Mindmaps & Hill Charts"
       ]
     },
     {
       "@id": "lib/memory/upstash/vector-store.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/memory/upstash/vector-store.ts",
-      "exports": ["upsertEmbeddings", "searchSimilarEmbeddings", "getEmbeddingsByIds", "deleteEmbeddingsByIds", "resetVectorIndex", "getVectorIndexInfo", "storeTextEmbedding", "searchTextStore", "hybridSearch", "EmbeddingMetadataSchema", "EmbeddingVectorSchema", "SearchEmbeddingsOptionsSchema", "EmbeddingSearchResultSchema"],
-      "features": ["Vector operations for Upstash VectorDB", "Zod schemas for embeddings and search", "Hybrid and semantic search"],
-      "status": "complete",
       "relationships": [
-        { "type": "memory", "target": "memory" }
+        { "type": "api-route", "target": "app/api/ai-sdk/embeddings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/vector-search" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+      ],
+      "connections": [
+        { "with": "memoryStore.ts", "purpose": "embedding storage/search for all entities" },
+        { "with": "upstash-logger.ts", "purpose": "logging for vector ops" },
+        { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility" },
+        { "with": "memory-processor.ts", "purpose": "semantic/streaming search for all entities" }
+      ],
+      "observations": [
+        "Central node for all vector/embedding CRUD and search.",
+        "All vector operations are logged via upstashLogger.",
+        "Type safety enforced via upstashTypes.ts and Zod schemas.",
+        "Fallback to Supabase/LibSQL for vector operations must be robust and tested.",
+        "Should use reasoningTools (scientificmethod, decisionframework) for evaluating search/filtering strategies.",
+        "Semantic search is essential for tracing embedding usage and debugging search results.",
+        "Code smells: Any use of 'any' types, missing logging, or direct console statements should be flagged.",
+        "Integration with memoryStore.ts and supabase-adapter.ts is key for end-to-end vector data flow.",
+        "@upstash/query can be used for advanced vector search and analytics.",
+        "RediSearch integration is possible for full-text and filtered vector queries.",
+        "All vector changes should be observable via upstashLogger and analytics routes.",
+        "Fallback logic must be tested for all CRUD/search paths, with logs for each failure mode.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of vector flows, fallback triggers, and log analysis.",
+        "Observability and analytics are critical for vector debugging and system health monitoring.",
+        "Semantic search can help map vector usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Inversion",
+        "Lean Startup",
+        "Mindmaps & Hill Charts"
       ]
+    },
+    {
+      "@id": "lib/memory/upstash/upstash-logger.ts",
+      "relationships": [
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" }
+      ],
+      "connections": [
+        { "with": "agent-state-store.ts", "purpose": "logging for agent state ops" },
+        { "with": "redis-store.ts", "purpose": "logging for thread/message ops" },
+        { "with": "vector-store.ts", "purpose": "logging for vector ops" }
+      ],
+      "observations": [
+        "All logging for Upstash modules is centralized here.",
+        "Type safety and Zod validation are required for all log entries.",
+        "Should be integrated with reasoningTools (metacognitivemonitoring, codesmells) for log quality and anomaly detection.",
+        "Semantic search can be used to analyze log patterns and trace issues across modules.",
+        "Code smells: Any direct console usage or missing log validation should be flagged.",
+        "Advanced log querying and streaming should be documented and tested.",
+        "@upstash/query can be used for advanced log search and analytics.",
+        "All log changes should be observable via analytics routes.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of log flows, triggers, and analysis.",
+        "Observability and analytics are critical for log debugging and system health monitoring.",
+        "Semantic search can help map log usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "mentalModels": [
+        "Feedback Loops",
+        "Inversion",
+        "Rubber Ducking",
+        "Mindmaps & Hill Charts"
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/upstashClients.ts",
+      "relationships": [
+        { "type": "api-route", "target": "app/api/ai-sdk/*" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" }
+      ],
+      "connections": [
+        { "with": "redis-store.ts", "purpose": "client management for Redis" },
+        { "with": "vector-store.ts", "purpose": "client management for VectorDB" },
+        { "with": "supabase-adapter.ts", "purpose": "Upstash-first client selection and fallback" }
+      ],
+      "observations": [
+        "Manages singleton clients for Redis and Vector, used by all Upstash modules.",
+        "All client config is validated with Zod schemas from upstashTypes.ts.",
+        "Should be tested with reasoningTools (debuggingapproach, metacognitivemonitoring) for connection reliability.",
+        "Semantic search can help trace client usage and fallback logic across the codebase.",
+        "Code smells: Any missing error handling, unused imports, or direct console statements should be flagged.",
+        "Integration with supabase-adapter.ts and fallback logic is critical for reliability.",
+        "@upstash/query can be used for advanced client search and analytics.",
+        "All client changes should be observable via analytics routes.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of client flows, triggers, and analysis.",
+        "Observability and analytics are critical for client debugging and system health monitoring.",
+        "Semantic search can help map client usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Circle of Competence",
+        "Mindmaps & Hill Charts"
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/upstashTypes.ts",
+      "relationships": [
+        { "type": "api-route", "target": "app/api/ai-sdk/*" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "used-by", "target": "lib/memory/upstash/agent-state-store.ts" },
+        { "type": "used-by", "target": "lib/memory/upstash/redis-store.ts" },
+        { "type": "used-by", "target": "lib/memory/upstash/vector-store.ts" },
+        { "type": "used-by", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "used-by", "target": "lib/memory/upstash/upstashClients.ts" }
+      ],
+      "connections": [
+        { "with": "supabase-adapter.ts", "purpose": "type safety for fallback and all API routes" },
+        { "with": "all API routes", "purpose": "request/response validation for all entities" }
+      ],
+      "observations": [
+        "Canonical source for all shared types and Zod schemas for all entities.",
+        "All API routes validate request/response types using these types/schemas.",
+        "Must be expanded to cover all entities and business logic for full migration.",
+        "Should be reviewed with reasoningTools (sequentialthinking, metacognitivemonitoring) for type coverage and gaps.",
+        "Semantic search can be used to find all usages and dependencies on these types.",
+        "Code smells: Any unused or duplicate types, or use of 'any', should be flagged and refactored.",
+        "All changes must be reflected in the knowledge graph and README.",
+        "@upstash/query can be used for advanced type search and analytics.",
+        "All type changes should be observable via analytics routes.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of type flows, triggers, and analysis.",
+        "Observability and analytics are critical for type debugging and system health monitoring.",
+        "Semantic search can help map type usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Rubber Ducking",
+        "Mindmaps & Hill Charts"
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/memoryStore.ts",
+      "relationships": [
+        { "type": "api-route", "target": "app/api/ai-sdk/threads" },
+        { "type": "api-route", "target": "app/api/ai-sdk/messages" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "uses", "target": "lib/memory/upstash/redis-store.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/vector-store.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+      ],
+      "connections": [
+        { "with": "index.ts", "purpose": "barrel export for all memory ops" },
+        { "with": "app/api/ai-sdk/threads", "purpose": "thread CRUD for all entities" },
+        { "with": "app/api/ai-sdk/messages", "purpose": "message CRUD for all entities" }
+      ],
+      "observations": [
+        "Handles all memory CRUD for all entities, not just memory.",
+        "Integrates with redis-store.ts and vector-store.ts for data operations.",
+        "Fallback to Supabase/LibSQL must be robust and tested for all CRUD/search paths.",
+        "Should use reasoningTools (debuggingapproach, decisionframework) for troubleshooting and migration planning.",
+        "Semantic search can help map memory relationships and usage across the codebase.",
+        "Code smells: Any direct console usage, missing error handling, or unused types should be flagged.",
+        "Integration with index.ts and API routes is critical for system-wide memory consistency.",
+        "@upstash/query can be used for advanced memory search and analytics.",
+        "RediSearch integration is possible for full-text and filtered memory queries.",
+        "All memory changes should be observable via upstashLogger and analytics routes.",
+        "Fallback logic must be tested for all CRUD/search paths, with logs for each failure mode.",
+        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
+        "Onboarding should include walkthroughs of memory flows, fallback triggers, and log analysis.",
+        "Observability and analytics are critical for memory debugging and system health monitoring.",
+        "Semantic search can help map memory usage and dependencies across the codebase.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Inversion",
+        "Mindmaps & Hill Charts"
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/stream-processor.ts",
+      "relationships": [
+        { "type": "api-route", "target": "app/api/ai-sdk/streams" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" }
+      ],
+      "connections": [
+        { "with": "index.ts", "purpose": "barrel export for streaming ops for all entities" }
+      ],
+      "observations": [
+        "Provides streaming and batch processing utilities for all entities.",
+        "Integrates with upstashClients.ts for Redis/Vector access.",
+        "Should be tested with reasoningTools (sequentialthinking, scientificmethod) for performance and reliability.",
+        "Semantic search can be used to trace streaming usage and performance bottlenecks.",
+        "Code smells: Any missing error handling, direct console usage, or untested edge cases should be flagged.",
+        "Integration with index.ts and API routes is important for streaming consistency.",
+        "@upstash/query can be used for advanced streaming search and analytics.",
+        "All streaming changes should be observable via analytics routes.",
+        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Inversion",
+        "Circle of Competence"
+      ]
+    },
+    {
+      "@id": "lib/memory/upstash/supabase-adapter-factory.ts",
+      "relationships": [
+        { "type": "api-route", "target": "app/api/ai-sdk/*" },
+        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
+        { "type": "api-route", "target": "app/api/ai-sdk/system" },
+        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
+        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
+        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
+        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
+        { "type": "api-route", "target": "app/api/ai-sdk/content" },
+        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
+        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
+        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
+        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
+        { "type": "api-route", "target": "app/api/ai-sdk/users" },
+        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
+        { "type": "api-route", "target": "app/api/ai-sdk/models" },
+        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "fallback", "target": "lib/memory/supabase.ts" }
+      ],
+      "connections": [
+        { "with": "supabase-adapter.ts", "purpose": "factory for fallback clients for all entities" }
+      ],
+      "observations": [
+        "Factory for Supabase-compatible clients, used as fallback in all API routes and entities.",
+        "Should be tested with reasoningTools (debuggingapproach, decisionframework) for client instantiation and fallback logic.",
+        "Semantic search can help trace client creation and usage across modules.",
+        "Code smells: Any missing error handling, unused imports, or direct console usage should be flagged.",
+        "Integration with supabase-adapter.ts is essential for fallback reliability."
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Circle of Competence",
+        "Mindmaps & Hill Charts"
+      ]
+    },
+    {
+      "@id": "lib/middleware.ts",
+      "@type": ["CodeFile"],
+      "path": "lib/middleware.ts",
+      "exports": [
+        "RequestMiddleware", "ResponseMiddleware", "createMiddleware", "createCachingMiddleware", "createLoggingMiddleware", "createReasoningMiddleware", "createSimulationMiddleware", "createDefaultSettingsMiddleware", "createMiddlewareFromOptions", "createContextInjectionMiddleware", "createContentFilteringMiddleware", "createErrorHandlingMiddleware", "createRequestResponseMiddlewareFromOptions", "createCompleteMiddleware"
+      ],
+      "features": [
+        "Composable and type-safe middleware factories for AI SDK and API routes",
+        "Caching, logging, reasoning extraction, simulation, default settings, context injection, content filtering, error handling",
+        "LRU cache for response caching, stream simulation for cached results",
+        "Request/response middleware for context injection, filtering, and error handling",
+        "Integration-ready for Upstash-backed API and memory routes"
+      ],
+      "types": ["RequestMiddleware", "ResponseMiddleware", "LanguageModelV1Middleware"],
+      "consumers": [
+        "lib/ai-sdk-integration.ts", "lib/ai-sdk-tracing.ts", "lib/ai.ts", "lib/ai-integration.ts", "lib/tracing.ts", "lib/langfuse-integration.ts"
+      ],
+      "dependencies": ["zod", "LRUCache", "ReadableStream", "TransformStream"],
+      "testFiles": [],
+      "docs": ["https://ai-sdk.dev/cookbook/next/caching-middleware", "README.md#middleware.ts"],
+      "examples": ["How to add caching/logging/reasoning middleware to an API route"],
+      "changelog": ["Initial implementation", "Added caching, logging, and reasoning extraction middleware", "Added request/response middleware for context injection and error handling"],
+      "todo": [
+        "Add Upstash-backed cache provider for distributed caching",
+        "Integrate upstashLogger for all error and operation logging",
+        "Add tests for all middleware types and edge cases",
+        "Document Upstash integration patterns for caching and logging"
+      ],
+      "status": "incomplete",
+      "observations": [
+        "Middleware enables composable, type-safe enhancements for all AI SDK and API routes.",
+        "Caching middleware can be extended to use Upstash as a distributed cache for multi-instance deployments.",
+        "All logging should use upstashLogger for observability and analytics.",
+        "Reasoning extraction and simulation middleware can be used for advanced debugging and LLM evaluation.",
+        "Request/response middleware can inject context, filter content, and handle errors for all API routes.",
+        "Integration with Upstash memory and logging modules is recommended for production deployments.",
+        "Should be reviewed with reasoningTools (sequentialthinking, debuggingapproach, codesmells) for middleware coverage and gaps.",
+        "Onboarding should include examples of Upstash-backed caching and logging middleware.",
+        "All changes must be reflected in the knowledge graph and README for traceability."
+      ],
+      "connections": [
+        { "with": "upstash-logger.ts", "purpose": "logging for all middleware errors and operations" },
+        { "with": "upstashClients.ts", "purpose": "potential Upstash cache client integration" },
+        { "with": "upstashTypes.ts", "purpose": "type safety for middleware options and cache entries" }
+      ],
+      "usageNotes": "Use to compose caching, logging, and reasoning middleware for all AI SDK and API routes. Prefer Upstash for distributed cache/logging in production.",
+      "onboarding": "See README.md and ai-sdk.dev/cookbook/next/caching-middleware for usage and integration patterns.",
+      "navigation": "Imported by all core AI SDK and tracing modules.",
+      "troubleshooting": "Check for missing Upstash integration and logger usage.",
+      "graphNotes": "Central node for middleware composition in Upstash/AI SDK graph.",
+      "relationships": [
+        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
+        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
+        { "type": "api-route", "target": "app/api/ai-sdk/*" }
+      ],
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Sequential Thinking",
+        "Rubber Ducking"
+      ]
+    },
+    {
+      "@id": "onboarding:get-library-docs",
+      "@type": ["OnboardingTool", "DocumentationTool"],
+      "name": "get-library-docs",
+      "description": "Fetches up-to-date documentation for a library or npm package using a Context7-compatible library ID. Use after resolving the library ID with resolve-library-id. Supports topic-focused queries (e.g., 'connection', 'query', 'vector search').",
+      "usage": "1. Use resolve-library-id to get the Context7-compatible ID for a package (e.g., @upstash/redis). 2. Use get-library-docs with the resolved ID and an optional topic to fetch the latest docs. 3. Integrate official usage, setup, and advanced patterns into your Upstash modules.",
+      "examples": [
+        "resolve-library-id: '@upstash/redis' => 'upstash/redis'",
+        "get-library-docs: { context7CompatibleLibraryID: 'upstash/redis', topic: 'connection' }"
+      ],
+      "bestPractices": "Always use get-library-docs before implementing or updating Upstash features to ensure you follow the latest best practices and avoid deprecated patterns.",
+      "related": ["resolve-library-id"]
+    },
+    {
+      "@id": "onboarding:resolve-library-id",
+      "@type": ["OnboardingTool", "DocumentationTool"],
+      "name": "resolve-library-id",
+      "description": "Resolves a general npm package name into a Context7-compatible library ID required for get-library-docs. Always use this before fetching docs for a new package.",
+      "usage": "Call resolve-library-id with the npm package name (e.g., '@upstash/redis'). Use the returned ID with get-library-docs.",
+      "examples": [
+        "resolve-library-id: '@upstash/redis' => 'upstash/redis'"
+      ],
+      "bestPractices": "Always resolve the library ID before fetching docs to ensure you get the correct and most up-to-date documentation.",
+      "related": ["get-library-docs"]
+    },
+    {
+      "@id": "onboarding:git_files",
+      "@type": ["OnboardingTool", "RepositoryTool"],
+      "name": "git_files",
+      "description": "Fetches the content of specific files from a GitHub repository. Use this to retrieve code, configuration, or documentation from any repo you have access to.",
+      "usage": "Call git_files with owner (e.g., 'ssdeanx'), repo name, and file paths. Optionally specify a branch.",
+      "examples": [
+        "git_files: { owner: 'ssdeanx', repo: 'ai-sdk-DM', file_paths: ['README.md'] }"
+      ],
+      "bestPractices": "Use git_files to pull in reference implementations, configuration, or docs from your own or public repos for onboarding, migration, or troubleshooting.",
+      "related": ["git_summary", "git_tree"]
+    },
+    {
+      "@id": "onboarding:git_summary",
+      "@type": ["OnboardingTool", "RepositoryTool"],
+      "name": "git_summary",
+      "description": "Gets a summary of a GitHub repository, including files, token count, and README summary. Use this to quickly understand the structure and purpose of a repo.",
+      "usage": "Call git_summary with owner (e.g., 'ssdeanx') and repo name. Optionally specify a branch.",
+      "examples": [
+        "git_summary: { owner: 'ssdeanx', repo: 'ai-sdk-DM' }"
+      ],
+      "bestPractices": "Use git_summary for onboarding, code review, or when planning integrations/migrations.",
+      "related": ["git_files", "git_tree"]
+    },
+    {
+      "@id": "onboarding:git_tree",
+      "@type": ["OnboardingTool", "RepositoryTool"],
+      "name": "git_tree",
+      "description": "Gets the tree structure of a GitHub repository. Use this to map out the file/folder structure for onboarding, migration, or code search.",
+      "usage": "Call git_tree with owner (e.g., 'ssdeanx') and repo name. Optionally specify a branch.",
+      "examples": [
+        "git_tree: { owner: 'ssdeanx', repo: 'ai-sdk-DM' }"
+      ],
+      "bestPractices": "Use git_tree to visualize repo structure and plan code navigation or migration.",
+      "related": ["git_files", "git_summary"]
+    },
+    {
+      "@id": "onboarding:tool-list",
+      "@type": ["OnboardingTool", "Reference"],
+      "name": "Available Tools for Upstash Integration and Project Automation",
+      "description": "A list of tool IDs available for documentation management, code analysis, project context, and terminal interaction. Use these tools for onboarding, automation, and troubleshooting in the Upstash memory adapter and related modules.",
+      "tools": [
+        "add_documentation",
+        "update_documentation",
+        "think",
+        "open_project",
+        "read_context",
+        "get_chunk_count",
+        "set_profile",
+        "get_profile_context",
+        "generate_outline",
+        "search_documentation",
+        "list_documentation",
+        "get_library_docs",
+        "resolve_library_id",
+        "write_to_terminal",
+        "read_terminal_output",
+        "send_control_character"
+      ],
+      "usageNotes": "Use these tool IDs in automation, onboarding, and troubleshooting workflows. For codebase analysis, use read_context and get_chunk_count. For documentation, use add_documentation, update_documentation, search_documentation, and list_documentation. For terminal automation, use write_to_terminal, read_terminal_output, and send_control_character.",
+      "examples": [
+        "search_documentation: { query: 'upstash vector search' }",
+        "add_documentation: { name: 'Upstash VectorDB', url: 'https://upstash.com/docs/vector' }",
+        "read_context: { path: 'lib/memory/upstash/', fileTypes: 'ts', recursive: true }"
+      ],
+      "bestPractices": "Reference this list when building new onboarding flows, troubleshooting, or automating project tasks. Update this list as new tools become available."
     }
   ],
   "meta": {
@@ -345,7 +775,14 @@
       "byFeature": "Search for features (e.g., vector search, CRUD, logging) in the 'features' fields.",
       "byType": "Find types and Zod schemas in each file and referenced in each file's 'exports'.",
       "byStatus": "Track progress using the 'status' and 'todo' fields for each entity.",
-      "integrationNotes": "supabase-adapter.ts connects to supabase.ts, which in turn interacts with memory.ts, db.ts, and libsql.ts. When integrating Upstash with Supabase and LibSQL, ensure all adapters and backends are mapped in the knowledge graph, and use mental models to guide troubleshooting and design."
+      "insightAccu": [
+        "All Upstash modules must reference canonical types and Zod schemas for every entity (users, threads, messages, workflows, models, tools, logs, analytics, etc.) to ensure migration is seamless.",
+        "Every API route and business logic layer must validate request/response types using upstashTypes.ts, referencing types/supabase.ts and Drizzle schemas as needed.",
+        "Knowledge graph must be updated after every major edit, and all relationships, connections, and observations must be kept in sync with code changes.",
+        "Fallback logic and error handling must be type-safe and tested for all entities, not just memory.",
+        "Graph should be reviewed before each migration or integration to catch missing types, schemas, or relationships before CI/CD is enabled."
+      ],
+      "integrationNotes": "Integration must always be guided by the latest accumulated insights in 'insightAccu'. Before any migration or integration, review 'insightAccu' for missing types, schemas, or relationships. Adapt integration plans based on these insights to ensure all Upstash modules, API routes, and business logic are type-safe, robust, and ready for CI/CD."
     },
     "mentalModels": {
       "description": "A curated set of mental models for software development, debugging, and codebase improvement. Use these models to break down complex problems, verify assumptions, and drive continuous improvement. Each model below includes a summary, practical usage, and tips for applying it to the Upstash/Supabase/LibSQL integration context.",
@@ -362,35 +799,7 @@
           "summary": "First principles thinking means breaking down a problem into its most basic elements and reasoning up from there, rather than relying on analogy or existing patterns.",
           "application": "Use for architectural decisions, refactoring, or when existing solutions are insufficient. For Upstash/Supabase/LibSQL, break down the requirements for memory, vector, and logging into their core primitives, then design the integration from scratch, ensuring each adapter and backend is used optimally.",
           "bestFor": ["Major refactors", "Designing new features", "Fixing systemic issues"],
-          "howToUse": "List out the fundamental requirements (e.g., persistent storage, fast vector search, fallback logic). For each, ask: what is the simplest way to achieve this with Upstash, Supabase, and LibSQL? Build the integration up from these basics, ensuring no unnecessary complexity or legacy assumptions are carried over."
-        },
-        {
-          "name": "Feedback Loops",
-          "summary": "Feedback loops involve making a change, testing it, gathering results, and iterating. This is essential for continuous improvement and robust integration.",
-          "application": "After every change (especially in integration code), run tests, check for errors, and update docs/knowledge graph. For Upstash/Supabase/LibSQL, use feedback loops to validate that data flows correctly through all adapters and backends, and that fallback logic works as intended.",
-          "bestFor": ["Test-driven development", "CI/CD automation", "Knowledge graph updates"],
-          "howToUse": "After implementing or updating an adapter (e.g., supabase-adapter.ts), run integration tests that exercise all code paths (Upstash primary, Supabase/LibSQL fallback). Log results, fix issues, and repeat until all paths are robust. Document lessons learned in the knowledge graph."
-        },
-        {
-          "name": "Circle of Competence",
-          "summary": "Circle of competence means knowing what you understand well and when to seek help or research. This is critical for complex integrations.",
-          "application": "If you are not familiar with a backend (e.g., LibSQL), consult documentation, experts, or use semantic search before making changes. For diamond core files, never make risky changes without full understanding.",
-          "bestFor": ["Critical/diamond core files", "Unfamiliar code", "Cross-team collaboration"],
-          "howToUse": "Before editing integration points (supabase-adapter.ts, supabase.ts, memory.ts, db.ts, libsql.ts), review all related docs and code. If unsure, ask for help or do a deep dive before proceeding."
-        },
-        {
-          "name": "5 Whys",
-          "summary": "The 5 Whys technique involves asking 'why?' repeatedly (typically five times) to drill down to the root cause of a problem.",
-          "application": "Use for persistent bugs or integration failures. For example, if data is not syncing between Upstash and Supabase, ask why at each layer (API, adapter, backend) until the true cause is found.",
-          "bestFor": ["Root cause analysis", "Production incidents", "Complex bugfixes"],
-          "howToUse": "When a test fails or a bug appears in the integration, ask why at each step (e.g., why did supabase-adapter.ts not forward the request? Why did supabase.ts not persist the data? etc.) until you reach the underlying issue."
-        },
-        {
-          "name": "Inversion",
-          "summary": "Inversion means thinking about what would cause your system to fail, and then designing to avoid those outcomes.",
-          "application": "For Upstash/Supabase/LibSQL, consider what would break the integration (e.g., network failures, schema mismatches, missing fallback logic) and proactively add error handling, retries, and tests.",
-          "bestFor": ["Error handling", "Security reviews", "Test coverage"],
-          "howToUse": "List all possible failure modes for each integration point. Add code and tests to handle or prevent each one."
+          "howToUse": "Start by describing the problem or feature as if teaching it to someone new. For integration, narrate how a request flows from the API through supabase-adapter.ts, into supabase.ts, and down to memory.ts/db.ts/libsql.ts. Note any unclear steps or assumptions—these are likely sources of bugs or missing features."
         },
         {
           "name": "Occam's Razor",
@@ -422,6 +831,61 @@
         }
       ],
       "usageNotes": "For Upstash/Supabase/LibSQL integration, always map out the relationships between supabase-adapter.ts, supabase.ts, memory.ts, db.ts, and libsql.ts. Use the above models to guide design, debugging, and onboarding. Document integration points and lessons learned in the knowledge graph."
+    },
+    "reasoningTools": {
+      "description": "A curated set of advanced reasoning, analysis, and quality tools for dynamic problem-solving, debugging, collaboration, and code health. Each tool provides a systematic approach to breaking down, analyzing, and solving problems, and can be used alongside mental models for continuous improvement.",
+      "tools": [
+        {
+          "name": "sequentialthinking",
+          "summary": "A tool for dynamic and reflective problem-solving through thoughts. Each thought can build on, question, or revise previous insights as understanding deepens.",
+          "purpose": "Analyze problems through a flexible, evolving thinking process."
+        },
+        {
+          "name": "debuggingapproach",
+          "summary": "A tool for applying systematic debugging approaches to solve technical issues. Supports binary search, reverse engineering, divide and conquer, backtracking, cause elimination, and program slicing.",
+          "purpose": "Identify and resolve issues using structured debugging methods."
+        },
+        {
+          "name": "collaborativereasoning",
+          "summary": "A tool for simulating expert collaboration with diverse perspectives. Helps coordinate multiple viewpoints for complex problems.",
+          "purpose": "Enable structured collaborative reasoning and perspective integration."
+        },
+        {
+          "name": "decisionframework",
+          "summary": "A tool for structured decision analysis and rational choice. Supports multiple frameworks, probability estimates, and value judgments.",
+          "purpose": "Systematically evaluate options, criteria, and outcomes."
+        },
+        {
+          "name": "metacognitivemonitoring",
+          "summary": "A tool for systematic self-monitoring of knowledge and reasoning quality. Tracks knowledge boundaries, claim certainty, and reasoning biases.",
+          "purpose": "Enable metacognitive assessment across domains and tasks."
+        },
+        {
+          "name": "scientificmethod",
+          "summary": "A tool for applying formal scientific reasoning to questions and problems. Guides through hypothesis testing, variable identification, prediction, and evidence evaluation.",
+          "purpose": "Enforce structured scientific reasoning and hypothesis testing."
+        },
+        {
+          "name": "structuredargumentation",
+          "summary": "A tool for systematic dialectical reasoning and argument analysis. Facilitates creation, critique, and synthesis of competing arguments.",
+          "purpose": "Analyze complex questions through formal argumentation structures."
+        },
+        {
+          "name": "visualreasoning",
+          "summary": "A tool for visual thinking, problem-solving, and communication. Enables creation and interpretation of diagrams, graphs, and visual representations.",
+          "purpose": "Support visual problem-solving and communication."
+        },
+        {
+          "name": "semanticsearch",
+          "summary": "A tool for searching and relating concepts, code, and documentation using meaning and context rather than keywords.",
+          "purpose": "Enable deep, context-aware search and navigation across the codebase and knowledge graph."
+        },
+        {
+          "name": "codesmells",
+          "summary": "A tool for detecting code smells, anti-patterns, and maintainability issues. Integrates with linting and static analysis.",
+          "purpose": "Improve code quality and maintainability by identifying problematic patterns."
+        }
+      ]
     }
   },
   "taskList": {
@@ -493,6 +957,35 @@
         "Add tests for all factory-generated clients."
       ],
       "stream-processor.ts": [
+        "Remove all any types.",
+        "Remove all direct console statements, use upstashLogger.",
+        "Remove unused imports/vars.",
+        "Add @upstash/query support for streaming queries.",
+        "Add more robust error handling and type safety.",
+        "Add tests for streaming and batch processing."
+      ],
+      "memoryStore.ts": [
+        "Remove all any types.",
+        "Remove all direct console statements, use upstashLogger.",
+        "Add @upstash/query support for advanced memory/thread/message search.",
+        "Add more robust error handling and type safety.",
+        "Add tests for memory operations and advanced search."
+      ],
+      "memory-processor.ts": [
+        "Add @upstash/query support for streaming/semantic search if needed.",
+        "Add tests for memory processing."
+      ],
+      "index.ts": [
+        "Remove/replace all broken exports (see errors: missing exports from supabase-adapter).",
+        "Ensure all exports are up-to-date and type-safe.",
+        "Add documentation for new/advanced exports."
+      ]
+    },
+    "completingAllFiles": [
+      "For each file, ensure all 'any' types are replaced, all logging is via upstashLogger, and all unused imports/types/vars are either implemented or justified for removal.",
+      "Every file must have up-to-date tests, documentation, and usage examples.",
+      "All advanced search, streaming, and filtering features should use @upstash/query where possible.",
+      "Knowledge graph and README must be updated after every significant change.",
       "Apply the most relevant mental models (see below) to each file's refactor, bugfix, or feature implementation."
     ]
   }
