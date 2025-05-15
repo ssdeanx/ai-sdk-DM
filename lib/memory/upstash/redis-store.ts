@@ -1,45 +1,46 @@
 import { generateId } from 'ai';
-import { createItem, getItemById, updateItem, deleteItem, getData } from './supabase-adapter';
+import { createItem, getItemById, updateItem, deleteItem, getData, applyFilters, applyOrdering, applyPagination, selectFields, type QueryOptions } from './supabase-adapter';
 import { z } from 'zod';
-import { logError } from './upstash-logger';
 
 import {
-  // Error classes
-  RedisStoreError,
-  // Zod schemas
-  ThreadEntitySchema,
-  MessageEntitySchema,
-  AgentStateEntitySchema,
+  UserEntity,
+  WorkflowEntity,
+  UserEntitySchema,
+  WorkflowEntitySchema,
+  ToolExecutionEntity,
   ToolExecutionEntitySchema,
+  WorkflowNodeEntity,
   WorkflowNodeEntitySchema,
+  LogEntryEntity,
   LogEntryEntitySchema,
-  LogEntrySchema,
-  AdvancedLogQueryOptionsSchema,
-  AgentStateSchema,
-  StoredAgentStateSchema,
-  ThreadSearchResultSchema,
-  MessageSearchResultSchema,
-  // Types
-  ThreadMetadata,
+  ListEntitiesOptions,
+  RedisStoreError,
   Thread,
   Message,
   RedisHashData,
+  ThreadMetadata,
   RediSearchHybridQuery,
   RediSearchHybridResult,
   QStashTaskPayload,
   WorkflowNode,
-  AgentState,
-  ToolExecutionEntity,
-  LogEntry,
-  ListEntitiesOptions,
-  UpstashEntityBase,
-  UserEntity,
-  WorkflowEntity,
-  WorkflowNodeEntity,
-  LogEntryEntity,
-  AgentStateEntity,
-  MessageEntity,
-  ThreadEntity
+  SettingsEntity,
+  SettingsEntitySchema,
+  SystemMetricEntity,
+  SystemMetricEntitySchema,
+  TraceEntity,
+  TraceEntitySchema,
+  SpanEntity,
+  SpanEntitySchema,
+  EventEntity,
+  EventEntitySchema,
+  ProviderEntity,
+  ProviderEntitySchema,
+  ModelEntity,
+  ModelEntitySchema,
+  AuthProviderEntity,
+  AuthProviderEntitySchema,
+  DashboardConfigEntity,
+  DashboardConfigEntitySchema
 } from './upstashTypes';
 
 import {
@@ -49,6 +50,7 @@ import {
   trackWorkflowNode,
   shouldFallbackToBackup
 } from './upstashClients';
+import { logError } from './upstash-logger';
 
 // --- Constants for Redis Keys ---
 const THREAD_PREFIX = "thread:";
@@ -83,6 +85,23 @@ function parseRedisHashData<T extends { metadata?: Record<string, unknown> | nul
     try { parsed.metadata = JSON.parse(parsed.metadata); } catch { parsed.metadata = null; }
   }
   return parsed as T;
+}
+
+// --- Primary Key Helper ---
+/**
+ * Returns the primary key field(s) for a given table/entity name.
+ * For most entities, this is 'id', but for some (e.g. agent_tools, settings) it is a composite key.
+ * Returns an array of key field names (for composite keys) or a single string for simple keys.
+ */
+export function getPrimaryKeyForTable(tableName: string): string | string[] {
+  switch (tableName) {
+    case 'agent_tools':
+      return ['agent_id', 'tool_id'];
+    case 'settings':
+      return ['category', 'key'];
+    default:
+      return 'id';
+  }
 }
 
 // --- Thread Operations ---
@@ -352,7 +371,7 @@ export async function createRedisEntity<T extends { metadata?: Record<string, un
     await logError('redis-store', `Failed to create entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
       // Fallback to Supabase/LibSQL
-      return createItem(entityType, entity) as Promise<T>;
+      return createItem<T>(entityType, entity);
     }
     throw new RedisStoreError(`Failed to create entity: ${entityType}`, err);
   }
@@ -369,7 +388,7 @@ export async function getRedisEntityById<T extends { metadata?: Record<string, u
   } catch (err) {
     await logError('redis-store', `Failed to get entity by id: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      return getItemById(entityType, id) as Promise<T | null>;
+      return getItemById<T>(entityType, id);
     }
     throw new RedisStoreError(`Failed to get entity by id: ${entityType}`, err);
   }
@@ -391,7 +410,7 @@ export async function updateRedisEntity<T extends { metadata?: Record<string, un
   } catch (err) {
     await logError('redis-store', `Failed to update entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      return updateItem(entityType, id, updates) as Promise<T | null>;
+      return updateItem<T>(entityType, id, updates);
     }
     throw new RedisStoreError(`Failed to update entity: ${entityType}`, err);
   }
@@ -410,7 +429,6 @@ export async function deleteRedisEntity(entityType: string, id: string): Promise
   } catch (err) {
     await logError('redis-store', `Failed to delete entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      // Fallback to Supabase/LibSQL
       return deleteItem(entityType, id);
     }
     throw new RedisStoreError(`Failed to delete entity: ${entityType}`, err);
@@ -420,14 +438,6 @@ export async function deleteRedisEntity(entityType: string, id: string): Promise
 /**
  * Generic list/search for any entity type (with optional filters, order, pagination)
  */
-export interface ListEntitiesOptions {
-  filters?: Array<{ field: string; operator: string; value: unknown }>;
-  orderBy?: { column: string; ascending?: boolean };
-  limit?: number;
-  offset?: number;
-  select?: string[];
-}
-
 export async function listRedisEntities<T extends { metadata?: Record<string, unknown> | null }>(
   entityType: string,
   options?: ListEntitiesOptions
@@ -445,9 +455,16 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
       if (!data) return null;
       return parseRedisHashData<T>(data as RedisHashData);
     }).filter((e): e is T => !!e);
-    // Apply filters, order, pagination, select
-    if (options?.filters) entities = applyFilters(entities, options.filters);
-    if (options?.orderBy) entities = applyOrdering(entities, options.orderBy);
+    // Convert filters from Record<string, unknown> to Array<{ field, operator, value }>
+    if (options?.filters) {
+      const filterArray = Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }));
+      entities = applyFilters(entities, filterArray);
+    }
+    // Remove references to options.orderBy (not in ListEntitiesOptions)
+    // Support sortBy/sortOrder if present
+    if (options?.sortBy) {
+      entities = applyOrdering(entities, { column: options.sortBy, ascending: options.sortOrder !== 'DESC' });
+    }
     entities = applyPagination(entities, options?.limit, options?.offset);
     if (options?.select) entities = entities.map(e => selectFields(e, options.select) as T);
     return entities;
@@ -455,7 +472,23 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
     await logError('redis-store', `Failed to list entities: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
       // Fallback to Supabase/LibSQL
-      return getData(entityType, options) as Promise<T[]>;
+      let fallbackOptions: QueryOptions | undefined = undefined;
+      if (options) {
+        const queryFilters = options.filters
+          ? Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }))
+          : undefined;
+        const orderBy = options.sortBy
+          ? { column: options.sortBy, ascending: options.sortOrder !== 'DESC' }
+          : undefined;
+        fallbackOptions = {
+          limit: options.limit,
+          offset: options.offset,
+          filters: queryFilters,
+          orderBy,
+          select: options.select,
+        };
+      }
+      return getData<T>(entityType, fallbackOptions);
     }
     throw new RedisStoreError(`Failed to list entities: ${entityType}`, err);
   }
@@ -516,56 +549,244 @@ export async function searchThreadsByMetadata(
 }
 
 // --- Helper functions for filtering, ordering, pagination, select ---
-function applyFilters<T>(items: T[], filters?: Array<{ field: string; operator: string; value: unknown }>): T[] {
-  if (!filters || filters.length === 0) return items;
-  return items.filter(item => {
-    return filters.every(filter => {
-      const value = (item as Record<string, unknown>)[filter.field];
-      switch (filter.operator) {
-        case 'eq': return value === filter.value;
-        case 'neq': return value !== filter.value;
-        case 'gt': return typeof value === 'number' && typeof filter.value === 'number' && value > filter.value;
-        case 'gte': return typeof value === 'number' && typeof filter.value === 'number' && value >= filter.value;
-        case 'lt': return typeof value === 'number' && typeof filter.value === 'number' && value < filter.value;
-        case 'lte': return typeof value === 'number' && typeof filter.value === 'number' && value <= filter.value;
-        case 'like': return typeof value === 'string' && typeof filter.value === 'string' && value.includes(filter.value);
-        case 'ilike': return typeof value === 'string' && typeof filter.value === 'string' && value.toLowerCase().includes(filter.value.toLowerCase());
-        case 'in': return Array.isArray(filter.value) && filter.value.includes(value);
-        case 'is': return value === filter.value;
-        default: return false;
-      }
-    });
-  });
+
+// --- UserEntity CRUD ---
+export async function createRedisUser(user: UserEntity): Promise<UserEntity> {
+  return createRedisEntity<UserEntity>('user', user, UserEntitySchema);
+}
+export async function getRedisUserById(id: string): Promise<UserEntity | null> {
+  return getRedisEntityById<UserEntity>('user', id);
+}
+export async function updateRedisUser(id: string, updates: Partial<UserEntity>): Promise<UserEntity | null> {
+  return updateRedisEntity<UserEntity>('user', id, updates, UserEntitySchema);
+}
+export async function deleteRedisUser(id: string): Promise<boolean> {
+  return deleteRedisEntity('user', id);
+}
+export async function listRedisUsers(options?: ListEntitiesOptions): Promise<UserEntity[]> {
+  return listRedisEntities<UserEntity>('user', options);
 }
 
-function applyOrdering<T>(items: T[], orderBy?: { column: string; ascending?: boolean }): T[] {
-  if (!orderBy) return items;
-  const { column, ascending = true } = orderBy;
-  return [...items].sort((a, b) => {
-    const aValue = (a as Record<string, unknown>)[column];
-    const bValue = (b as Record<string, unknown>)[column];
-    if (aValue === bValue) return 0;
-    if (aValue === null || aValue === undefined) return ascending ? 1 : -1;
-    if (bValue === null || bValue === undefined) return ascending ? -1 : 1;
-    if (ascending) return aValue > bValue ? 1 : -1;
-    return aValue < bValue ? 1 : -1;
-  });
+// --- WorkflowEntity CRUD ---
+export async function createRedisWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
+  return createRedisEntity<WorkflowEntity>('workflow', workflow, WorkflowEntitySchema);
+}
+export async function getRedisWorkflowById(id: string): Promise<WorkflowEntity | null> {
+  return getRedisEntityById<WorkflowEntity>('workflow', id);
+}
+export async function updateRedisWorkflow(id: string, updates: Partial<WorkflowEntity>): Promise<WorkflowEntity | null> {
+  return updateRedisEntity<WorkflowEntity>('workflow', id, updates, WorkflowEntitySchema);
+}
+export async function deleteRedisWorkflow(id: string): Promise<boolean> {
+  return deleteRedisEntity('workflow', id);
+}
+export async function listRedisWorkflows(options?: ListEntitiesOptions): Promise<WorkflowEntity[]> {
+  return listRedisEntities<WorkflowEntity>('workflow', options);
 }
 
-function applyPagination<T>(items: T[], limit?: number, offset?: number): T[] {
-  let result = items;
-  if (offset !== undefined && offset > 0) result = result.slice(offset);
-  if (limit !== undefined && limit > 0) result = result.slice(0, limit);
-  return result;
+// --- ToolExecutionEntity CRUD ---
+export async function createRedisToolExecution(exec: ToolExecutionEntity): Promise<ToolExecutionEntity> {
+  return createRedisEntity<ToolExecutionEntity>('tool_execution', exec, ToolExecutionEntitySchema);
+}
+export async function getRedisToolExecutionById(id: string): Promise<ToolExecutionEntity | null> {
+  return getRedisEntityById<ToolExecutionEntity>('tool_execution', id);
+}
+export async function updateRedisToolExecution(id: string, updates: Partial<ToolExecutionEntity>): Promise<ToolExecutionEntity | null> {
+  return updateRedisEntity<ToolExecutionEntity>('tool_execution', id, updates, ToolExecutionEntitySchema);
+}
+export async function deleteRedisToolExecution(id: string): Promise<boolean> {
+  return deleteRedisEntity('tool_execution', id);
+}
+export async function listRedisToolExecutions(options?: ListEntitiesOptions): Promise<ToolExecutionEntity[]> {
+  return listRedisEntities<ToolExecutionEntity>('tool_execution', options);
 }
 
-function selectFields<T extends object>(item: T, select?: string[]): Partial<T> {
-  if (!select || select.length === 0) return item;
-  const result: Partial<T> = {};
-  for (const field of select) {
-    if (field in item) {
-      result[field as keyof T] = item[field as keyof T];
-    }
-  }
-  return result;
+// --- WorkflowNodeEntity CRUD ---
+export async function createRedisWorkflowNode(node: WorkflowNodeEntity): Promise<WorkflowNodeEntity> {
+  return createRedisEntity<WorkflowNodeEntity>('workflow_node', node, WorkflowNodeEntitySchema);
 }
+export async function getRedisWorkflowNodeById(id: string): Promise<WorkflowNodeEntity | null> {
+  return getRedisEntityById<WorkflowNodeEntity>('workflow_node', id);
+}
+export async function updateRedisWorkflowNode(id: string, updates: Partial<WorkflowNodeEntity>): Promise<WorkflowNodeEntity | null> {
+  return updateRedisEntity<WorkflowNodeEntity>('workflow_node', id, updates, WorkflowNodeEntitySchema);
+}
+export async function deleteRedisWorkflowNode(id: string): Promise<boolean> {
+  return deleteRedisEntity('workflow_node', id);
+}
+export async function listRedisWorkflowNodes(options?: ListEntitiesOptions): Promise<WorkflowNodeEntity[]> {
+  return listRedisEntities<WorkflowNodeEntity>('workflow_node', options);
+}
+
+// --- LogEntryEntity CRUD ---
+export async function createRedisLogEntry(entry: LogEntryEntity): Promise<LogEntryEntity> {
+  return createRedisEntity<LogEntryEntity>('log_entry', entry, LogEntryEntitySchema);
+}
+export async function getRedisLogEntryById(id: string): Promise<LogEntryEntity | null> {
+  return getRedisEntityById<LogEntryEntity>('log_entry', id);
+}
+export async function updateRedisLogEntry(id: string, updates: Partial<LogEntryEntity>): Promise<LogEntryEntity | null> {
+  return updateRedisEntity<LogEntryEntity>('log_entry', id, updates, LogEntryEntitySchema);
+}
+export async function deleteRedisLogEntry(id: string): Promise<boolean> {
+  return deleteRedisEntity('log_entry', id);
+}
+export async function listRedisLogEntries(options?: ListEntitiesOptions): Promise<LogEntryEntity[]> {
+  return listRedisEntities<LogEntryEntity>('log_entry', options);
+}
+
+// --- SettingsEntity CRUD ---
+export async function createRedisSettings(settings: SettingsEntity): Promise<SettingsEntity> {
+  return createRedisEntity<SettingsEntity>('settings', settings, SettingsEntitySchema);
+}
+export async function getRedisSettingsById(id: string): Promise<SettingsEntity | null> {
+  return getRedisEntityById<SettingsEntity>('settings', id);
+}
+export async function updateRedisSettings(id: string, updates: Partial<SettingsEntity>): Promise<SettingsEntity | null> {
+  return updateRedisEntity<SettingsEntity>('settings', id, updates, SettingsEntitySchema);
+}
+export async function deleteRedisSettings(id: string): Promise<boolean> {
+  return deleteRedisEntity('settings', id);
+}
+export async function listRedisSettings(options?: ListEntitiesOptions): Promise<SettingsEntity[]> {
+  return listRedisEntities<SettingsEntity>('settings', options);
+}
+
+// --- SystemMetricEntity CRUD ---
+export async function createRedisSystemMetric(metric: SystemMetricEntity): Promise<SystemMetricEntity> {
+  return createRedisEntity<SystemMetricEntity>('system_metric', metric, SystemMetricEntitySchema);
+}
+export async function getRedisSystemMetricById(id: string): Promise<SystemMetricEntity | null> {
+  return getRedisEntityById<SystemMetricEntity>('system_metric', id);
+}
+export async function updateRedisSystemMetric(id: string, updates: Partial<SystemMetricEntity>): Promise<SystemMetricEntity | null> {
+  return updateRedisEntity<SystemMetricEntity>('system_metric', id, updates, SystemMetricEntitySchema);
+}
+export async function deleteRedisSystemMetric(id: string): Promise<boolean> {
+  return deleteRedisEntity('system_metric', id);
+}
+export async function listRedisSystemMetrics(options?: ListEntitiesOptions): Promise<SystemMetricEntity[]> {
+  return listRedisEntities<SystemMetricEntity>('system_metric', options);
+}
+
+// --- TraceEntity CRUD ---
+export async function createRedisTrace(trace: TraceEntity): Promise<TraceEntity> {
+  return createRedisEntity<TraceEntity>('trace', trace, TraceEntitySchema);
+}
+export async function getRedisTraceById(id: string): Promise<TraceEntity | null> {
+  return getRedisEntityById<TraceEntity>('trace', id);
+}
+export async function updateRedisTrace(id: string, updates: Partial<TraceEntity>): Promise<TraceEntity | null> {
+  return updateRedisEntity<TraceEntity>('trace', id, updates, TraceEntitySchema);
+}
+export async function deleteRedisTrace(id: string): Promise<boolean> {
+  return deleteRedisEntity('trace', id);
+}
+export async function listRedisTraces(options?: ListEntitiesOptions): Promise<TraceEntity[]> {
+  return listRedisEntities<TraceEntity>('trace', options);
+}
+
+// --- SpanEntity CRUD ---
+export async function createRedisSpan(span: SpanEntity): Promise<SpanEntity> {
+  return createRedisEntity<SpanEntity>('span', span, SpanEntitySchema);
+}
+export async function getRedisSpanById(id: string): Promise<SpanEntity | null> {
+  return getRedisEntityById<SpanEntity>('span', id);
+}
+export async function updateRedisSpan(id: string, updates: Partial<SpanEntity>): Promise<SpanEntity | null> {
+  return updateRedisEntity<SpanEntity>('span', id, updates, SpanEntitySchema);
+}
+export async function deleteRedisSpan(id: string): Promise<boolean> {
+  return deleteRedisEntity('span', id);
+}
+export async function listRedisSpans(options?: ListEntitiesOptions): Promise<SpanEntity[]> {
+  return listRedisEntities<SpanEntity>('span', options);
+}
+
+// --- EventEntity CRUD ---
+export async function createRedisEvent(event: EventEntity): Promise<EventEntity> {
+  return createRedisEntity<EventEntity>('event', event, EventEntitySchema);
+}
+export async function getRedisEventById(id: string): Promise<EventEntity | null> {
+  return getRedisEntityById<EventEntity>('event', id);
+}
+export async function updateRedisEvent(id: string, updates: Partial<EventEntity>): Promise<EventEntity | null> {
+  return updateRedisEntity<EventEntity>('event', id, updates, EventEntitySchema);
+}
+export async function deleteRedisEvent(id: string): Promise<boolean> {
+  return deleteRedisEntity('event', id);
+}
+export async function listRedisEvents(options?: ListEntitiesOptions): Promise<EventEntity[]> {
+  return listRedisEntities<EventEntity>('event', options);
+}
+
+// --- ProviderEntity CRUD ---
+export async function createRedisProvider(provider: ProviderEntity): Promise<ProviderEntity> {
+  return createRedisEntity<ProviderEntity>('provider', provider, ProviderEntitySchema);
+}
+export async function getRedisProviderById(id: string): Promise<ProviderEntity | null> {
+  return getRedisEntityById<ProviderEntity>('provider', id);
+}
+export async function updateRedisProvider(id: string, updates: Partial<ProviderEntity>): Promise<ProviderEntity | null> {
+  return updateRedisEntity<ProviderEntity>('provider', id, updates, ProviderEntitySchema);
+}
+export async function deleteRedisProvider(id: string): Promise<boolean> {
+  return deleteRedisEntity('provider', id);
+}
+export async function listRedisProviders(options?: ListEntitiesOptions): Promise<ProviderEntity[]> {
+  return listRedisEntities<ProviderEntity>('provider', options);
+}
+
+// --- ModelEntity CRUD ---
+export async function createRedisModel(model: ModelEntity): Promise<ModelEntity> {
+  return createRedisEntity<ModelEntity>('model', model, ModelEntitySchema);
+}
+export async function getRedisModelById(id: string): Promise<ModelEntity | null> {
+  return getRedisEntityById<ModelEntity>('model', id);
+}
+export async function updateRedisModel(id: string, updates: Partial<ModelEntity>): Promise<ModelEntity | null> {
+  return updateRedisEntity<ModelEntity>('model', id, updates, ModelEntitySchema);
+}
+export async function deleteRedisModel(id: string): Promise<boolean> {
+  return deleteRedisEntity('model', id);
+}
+export async function listRedisModels(options?: ListEntitiesOptions): Promise<ModelEntity[]> {
+  return listRedisEntities<ModelEntity>('model', options);
+}
+
+// --- AuthProviderEntity CRUD ---
+export async function createRedisAuthProvider(authProvider: AuthProviderEntity): Promise<AuthProviderEntity> {
+  return createRedisEntity<AuthProviderEntity>('auth_provider', authProvider, AuthProviderEntitySchema);
+}
+export async function getRedisAuthProviderById(id: string): Promise<AuthProviderEntity | null> {
+  return getRedisEntityById<AuthProviderEntity>('auth_provider', id);
+}
+export async function updateRedisAuthProvider(id: string, updates: Partial<AuthProviderEntity>): Promise<AuthProviderEntity | null> {
+  return updateRedisEntity<AuthProviderEntity>('auth_provider', id, updates, AuthProviderEntitySchema);
+}
+export async function deleteRedisAuthProvider(id: string): Promise<boolean> {
+  return deleteRedisEntity('auth_provider', id);
+}
+export async function listRedisAuthProviders(options?: ListEntitiesOptions): Promise<AuthProviderEntity[]> {
+  return listRedisEntities<AuthProviderEntity>('auth_provider', options);
+}
+
+// --- DashboardConfigEntity CRUD ---
+export async function createRedisDashboardConfig(config: DashboardConfigEntity): Promise<DashboardConfigEntity> {
+  return createRedisEntity<DashboardConfigEntity>('dashboard_config', config, DashboardConfigEntitySchema);
+}
+export async function getRedisDashboardConfigById(id: string): Promise<DashboardConfigEntity | null> {
+  return getRedisEntityById<DashboardConfigEntity>('dashboard_config', id);
+}
+export async function updateRedisDashboardConfig(id: string, updates: Partial<DashboardConfigEntity>): Promise<DashboardConfigEntity | null> {
+  return updateRedisEntity<DashboardConfigEntity>('dashboard_config', id, updates, DashboardConfigEntitySchema);
+}
+export async function deleteRedisDashboardConfig(id: string): Promise<boolean> {
+  return deleteRedisEntity('dashboard_config', id);
+}
+export async function listRedisDashboardConfigs(options?: ListEntitiesOptions): Promise<DashboardConfigEntity[]> {
+  return listRedisEntities<DashboardConfigEntity>('dashboard_config', options);
+}
+
+export type { Thread, Message, ThreadMetadata, ListEntitiesOptions };
+export { RedisStoreError };

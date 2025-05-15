@@ -374,6 +374,220 @@ export const LogEntryEntitySchema = UpstashEntitySchema.extend({
   message: z.string(),
 });
 
+// --- UserEntity ---
+export interface UserEntity extends UpstashEntityBase {
+  email: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  role: string;
+}
+export const UserEntitySchema = UpstashEntitySchema.extend({
+  email: z.string().email(),
+  name: z.string().nullable().optional(),
+  avatar_url: z.string().nullable().optional(),
+  role: z.string(),
+});
+
+// --- WorkflowEntity ---
+export interface WorkflowEntity extends UpstashEntityBase {
+  name: string;
+  description?: string | null;
+  current_step_index: number;
+  status: string;
+  metadata?: Record<string, unknown>;
+}
+export const WorkflowEntitySchema = UpstashEntitySchema.extend({
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  current_step_index: z.number(),
+  status: z.string(),
+  metadata: z.record(z.any()).optional(),
+});
+
+// --- SettingsEntity ---
+export interface SettingsEntity extends UpstashEntityBase {
+  category: string;
+  key: string;
+  value: string;
+}
+export const SettingsEntitySchema = UpstashEntitySchema.extend({
+  category: z.string(),
+  key: z.string(),
+  value: z.string(),
+});
+
+// --- SystemMetricEntity ---
+export interface SystemMetricEntity extends UpstashEntityBase {
+  time_range?: string;
+  timestamp: string;
+  cpu_usage?: number;
+  memory_usage?: number;
+  database_connections?: number;
+  api_requests_per_minute?: number;
+  average_response_time_ms?: number;
+  active_users?: number;
+}
+export const SystemMetricEntitySchema = UpstashEntitySchema.extend({
+  time_range: z.string().optional(),
+  timestamp: z.string(),
+  cpu_usage: z.number().optional(),
+  memory_usage: z.number().optional(),
+  database_connections: z.number().optional(),
+  api_requests_per_minute: z.number().optional(),
+  average_response_time_ms: z.number().optional(),
+  active_users: z.number().optional(),
+});
+
+// --- TraceEntity (Observability) ---
+export interface TraceEntity extends UpstashEntityBase {
+  name: string;
+  start_time: string;
+  end_time?: string;
+  duration_ms?: number;
+  status: string;
+  user_id?: string;
+  session_id?: string;
+}
+export const TraceEntitySchema = UpstashEntitySchema.extend({
+  name: z.string(),
+  start_time: z.string(),
+  end_time: z.string().optional(),
+  duration_ms: z.number().optional(),
+  status: z.string(),
+  user_id: z.string().optional(),
+  session_id: z.string().optional(),
+});
+
+// --- SpanEntity (Observability) ---
+export interface SpanEntity extends UpstashEntityBase {
+  trace_id: string;
+  parent_span_id?: string;
+  name: string;
+  start_time: string;
+  end_time?: string;
+  duration_ms?: number;
+  status: string;
+  attributes?: Record<string, unknown>;
+}
+export const SpanEntitySchema = UpstashEntitySchema.extend({
+  trace_id: z.string(),
+  parent_span_id: z.string().optional(),
+  name: z.string(),
+  start_time: z.string(),
+  end_time: z.string().optional(),
+  duration_ms: z.number().optional(),
+  status: z.string(),
+  attributes: z.record(z.any()).optional(),
+});
+
+// --- EventEntity (Observability) ---
+export interface EventEntity extends UpstashEntityBase {
+  trace_id: string;
+  span_id?: string;
+  name: string;
+  timestamp: string;
+  attributes?: Record<string, unknown>;
+}
+export const EventEntitySchema = UpstashEntitySchema.extend({
+  trace_id: z.string(),
+  span_id: z.string().optional(),
+  name: z.string(),
+  timestamp: z.string(),
+  attributes: z.record(z.any()).optional(),
+});
+
+// --- ProviderEntity ---
+export interface ProviderEntity extends UpstashEntityBase {
+  name: string;
+  api_key?: string;
+  base_url?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+}
+export const ProviderEntitySchema = UpstashEntitySchema.extend({
+  name: z.string(),
+  api_key: z.string().optional(),
+  base_url: z.string().optional(),
+  status: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+// --- ModelEntity ---
+export interface ModelEntity extends UpstashEntityBase {
+  name: string;
+  provider: string;
+  model_id: string;
+  max_tokens?: number;
+  input_cost_per_token?: number;
+  output_cost_per_token?: number;
+  supports_vision?: boolean;
+  supports_functions?: boolean;
+  supports_streaming?: boolean;
+  default_temperature?: number;
+  default_top_p?: number;
+  default_frequency_penalty?: number;
+  default_presence_penalty?: number;
+  context_window?: number;
+  description?: string;
+  category?: string;
+  capabilities?: Record<string, unknown>;
+  base_url?: string;
+  api_key?: string;
+  status?: string;
+}
+export const ModelEntitySchema = UpstashEntitySchema.extend({
+  name: z.string(),
+  provider: z.string(),
+  model_id: z.string(),
+  max_tokens: z.number().optional(),
+  input_cost_per_token: z.number().optional(),
+  output_cost_per_token: z.number().optional(),
+  supports_vision: z.boolean().optional(),
+  supports_functions: z.boolean().optional(),
+  supports_streaming: z.boolean().optional(),
+  default_temperature: z.number().optional(),
+  default_top_p: z.number().optional(),
+  default_frequency_penalty: z.number().optional(),
+  default_presence_penalty: z.number().optional(),
+  context_window: z.number().optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  capabilities: z.record(z.any()).optional(),
+  base_url: z.string().optional(),
+  api_key: z.string().optional(),
+  status: z.string().optional(),
+});
+
+// --- AuthProviderEntity ---
+export interface AuthProviderEntity extends UpstashEntityBase {
+  provider: string;
+  user_id: string;
+  access_token?: string;
+  refresh_token?: string;
+  expires_at?: string;
+  metadata?: Record<string, unknown>;
+}
+export const AuthProviderEntitySchema = UpstashEntitySchema.extend({
+  provider: z.string(),
+  user_id: z.string(),
+  access_token: z.string().optional(),
+  refresh_token: z.string().optional(),
+  expires_at: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+// --- DashboardConfigEntity ---
+export interface DashboardConfigEntity extends UpstashEntityBase {
+  user_id?: string;
+  widgets?: Record<string, unknown>[];
+  layout?: Record<string, unknown>;
+}
+export const DashboardConfigEntitySchema = UpstashEntitySchema.extend({
+  user_id: z.string().optional(),
+  widgets: z.array(z.record(z.any())).optional(),
+  layout: z.record(z.any()).optional(),
+});
+
 // --- Logging Types & Schemas ---
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
@@ -460,3 +674,13 @@ export const MessageSearchResultSchema = z.object({
   score: z.number().optional(),
 });
 export type MessageSearchResult = z.infer<typeof MessageSearchResultSchema>;
+
+// --- ListEntitiesOptions ---
+export interface ListEntitiesOptions {
+  limit?: number;
+  offset?: number;
+  filters?: Record<string, unknown>;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  select?: string[];
+}

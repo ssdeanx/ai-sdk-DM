@@ -40,6 +40,14 @@ import {
   WorkflowNode,
   LogEntry
 } from './upstashTypes';
+import { getSupabaseClient } from '../supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
+
+export type TableName = keyof Database['public']['Tables'];
+export type TableRow<T extends TableName = TableName> = Database['public']['Tables'][T]['Row'];
+export type TableInsert<T extends TableName = TableName> = Database['public']['Tables'][T]['Insert'];
+export type TableUpdate<T extends TableName = TableName> = Database['public']['Tables'][T]['Update'];
 
 // --- Helper Functions ---
 
@@ -164,8 +172,38 @@ function selectFields<T extends object>(item: T, select?: string[]): Partial<T> 
   return result;
 }
 
+// --- Primary Key Helper ---
+/**
+ * Returns the primary key field(s) for a given table/entity name.
+ * For most entities, this is 'id', but for some (e.g. agent_tools, settings) it is a composite key.
+ * Returns an array of key field names (for composite keys) or a single string for simple keys.
+ */
+export function getPrimaryKeyForTable(tableName: string): string | string[] {
+  switch (tableName) {
+    case 'agent_tools':
+      return ['agent_id', 'tool_id'];
+    case 'settings':
+      return ['category', 'key'];
+    default:
+      return 'id';
+  }
+}
+
+// --- Helper to extract primary key value(s) from an item ---
+/**
+ * Given a table name and an item, returns the primary key value(s) for that item.
+ * For composite keys, returns an array of values in the correct order.
+ * For single key, returns the value directly.
+ */
+export function getPrimaryKeyValue(tableName: string, item: unknown): string | string[] {
+  const key = getPrimaryKeyForTable(tableName);
+  if (Array.isArray(key)) {
+    return key.map(k => (item as Record<string, string>)[k]);
+  }
+  return (item as Record<string, string>)[key];
+}
+
 // --- Types ---
-export type TableRow = Record<string, unknown> & { id: string };
 export type FilterOptions = { field: string; operator: string; value: unknown };
 export type OrderOptions = { column: string; ascending?: boolean };
 export type QueryOptions = {
@@ -181,30 +219,43 @@ export type QueryOptions = {
 /**
  * Gets an item by ID from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function getItemById(tableName: string, id: string): Promise<TableRow | null> {
+export async function getItemById<T extends TableName>(tableName: T, id: string): Promise<TableRow<T> | null> {
   try {
     const redis = getRedisClient();
     const row = await redis.hgetall(getRowKey(tableName, id));
-    if (!row || Object.keys(row).length === 0) return null;
+    if (!row || Object.keys(row).length === 0) throw new Error('Not found');
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row)) {
       try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
     }
-    return { ...parsed, id };
+    return { ...parsed, id } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error getting item by id from table ${tableName}`, error instanceof Error ? error : { message: String(error) });
-    // TODO: fallback to Supabase/LibSQL here
-    return null;
+    upstashLogger.error('supabase-adapter', `Error getting item by id from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    // Fallback to Supabase
+    const supabase = getSupabaseClient() as SupabaseClient<Database>;
+    // @ts-expect-error: Generic string table name required for fallback logic
+    const { data, error: supaErr } = await supabase.from(tableName).select('*').eq('id', id).single();
+    if (supaErr || !data) return null;
+    return data as unknown as TableRow<T>;
   }
 }
 
 /**
  * Creates an item in a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function createItem(tableName: string, item: Omit<TableRow, 'id'> & { id?: string }): Promise<TableRow> {
+export async function createItem<T extends TableName>(tableName: T, item: TableInsert<T>): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
-    const id = item.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+    // Use getPrimaryKeyValue to get the key value(s) for the item
+    const keyValue = getPrimaryKeyValue(tableName, item);
+    // For single key, use as before; for composite, handle accordingly
+    let id: string | undefined;
+    if (Array.isArray(keyValue)) {
+      // For composite keys, join with ':' for a unique string (or handle as needed by your DB logic)
+      id = keyValue.join(':');
+    } else {
+      id = keyValue || (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+    }
     const rowKey = getRowKey(tableName, id);
     const toStore: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) {
@@ -212,18 +263,22 @@ export async function createItem(tableName: string, item: Omit<TableRow, 'id'> &
     }
     await redis.hset(rowKey, toStore);
     await redis.sadd(`${getTableKey(tableName)}:ids`, id);
-    return { ...item, id };
+    return { ...item, id } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error creating item in table ${tableName}`, error instanceof Error ? error : { message: String(error) });
-    // TODO: fallback to Supabase/LibSQL here
-    throw new VectorStoreError(`Failed to create item in table ${tableName}`);
+    upstashLogger.error('supabase-adapter', `Error creating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    // Fallback to Supabase
+    const supabase = getSupabaseClient() as SupabaseClient<Database>;
+    // @ts-expect-error: Generic string table name required for fallback logic
+    const { data, error: supaErr } = await supabase.from(tableName).insert([item]).select('*').single();
+    if (supaErr || !data) throw new VectorStoreError(`Failed to create item in table ${String(tableName)}`);
+    return data as unknown as TableRow<T>;
   }
 }
 
 /**
  * Updates an item in a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function updateItem(tableName: string, id: string, updates: Partial<TableRow>): Promise<TableRow> {
+export async function updateItem<T extends TableName>(tableName: T, id: string, updates: TableUpdate<T>): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
     const rowKey = getRowKey(tableName, id);
@@ -238,18 +293,40 @@ export async function updateItem(tableName: string, id: string, updates: Partial
     for (const [k, v] of Object.entries(updated)) {
       try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
     }
-    return { ...parsed, id };
+    return { ...parsed, id } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error updating item in table ${tableName}`, error instanceof Error ? error : { message: String(error) });
-    // TODO: fallback to Supabase/LibSQL here
-    throw new VectorStoreError(`Failed to update item in table ${tableName}`);
+    upstashLogger.error('supabase-adapter', `Error updating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    // Fallback to Supabase
+    const supabase = getSupabaseClient() as SupabaseClient<Database>;
+    // Use getPrimaryKeyForTable to get the key name(s)
+    const key = getPrimaryKeyForTable(tableName);
+    if (Array.isArray(key)) {
+      // For composite keys, chain .eq() for each key
+      // @ts-expect-error: Generic string table name required for fallback logic
+      let q = supabase.from(tableName).update(updates as unknown as object);
+      key.forEach((k, idx) => {
+        q = q.eq(k as unknown as string, (id as string[])[idx]);
+      });
+      const { data, error: supaErr } = await q.select('*').single();
+      if (supaErr) throw supaErr;
+      return data as TableRow<T>;
+    } else {
+      // @ts-expect-error: Generic string table name required for fallback logic
+      const { data, error: supaErr } = await supabase.from(tableName)
+        .update(updates as unknown as object)
+        .eq(key as unknown as string, id)
+        .select('*')
+        .single();
+      if (supaErr) throw supaErr;
+      return data as TableRow<T>;
+    }
   }
 }
 
 /**
  * Deletes an item from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function deleteItem(tableName: string, id: string): Promise<boolean> {
+export async function deleteItem<T extends TableName>(tableName: T, id: string): Promise<boolean> {
   try {
     const redis = getRedisClient();
     const rowKey = getRowKey(tableName, id);
@@ -257,57 +334,84 @@ export async function deleteItem(tableName: string, id: string): Promise<boolean
     await redis.srem(`${getTableKey(tableName)}:ids`, id);
     return true;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error deleting item from table ${tableName}`, error instanceof Error ? error : { message: String(error) });
-    // TODO: fallback to Supabase/LibSQL here
-    return false;
+    upstashLogger.error('supabase-adapter', `Error deleting item from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    // Fallback to Supabase
+    const supabase = getSupabaseClient() as SupabaseClient<Database>;
+    // Use getPrimaryKeyForTable to get the key name(s)
+    const key = getPrimaryKeyForTable(tableName);
+    if (Array.isArray(key)) {
+      // For composite keys, chain .eq() for each key
+      let q = supabase.from(tableName as unknown as string).delete();
+      key.forEach((k, idx) => {
+        q = q.eq(k as unknown as string, (id as string[])[idx]);
+      });
+      const { error: supaErr } = await q;
+      if (supaErr) throw supaErr;
+      return true;
+    } else {
+      const { error: supaErr } = await supabase.from(tableName as unknown as string)
+        .delete()
+        .eq(key as unknown as string, id);
+      if (supaErr) throw supaErr;
+      return true;
+    }
   }
 }
 
-// --- Main API Functions ---
-
 /**
- * Gets data from a table
- *
- * @param tableName - Table name
- * @param options - Query options
- * @returns Promise resolving to an array of table rows
- * @throws VectorStoreError if fetching fails
+ * Gets data from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function getData(
-  tableName: string,
+export async function getData<T extends TableName>(
+  tableName: T,
   options?: QueryOptions
-): Promise<Array<TableRow>> {
+): Promise<Array<TableRow<T>>> {
   try {
+    // Try Upstash first
     const redis = getRedisClient();
-    const tableKey = getTableKey(tableName);
-    const rowIds = await redis.smembers(`${tableKey}:ids`);
-    if (!rowIds || rowIds.length === 0) return [];
+    const ids = await redis.smembers(`${getTableKey(tableName)}:ids`);
+    if (!ids || ids.length === 0) throw new Error('No data');
     const pipeline = redis.pipeline();
-    for (const id of rowIds) {
+    for (const id of ids) {
       pipeline.hgetall(getRowKey(tableName, id));
     }
-    const rowsData = await pipeline.exec();
-    let rows = rowsData
-      .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && Object.keys(row).length > 0)
-      .map(row => {
-        const parsed: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(row)) {
-          try {
-            parsed[k] = JSON.parse(v as string);
-          } catch {
-            parsed[k] = v;
-          }
-        }
-        return parsed;
-      });
-    if (options?.filters) rows = applyFilters(rows, options.filters);
-    if (options?.orderBy) rows = applyOrdering(rows, options.orderBy);
-    rows = applyPagination(rows, options?.limit, options?.offset);
-    if (options?.select) rows = rows.map(row => selectFields(row, options.select));
-    return rows.map(row => ({ ...row, id: row.id as string })) as Array<TableRow>;
+    const results = await pipeline.exec();
+    const rows = (results as Array<Record<string, unknown> | null>).map((data, i) => {
+      if (!data) return null;
+      const parsed: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(data)) {
+        try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
+      }
+      return { ...parsed, id: ids[i] } as TableRow<T>;
+    }).filter(Boolean) as TableRow<T>[];
+    // Apply filters/order/pagination if needed
+    let filtered = rows;
+    if (options?.filters) filtered = applyFilters(filtered, options.filters);
+    if (options?.orderBy) filtered = applyOrdering(filtered, options.orderBy);
+    filtered = applyPagination(filtered, options?.limit, options?.offset);
+    if (options?.select) filtered = filtered.map(e => selectFields(e, options.select) as TableRow<T>);
+    return filtered;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error getting data from table ${tableName}`, error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError(`Failed to get data from table ${tableName}`);
+    upstashLogger.error('supabase-adapter', `Error getting data from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    // Fallback to Supabase
+    const supabase = getSupabaseClient() as SupabaseClient<Database>;
+    let q = supabase.from(tableName).select('*');
+    if (options?.filters) {
+      for (const f of options.filters) {
+        q = q.eq(f.field as unknown as string, f.value);
+      }
+    }
+    if (options?.orderBy) {
+      q = q.order(options.orderBy.column as string, { ascending: options.orderBy.ascending ?? true });
+    }
+    if (options?.limit !== undefined && options?.offset !== undefined) {
+      q = q.range(options.offset, options.offset + options.limit - 1);
+    }
+    const { data, error: supaErr } = await q;
+    if (supaErr || !data) return [];
+    if (options?.select) {
+      return (data as unknown as TableRow<T>[]).map((e) => selectFields(e, options.select) as TableRow<T>);
+    }
+    return data as unknown as TableRow<T>[];
   }
 }
 
@@ -468,27 +572,27 @@ export const entityApi = {
 };
 
 // --- Enhanced Table CRUD helpers ---
-export async function upsertItem<T extends TableRow>(tableName: string, item: T): Promise<T> {
+export async function upsertItem<T extends TableName>(tableName: T, item: TableRow<T>): Promise<TableRow<T>> {
   const found = await getItemById(tableName, item.id);
-  if (found) return updateItem(tableName, item.id, item) as Promise<T>;
-  return createItem(tableName, item) as Promise<T>;
+  if (found) return updateItem(tableName, item.id, item) as Promise<TableRow<T>>;
+  return createItem(tableName, item) as Promise<TableRow<T>>;
 }
 
-export async function existsItem(tableName: string, id: string): Promise<boolean> {
+export async function existsItem<T extends TableName>(tableName: T, id: string): Promise<boolean> {
   const found = await getItemById(tableName, id);
   return !!found;
 }
 
-export async function countItems(tableName: string, options?: QueryOptions): Promise<number> {
+export async function countItems<T extends TableName>(tableName: T, options?: QueryOptions): Promise<number> {
   const all = await getData(tableName, options);
   return all.length;
 }
 
-export async function batchGetItems<T extends TableRow>(tableName: string, ids: string[]): Promise<(T | null)[]> {
+export async function batchGetItems<T extends TableName>(tableName: T, ids: string[]): Promise<(TableRow<T> | null)[]> {
   if (tableName === 'thread') {
-    return batchGetThreads(ids) as Promise<(T | null)[]>;
+    return batchGetThreads(ids) as Promise<(TableRow<T> | null)[]>;
   }
-  return Promise.all(ids.map(id => getItemById(tableName, id) as Promise<T | null>));
+  return Promise.all(ids.map(id => getItemById(tableName, id) as Promise<TableRow<T> | null>));
 }
 
 // --- Export all types for downstream use ---
@@ -504,3 +608,5 @@ export type {
   VectorMetadata,
   VectorQueryOptions
 };
+
+export { applyFilters, applyOrdering, applyPagination, selectFields };

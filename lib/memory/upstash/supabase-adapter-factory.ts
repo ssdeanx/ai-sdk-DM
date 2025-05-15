@@ -81,31 +81,31 @@ export function createSupabaseClient(): SupabaseClient {
     let options: QueryOptions = {};
     const client: TableClient<T> = {
       getAll: async (queryOptions?: QueryOptions) => {
-        return getData(tableName, { ...options, ...queryOptions }) as Promise<T[]>;
+        return getData(tableName as any, { ...options, ...queryOptions }) as unknown as Promise<T[]>;
       },
       getById: async (id: string) => {
-        return getItemById(tableName, id) as Promise<T | null>;
+        return getItemById(tableName as any, id) as unknown as Promise<T | null>;
       },
       create: async (item: Omit<T, 'id'> & { id?: string }) => {
-        return createItem(tableName, item) as Promise<T>;
+        return createItem(tableName as any, item) as unknown as Promise<T>;
       },
       update: async (id: string, updates: Partial<T>) => {
-        return updateItem(tableName, id, updates) as Promise<T>;
+        return updateItem(tableName as any, id, updates) as unknown as Promise<T>;
       },
       delete: async (id: string) => {
-        return deleteItem(tableName, id);
+        return deleteItem(tableName as any, id) as unknown as Promise<boolean>;
       },
       upsert: async (item: T) => {
-        return upsertItem(tableName, item) as Promise<T>;
+        return upsertItem(tableName as any, item) as unknown as Promise<T>;
       },
       exists: async (id: string) => {
-        return existsItem(tableName, id);
+        return existsItem(tableName as any, id) as unknown as Promise<boolean>;
       },
       count: async (queryOptions?: QueryOptions) => {
-        return countItems(tableName, queryOptions);
+        return countItems(tableName as any, queryOptions) as unknown as Promise<number>;
       },
       batchGet: async (ids: string[]) => {
-        return batchGetItems(tableName, ids) as Promise<(T | null)[]>;
+        return batchGetItems(tableName as any, ids) as unknown as Promise<(T | null)[]>;
       },
       select: (...columns: (keyof T)[]) => {
         options = { ...options, select: columns as string[] };
