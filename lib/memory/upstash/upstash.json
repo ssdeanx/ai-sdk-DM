@@ -25,26 +25,14 @@
       ],
       "types": ["AgentState", "StoredAgentState", "AgentStateStoreError"],
       "zodSchemas": ["AgentStateSchema", "StoredAgentStateSchema"],
-      "consumers": ["memoryStore.ts", "index.ts", "API: /api/agent-state/*"],
-      "dependencies": ["upstashClients.ts", "upstash-logger.ts", "upstashTypes.ts"],
-      "testFiles": ["tests/upstash/agent-state-store.test.ts"],
-      "docs": ["README.md#agent-state-store.ts"],
-      "examples": ["How to save/load agent state for a thread"],
-      "changelog": ["Initial implementation", "Added Zod validation", "Integrated upstashLogger", "Added fallback logic"],
-      "todo": [
-        "Remove all any types (see README)",
-        "Remove all direct console statements, use upstashLogger",
-        "Add @upstash/query support for agent state search if needed",
-        "Add more robust error handling and type safety",
-        "Add tests for agent state operations",
-        "Infer all types from usage and add to types field",
-        "List all exported/imported functions, consts, and methods",
-        "Map all API routes that depend on this file (legacy and new)",
-        "Add/expand reasoning tools and document addUsage for each",
-        "Refactor legacy API routes to use new ai-sdk-ui endpoints",
-        "Ensure test coverage for all CRUD and fallback logic",
-        "Document migration status and code smells",
-        "Link onboarding and troubleshooting docs for new contributors"
+      "commands": [
+        "hset", "hget", "hdel", "hscan", "@upstash/query", "RediSearch (FT.SEARCH)", "fallback: supabase upsert/select/delete"
+      ],
+      "tasksCompleted": [
+        "Initial implementation", "Added Zod validation", "Integrated upstashLogger", "Added fallback logic", "Replaced uuidv4 with generateId", "Documented API routes and relationships"
+      ],
+      "tasksPending": [
+        "Remove all any types (see README)", "Remove all direct console statements, use upstashLogger", "Add @upstash/query support for agent state search if needed", "Add more robust error handling and type safety", "Add tests for agent state operations", "Infer all types from usage and add to types field", "List all exported/imported functions, consts, and methods", "Map all API routes that depend on this file (legacy and new)", "Add/expand reasoning tools and document addUsage for each", "Refactor legacy API routes to use new ai-sdk-ui endpoints", "Ensure test coverage for all CRUD and fallback logic", "Document migration status and code smells", "Link onboarding and troubleshooting docs for new contributors"
       ],
       "status": "incomplete",
       "observations": [
@@ -214,6 +202,15 @@
         "Centralizes all exports for easy import",
         "Ensures type safety and up-to-date exports"
       ],
+      "commands": [
+        "hset", "hget", "hdel", "hscan", "@upstash/query", "RediSearch (FT.SEARCH)", "fallback: supabase upsert/select/delete"
+      ],
+      "tasksCompleted": [
+        "Initial barrel export", "Added new exports as features grew"
+      ],
+      "tasksPending": [
+        "Remove/replace all broken exports (see README errors)", "Ensure all exports are up-to-date and type-safe", "Add documentation for new/advanced exports", "Check for missing/broken exports from dependencies (see get_errors)"
+      ],
       "consumers": ["lib/memory/memory.ts", "API: /api/memory/*"],
       "dependencies": [
         "agent-state-store.ts", "memory-processor.ts", "memoryStore.ts", "redis-store.ts", "stream-processor.ts", "supabase-adapter-factory.ts", "supabase-adapter.ts", "upstash-logger.ts", "upstashClients.ts", "upstashTypes.ts", "vector-store.ts"
@@ -225,13 +222,49 @@
       "todo": [
         "Remove/replace all broken exports (see README errors)",
         "Ensure all exports are up-to-date and type-safe",
-        "Add documentation for new/advanced exports"
+        "Add documentation for new/advanced exports",
+        "Check for missing/broken exports from dependencies (see get_errors)"
       ],
       "status": "incomplete",
       "observations": [
         "Central export node for all Upstash memory features",
         "All API routes under app/api/ai-sdk/* import from here for memory/vector/logging/agent state ops",
-        "Fallback to Supabase/LibSQL handled via supabase-adapter exports"
+        "Fallback to Supabase/LibSQL handled via supabase-adapter exports",
+        "No direct errors, but may be blocked by missing/broken exports from dependencies. See get_errors."
+      ],
+      "tags": [
+        "upstash",
+        "memory",
+        "vector",
+        "logging",
+        "agent-state",
+        "integration",
+        "backend",
+        "frontend",
+        "project:ai-sdk-DM",
+        "knowledge-graph",
+        "onboarding",
+        "documentation",
+        "dynamic-docs",
+        "integration-tool",
+        "search",
+        "ratelimit",
+        "qstash",
+        "redis",
+        "metrics",
+        "monitoring",
+        "troubleshooting",
+        "types",
+        "functions",
+        "const",
+        "methods",
+        "imports",
+        "exports",
+        "api-routes",
+        "legacy-api",
+        "ai-sdk-ui",
+        "test-coverage",
+        "migration-status"
       ],
       "connections": [
         { "with": "agent-state-store.ts", "purpose": "barrel export for agent state operations" },
@@ -320,6 +353,28 @@
         { "with": "upstash-logger.ts", "purpose": "logging for all thread/message ops" },
         { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility" }
       ],
+      "commands": [
+        "hset", "hget", "hdel", "hscan", "zadd", "zrem", "zrange", "zrevrange", "RediSearch (FT.SEARCH)", "@upstash/query", "pipeline", "fallback: supabase upsert/select/delete"
+      ],
+      "tasksCompleted": [
+        "Replaced uuidv4 with generateId from 'ai' for all ID generation",
+        "Integrated upstashLogger for all error and operation logging",
+        "Type-safe CRUD for threads/messages using Zod schemas",
+        "Fallback logic to Supabase/LibSQL for all CRUD/search paths",
+        "Documented API routes and relationships",
+        "Initial @upstash/query client integration"
+      ],
+      "tasksPending": [
+        "Remove all any types (see README and get_errors)",
+        "Remove unused @ts-expect-error directives",
+        "Use @upstash/query for advanced thread/message search (RediSearch, full-text, filters)",
+        "Add more type-safe helpers for RediSearch results",
+        "Remove all direct console statements, use upstashLogger",
+        "Add tests for thread/message search and RediSearch integration",
+        "Expand Zod schemas for all entity types (not just threads/messages)",
+        "Document all Redis/RediSearch commands used",
+        "Ensure all business logic is routed through Upstash-first APIs"
+      ],
       "observations": [
         "Handles thread/message CRUD for all entities, not just memory.",
         "Integrates with upstashLogger for all error and operation logging.",
@@ -337,7 +392,8 @@
         "Onboarding should include walkthroughs of thread/message flows, fallback triggers, and log analysis.",
         "Observability and analytics are critical for thread/message debugging and system health monitoring.",
         "Semantic search can help map thread/message usage and dependencies across the codebase.",
-        "All changes must be reflected in the knowledge graph and README for traceability."
+        "All changes must be reflected in the knowledge graph and README for traceability.",
+        "Full Upstash Redis command set available. See: https://context7.com/upstash/docs/llms.txt?folders=redis&tokens=84007 for all supported commands, pipelining, and advanced LLM/RediSearch usage."
       ],
       "mentalModels": [
         "First Principles Thinking",
@@ -345,6 +401,10 @@
         "Inversion",
         "Occam's Razor",
         "Mindmaps & Hill Charts"
+      ],
+      "docs": [
+        "README.md#redis-store.ts",
+        "https://context7.com/upstash/docs/llms.txt?folders=redis&tokens=84007"
       ]
     },
     {
@@ -382,6 +442,26 @@
         { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility" },
         { "with": "memory-processor.ts", "purpose": "semantic/streaming search for all entities" }
       ],
+      "commands": [
+        "upsert", "query", "delete", "info", "reset", "@upstash/query", "RediSearch (FT.SEARCH)", "pipeline", "fallback: supabase upsert/select/delete"
+      ],
+      "tasksCompleted": [
+        "Replaced uuidv4 with generateId from 'ai' for all ID generation",
+        "Integrated upstashLogger for all vector operation logging",
+        "Type-safe CRUD for embeddings using Zod schemas",
+        "Fallback logic to Supabase/LibSQL for all vector operations",
+        "Initial @upstash/query client integration"
+      ],
+      "tasksPending": [
+        "Remove all direct console statements, use upstashLogger",
+        "Use precise types for metadata, results, and errors",
+        "Add @upstash/query integration for hybrid search, advanced filtering",
+        "Add more robust error handling and logging",
+        "Add tests for hybrid and filtered search",
+        "Expand Zod schemas for all entity types (not just embeddings)",
+        "Document all Vector/RediSearch commands used",
+        "Ensure all business logic is routed through Upstash-first APIs"
+      ],
       "observations": [
         "Central node for all vector/embedding CRUD and search.",
         "All vector operations are logged via upstashLogger.",
@@ -399,7 +479,8 @@
         "Onboarding should include walkthroughs of vector flows, fallback triggers, and log analysis.",
         "Observability and analytics are critical for vector debugging and system health monitoring.",
         "Semantic search can help map vector usage and dependencies across the codebase.",
-        "All changes must be reflected in the knowledge graph and README for traceability."
+        "All changes must be reflected in the knowledge graph and README for traceability.",
+        "Full Upstash Vector DB command set available. See: https://context7.com/upstash/docs/llms.txt?folders=vector&tokens=40216 for all supported commands, hybrid search, and advanced LLM/vector usage."
       ],
       "mentalModels": [
         "First Principles Thinking",
@@ -407,6 +488,10 @@
         "Inversion",
         "Lean Startup",
         "Mindmaps & Hill Charts"
+      ],
+      "docs": [
+        "README.md#vector-store.ts",
+        "https://context7.com/upstash/docs/llms.txt?folders=vector&tokens=40216"
       ]
     },
     {
@@ -435,6 +520,24 @@
         { "with": "agent-state-store.ts", "purpose": "logging for agent state ops" },
         { "with": "redis-store.ts", "purpose": "logging for thread/message ops" },
         { "with": "vector-store.ts", "purpose": "logging for vector ops" }
+      ],
+      "commands": [
+        "xadd", "xread", "xrange", "xdel", "@upstash/query", "pipeline"
+      ],
+      "tasksCompleted": [
+        "Replaced uuidv4 with generateId from 'ai' for all log IDs",
+        "Integrated upstashLogger for all logging",
+        "Type-safe log entry parsing with Zod schemas",
+        "Centralized logging for all Upstash modules"
+      ],
+      "tasksPending": [
+        "Replace all any types with precise types (see errors)",
+        "Remove unused types/vars (e.g., RedisClient)",
+        "Remove all console statements, use upstashLogger only",
+        "Ensure all log entry parsing is type-safe",
+        "Add advanced log querying (e.g., by level, time range)",
+        "Add tests for log streaming and retrieval",
+        "Document all Redis Stream commands used"
       ],
       "observations": [
         "All logging for Upstash modules is centralized here.",
@@ -489,6 +592,21 @@
         { "with": "vector-store.ts", "purpose": "client management for VectorDB" },
         { "with": "supabase-adapter.ts", "purpose": "Upstash-first client selection and fallback" }
       ],
+      "commands": [
+        "Redis.fromEnv", "Index", "Query", "validate config (Zod)", "health checks", "@upstash/query"
+      ],
+      "tasksCompleted": [
+        "Type-safe, robust, singleton clients for Redis, Vector, and Query",
+        "Uses Zod schemas for config validation",
+        "upstashLogger for all logging",
+        "Health checks and availability functions"
+      ],
+      "tasksPending": [
+        "Fix Query config: { url, token } is not valid for QueryConfig (see get_errors)",
+        "Add advanced Query client usage examples in docs",
+        "Document how to use Query for RediSearch and advanced filtering",
+        "Add tests for client initialization and error handling"
+      ],
       "observations": [
         "Manages singleton clients for Redis and Vector, used by all Upstash modules.",
         "All client config is validated with Zod schemas from upstashTypes.ts.",
@@ -502,522 +620,19 @@
         "Onboarding should include walkthroughs of client flows, triggers, and analysis.",
         "Observability and analytics are critical for client debugging and system health monitoring.",
         "Semantic search can help map client usage and dependencies across the codebase.",
-        "All changes must be reflected in the knowledge graph and README for traceability."
+        "All changes must be reflected in the knowledge graph and README for traceability.",
+        "Type error: Object literal may only specify known properties, and 'url' does not exist in type 'QueryConfig'. See get_errors."
       ],
-      "mentalModels": [
-        "First Principles Thinking",
-        "Feedback Loops",
-        "Circle of Competence",
-        "Mindmaps & Hill Charts"
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/upstashTypes.ts",
-      "relationships": [
-        { "type": "api-route", "target": "app/api/ai-sdk/*" },
-        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
-        { "type": "api-route", "target": "app/api/ai-sdk/system" },
-        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
-        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
-        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
-        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
-        { "type": "api-route", "target": "app/api/ai-sdk/content" },
-        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
-        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
-        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
-        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
-        { "type": "api-route", "target": "app/api/ai-sdk/users" },
-        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
-        { "type": "api-route", "target": "app/api/ai-sdk/models" },
-        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
-        { "type": "used-by", "target": "lib/memory/upstash/agent-state-store.ts" },
-        { "type": "used-by", "target": "lib/memory/upstash/redis-store.ts" },
-        { "type": "used-by", "target": "lib/memory/upstash/vector-store.ts" },
-        { "type": "used-by", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "used-by", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
-      ],
-      "connections": [
-        { "with": "supabase-adapter.ts", "purpose": "type safety for fallback and all API routes" },
-        { "with": "all API routes", "purpose": "request/response validation for all entities" }
-      ],
-      "observations": [
-        "Canonical source for all shared types and Zod schemas for all entities.",
-        "All API routes validate request/response types using these types/schemas.",
-        "Must be expanded to cover all entities and business logic for full migration.",
-        "Should be reviewed with reasoningTools (sequentialthinking, metacognitivemonitoring) for type coverage and gaps.",
-        "Semantic search can be used to find all usages and dependencies on these types.",
-        "Code smells: Any unused or duplicate types, or use of 'any', should be flagged and refactored.",
-        "All changes must be reflected in the knowledge graph and README.",
-        "@upstash/query can be used for advanced type search and analytics.",
-        "All type changes should be observable via analytics routes.",
-        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
-        "Onboarding should include walkthroughs of type flows, triggers, and analysis.",
-        "Observability and analytics are critical for type debugging and system health monitoring.",
-        "Semantic search can help map type usage and dependencies across the codebase.",
-        "All changes must be reflected in the knowledge graph and README for traceability."
-      ],
-      "mentalModels": [
-        "First Principles Thinking",
-        "Feedback Loops",
-        "Rubber Ducking",
-        "Mindmaps & Hill Charts"
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/memoryStore.ts",
-      "relationships": [
-        { "type": "api-route", "target": "app/api/ai-sdk/threads" },
-        { "type": "api-route", "target": "app/api/ai-sdk/messages" },
-        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
-        { "type": "api-route", "target": "app/api/ai-sdk/system" },
-        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
-        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
-        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
-        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
-        { "type": "api-route", "target": "app/api/ai-sdk/content" },
-        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
-        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
-        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
-        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
-        { "type": "api-route", "target": "app/api/ai-sdk/users" },
-        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
-        { "type": "api-route", "target": "app/api/ai-sdk/models" },
-        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
-        { "type": "uses", "target": "lib/memory/upstash/redis-store.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/vector-store.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
-      ],
-      "connections": [
-        { "with": "index.ts", "purpose": "barrel export for all memory ops" },
-        { "with": "app/api/ai-sdk/threads", "purpose": "thread CRUD for all entities" },
-        { "with": "app/api/ai-sdk/messages", "purpose": "message CRUD for all entities" }
-      ],
-      "observations": [
-        "Handles all memory CRUD for all entities, not just memory.",
-        "Integrates with redis-store.ts and vector-store.ts for data operations.",
-        "Fallback to Supabase/LibSQL must be robust and tested for all CRUD/search paths.",
-        "Should use reasoningTools (debuggingapproach, decisionframework) for troubleshooting and migration planning.",
-        "Semantic search can help map memory relationships and usage across the codebase.",
-        "Code smells: Any direct console usage, missing error handling, or unused types should be flagged.",
-        "Integration with index.ts and API routes is critical for system-wide memory consistency.",
-        "@upstash/query can be used for advanced memory search and analytics.",
-        "RediSearch integration is possible for full-text and filtered memory queries.",
-        "All memory changes should be observable via upstashLogger and analytics routes.",
-        "Fallback logic must be tested for all CRUD/search paths, with logs for each failure mode.",
-        "Use reasoningTools (debuggingapproach, metacognitivemonitoring, codesmells) for troubleshooting and migration planning.",
-        "Onboarding should include walkthroughs of memory flows, fallback triggers, and log analysis.",
-        "Observability and analytics are critical for memory debugging and system health monitoring.",
-        "Semantic search can help map memory usage and dependencies across the codebase.",
-        "All changes must be reflected in the knowledge graph and README for traceability."
-      ],
-      "mentalModels": [
-        "First Principles Thinking",
-        "Feedback Loops",
-        "Inversion",
-        "Mindmaps & Hill Charts"
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/stream-processor.ts",
-      "relationships": [
-        { "type": "api-route", "target": "app/api/ai-sdk/streams" },
-        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
-        { "type": "api-route", "target": "app/api/ai-sdk/system" },
-        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
-        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
-        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
-        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
-        { "type": "api-route", "target": "app/api/ai-sdk/content" },
-        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
-        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
-        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
-        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
-        { "type": "api-route", "target": "app/api/ai-sdk/users" },
-        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
-        { "type": "api-route", "target": "app/api/ai-sdk/models" },
-        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
-      ],
-      "connections": [
-        { "with": "index.ts", "purpose": "barrel export for streaming ops for all entities" }
-      ],
-      "observations": [
-        "Provides streaming and batch processing utilities for all entities.",
-        "Integrates with upstashClients.ts for Redis/Vector access.",
-        "Should be tested with reasoningTools (sequentialthinking, scientificmethod) for performance and reliability.",
-        "Semantic search can be used to trace streaming usage and performance bottlenecks.",
-        "Code smells: Any missing error handling, direct console usage, or untested edge cases should be flagged.",
-        "Integration with index.ts and API routes is important for streaming consistency.",
-        "@upstash/query can be used for advanced streaming search and analytics.",
-        "All streaming changes should be observable via analytics routes.",
-        { "type": "fallback", "target": "lib/memory/supabase.ts" }
-      ],
-      "mentalModels": [
-        "First Principles Thinking",
-        "Feedback Loops",
-        "Inversion",
-        "Circle of Competence"
-      ]
-    },
-    {
-      "@id": "lib/memory/upstash/supabase-adapter-factory.ts",
-      "relationships": [
-        { "type": "api-route", "target": "app/api/ai-sdk/*" },
-        { "type": "api-route", "target": "app/api/ai-sdk/dashboard" },
-        { "type": "api-route", "target": "app/api/ai-sdk/system" },
-        { "type": "api-route", "target": "app/api/ai-sdk/apps" },
-        { "type": "api-route", "target": "app/api/ai-sdk/mdx" },
-        { "type": "api-route", "target": "app/api/ai-sdk/settings" },
-        { "type": "api-route", "target": "app/api/ai-sdk/observability" },
-        { "type": "api-route", "target": "app/api/ai-sdk/content" },
-        { "type": "api-route", "target": "app/api/ai-sdk/blog" },
-        { "type": "api-route", "target": "app/api/ai-sdk/auth" },
-        { "type": "api-route", "target": "app/api/ai-sdk/logs" },
-        { "type": "api-route", "target": "app/api/ai-sdk/analytics" },
-        { "type": "api-route", "target": "app/api/ai-sdk/users" },
-        { "type": "api-route", "target": "app/api/ai-sdk/workflows" },
-        { "type": "api-route", "target": "app/api/ai-sdk/models" },
-        { "type": "api-route", "target": "app/api/ai-sdk/tools" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "fallback", "target": "lib/memory/supabase.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
-      ],
-      "connections": [
-        { "with": "supabase-adapter.ts", "purpose": "factory for fallback clients for all entities" }
-      ],
-      "observations": [
-        "Factory for Supabase-compatible clients, used as fallback in all API routes and entities.",
-        "Should be tested with reasoningTools (debuggingapproach, decisionframework) for client instantiation and fallback logic.",
-        "Semantic search can help trace client creation and usage across modules.",
-        "Code smells: Any missing error handling, unused imports, or direct console usage should be flagged.",
-        "Integration with supabase-adapter.ts is essential for fallback reliability."
-      ],
-      "mentalModels": [
-        "First Principles Thinking",
-        "Feedback Loops",
-        "Circle of Competence",
-        "Mindmaps & Hill Charts"
-      ]
-    },
-    {
-      "@id": "lib/middleware.ts",
-      "@type": ["CodeFile"],
-      "path": "lib/middleware.ts",
-      "exports": [
-        "RequestMiddleware", "ResponseMiddleware", "createMiddleware", "createCachingMiddleware", "createLoggingMiddleware", "createReasoningMiddleware", "createSimulationMiddleware", "createDefaultSettingsMiddleware", "createMiddlewareFromOptions", "createContextInjectionMiddleware", "createContentFilteringMiddleware", "createErrorHandlingMiddleware", "createRequestResponseMiddlewareFromOptions", "createCompleteMiddleware"
-      ],
-      "features": [
-        "Composable and type-safe middleware factories for AI SDK and API routes",
-        "Caching, logging, reasoning extraction, simulation, default settings, context injection, content filtering, error handling",
-        "LRU cache for response caching, stream simulation for cached results",
-        "Request/response middleware for context injection, filtering, and error handling",
-        "Integration-ready for Upstash-backed API and memory routes"
-      ],
-      "types": ["RequestMiddleware", "ResponseMiddleware", "LanguageModelV1Middleware"],
-      "consumers": [
-        "lib/ai-sdk-integration.ts", "lib/ai-sdk-tracing.ts", "lib/ai.ts", "lib/ai-integration.ts", "lib/tracing.ts", "lib/langfuse-integration.ts"
-      ],
-      "dependencies": ["zod", "LRUCache", "ReadableStream", "TransformStream"],
-      "testFiles": [],
-      "docs": ["https://ai-sdk.dev/cookbook/next/caching-middleware", "README.md#middleware.ts"],
-      "examples": ["How to add caching/logging/reasoning middleware to an API route"],
-      "changelog": ["Initial implementation", "Added caching, logging, and reasoning extraction middleware", "Added request/response middleware for context injection and error handling"],
       "todo": [
-        "Add Upstash-backed cache provider for distributed caching",
-        "Integrate upstashLogger for all error and operation logging",
-        "Add tests for all middleware types and edge cases",
-        "Document Upstash integration patterns for caching and logging"
+        "Fix Query config: { url, token } is not valid for QueryConfig (see get_errors)"
       ],
       "status": "incomplete",
-      "observations": [
-        "Middleware enables composable, type-safe enhancements for all AI SDK and API routes.",
-        "Caching middleware can be extended to use Upstash as a distributed cache for multi-instance deployments.",
-        "All logging should use upstashLogger for observability and analytics.",
-        "Reasoning extraction and simulation middleware can be used for advanced debugging and LLM evaluation.",
-        "Request/response middleware can inject context, filter content, and handle errors for all API routes.",
-        "Integration with Upstash memory and logging modules is recommended for production deployments.",
-        "Should be reviewed with reasoningTools (sequentialthinking, debuggingapproach, codesmells) for middleware coverage and gaps.",
-        "Onboarding should include examples of Upstash-backed caching and logging middleware.",
-        "All changes must be reflected in the knowledge graph and README for traceability."
-      ],
-      "connections": [
-        { "with": "upstash-logger.ts", "purpose": "logging for all middleware errors and operations" },
-        { "with": "upstashClients.ts", "purpose": "potential Upstash cache client integration" },
-        { "with": "upstashTypes.ts", "purpose": "type safety for middleware options and cache entries" }
-      ],
-      "usageNotes": "Use to compose caching, logging, and reasoning middleware for all AI SDK and API routes. Prefer Upstash for distributed cache/logging in production.",
-      "onboarding": "See README.md and ai-sdk.dev/cookbook/next/caching-middleware for usage and integration patterns.",
-      "navigation": "Imported by all core AI SDK and tracing modules.",
-      "troubleshooting": "Check for missing Upstash integration and logger usage.",
-      "graphNotes": "Central node for middleware composition in Upstash/AI SDK graph.",
-      "relationships": [
-        { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
-        { "type": "api-route", "target": "app/api/ai-sdk/*" }
-      ],
       "mentalModels": [
         "First Principles Thinking",
         "Feedback Loops",
-        "Sequential Thinking",
-        "Rubber Ducking"
+        "Circle of Competence",
+        "Mindmaps & Hill Charts"
       ]
-    },
-    {
-      "@id": "onboarding:get-library-docs",
-      "@type": ["OnboardingTool", "DocumentationTool"],
-      "name": "get-library-docs",
-      "description": "Fetches up-to-date documentation for a library or npm package using a Context7-compatible library ID. Use after resolving the library ID with resolve-library-id. Supports topic-focused queries (e.g., 'connection', 'query', 'vector search').",
-      "usage": "1. Use resolve-library-id to get the Context7-compatible ID for a package (e.g., @upstash/redis). 2. Use get-library-docs with the resolved ID and an optional topic to fetch the latest docs. 3. Integrate official usage, setup, and advanced patterns into your Upstash modules.",
-      "examples": [
-        "resolve-library-id: '@upstash/redis' => 'upstash/redis'",
-        "get-library-docs: { context7CompatibleLibraryID: 'upstash/redis', topic: 'connection' }"
-      ],
-      "bestPractices": "Always use get-library-docs before implementing or updating Upstash features to ensure you follow the latest best practices and avoid deprecated patterns.",
-      "related": ["resolve-library-id"]
-    },
-    {
-      "@id": "onboarding:resolve-library-id",
-      "@type": ["OnboardingTool", "DocumentationTool"],
-      "name": "resolve-library-id",
-      "description": "Resolves a general npm package name into a Context7-compatible library ID required for get-library-docs. Always use this before fetching docs for a new package.",
-      "usage": "Call resolve-library-id with the npm package name (e.g., '@upstash/redis'). Use the returned ID with get-library-docs.",
-      "examples": [
-        "resolve-library-id: '@upstash/redis' => 'upstash/redis'"
-      ],
-      "bestPractices": "Always resolve the library ID before fetching docs to ensure you get the correct and most up-to-date documentation.",
-      "related": ["get-library-docs"]
-    },
-    {
-      "@id": "onboarding:git_files",
-      "@type": ["OnboardingTool", "RepositoryTool"],
-      "name": "git_files",
-      "description": "Fetches the content of specific files from a GitHub repository. Use this to retrieve code, configuration, or documentation from any repo you have access to.",
-      "usage": "Call git_files with owner (e.g., 'ssdeanx'), repo name, and file paths. Optionally specify a branch.",
-      "examples": [
-        "git_files: { owner: 'ssdeanx', repo: 'ai-sdk-DM', file_paths: ['README.md'] }"
-      ],
-      "bestPractices": "Use git_files to pull in reference implementations, configuration, or docs from your own or public repos for onboarding, migration, or troubleshooting.",
-      "related": ["git_summary", "git_tree"]
-    },
-    {
-      "@id": "onboarding:git_summary",
-      "@type": ["OnboardingTool", "RepositoryTool"],
-      "name": "git_summary",
-      "description": "Gets a summary of a GitHub repository, including files, token count, and README summary. Use this to quickly understand the structure and purpose of a repo.",
-      "usage": "Call git_summary with owner (e.g., 'ssdeanx') and repo name. Optionally specify a branch.",
-      "examples": [
-        "git_summary: { owner: 'ssdeanx', repo: 'ai-sdk-DM' }"
-      ],
-      "bestPractices": "Use git_summary for onboarding, code review, or when planning integrations/migrations.",
-      "related": ["git_files", "git_tree"]
-    },
-    {
-      "@id": "onboarding:git_tree",
-      "@type": ["OnboardingTool", "RepositoryTool"],
-      "name": "git_tree",
-      "description": "Gets the tree structure of a GitHub repository. Use this to map out the file/folder structure for onboarding, migration, or code search.",
-      "usage": "Call git_tree with owner (e.g., 'ssdeanx') and repo name. Optionally specify a branch.",
-      "examples": [
-        "git_tree: { owner: 'ssdeanx', repo: 'ai-sdk-DM' }"
-      ],
-      "bestPractices": "Use git_tree to visualize repo structure and plan code navigation or migration.",
-      "related": ["git_files", "git_summary"]
-    },
-    {
-      "@id": "onboarding:tool-list",
-      "@type": ["OnboardingTool", "Reference"],
-      "name": "Available Tools for Upstash Integration and Project Automation",
-      "description": "A list of tool IDs available for documentation management, code analysis, project context, and terminal interaction. Use these tools for onboarding, automation, and troubleshooting in the Upstash memory adapter and related modules.",
-      "tools": [
-        {
-          "id": "add_documentation",
-          "usageNotes": "Use to add new documentation sources to the project knowledge base. Essential when onboarding new libraries, APIs, or workflows. Helps keep documentation up-to-date for all contributors.",
-          "when": "When integrating new features, libraries, or after major refactors.",
-          "how": "Provide the name and URL of the documentation. Optionally, add tags or topics.",
-          "why": "Ensures all agents and developers have access to the latest docs for onboarding and troubleshooting.",
-          "relationships": ["update_documentation", "search_documentation"],
-          "connections": ["README.md", "knowledge graph", "onboarding flows"],
-          "observations": "Critical for legacy route refactoring—add docs for old APIs before migration."
-        },
-        {
-          "id": "update_documentation",
-          "usageNotes": "Update existing documentation entries when APIs, libraries, or workflows change. Keeps the knowledge base current and accurate.",
-          "when": "After library upgrades, API changes, or process updates.",
-          "how": "Specify the doc to update and provide the new content or URL.",
-          "why": "Prevents outdated or incorrect docs from causing confusion during refactoring or onboarding.",
-          "relationships": ["add_documentation", "search_documentation"],
-          "connections": ["README.md", "knowledge graph"],
-          "observations": "Use after refactoring legacy routes to document new patterns."
-        },
-        {
-          "id": "think",
-          "usageNotes": "Use for structured, step-by-step reasoning, brainstorming, or planning. Ideal for breaking down complex refactors or migrations.",
-          "when": "Before major code changes, during debugging, or when planning migrations.",
-          "how": "Write out your reasoning, hypotheses, and next steps. Use as a digital rubber duck.",
-          "why": "Improves code quality and reduces errors by clarifying logic before implementation.",
-          "relationships": ["debuggingapproach", "sequentialthinking"],
-          "connections": ["mentalModels", "reasoningTools"],
-          "observations": "Use to plan legacy route refactors and document migration steps."
-        },
-        {
-          "id": "open_project",
-          "usageNotes": "Open or switch to a different project context. Useful for multi-repo or multi-module work.",
-          "when": "When onboarding, troubleshooting, or migrating code across projects.",
-          "how": "Specify the project or workspace to open.",
-          "why": "Ensures all tools and context are aligned with the current project.",
-          "relationships": ["set_profile", "get_profile_context"],
-          "connections": ["workspace", "project settings"],
-          "observations": "Switch context before refactoring routes that span multiple modules."
-        },
-        {
-          "id": "read_context",
-          "usageNotes": "Read and analyze code files or directories. Supports advanced filtering and chunking for large codebases.",
-          "when": "When reviewing legacy code, planning refactors, or onboarding new contributors.",
-          "how": "Specify the path, file types, and whether to recurse into subdirectories.",
-          "why": "Enables deep code analysis and understanding before making changes.",
-          "relationships": ["get_chunk_count", "generate_outline"],
-          "connections": ["codebase", "file system"],
-          "observations": "Use to map out legacy route logic before migration."
-        },
-        {
-          "id": "get_chunk_count",
-          "usageNotes": "Determine how many chunks a large file or directory will be split into for analysis.",
-          "when": "Before reading or analyzing large files or directories.",
-          "how": "Provide the same parameters as read_context.",
-          "why": "Prevents timeouts and enables efficient, incremental code analysis.",
-          "relationships": ["read_context"],
-          "connections": ["large files", "code analysis"],
-          "observations": "Essential for legacy codebases with large files."
-        },
-        {
-          "id": "set_profile",
-          "usageNotes": "Set the active profile for context generation. Profiles can tailor context for different teams, workflows, or environments.",
-          "when": "When switching between different types of work (e.g., backend vs. frontend refactoring).",
-          "how": "Specify the profile name or settings.",
-          "why": "Ensures context and tools are optimized for the current task.",
-          "relationships": ["get_profile_context", "open_project"],
-          "connections": ["profiles", "context generation"],
-          "observations": "Switch profiles before refactoring routes with different requirements."
-        },
-        {
-          "id": "get_profile_context",
-          "usageNotes": "Retrieve repository or project context based on the current profile. Useful for onboarding, troubleshooting, or planning migrations.",
-          "when": "After setting or switching profiles.",
-          "how": "Call after set_profile to get tailored context.",
-          "why": "Provides relevant information and settings for the current workflow.",
-          "relationships": ["set_profile"],
-          "connections": ["profiles", "context generation"],
-          "observations": "Use to gather context before legacy route migration."
-        },
-        {
-          "id": "generate_outline",
-          "usageNotes": "Generate a code outline for a file, showing its structure (classes, functions, imports, etc).",
-          "when": "When onboarding, reviewing, or refactoring code.",
-          "how": "Specify the file path.",
-          "why": "Quickly understand file structure and dependencies before making changes.",
-          "relationships": ["read_context"],
-          "connections": ["codebase", "file system"],
-          "observations": "Use to plan refactors of legacy route files."
-        },
-        {
-          "id": "search_documentation",
-          "usageNotes": "Search all indexed documentation for relevant information, best practices, or code examples.",
-          "when": "When troubleshooting, onboarding, or planning migrations.",
-          "how": "Provide a query string describing what you need.",
-          "why": "Finds authoritative answers and patterns for legacy and new code.",
-          "relationships": ["add_documentation", "update_documentation", "list_documentation"],
-          "connections": ["documentation index", "knowledge base"],
-          "observations": "Use to find migration guides or best practices for refactoring routes."
-        },
-        {
-          "id": "list_documentation",
-          "usageNotes": "List all available documentation sources in the project knowledge base.",
-          "when": "When onboarding, auditing, or updating documentation.",
-          "how": "Call without parameters to get a full list.",
-          "why": "Ensures you know what docs are available before searching or updating.",
-          "relationships": ["search_documentation", "add_documentation"],
-          "connections": ["documentation index", "knowledge base"],
-          "observations": "Audit docs before refactoring legacy routes to ensure coverage. Always use add_documentation to add new docs and update_documentation to revise existing docs. Use list_documentation to verify what is present before adding or updating."
-        },
-        {
-          "id": "get_library_docs",
-          "usageNotes": "Fetch up-to-date documentation for a library or npm package using a Context7-compatible library ID. Use after resolving the library ID with resolve_library_id.",
-          "when": "When integrating or updating libraries, or troubleshooting package usage.",
-          "how": "Resolve the library ID, then fetch docs for setup, usage, or advanced features.",
-          "why": "Ensures you follow the latest best practices and avoid deprecated patterns.",
-          "relationships": ["resolve_library_id"],
-          "connections": ["npm packages", "library docs"],
-          "observations": "Use to update legacy route dependencies to modern libraries."
-        },
-        {
-          "id": "resolve_library_id",
-          "usageNotes": "Resolve an npm package name to a Context7-compatible library ID, required for get_library_docs.",
-          "when": "Before fetching docs for a new or updated package.",
-          "how": "Provide the npm package name.",
-          "why": "Ensures you fetch the correct documentation for the right package version.",
-          "relationships": ["get_library_docs"],
-          "connections": ["npm packages", "library docs"],
-          "observations": "Use before updating legacy route dependencies."
-        },
-        {
-          "id": "write_to_terminal",
-          "usageNotes": "Send commands to the integrated terminal for automation, testing, or deployment.",
-          "when": "When running scripts, tests, or deployment commands, especially during migrations.",
-          "how": "Provide the command string and any required parameters.",
-          "why": "Automates repetitive or complex command line tasks, reducing manual errors.",
-          "relationships": ["read_terminal_output", "send_control_character"],
-          "connections": ["terminal", "command line"],
-          "observations": "Use to automate migration scripts or test legacy route changes."
-        },
-        {
-          "id": "read_terminal_output",
-          "usageNotes": "Read and analyze output from the integrated terminal. Useful for verifying command results or debugging.",
-          "when": "After running scripts, tests, or deployments.",
-          "how": "Specify the terminal session or command to read output from.",
-          "why": "Validates that automated tasks completed successfully.",
-          "relationships": ["write_to_terminal"],
-          "connections": ["terminal", "command line"],
-          "observations": "Check migration or test results after refactoring routes."
-        },
-        {
-          "id": "send_control_character",
-          "usageNotes": "Send control characters (e.g., Ctrl+C) to the terminal to interrupt or control processes.",
-          "when": "When stopping scripts, tests, or deployments, or handling long-running processes.",
-          "how": "Specify the control character and target terminal session.",
-          "why": "Provides fine-grained control over terminal automation and process management.",
-          "relationships": ["write_to_terminal", "read_terminal_output"],
-          "connections": ["terminal", "command line"],
-          "observations": "Interrupt or manage migration scripts during legacy route refactoring."
-        }
-      ],
-      "usageNotes": "Use these tool IDs in automation, onboarding, and troubleshooting workflows. For codebase analysis, use read_context and get_chunk_count. For documentation, use add_documentation, update_documentation, search_documentation, and list_documentation. For terminal automation, use write_to_terminal, read_terminal_output, and send_control_character.",
-      "examples": [
-        "search_documentation: { query: 'upstash vector search' }",
-        "add_documentation: { name: 'Upstash VectorDB', url: 'https://upstash.com/docs/vector' }",
-        "read_context: { path: 'lib/memory/upstash/', fileTypes: 'ts', recursive: true }"
-      ],
-      "bestPractices": "Reference this list when building new onboarding flows, troubleshooting, or automating project tasks. Always use add_documentation for new sources and update_documentation for changes. Use list_documentation to check current docs before making changes. Update this list as new tools become available."
     }
   ],
   "meta": {

@@ -1,6 +1,6 @@
 import { getRedisClient } from './upstashClients';
 import type { Redis } from '@upstash/redis';
-import { v4 as uuidv4 } from 'uuid';
+import { generateId } from 'ai';
 import { z } from 'zod'; // Add zod import
 
 // --- Constants for Redis Keys ---
@@ -50,8 +50,8 @@ export class LoggerError extends Error {
 // Use the Redis type to prevent unused import warning
 type RedisClient = Redis;
 
-// Use the uuid function to prevent unused import warning
-const generateLogId = (): string => uuidv4();
+// Use the generateId function to prevent unused import warning
+const generateLogId = (): string => generateId();
 
 /**
  * Validates a log entry using Zod schema
@@ -138,7 +138,7 @@ async function logToStream(
   message: string,
   details?: { [key: string]: any } | null
 ): Promise<string> {
-  // Generate a unique ID for tracing (not used directly but demonstrates uuid usage)
+  // Generate a unique ID for tracing (not used directly but demonstrates generateId usage)
   const traceId = generateLogId();
   
   // Add trace ID to details if provided
@@ -152,7 +152,7 @@ export async function logWarn(
   message: string,
   details?: { [key: string]: any } | null
 ): Promise<string> {
-  // Generate a unique ID for tracing (not used directly but demonstrates uuid usage)
+  // Generate a unique ID for tracing (not used directly but demonstrates generateId usage)
   const traceId = generateLogId();
   
   // Add trace ID to details if provided
@@ -167,7 +167,7 @@ export async function logError(
   errorDetails?: Error | { [key: string]: any } | null,
   additionalDetails?: { [key: string]: any } | null
 ): Promise<string> {
-  // Generate a unique ID for tracing (not used directly but demonstrates uuid usage)
+  // Generate a unique ID for tracing (not used directly but demonstrates generateId usage)
   const traceId = generateLogId();
   
   let combinedDetails: { [key: string]: any } = { _trace_id: traceId, ...(additionalDetails || {}) };
@@ -188,7 +188,7 @@ export async function logDebug(
   message: string,
   details?: { [key: string]: any } | null
 ): Promise<string> {
-  // Generate a unique ID for tracing (not used directly but demonstrates uuid usage)
+  // Generate a unique ID for tracing (not used directly but demonstrates generateId usage)
   const traceId = generateLogId();
   
   // Add trace ID to details if provided

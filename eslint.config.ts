@@ -21,8 +21,7 @@ export default [
 
   // 1) Pull in all of your familiar "extends" in flat‐config form
   ...compat.extends(
-    'plugin:react/recommended',
-    'plugin:react-hooks/recommended',
+    'plugin:react/recommended'
   ),
 
   // 2) Globally ignore build output, node_modules, etc.

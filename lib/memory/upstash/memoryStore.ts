@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis'
 import { Index } from "@upstash/vector"
 import { v4 as generateUUID } from "uuid"
+import { RediSearchHybridQuery, QStashTaskPayload, WorkflowNode } from './upstashTypes';
+import { runRediSearchHybridQuery, enqueueQStashTask, trackWorkflowNode } from './upstashClients';
 
 // Singleton instances for connection reuse
 let redisClient: Redis | null = null
@@ -213,6 +215,27 @@ export async function searchEmbeddings(vector: number[], limit = 5) {
   })
 
   return results
+}
+
+// --- Advanced RediSearch/Hybrid Search ---
+export async function advancedThreadHybridSearch(query: RediSearchHybridQuery) {
+  return runRediSearchHybridQuery(query);
+}
+
+// --- QStash/Workflow Integration Example ---
+export async function enqueueMemoryWorkflow(type: string, data: Record<string, unknown>) {
+  const payload: QStashTaskPayload = {
+    id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+    type,
+    data,
+    created_at: new Date().toISOString(),
+    status: 'pending',
+  };
+  return enqueueQStashTask(payload);
+}
+
+export async function trackMemoryWorkflowNode(node: WorkflowNode) {
+  return trackWorkflowNode(node);
 }
 
 // Export for convenience

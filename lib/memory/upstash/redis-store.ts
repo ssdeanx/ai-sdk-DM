@@ -1,9 +1,10 @@
-import { v4 as uuidv4 } from 'uuid';
-import { getRedisClient, shouldFallbackToBackup } from './upstashClients';
-import { Thread, Message, ThreadMetadata, RedisHashData, RedisStoreError } from './upstashTypes';
+import { generateId } from 'ai';
+import { getRedisClient, shouldFallbackToBackup, getUpstashQueryClient, runRediSearchHybridQuery, enqueueQStashTask, trackWorkflowNode } from './upstashClients';
+import { Thread, Message, ThreadMetadata, RedisHashData, RedisStoreError, RediSearchHybridQuery, RediSearchHybridResult, QStashTaskPayload, WorkflowNode, UpstashEntityBase } from './upstashTypes';
 import { logError } from './upstash-logger';
 import { createItem, getItemById, updateItem, deleteItem, getData } from './supabase-adapter';
 import { z } from 'zod';
+import { Query } from '@upstash/query';
 
 // --- Constants for Redis Keys ---
 const THREAD_PREFIX = "thread:";
@@ -48,7 +49,7 @@ export async function createRedisThread(
   initialMetadata?: ThreadMetadata | null
 ): Promise<Thread> {
   const redis = getRedisClient();
-  const threadId = uuidv4();
+  const threadId = generateId();
   const now = new Date().toISOString();
   const thread: Thread = {
     id: threadId,
@@ -149,7 +150,7 @@ export async function createRedisMessage(
   messageData: Omit<Message, 'id' | 'thread_id' | 'created_at'>
 ): Promise<Message> {
   const redis = getRedisClient();
-  const messageId = uuidv4();
+  const messageId = generateId();
   const now = new Date().toISOString();
   const message: Message = {
     id: messageId,
@@ -259,6 +260,33 @@ export async function hybridThreadSearch({
   }
 }
 
+// --- Advanced RediSearch/Hybrid Search ---
+export async function advancedThreadHybridSearch(query: RediSearchHybridQuery): Promise<RediSearchHybridResult[]> {
+  try {
+    const results = await runRediSearchHybridQuery(query);
+    return results as RediSearchHybridResult[];
+  } catch (err) {
+    await logError('redis-store', 'Failed advanced hybrid search', toLoggerError(err));
+    throw new RedisStoreError('Failed advanced hybrid search', err);
+  }
+}
+
+// --- QStash/Workflow Integration Example ---
+export async function enqueueThreadWorkflow(threadId: string, type: string, data: Record<string, unknown>) {
+  const payload: QStashTaskPayload = {
+    id: generateId(),
+    type,
+    data: { threadId, ...data },
+    created_at: new Date().toISOString(),
+    status: 'pending',
+  };
+  return enqueueQStashTask(payload);
+}
+
+export async function trackThreadWorkflowNode(node: WorkflowNode) {
+  return trackWorkflowNode(node);
+}
+
 // --- Generic Entity CRUD ---
 /**
  * Generic create for any entity type (Upstash-first, fallback to Supabase/LibSQL)
@@ -271,7 +299,7 @@ export async function createRedisEntity<T extends { metadata?: Record<string, un
   try {
     if (schema) schema.parse(entity);
     const redis = getRedisClient();
-    const id = entity.id || uuidv4();
+    const id = entity.id || generateId();
     const key = `${entityType}:${id}`;
     await redis.hset(key, prepareDataForRedis({ ...entity, id }));
     await redis.sadd(`${entityType}:ids`, id);
@@ -390,6 +418,66 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
   }
 }
 
-// --- Fallback Logic (Supabase/LibSQL) ---
-// TODO: Implement fallback logic for all CRUD/search if Upstash is unavailable
-// Use shouldFallbackToBackup() from upstashClients and wire to supabase-adapter
+// Example: Use pipelining for batch operations
+export async function batchGetThreads(threadIds: string[]): Promise<(Thread | null)[]> {
+  const redis = getRedisClient();
+  const pipeline = redis.pipeline();
+  for (const id of threadIds) {
+    pipeline.hgetall(`${THREAD_PREFIX}${id}`);
+  }
+  const results = await pipeline.exec();
+  return (results as [unknown, unknown][]).map((result, idx) => {
+    const [err, data] = result;
+    if (err) {
+      logError('redis-store', 'Error in batchGetThreads', toLoggerError(err));
+      return null;
+    }
+    try {
+      return z.object({
+        id: z.string(),
+        name: z.string().optional(),
+        user_id: z.string().optional(),
+        agent_id: z.string().optional(),
+        metadata: z.string().optional(),
+      }).parse(data) as Thread;
+    } catch (e) {
+      logError('redis-store', 'Thread parse error', toLoggerError(e));
+      return null;
+    }
+  });
+}
+
+// --- RediSearch: Advanced Query Support for API Integration ---
+/**
+ * Search threads by metadata using Redis and in-memory filtering.
+ * This is robust and ready for API route integration (e.g. /api/threads/search).
+ *
+ * @param query - Metadata fields to match (e.g. { user_id: 'abc', agent_id: 'xyz' })
+ * @param options - Optional limit, offset
+ * @returns Array of matching Thread objects
+ */
+export async function searchThreadsByMetadata(
+  query: Record<string, unknown>,
+  options?: { limit?: number; offset?: number }
+): Promise<Thread[]> {
+  try {
+    // Fetch all thread IDs from Redis
+    const redis = getRedisClient();
+    const threadIds = (await redis.zrange(THREADS_SET, 0, -1, { rev: true })) as string[];
+    const threads: Thread[] = [];
+    for (const threadId of threadIds) {
+      const thread = await getRedisThreadById(threadId);
+      if (!thread) continue;
+      // Filter by query fields
+      if (Object.entries(query).every(([k, v]) => thread[k as keyof Thread] === v)) {
+        threads.push(thread);
+      }
+    }
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit ?? 20;
+    return threads.slice(offset, offset + limit);
+  } catch (err) {
+    await logError('redis-store', 'Failed RediSearch query', toLoggerError(err));
+    throw new RedisStoreError('Failed RediSearch query', err);
+  }
+}

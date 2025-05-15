@@ -1,8 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
-import { getVectorClient, isUpstashVectorAvailable } from './upstashClients';
+import { generateId } from 'ai';
+import { getVectorClient, isUpstashVectorAvailable, runRediSearchHybridQuery, enqueueQStashTask, trackWorkflowNode } from './upstashClients';
 import type { Index, Vector, QueryResult, FetchResult } from '@upstash/vector';
 import { generateEmbedding } from '../../ai-integration';
 import { z } from 'zod';
+import { RediSearchHybridQuery, RediSearchHybridResult, QStashTaskPayload, WorkflowNode, UpstashEntityBase } from './upstashTypes';
 
 // --- Zod Schemas ---
 
@@ -260,7 +261,7 @@ export async function storeTextEmbedding(
     const embeddingArray = Array.from(embedding) as number[];
 
     // Generate a unique ID for the embedding
-    const id = uuidv4();
+    const id = generateId();
 
     // Prepare metadata with the original text
     const fullMetadata: EmbeddingMetadata = {
@@ -410,4 +411,30 @@ export async function hybridSearch(
     }
     throw new VectorStoreError('Failed to perform hybrid search', error);
   }
+}
+
+// --- Advanced RediSearch/Hybrid Search ---
+export async function advancedVectorHybridSearch(query: RediSearchHybridQuery): Promise<RediSearchHybridResult[]> {
+  try {
+    const results = await runRediSearchHybridQuery(query);
+    return results as RediSearchHybridResult[];
+  } catch (err) {
+    throw new VectorStoreError('Failed advanced hybrid search', err);
+  }
+}
+
+// --- QStash/Workflow Integration Example ---
+export async function enqueueVectorWorkflow(type: string, data: Record<string, unknown>) {
+  const payload: QStashTaskPayload = {
+    id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+    type,
+    data,
+    created_at: new Date().toISOString(),
+    status: 'pending',
+  };
+  return enqueueQStashTask(payload);
+}
+
+export async function trackVectorWorkflowNode(node: WorkflowNode) {
+  return trackWorkflowNode(node);
 }

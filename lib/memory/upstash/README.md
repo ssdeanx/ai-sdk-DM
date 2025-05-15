@@ -70,14 +70,14 @@ The following table summarizes the status, todos, tags, API routes, and reasonin
 | redis-store.ts            | incomplete  | Remove any, console; add query, tests, helpers           | upstash, redis, ...       | /api/ai-sdk/threads, ...         | debuggingapproach, sequentialthinking, codesmells      |
 | vector-store.ts           | incomplete  | Remove console; add query, tests, type safety, logging   | upstash, vector, ...      | /api/ai-sdk/embeddings, ...      | scientificmethod, decisionframework, codesmells        |
 | upstash-logger.ts         | incomplete  | Remove any, console; add type-safe parsing, tests        | upstash, logging, ...     | /api/ai-sdk/logs, ...            | metacognitivemonitoring, codesmells                   |
-| upstashClients.ts         | incomplete  | Add advanced query usage docs/examples                   | upstash, client, ...      | /api/ai-sdk/*                    | debuggingapproach, metacognitivemonitoring            |
+| upstashClients.ts         | incomplete  | Fix Query config: { url, token } is not valid for QueryConfig (see get_errors) | upstash, client, ...      | /api/ai-sdk/*                    | debuggingapproach, metacognitivemonitoring            |
 | upstashTypes.ts           | incomplete  | Expand types for RediSearch/query, add granular types    | upstash, types, ...       |                                  | debuggingapproach, metacognitivemonitoring, codesmells |
 | memoryStore.ts            | incomplete  | Remove any, console; add query, tests, error handling    | upstash, memory, ...      | /api/ai-sdk/threads, ...         | debuggingapproach, decisionframework, codesmells       |
 | stream-processor.ts       | incomplete  | Remove any, console; add query, tests, error handling    | upstash, streaming, ...   | /api/ai-sdk/streams, ...         | sequentialthinking, scientificmethod, codesmells       |
 | memory-processor.ts       | incomplete  | Add query for streaming/semantic search, add tests       | upstash, memory, ...      |                                  | debuggingapproach, codesmells                          |
 | supabase-adapter.ts       | incomplete  | Fix Query API, add CRUD, error handling, tests           | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
-| supabase-adapter-factory.ts| incomplete | Remove any, add query, error handling, tests             | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
-| index.ts                  | incomplete  | Remove broken exports, update/type-safe exports           | upstash, barrel, ...      | /api/ai-sdk/*                    | debuggingapproach, codesmells                          |
+| supabase-adapter-factory.ts| incomplete | Fix TableRow is not generic type errors (see get_errors) | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
+| index.ts                  | incomplete  | Check for missing/broken exports from dependencies (see get_errors) | upstash, barrel, ...      | /api/ai-sdk/*                    | debuggingapproach, codesmells                          |
 
 **Legend:** See `upstash.json` for full tag and route lists. All files must:
 
@@ -144,6 +144,28 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 
 ---
 
+## 📚 Upstash Command Documentation & LLM Integration
+
+> **Full Upstash Redis, Vector, QStash, and Workflow Command References:**
+>
+> - [Upstash Redis LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=redis&tokens=84007)
+> - [Upstash Vector LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=vector&tokens=40216)
+> - [Upstash QStash LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=qstash&tokens=41928)
+> - [Upstash Workflow LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=workflow&tokens=45652)
+>
+> These links provide comprehensive, production-grade documentation for all Upstash Redis and Vector DB commands, including advanced LLM, search, pipelining, hybrid search, QStash, and workflow orchestration. Use these for all backend memory, logging, vector, and workflow operations.
+
+- **Redis:** Use all available commands for memory, logging, and workflow. See [Upstash Redis LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=redis&tokens=84007).
+- **Vector:** Use all available commands for vector DB, hybrid search, and embeddings. See [Upstash Vector LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=vector&tokens=40216).
+- **QStash:** Use for workflow orchestration, background jobs, and queue management. See [Upstash QStash LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=qstash&tokens=41928).
+- **Workflow:** For backend workflow and automation logic, see [Upstash Workflow LLMs Command Reference](https://context7.com/upstash/docs/llms.txt?folders=workflow&tokens=45652).
+
+### Tool Execution Store (Workflow Integration)
+- See [`lib/tools/upstash-tool-execution-store.ts`](../tools/upstash-tool-execution-store.ts) for Upstash-based workflow and tool execution logging.
+- Integrate QStash and Workflow commands for robust, observable, and scalable backend workflows.
+
+---
+
 ## File-by-File Status & Detailed TODO Checklist
 
 ### upstashClients.ts
@@ -152,6 +174,7 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 - [x] Uses Zod schemas for config validation
 - [x] upstashLogger for all logging
 - [x] Health checks and availability functions
+- [ ] **Fix Query config: { url, token } is not valid for QueryConfig (see get_errors)**
 - [ ] **Add advanced Query client usage examples in docs**
 - [ ] **Document how to use Query for RediSearch and advanced filtering**
 
@@ -203,6 +226,7 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 
 ### supabase-adapter-factory.ts
 
+- [ ] **Fix TableRow is not generic type errors (see get_errors)**
 - [ ] Remove all `any` types (see errors)
 - [ ] Remove unused types/vars
 - [ ] Add @upstash/query support for advanced table/vector operations
@@ -242,6 +266,7 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 
 ### index.ts (barrel)
 
+- [ ] **Check for missing/broken exports from dependencies (see get_errors)**
 - [ ] Remove/replace all broken exports (see errors: missing exports from supabase-adapter)
 - [ ] Ensure all exports are up-to-date and type-safe
 - [ ] Add documentation for new/advanced exports
@@ -252,7 +277,7 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 
 | File                        | Type Safety | Logging | @upstash/query | RediSearch | CRUD | Vector | Streaming | Tests | Supabase Fallback |
 |-----------------------------|:-----------:|:-------:|:--------------:|:----------:|:----:|:------:|:---------:|:-----:|:-----------------:|
-| upstashClients.ts           |     ✅      |   ✅    |      ✅        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
+| upstashClients.ts           |     ⚠️      |   ✅    |      ⚠️        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
 | upstashTypes.ts             |     ✅      |   ❌    |      ❌        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
 | upstash-logger.ts           |     ⚠️      |   ✅    |      ❌        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
 | redis-store.ts              |     ⚠️      |   ⚠️    |      ⚠️        |     ⚠️     |  ✅  |   ❌   |     ❌    |   ❌  |        ❌         |

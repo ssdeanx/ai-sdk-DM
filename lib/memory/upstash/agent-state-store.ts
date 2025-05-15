@@ -1,7 +1,9 @@
 import { getRedisClient } from './upstashClients';
-import { v4 as uuidv4 } from 'uuid';
+import { generateId } from 'ai';
 import { AgentState } from '../../agents/agent.types';
 import { z } from 'zod'; // Add zod import
+import { RediSearchHybridQuery, QStashTaskPayload, WorkflowNode } from './upstashTypes';
+import { runRediSearchHybridQuery, enqueueQStashTask, trackWorkflowNode } from './upstashClients';
 
 // --- Constants for Redis Keys ---
 const AGENT_STATE_PREFIX = "agent:state:";
@@ -39,9 +41,6 @@ export class AgentStateStoreError extends Error {
     Object.setPrototypeOf(this, AgentStateStoreError.prototype);
   }
 }
-
-// Use the uuid function to prevent unused import warning
-const generateId = (): string => uuidv4();
 
 /**
  * Validates agent state using Zod schema
@@ -405,4 +404,25 @@ export async function getAllAgentStates(
     console.error('Error getting all agent states:', error);
     throw new AgentStateStoreError('Failed to get all agent states', error);
   }
+}
+
+// --- Advanced RediSearch/Hybrid Search ---
+export async function advancedAgentStateHybridSearch(query: RediSearchHybridQuery) {
+  return runRediSearchHybridQuery(query);
+}
+
+// --- QStash/Workflow Integration Example ---
+export async function enqueueAgentStateWorkflow(type: string, data: Record<string, unknown>) {
+  const payload: QStashTaskPayload = {
+    id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+    type,
+    data,
+    created_at: new Date().toISOString(),
+    status: 'pending',
+  };
+  return enqueueQStashTask(payload);
+}
+
+export async function trackAgentStateWorkflowNode(node: WorkflowNode) {
+  return trackWorkflowNode(node);
 }

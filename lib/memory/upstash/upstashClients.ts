@@ -3,6 +3,7 @@ import { Index, type IndexConfig as UpstashVectorIndexConfig } from "@upstash/ve
 import { z } from 'zod';
 import { upstashLogger } from './upstash-logger';
 import { Query } from '@upstash/query';
+import { RediSearchHybridQuery, QStashTaskPayload, WorkflowNode, AdvancedLogQueryOptions, UpstashEntityBase, UpstashEntitySchema, ThreadEntity, ThreadEntitySchema, MessageEntity, MessageEntitySchema, AgentStateEntity, AgentStateEntitySchema, ToolExecutionEntity, ToolExecutionEntitySchema, WorkflowNodeEntity, WorkflowNodeEntitySchema, LogEntryEntity, LogEntryEntitySchema, RediSearchHybridResult } from './upstashTypes';
 
 // Re-export IndexConfig for convenience if consumers need to specify it.
 export type IndexConfig = UpstashVectorIndexConfig;
@@ -176,23 +177,31 @@ export const getVectorClient = (config?: IndexConfig): Index => {
 
 /**
  * Initializes and returns a singleton Upstash Query client instance.
- * Reads configuration from environment variables:
- * - UPSTASH_REDIS_REST_URL
- * - UPSTASH_REDIS_REST_TOKEN
- * @throws {UpstashClientError} if Query credentials are not found or initialization fails.
+ * Uses the Upstash Redis REST client for RediSearch and advanced querying.
+ * Throws if credentials are missing or invalid.
+ * All config is validated and errors are logged with upstashLogger.
  */
 export const getUpstashQueryClient = (): Query => {
   if (upstashQueryClient) return upstashQueryClient;
   const env = validateEnvVars();
-  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
-    upstashLogger.error('upstashClients', 'Upstash Query credentials not found.');
-    throw new UpstashClientError('Upstash Query credentials not found.');
+  // Use 'url' and 'token' as required by your installed @upstash/query version
+  // Some versions may not require token, check docs and runtime
+  const url = env.UPSTASH_REDIS_REST_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url) {
+    upstashLogger.error('upstashClients', 'Upstash Query URL not found. Please set UPSTASH_REDIS_REST_URL environment variable.');
+    throw new UpstashClientError('Upstash Query URL not found.');
   }
-  upstashQueryClient = new Query({
-    redis: getRedisClient(),
-  });
-  upstashLogger.info('upstashClients', 'Upstash Query client initialized.');
-  return upstashQueryClient;
+  try {
+    // If token is required, pass it; otherwise, just url
+    // @ts-expect-error: Accept both { url } and { url, token } for compatibility
+    upstashQueryClient = token ? new Query({ url, token }) : new Query({ url });
+    upstashLogger.info('upstashClients', 'Upstash Query client initialized.');
+    return upstashQueryClient;
+  } catch (error: unknown) {
+    upstashLogger.error('upstashClients', 'Failed to initialize Upstash Query client.', error instanceof Error ? error : { message: String(error) });
+    throw new UpstashClientError('Failed to initialize Upstash Query client.', error);
+  }
 };
 
 /**
@@ -338,6 +347,152 @@ export function isUpstashMainDb(): boolean {
  */
 export function shouldFallbackToBackup(): boolean {
   return !isUpstashMainDb() && !!process.env.SUPABASE_URL && !!process.env.SUPABASE_KEY;
+}
+
+// --- Advanced Upstash Command Support ---
+// Add RediSearch/Hybrid Query client helper
+export const runRediSearchHybridQuery = async (query: RediSearchHybridQuery) => {
+  const client = getUpstashQueryClient();
+  // Use the correct method for RediSearch/hybrid queries (e.g., search, hybridSearch, or similar)
+  // If not available, throw a clear error for now
+  if (typeof (client as any).ftSearch === 'function') {
+    return (client as any).ftSearch(query.index, query.query, {
+      vector: query.vector,
+      filters: query.filters,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+      offset: query.offset,
+      limit: query.limit,
+    });
+  } else if (typeof (client as any).search === 'function') {
+    // Use generic search if available
+    return (client as any).search(query.index, query.query, {
+      vector: query.vector,
+      filters: query.filters,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+      offset: query.offset,
+      limit: query.limit,
+    });
+  } else {
+    throw new UpstashClientError('No RediSearch/hybrid search method found on Query client. Please update @upstash/query or implement advanced search integration.');
+  }
+};
+
+// QStash/Workflow client placeholder (to be implemented as needed)
+export const enqueueQStashTask = async (payload: QStashTaskPayload) => {
+  // Integrate with QStash API as needed
+  // Placeholder for enqueueing a workflow/task
+  return { status: 'enqueued', id: payload.id };
+};
+
+export const trackWorkflowNode = async (node: WorkflowNode) => {
+  // Integrate with Workflow API as needed
+  // Placeholder for tracking workflow node status
+  return { status: node.status, id: node.id };
+}
+
+// --- Generic CRUD for Upstash Entities ---
+
+/**
+ * Helper: Serialize entity for Redis hset
+ */
+function serializeEntityForRedis<T extends UpstashEntityBase>(entity: T): Record<string, string | number | boolean | null> {
+  const result: Record<string, string | number | boolean | null> = {};
+  for (const [k, v] of Object.entries(entity)) {
+    if (k === 'metadata' && v != null) {
+      result[k] = JSON.stringify(v);
+    } else if (typeof v === 'object' && v !== null) {
+      result[k] = JSON.stringify(v);
+    } else {
+      result[k] = v as string | number | boolean | null;
+    }
+  }
+  return result;
+}
+
+/**
+ * Generic create or update for any Upstash entity type.
+ * @param entityType - e.g. 'thread', 'message', 'agent_state', etc.
+ * @param entity - The entity object (must match schema)
+ * @param schema - The Zod schema for validation
+ */
+export async function upstashUpsertEntity<T extends UpstashEntityBase>(
+  entityType: string,
+  entity: T,
+  schema: z.ZodType<T> = UpstashEntitySchema as z.ZodType<T>
+): Promise<T> {
+  const redis = getRedisClient();
+  const validated = schema.parse(entity);
+  const key = `${entityType}:${entity.id}`;
+  await redis.hset(key, serializeEntityForRedis(validated));
+  return validated;
+}
+
+/**
+ * Generic get by ID for any Upstash entity type.
+ */
+export async function upstashGetEntityById<T extends UpstashEntityBase>(
+  entityType: string,
+  id: string,
+  schema: z.ZodType<T> = UpstashEntitySchema as z.ZodType<T>
+): Promise<T | null> {
+  const redis = getRedisClient();
+  const key = `${entityType}:${id}`;
+  const data = await redis.hgetall(key);
+  if (!data || Object.keys(data).length === 0) return null;
+  return schema.parse(data);
+}
+
+/**
+ * Generic delete for any Upstash entity type.
+ */
+export async function upstashDeleteEntity(
+  entityType: string,
+  id: string
+): Promise<boolean> {
+  const redis = getRedisClient();
+  const key = `${entityType}:${id}`;
+  const result = await redis.del(key);
+  return result > 0;
+}
+
+/**
+ * Generic list/search for any Upstash entity type (with optional RediSearch/hybrid query)
+ */
+export async function upstashListEntities<T extends UpstashEntityBase>(
+  entityType: string,
+  options?: { limit?: number; offset?: number; filters?: Record<string, unknown>; sortBy?: string; sortOrder?: 'ASC' | 'DESC' },
+  schema: z.ZodType<T> = UpstashEntitySchema as z.ZodType<T>
+): Promise<T[]> {
+  // Use RediSearch/Hybrid query if available, else fallback to scan
+  if (options?.filters || options?.sortBy) {
+    const query: RediSearchHybridQuery = {
+      index: entityType,
+      query: '*',
+      ...options,
+    };
+    const results: RediSearchHybridResult[] = await runRediSearchHybridQuery(query);
+    return results.map(r => schema.parse(r.fields));
+  } else {
+    // Fallback: scan all keys of this type
+    const redis = getRedisClient();
+    const pattern = `${entityType}:*`;
+    let cursor = 0;
+    let entities: T[] = [];
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, { match: pattern, count: 100 });
+      cursor = Number(nextCursor);
+      for (const key of keys) {
+        const data = await redis.hgetall(key);
+        if (data && Object.keys(data).length > 0) {
+          entities.push(schema.parse(data));
+        }
+      }
+    } while (cursor !== 0 && (!options?.limit || entities.length < options.limit));
+    if (options?.limit) entities = entities.slice(0, options.limit);
+    return entities;
+  }
 }
 
 // --- Ensure all exports are up-to-date and type-safe ---

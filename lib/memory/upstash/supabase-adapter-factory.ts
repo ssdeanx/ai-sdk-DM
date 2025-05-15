@@ -28,14 +28,14 @@ import { z } from 'zod'; // Keep this import as requested
 /**
  * Supabase-like client for a specific table
  */
-export interface TableClient<T extends string> {
+export interface TableClient {
   /**
    * Gets all items from the table
    *
    * @param options - Query options
    * @returns Promise resolving to an array of table rows
    */
-  getAll(options?: QueryOptions): Promise<Array<TableRow<T>>>;
+  getAll(options?: QueryOptions): Promise<Array<TableRow>>;
 
   /**
    * Gets an item by ID from the table
@@ -43,7 +43,7 @@ export interface TableClient<T extends string> {
    * @param id - Item ID
    * @returns Promise resolving to the item or null if not found
    */
-  getById(id: string): Promise<TableRow<T> | null>;
+  getById(id: string): Promise<TableRow | null>;
 
   /**
    * Creates an item in the table
@@ -51,7 +51,7 @@ export interface TableClient<T extends string> {
    * @param item - Item to create
    * @returns Promise resolving to the created item
    */
-  create(item: Omit<TableRow<T>, 'id'> & { id?: string }): Promise<TableRow<T>>;
+  create(item: Omit<TableRow, 'id'> & { id?: string }): Promise<TableRow>;
 
   /**
    * Updates an item in the table
@@ -60,7 +60,7 @@ export interface TableClient<T extends string> {
    * @param updates - Updates to apply
    * @returns Promise resolving to the updated item
    */
-  update(id: string, updates: Partial<TableRow<T>>): Promise<TableRow<T>>;
+  update(id: string, updates: Partial<TableRow>): Promise<TableRow>;
 
   /**
    * Deletes an item from the table
@@ -76,7 +76,7 @@ export interface TableClient<T extends string> {
    * @param columns - Columns to select
    * @returns Table client with select option
    */
-  select(...columns: string[]): TableClient<T>;
+  select(...columns: string[]): TableClient;
 
   /**
    * Filters items in the table
@@ -86,7 +86,7 @@ export interface TableClient<T extends string> {
    * @param value - Filter value
    * @returns Table client with filter option
    */
-  filter(field: string, operator: FilterOptions['operator'], value: any): TableClient<T>;
+  filter(field: string, operator: FilterOptions['operator'], value: any): TableClient;
 
   /**
    * Orders items in the table
@@ -95,7 +95,7 @@ export interface TableClient<T extends string> {
    * @param ascending - Whether to order in ascending order
    * @returns Table client with order option
    */
-  order(column: string, ascending?: boolean): TableClient<T>;
+  order(column: string, ascending?: boolean): TableClient;
 
   /**
    * Limits the number of items returned
@@ -103,7 +103,7 @@ export interface TableClient<T extends string> {
    * @param limit - Maximum number of items to return
    * @returns Table client with limit option
    */
-  limit(limit: number): TableClient<T>;
+  limit(limit: number): TableClient;
 
   /**
    * Skips a number of items
@@ -111,7 +111,7 @@ export interface TableClient<T extends string> {
    * @param offset - Number of items to skip
    * @returns Table client with offset option
    */
-  offset(offset: number): TableClient<T>;
+  offset(offset: number): TableClient;
 }
 
 /**
@@ -165,7 +165,7 @@ export interface SupabaseClient {
    * @param tableName - Table name
    * @returns Table client
    */
-  from<T extends string>(tableName: T): TableClient<T>;
+  from(tableName: string): TableClient;
 
   /**
    * Gets the vector client
@@ -195,10 +195,10 @@ export function createSupabaseClient(): SupabaseClient {
    * @param tableName - Table name
    * @returns Table client
    */
-  function createTableClient<T extends string>(tableName: T): TableClient<T> {
+  function createTableClient(tableName: string): TableClient {
     let options: QueryOptions = {};
 
-    const client: TableClient<T> = {
+    const client: TableClient = {
       getAll: async (queryOptions?: QueryOptions) => {
         return getData(tableName, {
           ...options,
@@ -210,11 +210,11 @@ export function createSupabaseClient(): SupabaseClient {
         return getItemById(tableName, id);
       },
 
-      create: async (item: Omit<TableRow<T>, 'id'> & { id?: string }) => {
+      create: async (item: Omit<TableRow, 'id'> & { id?: string }) => {
         return createItem(tableName, item);
       },
 
-      update: async (id: string, updates: Partial<TableRow<T>>) => {
+      update: async (id: string, updates: Partial<TableRow>) => {
         return updateItem(tableName, id, updates);
       },
 
