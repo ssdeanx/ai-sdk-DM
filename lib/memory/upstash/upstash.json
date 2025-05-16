@@ -8,7 +8,7 @@
   "name": "Upstash Memory Adapter Knowledge Graph",
   "description": "Living knowledge graph for the /lib/memory/upstash folder, capturing entities (files, types, features), relationships, onboarding, navigation, and AI agent support. Upstash must handle ALL API logic and data for all entities, not just memory, and all business logic must be routed through Upstash-first APIs with fallback only.",
   "version": "1.0.0",
-  "generatedAt": "2025-05-14T00:00:00Z",
+  "generatedAt": "2025-05-15T00:00:00Z",
   "@graph": [
     {
       "@id": "lib/memory/upstash/agent-state-store.ts",
@@ -650,10 +650,41 @@
         "Circle of Competence",
         "Mindmaps & Hill Charts"
       ]
+    },
+    {
+      "@id": "lib/memory/upstash",
+      "@type": ["Directory"],
+      "path": "lib/memory/upstash",
+      "files": [
+        "agent-state-store.ts",
+        "index.ts",
+        "memory-processor.ts",
+        "memoryStore.ts",
+        "README.md",
+        "redis-store.ts",
+        "stream-processor.ts",
+        "supabase-adapter-factory.ts",
+        "supabase-adapter.ts",
+        "upstash-logger.ts",
+        "upstash.json",
+        "upstashClients.ts",
+        "upstashTypes.ts",
+        "vector-store.ts"
+      ],
+      "status": "incomplete",
+      "observations": [
+        "Directory listing as of 2025-05-15. All files are tracked in the knowledge graph and README.",
+        "Migration is blocked until all type safety, adapter, and CRUD issues are resolved (see README)."
+      ],
+      "todos": [
+        "Ensure all files are type-safe, table-aware, and production-ready.",
+        "Remove all any types and unsafe type assertions from all files.",
+        "Update README and upstash.json after every significant change."
+      ]
     }
   ],
   "meta": {
-    "source": "auto-generated from README.md, memory.json, and codebase as of 2025-05-14",
+    "source": "auto-generated from README.md, memory.json, and codebase as of 2025-05-15",
     "updateStrategy": "automated extraction and continuous update via CI/CD and AI agent workflows",
     "intendedUse": [
       "Continuous improvement and documentation enforcement"

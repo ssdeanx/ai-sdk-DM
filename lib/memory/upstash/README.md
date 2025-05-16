@@ -2,25 +2,42 @@
 
 ---
 
-## 🚨 MIGRATION BLOCKER: ADAPTER FACTORY & TYPE SAFETY FAILURE
+## 🚨 MIGRATION BLOCKER: ADAPTER FACTORY & TYPE SAFETY FAILURE (2025-05-15)
 
-> **CRITICAL BLOCKER:**
+> **CRITICAL BLOCKER (Updated):**
 >
-> The Upstash adapter and factory are currently **broken and not production-ready** due to pervasive use of `any`, unsafe type assertions, and generic string table names that are not compatible with the Supabase/Upstash type system. The current implementation in `redis-store.ts`, `supabase-adapter-factory.ts`, and related files will not work as a drop-in replacement for Supabase, and cannot be safely used in production or for API routes.
+> The Upstash adapter and factory remain **not production-ready** due to:
+> - Pervasive use of `any`, unsafe type assertions, and generic string table names in `supabase-adapter-factory.ts`, `supabase-adapter.ts`, and `redis-store.ts`.
+> - Type system incompatibility with Supabase/Upstash generics, especially for composite keys and fallback logic.
+> - The current implementation cannot be safely used as a drop-in replacement for Supabase in backend API routes.
 >
-> **Key Issues:**
+> **Current State (2025-05-15):**
 >
-> - The adapter factory (`supabase-adapter-factory.ts`) is filled with `any` and unsafe type casts, making it impossible to guarantee type safety or correct behavior.
-> - The Upstash adapter (`supabase-adapter.ts`) and `redis-store.ts` rely on generic string table names and type assertions that break compatibility with the Supabase type system and API expectations.
-> - The current approach will not work with the main memory provider factory (`supabase.ts`) or with robust, type-safe API routes.
-> - The migration is blocked until all `any` types, unsafe casts, and broken adapter logic are removed and replaced with a type-safe, table-aware, and production-grade implementation.
+> - All core files exist in `/lib/memory/upstash/`:
+>   - agent-state-store.ts
+>   - index.ts
+>   - memory-processor.ts
+>   - memoryStore.ts
+>   - redis-store.ts
+>   - stream-processor.ts
+>   - supabase-adapter-factory.ts
+>   - supabase-adapter.ts
+>   - upstash-logger.ts
+>   - upstash.json
+>   - upstashClients.ts
+>   - upstashTypes.ts
+>   - vector-store.ts
+> - All files are tracked in the knowledge graph (`upstash.json`) and this README.
+> - **Migration is blocked** until all `any` types, unsafe casts, and broken adapter logic are removed and replaced with type-safe, table-aware, production-grade implementations.
+> - See `upstash.json` for per-file status, todos, and relationships.
 >
-> **Next steps:**
+> **Next steps for the next agent:**
 >
-> - Remove all `any` types and unsafe type assertions from the adapter factory and Upstash adapter.
-> - Refactor all CRUD and search logic to use table-aware, type-safe interfaces and helpers.
-> - Ensure all Upstash CRUD/search logic is compatible with the Supabase type system and can be used as a true drop-in replacement.
-> - Do not proceed with migration or production use until these issues are fully resolved.
+> 1. Remove all `any` types and unsafe type assertions from the adapter factory, Upstash adapter, and redis-store.
+> 2. Refactor all CRUD/search logic to use table-aware, type-safe interfaces and helpers (see Supabase/Drizzle patterns).
+> 3. Ensure all Upstash CRUD/search logic is compatible with the Supabase type system and can be used as a true drop-in replacement.
+> 4. Do not proceed with migration or production use until these issues are fully resolved and all tests pass.
+> 5. Update this README and `upstash.json` after every significant change.
 
 ---
 
@@ -124,7 +141,7 @@ The following table summarizes the status, todos, tags, API routes, and reasonin
 
 ---
 
-## Directory Structure
+## Directory Structure (2025-05-15)
 
 ```bash
 ┣ 📜agent-state-store.ts
@@ -142,6 +159,8 @@ The following table summarizes the status, todos, tags, API routes, and reasonin
 ┣ 📜upstashTypes.ts
 ┗ 📜vector-store.ts
 ```
+
+---
 
 ## Setup
 

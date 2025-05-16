@@ -219,10 +219,11 @@ export type QueryOptions = {
 /**
  * Gets an item by ID from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function getItemById<T extends TableName>(tableName: T, id: string): Promise<TableRow<T> | null> {
+export async function getItemById<T extends TableName>(tableName: T, id: string | string[]): Promise<TableRow<T> | null> {
   try {
     const redis = getRedisClient();
-    const row = await redis.hgetall(getRowKey(tableName, id));
+    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
+    const row = await redis.hgetall(rowKey);
     if (!row || Object.keys(row).length === 0) throw new Error('Not found');
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row)) {
@@ -233,10 +234,23 @@ export async function getItemById<T extends TableName>(tableName: T, id: string)
     upstashLogger.error('supabase-adapter', `Error getting item by id from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    // @ts-expect-error: Generic string table name required for fallback logic
-    const { data, error: supaErr } = await supabase.from(tableName).select('*').eq('id', id).single();
-    if (supaErr || !data) return null;
-    return data as unknown as TableRow<T>;
+    const key = getPrimaryKeyForTable(tableName);
+    let q = supabase.from(tableName).select('*');
+    if (Array.isArray(key)) {
+      if (!Array.isArray(id)) throw new Error('Composite key id must be string[]');
+      // Use (k as unknown as string) for .eq() to satisfy Supabase's type system for composite keys and strict linters
+      key.forEach((k, idx) => {
+        q = q.eq(k as unknown as string, id[idx]);
+      });
+      const { data, error: supaErr } = await q.single();
+      if (supaErr || !data) return null;
+      return data as unknown as TableRow<T>;
+    } else {
+      // Use (key as unknown as string) for .eq() to satisfy Supabase's type system for single keys and strict linters
+      const { data, error: supaErr } = await q.eq(key as unknown as string, id as string).single();
+      if (supaErr || !data) return null;
+      return data as unknown as TableRow<T>;
+    }
   }
 }
 
@@ -246,12 +260,9 @@ export async function getItemById<T extends TableName>(tableName: T, id: string)
 export async function createItem<T extends TableName>(tableName: T, item: TableInsert<T>): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
-    // Use getPrimaryKeyValue to get the key value(s) for the item
     const keyValue = getPrimaryKeyValue(tableName, item);
-    // For single key, use as before; for composite, handle accordingly
     let id: string | undefined;
     if (Array.isArray(keyValue)) {
-      // For composite keys, join with ':' for a unique string (or handle as needed by your DB logic)
       id = keyValue.join(':');
     } else {
       id = keyValue || (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2));
@@ -268,8 +279,8 @@ export async function createItem<T extends TableName>(tableName: T, item: TableI
     upstashLogger.error('supabase-adapter', `Error creating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    // @ts-expect-error: Generic string table name required for fallback logic
-    const { data, error: supaErr } = await supabase.from(tableName).insert([item]).select('*').single();
+    // Use [item] as unknown as TableInsert<T>[] to satisfy Supabase's type system for generic inserts and strict linters
+    const { data, error: supaErr } = await supabase.from(tableName).insert([item] as unknown as TableInsert<T>[]).select('*').single();
     if (supaErr || !data) throw new VectorStoreError(`Failed to create item in table ${String(tableName)}`);
     return data as unknown as TableRow<T>;
   }
@@ -278,47 +289,59 @@ export async function createItem<T extends TableName>(tableName: T, item: TableI
 /**
  * Updates an item in a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function updateItem<T extends TableName>(tableName: T, id: string, updates: TableUpdate<T>): Promise<TableRow<T>> {
+export async function updateItem<T extends TableName>(
+  tableName: T,
+  id: string | string[],
+  updates: TableUpdate<T>
+): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
-    const rowKey = getRowKey(tableName, id);
+    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
     const toStore: Record<string, string> = {};
     for (const [k, v] of Object.entries(updates)) {
-      if (k !== 'id') toStore[k] = JSON.stringify(v);
+      if (k !== "id") toStore[k] = JSON.stringify(v);
     }
     await redis.hset(rowKey, toStore);
     const updated = await redis.hgetall(rowKey);
-    if (!updated) throw new VectorStoreError('No data found after update');
+    if (!updated) throw new VectorStoreError("No data found after update");
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(updated)) {
-      try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
+      try {
+        parsed[k] = JSON.parse(v as string);
+      } catch {
+        parsed[k] = v;
+      }
     }
     return { ...parsed, id } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error updating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    upstashLogger.error(
+      "supabase-adapter",
+      `Error updating item in table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    // Use getPrimaryKeyForTable to get the key name(s)
     const key = getPrimaryKeyForTable(tableName);
     if (Array.isArray(key)) {
-      // For composite keys, chain .eq() for each key
-      // @ts-expect-error: Generic string table name required for fallback logic
-      let q = supabase.from(tableName).update(updates as unknown as object);
+      if (!Array.isArray(id)) throw new Error("Composite key id must be string[]");
+      // Use updates as unknown as TableUpdate<T> and (k as unknown as string) for .eq() to satisfy Supabase's type system for composite keys and strict linters
+      let q = supabase.from(tableName).update(updates as unknown as TableUpdate<T>);
       key.forEach((k, idx) => {
-        q = q.eq(k as unknown as string, (id as string[])[idx]);
+        q = q.eq(k as unknown as string, id[idx]);
       });
-      const { data, error: supaErr } = await q.select('*').single();
+      const { data, error: supaErr } = await q.select("*").single();
       if (supaErr) throw supaErr;
-      return data as TableRow<T>;
+      return data as unknown as TableRow<T>;
     } else {
-      // @ts-expect-error: Generic string table name required for fallback logic
-      const { data, error: supaErr } = await supabase.from(tableName)
-        .update(updates as unknown as object)
-        .eq(key as unknown as string, id)
-        .select('*')
+      // Use updates as unknown as TableUpdate<T> and (key as unknown as string) for .eq() to satisfy Supabase's type system for single keys and strict linters
+      const { data, error: supaErr } = await supabase
+        .from(tableName)
+        .update(updates as unknown as TableUpdate<T>)
+        .eq(key as unknown as string, id as string)
+        .select("*")
         .single();
       if (supaErr) throw supaErr;
-      return data as TableRow<T>;
+      return data as unknown as TableRow<T>;
     }
   }
 }
@@ -326,32 +349,41 @@ export async function updateItem<T extends TableName>(tableName: T, id: string, 
 /**
  * Deletes an item from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function deleteItem<T extends TableName>(tableName: T, id: string): Promise<boolean> {
+export async function deleteItem<T extends TableName>(
+  tableName: T,
+  id: string | string[]
+): Promise<boolean> {
   try {
     const redis = getRedisClient();
-    const rowKey = getRowKey(tableName, id);
+    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
     await redis.del(rowKey);
-    await redis.srem(`${getTableKey(tableName)}:ids`, id);
+    await redis.srem(`${getTableKey(tableName)}:ids`, Array.isArray(id) ? id.join(":") : id);
     return true;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error deleting item from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    upstashLogger.error(
+      "supabase-adapter",
+      `Error deleting item from table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    // Use getPrimaryKeyForTable to get the key name(s)
     const key = getPrimaryKeyForTable(tableName);
     if (Array.isArray(key)) {
-      // For composite keys, chain .eq() for each key
-      let q = supabase.from(tableName as unknown as string).delete();
+      if (!Array.isArray(id)) throw new Error("Composite key id must be string[]");
+      // Use (k as unknown as string) for .eq() to satisfy Supabase's type system for composite keys and strict linters
+      let q = supabase.from(tableName).delete();
       key.forEach((k, idx) => {
-        q = q.eq(k as unknown as string, (id as string[])[idx]);
+        q = q.eq(k as unknown as string, id[idx]);
       });
       const { error: supaErr } = await q;
       if (supaErr) throw supaErr;
       return true;
     } else {
-      const { error: supaErr } = await supabase.from(tableName as unknown as string)
+      // Use (key as unknown as string) for .eq() to satisfy Supabase's type system for single keys and strict linters
+      const { error: supaErr } = await supabase
+        .from(tableName)
         .delete()
-        .eq(key as unknown as string, id);
+        .eq(key as unknown as string, id as string);
       if (supaErr) throw supaErr;
       return true;
     }
@@ -397,6 +429,7 @@ export async function getData<T extends TableName>(
     let q = supabase.from(tableName).select('*');
     if (options?.filters) {
       for (const f of options.filters) {
+        // Use (f.field as unknown as string) for .eq() to satisfy Supabase's type system for generic filters and strict linters
         q = q.eq(f.field as unknown as string, f.value);
       }
     }
@@ -572,10 +605,18 @@ export const entityApi = {
 };
 
 // --- Enhanced Table CRUD helpers ---
-export async function upsertItem<T extends TableName>(tableName: T, item: TableRow<T>): Promise<TableRow<T>> {
-  const found = await getItemById(tableName, item.id);
-  if (found) return updateItem(tableName, item.id, item) as Promise<TableRow<T>>;
-  return createItem(tableName, item) as Promise<TableRow<T>>;
+export async function upsertItem<T extends TableName>(
+  tableName: T,
+  item: TableRow<T>
+): Promise<TableRow<T>> {
+  // Use getPrimaryKeyValue to support composite keys
+  const key = getPrimaryKeyForTable(tableName);
+  const id = Array.isArray(key)
+    ? key.map((k) => (item as Record<string, string>)[k])
+    : (item as Record<string, string>)[key];
+  const found = await getItemById(tableName, id);
+  if (found) return updateItem(tableName, id, item as TableUpdate<T>);
+  return createItem(tableName, item as TableInsert<T>);
 }
 
 export async function existsItem<T extends TableName>(tableName: T, id: string): Promise<boolean> {

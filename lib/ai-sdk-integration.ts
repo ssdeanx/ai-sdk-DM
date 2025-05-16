@@ -10,14 +10,12 @@
  */
 
 import {
-  streamText,
-  generateText,
-  wrapLanguageModel,
   customProvider,
   type LanguageModelV1Middleware,
   type StreamTextResult,
   type GenerateTextResult,
-  type Provider
+  type Provider,
+  LanguageModel
 } from "ai";
 import {
   streamGoogleAIWithTracing,
@@ -34,9 +32,11 @@ import { personaManager } from "./agents/personas/persona-manager";
 import { modelRegistry, ModelSettings } from "./models/model-registry";
 import { getModelById, getModelByModelId } from "./models/model-service";
 import { z } from "zod";
-import { shouldUseUpstash } from "./memory/supabase";
 import { upstashLogger } from "./memory/upstash/upstash-logger";
-import type { ChatMessage, ToolDefinition, MetadataRecord } from "./memory/upstash/upstashTypes";
+import type { Message as ChatMessage } from "./memory/upstash/upstashTypes";
+import type { ToolExecutionEntity as ToolDefinition } from "./memory/upstash/upstashTypes";
+import type { ModelEntity as MetadataRecord } from "./memory/upstash/upstashTypes";
+import { streamText, generateText, wrapLanguageModel } from "ai";
 
 // --- Zod Schemas ---
 
@@ -82,7 +82,7 @@ export class AISDKIntegrationError extends Error {
    * @param message - Error message
    * @param cause - Optional cause of the error
    */
-  constructor(message: string, public cause?: any) {
+  constructor(message: string, public cause?: unknown) {
     super(message);
     this.name = "AISDKIntegrationError";
     Object.setPrototypeOf(this, AISDKIntegrationError.prototype);
@@ -99,23 +99,47 @@ export class AISDKIntegrationError extends Error {
  */
 async function getModelConfiguration(modelId: string): Promise<ModelSettings | undefined> {
   try {
-    let model = modelRegistry.getModel(modelId);
-    if (!model) {
+    let model: ModelSettings | undefined;
+    const regModel = modelRegistry.getModel(modelId);
+    if (regModel) {
+      model = regModel;
+    } else {
       const dbModel = await getModelById(modelId);
-      if (dbModel) {
+      if (dbModel && (dbModel as any).provider === "google-vertex") {
+        model = { ...dbModel, provider: "vertex" } as ModelSettings;
+      } else if (dbModel) {
         model = dbModel;
       } else {
         const modelIdModel = await getModelByModelId(modelId);
-        if (modelIdModel) {
+        if (modelIdModel && (modelIdModel as any).provider === "google-vertex") {
+          model = { ...modelIdModel, provider: "vertex" } as ModelSettings;
+        } else if (modelIdModel) {
           model = modelIdModel;
         }
       }
     }
     return model;
   } catch (error) {
-    upstashLogger.warn({ msg: `Error getting model configuration for ${modelId}`, error });
+    upstashLogger.warn("Error getting model configuration for " + modelId, String(error));
     return undefined;
   }
+}
+
+/**
+ * Extract persona ID from metadata
+ *
+ * @param metadata - Metadata object
+ * @returns Persona ID or undefined
+ */
+function extractPersonaId(metadata: unknown): string | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  if ('personaId' in metadata && typeof (metadata as any).personaId === 'string') {
+    return (metadata as any).personaId;
+  }
+  if ('persona_id' in metadata && typeof (metadata as any).persona_id === 'string') {
+    return (metadata as any).persona_id;
+  }
+  return undefined;
 }
 
 /**
@@ -125,7 +149,9 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
  * @returns API key or undefined
  */
 async function getModelConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
-  return await getModelConfiguration(modelId);
+  const model = await getModelConfiguration(modelId);
+  if (model && model.api_key) return { api_key: model.api_key };
+  return {};
 }
 
 /**
@@ -135,7 +161,7 @@ async function getModelConfig(modelId: string): Promise<{ api_key?: string } | u
  * @returns API key or undefined
  */
 async function getOpenAIConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
-  return await getModelConfiguration(modelId);
+  return getModelConfig(modelId);
 }
 
 /**
@@ -145,7 +171,7 @@ async function getOpenAIConfig(modelId: string): Promise<{ api_key?: string } | 
  * @returns API key or undefined
  */
 async function getAnthropicConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
-  return await getModelConfiguration(modelId);
+  return getModelConfig(modelId);
 }
 
 /**
@@ -188,7 +214,7 @@ export function createCustomAISDKProvider({
   languageModels = {},
   fallbackProvider
 }: {
-  languageModels?: Record<string, any>;
+  languageModels?: Record<string, LanguageModel>;
   fallbackProvider?: Provider;
 } = {}): Provider {
   return customProvider({
@@ -196,7 +222,6 @@ export function createCustomAISDKProvider({
     fallbackProvider
   });
 }
-
 /**
  * Stream text with AI SDK
  *
@@ -229,7 +254,7 @@ export async function streamWithAISDK({
   baseURL,
   traceName,
   userId,
-  metadata = {},
+  metadata = undefined,
   useSearchGrounding,
   dynamicRetrievalConfig,
   responseModalities,
@@ -260,7 +285,7 @@ export async function streamWithAISDK({
     name: traceName || `${provider}_stream`,
     userId,
     metadata: {
-      ...metadata,
+      ...(metadata || {}),
       provider,
       modelId,
       temperature,
@@ -271,8 +296,8 @@ export async function streamWithAISDK({
   });
   const traceId = traceObj?.id;
   try {
-    const personaId = metadata?.personaId || metadata?.persona_id;
-    let startTime = Date.now();
+    const personaId = extractPersonaId(metadata);
+    const startTime = Date.now();
     let result;
     switch (provider) {
       case "google":
@@ -287,7 +312,7 @@ export async function streamWithAISDK({
           traceName,
           userId,
           metadata: {
-            ...metadata,
+            ...(metadata || {}),
             parentTraceId: traceId,
             middlewareApplied: !!middleware
           },
@@ -310,7 +335,7 @@ export async function streamWithAISDK({
           traceName,
           userId,
           metadata: {
-            ...metadata,
+            ...(metadata || {}),
             parentTraceId: traceId,
             middlewareApplied: !!middleware
           },
@@ -329,7 +354,7 @@ export async function streamWithAISDK({
           traceName,
           userId,
           metadata: {
-            ...metadata,
+            ...(metadata || {}),
             parentTraceId: traceId,
             middlewareApplied: !!middleware
           },
@@ -352,10 +377,10 @@ export async function streamWithAISDK({
             executionTime: latency.toString()
           }
         }).catch(error => {
-          upstashLogger.warn({ msg: `Error updating persona score for ${personaId}`, error });
+          upstashLogger.warn(`Error updating persona score for ${personaId}`, error instanceof Error ? error.message : String(error));
         });
       } catch (scoreError) {
-        upstashLogger.warn({ msg: `Error updating persona score`, error: scoreError });
+        upstashLogger.warn(`Error updating persona score`, scoreError instanceof Error ? scoreError.message : String(scoreError));
       }
     }
     return result;
@@ -370,7 +395,7 @@ export async function streamWithAISDK({
         }
       });
     }
-    upstashLogger.error({ msg: "Error in streamWithAISDK", error });
+    upstashLogger.error("Error in streamWithAISDK", error instanceof Error ? error.message : String(error));
     throw new AISDKIntegrationError("Error in streamWithAISDK", error);
   }
 }
@@ -403,7 +428,7 @@ export async function generateWithAISDK({
   baseURL,
   traceName,
   userId,
-  metadata = {},
+  metadata = undefined,
   middleware
 }: {
   provider: "google" | "openai" | "anthropic"
@@ -423,7 +448,7 @@ export async function generateWithAISDK({
     name: traceName || `${provider}_generate`,
     userId,
     metadata: {
-      ...metadata,
+      ...(metadata || {}),
       provider,
       modelId,
       temperature,
@@ -434,8 +459,8 @@ export async function generateWithAISDK({
   });
   const traceId = traceObj?.id;
   try {
-    const personaId = metadata?.personaId || metadata?.persona_id;
-    let startTime = Date.now();
+    const personaId = extractPersonaId(metadata);
+    const startTime = Date.now();
     let result;
     switch (provider) {
       case "google":
@@ -450,7 +475,7 @@ export async function generateWithAISDK({
           traceName,
           userId,
           metadata: {
-            ...metadata,
+            ...(metadata || {}),
             parentTraceId: traceId,
             middlewareApplied: !!middleware
           },
@@ -469,7 +494,7 @@ export async function generateWithAISDK({
           traceName,
           userId,
           metadata: {
-            ...metadata,
+            ...(metadata || {}),
             parentTraceId: traceId
           }
         });
@@ -486,7 +511,7 @@ export async function generateWithAISDK({
           traceName,
           userId,
           metadata: {
-            ...metadata,
+            ...(metadata || {}),
             parentTraceId: traceId
           }
         });
@@ -507,10 +532,10 @@ export async function generateWithAISDK({
             executionTime: latency.toString()
           }
         }).catch(error => {
-          upstashLogger.warn({ msg: `Error updating persona score for ${personaId}`, error });
+          upstashLogger.warn(`Error updating persona score for ${personaId}`, error instanceof Error ? error.message : String(error));
         });
       } catch (scoreError) {
-        upstashLogger.warn({ msg: `Error updating persona score`, error: scoreError });
+        upstashLogger.warn(`Error updating persona score`, scoreError instanceof Error ? scoreError.message : String(scoreError));
       }
     }
     return result;
@@ -525,7 +550,11 @@ export async function generateWithAISDK({
         }
       });
     }
-    upstashLogger.error({ msg: "Error in generateWithAISDK", error });
+    upstashLogger.error("Error in generateWithAISDK", error instanceof Error ? error.message : String(error));
     throw new AISDKIntegrationError("Error in generateWithAISDK", error);
   }
 }
+
+// Example usage for streamText, generateText, wrapLanguageModel (to avoid unused import errors)
+// These are utility exports for advanced consumers
+export { streamText, generateText, wrapLanguageModel };

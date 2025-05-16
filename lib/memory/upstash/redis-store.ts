@@ -1,5 +1,5 @@
 import { generateId } from 'ai';
-import { createItem, getItemById, updateItem, deleteItem, getData, applyFilters, applyOrdering, applyPagination, selectFields, type QueryOptions } from './supabase-adapter';
+import { createItem, getItemById, updateItem, deleteItem, getData, applyFilters, applyOrdering, applyPagination, selectFields, type QueryOptions, type TableName, type TableRow, type TableInsert, type TableUpdate } from './supabase-adapter';
 import { z } from 'zod';
 
 import {
@@ -77,6 +77,15 @@ function prepareDataForRedis<T extends { metadata?: Record<string, unknown> | nu
   return result;
 }
 
+// Overload for generic objects without metadata
+function prepareDataForRedisGeneric(data: object): RedisHashData {
+  const result: RedisHashData = {};
+  for (const [k, v] of Object.entries(data)) {
+    result[k] = v as string | number | boolean | null;
+  }
+  return result;
+}
+
 // Helper to parse raw Redis data and metadata string into the target type
 function parseRedisHashData<T extends { metadata?: Record<string, unknown> | null }>(rawData: RedisHashData | null): T | null {
   if (!rawData) return null;
@@ -85,6 +94,12 @@ function parseRedisHashData<T extends { metadata?: Record<string, unknown> | nul
     try { parsed.metadata = JSON.parse(parsed.metadata); } catch { parsed.metadata = null; }
   }
   return parsed as T;
+}
+
+// Overload for generic objects without metadata
+function parseRedisHashDataGeneric<T extends object>(rawData: RedisHashData | null): T | null {
+  if (!rawData) return null;
+  return { ...rawData } as T;
 }
 
 // --- Primary Key Helper ---
@@ -102,6 +117,27 @@ export function getPrimaryKeyForTable(tableName: string): string | string[] {
     default:
       return 'id';
   }
+}
+
+// --- TableName mapping and type guard ---
+const upstashToSupabaseTable: Record<string, TableName> = {
+  user: 'users',
+  workflow: 'workflows',
+  tool_execution: 'tools',
+  workflow_node: 'workflow_steps',
+  log_entry: 'events',
+  settings: 'settings',
+  system_metric: 'model_performance',
+  trace: 'traces',
+  span: 'spans',
+  event: 'events',
+  provider: 'agents',
+  model: 'models',
+  auth_provider: 'agent_personas',
+  dashboard_config: 'documents',
+};
+export function getSupabaseTableName(entityType: string): TableName | undefined {
+  return upstashToSupabaseTable[entityType];
 }
 
 // --- Thread Operations ---
@@ -354,7 +390,7 @@ export async function trackThreadWorkflowNode(node: WorkflowNode) {
 /**
  * Generic create for any entity type (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function createRedisEntity<T extends { metadata?: Record<string, unknown> | null; id?: string }>(
+export async function createRedisEntity<T extends object>(
   entityType: string,
   entity: T,
   schema?: z.ZodType<T>
@@ -362,16 +398,25 @@ export async function createRedisEntity<T extends { metadata?: Record<string, un
   try {
     if (schema) schema.parse(entity);
     const redis = getRedisClient();
-    const id = entity.id || generateId();
+    const id = (entity as { id?: string }).id || generateId();
     const key = `${entityType}:${id}`;
-    await redis.hset(key, prepareDataForRedis({ ...entity, id }));
+    // Use correct prepareDataForRedis overload
+    const redisData = 'metadata' in entity
+      ? prepareDataForRedis(entity as { metadata?: Record<string, unknown> | null })
+      : prepareDataForRedisGeneric({ ...entity, id });
+    await redis.hset(key, redisData);
     await redis.sadd(`${entityType}:ids`, id);
     return { ...entity, id };
   } catch (err) {
     await logError('redis-store', `Failed to create entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      // Fallback to Supabase/LibSQL
-      return createItem<T>(entityType, entity);
+      const supabaseTable = getSupabaseTableName(entityType);
+      if (supabaseTable) {
+        return createItem(
+          supabaseTable,
+          entity as TableInsert<typeof supabaseTable>
+        ) as Promise<TableRow<typeof supabaseTable>> as unknown as Promise<T>;
+      }
     }
     throw new RedisStoreError(`Failed to create entity: ${entityType}`, err);
   }
@@ -380,7 +425,7 @@ export async function createRedisEntity<T extends { metadata?: Record<string, un
 /**
  * Generic get by ID for any entity type
  */
-export async function getRedisEntityById<T extends { metadata?: Record<string, unknown> | null }>(entityType: string, id: string): Promise<T | null> {
+export async function getRedisEntityById<T extends object>(entityType: string, id: string): Promise<T | null> {
   try {
     const redis = getRedisClient();
     const data = await redis.hgetall(`${entityType}:${id}`);
@@ -388,7 +433,10 @@ export async function getRedisEntityById<T extends { metadata?: Record<string, u
   } catch (err) {
     await logError('redis-store', `Failed to get entity by id: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      return getItemById<T>(entityType, id);
+      const supabaseTable = getSupabaseTableName(entityType);
+      if (supabaseTable) {
+        return getItemById(supabaseTable, id) as Promise<TableRow<typeof supabaseTable> | null> as unknown as Promise<T | null>;
+      }
     }
     throw new RedisStoreError(`Failed to get entity by id: ${entityType}`, err);
   }
@@ -397,7 +445,7 @@ export async function getRedisEntityById<T extends { metadata?: Record<string, u
 /**
  * Generic update for any entity type
  */
-export async function updateRedisEntity<T extends { metadata?: Record<string, unknown> | null; id: string }>(entityType: string, id: string, updates: Partial<T>, schema?: z.ZodType<T>): Promise<T | null> {
+export async function updateRedisEntity<T extends object>(entityType: string, id: string, updates: Partial<T>, schema?: z.ZodType<T>): Promise<T | null> {
   try {
     if (schema) schema.parse({ ...updates, id });
     const redis = getRedisClient();
@@ -410,7 +458,14 @@ export async function updateRedisEntity<T extends { metadata?: Record<string, un
   } catch (err) {
     await logError('redis-store', `Failed to update entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      return updateItem<T>(entityType, id, updates);
+      const supabaseTable = getSupabaseTableName(entityType);
+      if (supabaseTable) {
+        return updateItem(
+          supabaseTable,
+          id,
+          updates as TableUpdate<typeof supabaseTable>
+        ) as Promise<TableRow<typeof supabaseTable> | null> as unknown as Promise<T | null>;
+      }
     }
     throw new RedisStoreError(`Failed to update entity: ${entityType}`, err);
   }
@@ -429,7 +484,10 @@ export async function deleteRedisEntity(entityType: string, id: string): Promise
   } catch (err) {
     await logError('redis-store', `Failed to delete entity: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      return deleteItem(entityType, id);
+      const supabaseTable = getSupabaseTableName(entityType);
+      if (supabaseTable) {
+        return deleteItem(supabaseTable, id);
+      }
     }
     throw new RedisStoreError(`Failed to delete entity: ${entityType}`, err);
   }
@@ -438,7 +496,7 @@ export async function deleteRedisEntity(entityType: string, id: string): Promise
 /**
  * Generic list/search for any entity type (with optional filters, order, pagination)
  */
-export async function listRedisEntities<T extends { metadata?: Record<string, unknown> | null }>(
+export async function listRedisEntities<T extends object>(
   entityType: string,
   options?: ListEntitiesOptions
 ): Promise<T[]> {
@@ -455,13 +513,10 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
       if (!data) return null;
       return parseRedisHashData<T>(data as RedisHashData);
     }).filter((e): e is T => !!e);
-    // Convert filters from Record<string, unknown> to Array<{ field, operator, value }>
     if (options?.filters) {
       const filterArray = Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }));
       entities = applyFilters(entities, filterArray);
     }
-    // Remove references to options.orderBy (not in ListEntitiesOptions)
-    // Support sortBy/sortOrder if present
     if (options?.sortBy) {
       entities = applyOrdering(entities, { column: options.sortBy, ascending: options.sortOrder !== 'DESC' });
     }
@@ -471,24 +526,20 @@ export async function listRedisEntities<T extends { metadata?: Record<string, un
   } catch (err) {
     await logError('redis-store', `Failed to list entities: ${entityType}`, toLoggerError(err));
     if (shouldFallbackToBackup()) {
-      // Fallback to Supabase/LibSQL
-      let fallbackOptions: QueryOptions | undefined = undefined;
-      if (options) {
-        const queryFilters = options.filters
-          ? Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }))
-          : undefined;
-        const orderBy = options.sortBy
-          ? { column: options.sortBy, ascending: options.sortOrder !== 'DESC' }
-          : undefined;
-        fallbackOptions = {
-          limit: options.limit,
-          offset: options.offset,
-          filters: queryFilters,
-          orderBy,
-          select: options.select,
+      const supabaseTable = getSupabaseTableName(entityType);
+      if (supabaseTable) {
+        // Map ListEntitiesOptions to QueryOptions for Supabase
+        const queryOptions: QueryOptions = {
+          select: options?.select,
+          filters: options?.filters
+            ? Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }))
+            : undefined,
+          orderBy: options?.sortBy ? { column: options.sortBy, ascending: options.sortOrder !== 'DESC' } : undefined,
+          limit: options?.limit,
+          offset: options?.offset,
         };
+        return getData(supabaseTable, queryOptions) as Promise<TableRow<typeof supabaseTable>[]> as unknown as Promise<T[]>;
       }
-      return getData<T>(entityType, fallbackOptions);
     }
     throw new RedisStoreError(`Failed to list entities: ${entityType}`, err);
   }
