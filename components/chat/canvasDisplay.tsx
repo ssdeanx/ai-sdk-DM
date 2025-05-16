@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useRef, useEffect, useState, KeyboardEvent } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import styles from './canvasDisplay.module.css';
 // Import xterm.js and the canvas addon
-import { Terminal } from "xterm";
+import { Terminal } from "@xterm/xterm";
 import { CanvasAddon } from "@xterm/addon-canvas";
 import "xterm/css/xterm.css";
-import type { IKeyboardEvent } from "xterm";
 
 export interface CanvasDisplayProps {
   width?: number;
   height?: number;
   className?: string;
-  style?: React.CSSProperties;
   draw?: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void;
   children?: React.ReactNode;
   terminal?: boolean; // If true, show a terminal in the canvas
@@ -31,7 +30,6 @@ export function CanvasDisplay({
   width = 600,
   height = 400,
   className,
-  style,
   draw,
   children,
   terminal = false,
@@ -77,7 +75,7 @@ export function CanvasDisplay({
       xterm.write('\r\n$ ');
     };
     prompt();
-    xterm.onKey(({ key, domEvent }: { key: string; domEvent: KeyboardEvent | IKeyboardEvent }) => {
+    xterm.onKey(({ key, domEvent }: { key: string; domEvent: KeyboardEvent }) => {
       if (domEvent.key === 'Enter') {
         prompt();
       } else if (domEvent.key === 'Backspace') {
@@ -96,21 +94,21 @@ export function CanvasDisplay({
   }, [terminal, terminalOptions, terminalWelcomeMessage, term]);
 
   return (
-    <div className={cn("flex flex-col gap-2", className)} style={style}>
+    <div className={cn(styles.canvasDisplayRoot, className)}>
       <canvas
         ref={canvasRef}
         width={width}
         height={height}
-        style={{ border: "1px solid #ccc", background: "#18181b", borderRadius: 8, width: "100%", maxWidth: width, ...style }}
+        className={styles.canvas}
       />
       {terminal && (
         <div
           ref={terminalRef}
-          style={{ width: width, height: height, background: "#18181b", borderRadius: 8, overflow: "hidden" }}
+          className={styles.terminal}
         />
       )}
       {children && <div className="hidden">{children}</div>}
-      {isDrawing && <div className="text-xs text-muted-foreground">Drawing...</div>}
+      {isDrawing && <div className={styles.drawingStatus}>Drawing...</div>}
     </div>
   );
 }

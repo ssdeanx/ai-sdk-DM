@@ -497,6 +497,8 @@ export function AiSdkChat({
                   className="hidden"
                   multiple
                   onChange={(e) => handleFileUpload(e.target.files)}
+                  title="Attach files"
+                  placeholder="Attach files"
                 />
               </div>
               <div className="text-xs text-muted-foreground">
@@ -525,6 +527,7 @@ export function AiSdkChat({
                 className="w-full p-2 border rounded-md bg-background text-foreground"
                 value={selectedProvider}
                 onChange={(e) => setSelectedProvider(e.target.value)}
+                aria-label="Select Provider"
               >
                 <option value="all">All Providers</option>
               </select>
@@ -537,6 +540,8 @@ export function AiSdkChat({
                 className="w-full p-2 border rounded-md bg-background text-foreground"
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
+                aria-label="Select Model"
+                title="Select a model"
               >
                 <option value={modelId}>{modelId}</option>
               </select>
@@ -544,8 +549,7 @@ export function AiSdkChat({
 
             <div className="space-y-2">
               <div className="flex justify-between">
-                <Label htmlFor="temperature">Temperature: {selectedTemperature.toFixed(1)}</Label>
-              </div>
+                <Label htmlFor="temperature">Temperature: {selectedTemperature.toFixed(1)}</Label>              </div>
               <input
                 id="temperature"
                 type="range"
@@ -555,6 +559,8 @@ export function AiSdkChat({
                 value={selectedTemperature}
                 onChange={(e) => setSelectedTemperature(parseFloat(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                title="Temperature"
+                aria-label="Temperature"
               />
             </div>
 
@@ -571,6 +577,8 @@ export function AiSdkChat({
                 value={selectedMaxTokens}
                 onChange={(e) => setSelectedMaxTokens(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                title="Max tokens"
+                aria-label="Max tokens"
               />
             </div>
 

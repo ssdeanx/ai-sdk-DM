@@ -17,6 +17,7 @@ import { InteractiveForm, type FormField as InteractiveFormField, type Interacti
 import { AudioPlayer, type AudioPlayerProps } from './audio-player';
 import { ModelViewer, type ModelViewerProps } from './model-viewer';
 import { CanvasDisplay } from './canvasDisplay';
+import styles from './ai-sdk-chatHelper.module.css';
 
 // --- Zod Schemas for Component Props ---
 
@@ -193,26 +194,19 @@ export interface ParseErrorDisplayProps {
 }
 
 const ParseErrorDisplay: React.FC<ParseErrorDisplayProps> = ({ componentName, errorMessage, originalText, validationErrors }) => (
-  <div style={{
-    border: '1px solid #ff4d4f',
-    backgroundColor: '#fff1f0',
-    padding: '12px',
-    margin: '8px 0',
-    borderRadius: '4px',
-    fontFamily: 'monospace',
-    fontSize: '0.9em'
-  }}>
-    <p style={{ color: '#cf1322', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+  <div className={styles.parseErrorRoot}>
+    <p className={styles.parseErrorTitle}>
       Error rendering &lt;{componentName}&gt;:
     </p>
-    <p style={{ color: '#d4380d', margin: '0 0 8px 0' }}>{errorMessage}</p>
+    <p className={styles.parseErrorMessage}>{errorMessage}</p>
     {validationErrors && (
-      <pre style={{ whiteSpace: 'pre-wrap', color: '#595959', background: '#f0f0f0', padding: '8px', borderRadius: '3px', maxHeight: '150px', overflowY: 'auto' }}>
+      <pre className={styles.parseErrorPre}>
         {JSON.stringify(validationErrors, null, 2)}
       </pre>
     )}
-    <p style={{ marginTop: '8px', fontStyle: 'italic', color: '#8c8c8c' }}>
-      Original text: <code style={{ background: '#f0f0f0', padding: '2px 4px', borderRadius: '3px' }}>{originalText}</code>
+    <p className={styles.parseErrorOriginalLabel}>
+      Original text:
+      <code className={styles.parseErrorCode}>{originalText}</code>
     </p>
   </div>
 );

@@ -1,0 +1,38 @@
+.parseErrorRoot {
+  background: #fff7f7;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  color: #cf1322;
+  font-size: 0.95rem;
+}
+.parseErrorTitle {
+  color: #cf1322;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+}
+.parseErrorMessage {
+  color: #d4380d;
+  margin: 0 0 8px 0;
+}
+.parseErrorPre {
+  white-space: pre-wrap;
+  color: #595959;
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 3px;
+  max-height: 150px;
+  overflow-y: auto;
+  margin: 0 0 8px 0;
+}
+.parseErrorOriginalLabel {
+  margin-top: 8px;
+  font-style: italic;
+  color: #8c8c8c;
+}
+.parseErrorCode {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
