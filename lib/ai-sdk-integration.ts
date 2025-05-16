@@ -29,7 +29,7 @@ import { createTrace, logEvent } from "./langfuse-integration";
 import { getAllBuiltInTools, loadCustomTools } from "./tools";
 import { agenticTools } from "./tools/agentic";
 import { personaManager } from "./agents/personas/persona-manager";
-import { modelRegistry, ModelSettings } from "./models/model-registry";
+import { modelRegistry, type ModelSettings } from "./models/model-registry";
 import { getModelById, getModelByModelId } from "./models/model-service";
 import { z } from "zod";
 import { upstashLogger } from "./memory/upstash/upstash-logger";
@@ -105,16 +105,30 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
       model = regModel;
     } else {
       const dbModel = await getModelById(modelId);
-      if (dbModel && (dbModel as any).provider === "google-vertex") {
-        model = { ...dbModel, provider: "vertex" } as ModelSettings;
-      } else if (dbModel) {
-        model = dbModel;
+      if (dbModel && dbModel.provider) {
+        // Normalize provider to match allowed values
+        const normalizedProvider = dbModel.provider === "google-vertex" ? "vertex" : dbModel.provider;
+        model = {
+          ...dbModel,
+          provider: ["custom","google","openai","anthropic","vertex"].includes(String(normalizedProvider)) ? normalizedProvider as ("custom"|"google"|"openai"|"anthropic"|"vertex") : "custom",
+          category: ["text","chat","multimodal","image","video","audio","embedding","fine-tuning"].includes(String(dbModel.category)) ? dbModel.category as ("text"|"chat"|"multimodal"|"image"|"video"|"audio"|"embedding"|"fine-tuning") : "text",
+          capabilities: dbModel.capabilities ?? {},
+          created_at: dbModel.created_at ?? new Date().toISOString(),
+          updated_at: dbModel.updated_at ?? new Date().toISOString(),
+        };
       } else {
         const modelIdModel = await getModelByModelId(modelId);
-        if (modelIdModel && (modelIdModel as any).provider === "google-vertex") {
-          model = { ...modelIdModel, provider: "vertex" } as ModelSettings;
-        } else if (modelIdModel) {
-          model = modelIdModel;
+        if (modelIdModel && modelIdModel.provider) {
+          // Normalize provider to match allowed values
+          const normalizedProvider2 = modelIdModel.provider === "google-vertex" ? "vertex" : modelIdModel.provider;
+          model = {
+            ...modelIdModel,
+            provider: ["custom","google","openai","anthropic","vertex"].includes(String(normalizedProvider2)) ? normalizedProvider2 as ("custom"|"google"|"openai"|"anthropic"|"vertex") : "custom",
+            category: ["text","chat","multimodal","image","video","audio","embedding","fine-tuning"].includes(String(modelIdModel.category)) ? modelIdModel.category as ("text"|"chat"|"multimodal"|"image"|"video"|"audio"|"embedding"|"fine-tuning") : "text",
+            capabilities: modelIdModel.capabilities ?? {},
+            created_at: modelIdModel.created_at ?? new Date().toISOString(),
+            updated_at: modelIdModel.updated_at ?? new Date().toISOString(),
+          };
         }
       }
     }
@@ -133,11 +147,12 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
  */
 function extractPersonaId(metadata: unknown): string | undefined {
   if (!metadata || typeof metadata !== 'object') return undefined;
-  if ('personaId' in metadata && typeof (metadata as any).personaId === 'string') {
-    return (metadata as any).personaId;
+  const meta = metadata as Record<string, unknown>;
+  if ('personaId' in meta && typeof meta.personaId === 'string') {
+    return meta.personaId;
   }
-  if ('persona_id' in metadata && typeof (metadata as any).persona_id === 'string') {
-    return (metadata as any).persona_id;
+  if ('persona_id' in meta && typeof meta.persona_id === 'string') {
+    return meta.persona_id;
   }
   return undefined;
 }
@@ -296,7 +311,7 @@ export async function streamWithAISDK({
   });
   const traceId = traceObj?.id;
   try {
-    const personaId = extractPersonaId(metadata);
+    const personaId = metadata ? extractPersonaId(metadata) : undefined;
     const startTime = Date.now();
     let result;
     switch (provider) {
@@ -459,7 +474,7 @@ export async function generateWithAISDK({
   });
   const traceId = traceObj?.id;
   try {
-    const personaId = extractPersonaId(metadata);
+    const personaId = metadata ? extractPersonaId(metadata) : undefined;
     const startTime = Date.now();
     let result;
     switch (provider) {

@@ -51,7 +51,7 @@ export const workflows = pgTable('workflows', {
 export const models = pgTable('models', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
-  provider: text('provider').notNull(),
+  provider_id: uuid('provider_id').notNull().references(() => providers.id, { onDelete: 'restrict' }), // FK to providers
   model_id: text('model_id').notNull(), // Provider's specific model ID/name
   max_tokens: integer('max_tokens').notNull().default(8192),
   input_cost_per_token: numeric('input_cost_per_token', { precision: 10, scale: 7 }).notNull().default('0.0'),
@@ -79,6 +79,18 @@ export const models = pgTable('models', {
   status: text('status').notNull().default('active'), // e.g., 'active', 'deprecated', 'beta'
   ...standardTimestamps(),
 })
+
+// Providers table
+export const providers = pgTable('providers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  display_name: text('display_name'),
+  api_key: text('api_key'), // Can be null if using a central proxy or service that handles keys
+  base_url: text('base_url'),
+  status: text('status').notNull().default('active'), // e.g., 'active', 'deprecated', 'beta'
+  metadata: jsonb('metadata').default({}),
+  ...standardTimestamps(),
+});
 
 // Agent Personas table
 export const agent_personas = pgTable('agent_personas', {
@@ -474,6 +486,21 @@ export const scheduled_task_runs = pgTable('scheduled_task_runs', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+// Apps table
+export const apps = pgTable('apps', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  description: text('description').notNull(),
+  type: text('type').notNull(),
+  code: text('code').notNull(),
+  parameters_schema: jsonb('parameters_schema'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+// --- Upstash/adapter note ---
+// This table structure is compatible with both Supabase and Upstash adapter (see lib/memory/supabase.ts and lib/memory/upstash/supabase-adapter.ts)
+// All CRUD operations for 'apps' should use the generic getData, createItem, updateItem, deleteItem helpers for cross-backend support.
 
 // --- Drizzle Relations ---
 
@@ -489,11 +516,12 @@ export const workflowsRelations = relations(workflows, ({ many }) => ({
   steps: many(workflow_steps, { relationName: 'WorkflowSteps' }),
 }));
 
-export const modelsRelations = relations(models, ({ many }) => ({
+export const modelsRelations = relations(models, ({ many, one }) => ({
   agents: many(agents, { relationName: 'ModelAgents' }),
   modelPerformances: many(model_performance, { relationName: 'ModelPerformances' }),
   modelCosts: many(model_costs, { relationName: 'ModelCosts' }),
   modelEvaluations: many(model_evaluations, { relationName: 'ModelEvaluations' }),
+  provider: one(providers, { fields: [models.provider_id], references: [providers.id], relationName: 'ProviderModels' }),
 }));
 
 export const agentPersonasRelations = relations(agent_personas, ({ many }) => ({

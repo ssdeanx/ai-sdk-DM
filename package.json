@@ -56,6 +56,7 @@
     "@ai-sdk/react": "^1.2.12",
     "@ai-sdk/rsc": "1.0.0-canary.22",
     "@babel/runtime": "^7.27.1",
+    "@codemirror-toolkit/react": "^0.7.1",
     "@codemirror/autocomplete": "^6.18.6",
     "@codemirror/commands": "^6.8.1",
     "@codemirror/lang-javascript": "^6.2.4",

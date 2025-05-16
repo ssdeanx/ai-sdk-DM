@@ -86,6 +86,9 @@ importers:
       '@babel/runtime':
         specifier: ^7.27.1
         version: 7.27.1
+      '@codemirror-toolkit/react':
+        specifier: ^0.7.1
+        version: 0.7.1(@codemirror/state@6.5.2)(@codemirror/view@6.36.8)(@types/react-dom@19.1.5(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@codemirror/autocomplete':
         specifier: ^6.18.6
         version: 6.18.6
@@ -1207,6 +1210,21 @@ packages:
 
   '@chevrotain/utils@11.0.3':
     resolution: {integrity: sha512-YslZMgtJUyuMbZ+aKvfF3x1f5liK4mWNxghFRv7jqRR9C3R3fAOGTTKvxXDa2Y1s9zSbcpuO0cAxDYsc9SrXoQ==}
+
+  '@codemirror-toolkit/react@0.7.1':
+    resolution: {integrity: sha512-Codg/DB5pCkLJmfP+YsMDrLK5SYlBzCivsER+VtRFZTMYDqcaWmdO2LKe+98N9poNNuMqnv/lRxxtxyWYlc93g==}
+    peerDependencies:
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+      '@types/react': '>=16.7.0'
+      '@types/react-dom': '>=16.7.0'
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
 
   '@codemirror/autocomplete@6.18.6':
     resolution: {integrity: sha512-PHHBXFomUs5DF+9tCOM/UoW6XQ4R44lLNNhRaW9PKPTU0D7lIjRg3ElxaJnTwsl/oHiR93WSXDBrekhoUGCPtg==}
@@ -9533,6 +9551,16 @@ snapshots:
   '@chevrotain/types@11.0.3': {}
 
   '@chevrotain/utils@11.0.3': {}
+
+  '@codemirror-toolkit/react@0.7.1(@codemirror/state@6.5.2)(@codemirror/view@6.36.8)(@types/react-dom@19.1.5(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@codemirror/state': 6.5.2
+      '@codemirror/view': 6.36.8
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+    optionalDependencies:
+      '@types/react': 19.1.4
+      '@types/react-dom': 19.1.5(@types/react@19.1.4)
 
   '@codemirror/autocomplete@6.18.6':
     dependencies:

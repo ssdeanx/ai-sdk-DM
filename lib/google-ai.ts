@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
-import { streamText, generateText } from "ai"
-import { getSupabaseClient } from "./memory/supabase"
+import { streamText, generateText, convertToCoreMessages, type ToolSet } from "ai"
+import { getModelById } from "./models/model-service";
+import type { ModelSettings } from "./models/model-registry";
 
 // Define model configuration type
 export interface ModelConfig {
@@ -342,50 +343,101 @@ export function getGoogleAI(apiKey?: string, baseURL?: string) {
   })
 }
 
-// Get model configuration from Supabase or default configs
-export async function getModelConfig(modelId: string) {
+// Get model configuration from Model Service (Upstash/Supabase/Registry) or default configs
+export async function getModelConfig(modelId: string): Promise<ModelSettings> {
   // Check if we have a default configuration for this model
-  const normalizedModelId = modelId.startsWith("models/") ? modelId : `models/${modelId}`
+  const normalizedModelId = modelId.startsWith("models/") ? modelId : `models/${modelId}`;
 
-  if (GOOGLE_MODEL_CONFIGS[modelId] || GOOGLE_MODEL_CONFIGS[normalizedModelId]) {
-    return GOOGLE_MODEL_CONFIGS[modelId] || GOOGLE_MODEL_CONFIGS[normalizedModelId]
+  const staticConfig = GOOGLE_MODEL_CONFIGS[modelId] || GOOGLE_MODEL_CONFIGS[normalizedModelId];
+  if (staticConfig) {
+    // Fill in missing ModelSettings fields with defaults
+    return {
+      id: staticConfig.model_id,
+      name: staticConfig.model_id,
+      provider: "google",
+      model_id: staticConfig.model_id,
+      max_tokens: staticConfig.max_tokens ?? 8192,
+      input_cost_per_token: 0,
+      output_cost_per_token: 0,
+      supports_vision: staticConfig.supports_vision ?? false,
+      supports_functions: staticConfig.supports_functions ?? false,
+      supports_streaming: staticConfig.supports_streaming ?? false,
+      default_temperature: staticConfig.default_temperature ?? 0.7,
+      default_top_p: 1.0,
+      default_frequency_penalty: 0,
+      default_presence_penalty: 0,
+      context_window: staticConfig.context_window ?? 8192,
+      status: "active",
+      base_url: staticConfig.base_url ?? undefined,
+      api_key: staticConfig.api_key ?? undefined,
+      description: undefined,
+      category: "text",
+      capabilities: staticConfig.capabilities ?? {},
+      metadata: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
 
-  // If not in default configs, try to get from Supabase
+  // Try to get from model service (which handles registry, DB, and type safety)
   try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("models").select("*").eq("id", modelId).single()
-
-    if (error) {
-      console.error("Error fetching model config:", error)
-      // Fall back to a default configuration
-      return {
-        model_id: modelId,
-        provider: "google",
-        max_tokens: 8192,
-        context_window: 32768,
-        supports_vision: modelId.includes("vision") || modelId.includes("pro"),
-        supports_functions: true,
-        supports_streaming: true,
-        default_temperature: 0.7,
-      }
-    }
-
-    return data
-  } catch (error) {
-    console.error("Error accessing Supabase:", error)
+    const data = await getModelById(modelId);
+    if (!data) throw new Error("Model not found");
+    // Patch: ensure provider is 'google' for Google models
+    return { ...data, provider: "google" } as ModelSettings;
+  } catch {
     // Fall back to a default configuration
     return {
-      model_id: modelId,
+      id: modelId,
+      name: modelId,
       provider: "google",
+      model_id: modelId,
       max_tokens: 8192,
-      context_window: 32768,
+      input_cost_per_token: 0,
+      output_cost_per_token: 0,
       supports_vision: modelId.includes("vision") || modelId.includes("pro"),
       supports_functions: true,
       supports_streaming: true,
       default_temperature: 0.7,
-    }
+      default_top_p: 1.0,
+      default_frequency_penalty: 0,
+      default_presence_penalty: 0,
+      context_window: 32768,
+      status: "active",
+      base_url: undefined,
+      api_key: undefined,
+      description: undefined,
+      category: "text",
+      capabilities: {},
+      metadata: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
+}
+
+// See: https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
+
+// Helper to extract provider config from model settings (handles joined providers table)
+function getProviderConfig(model: ModelSettings): { apiKey?: string; baseUrl?: string } {
+  // Prefer joined providers table, then model, then env
+  const providers = (typeof model === 'object' && 'providers' in model)
+    ? (model as { providers?: { api_key?: string; base_url?: string } }).providers
+    : undefined;
+  return {
+    apiKey: providers?.api_key || model.api_key || process.env.GOOGLE_API_KEY,
+    baseUrl: providers?.base_url ?? model.base_url ?? undefined,
+  };
+}
+
+// Type guard for ToolSet (basic check)
+function isToolSet(tools: unknown): tools is ToolSet {
+  if (!tools || typeof tools !== "object") return false;
+  const values = Object.values(tools) as unknown[];
+  return values.length > 0 && values.every(
+    (t): t is { execute: (...args: unknown[]) => unknown } =>
+      typeof t === "object" && t !== null && typeof (t as { execute?: unknown }).execute === "function"
+  );
 }
 
 // Stream text with Google AI
@@ -399,37 +451,28 @@ export async function streamGoogleAI({
   baseURL,
 }: {
   modelId: string
-  messages: any[]
+  messages: Array<{ role: "system" | "user" | "assistant" | "data"; content: string }>
   temperature?: number
   maxTokens?: number
-  tools?: Record<string, any>
+  tools?: ToolSet
   apiKey?: string
   baseURL?: string
 }) {
-  try {
-    let modelConfig
-
-    // Get model configuration
-    modelConfig = await getModelConfig(modelId)
-
-    // Initialize Google AI
-    const googleAI = getGoogleAI(apiKey, baseURL)
-    const model = googleAI(modelConfig.model_id)
-
-    // Stream the response
-    const result = streamText({
-      model,
-      messages,
-      temperature,
-      maxTokens,
-      ...(Object.keys(tools).length > 0 ? { tools } : {}),
-    })
-
-    return result
-  } catch (error) {
-    console.error("Error streaming Google AI response:", error)
-    throw error
-  }
+  const modelConfig = await getModelConfig(modelId);
+  const { apiKey: providerApiKey, baseUrl: providerBaseUrl } = getProviderConfig(modelConfig);
+  const googleAI = getGoogleAI(
+    apiKey || providerApiKey,
+    baseURL || providerBaseUrl
+  );
+  const model = googleAI(modelConfig.model_id);
+  const coreMessages = convertToCoreMessages(messages, isToolSet(tools) ? { tools } : undefined);
+  return streamText({
+    model,
+    messages: coreMessages,
+    temperature,
+    maxTokens,
+    ...(isToolSet(tools) ? { tools } : {}),
+  });
 }
 
 // Generate text with Google AI (non-streaming)
@@ -443,36 +486,37 @@ export async function generateGoogleAI({
   baseURL,
 }: {
   modelId: string
-  messages: any[]
+  messages: Array<{ role: "system" | "user" | "assistant" | "data"; content: string }>
   temperature?: number
   maxTokens?: number
-  tools?: Record<string, any>
+  tools?: ToolSet
   apiKey?: string
   baseURL?: string
 }) {
-  try {
-    // Get model configuration if not provided
-    let modelConfig
-
-    // Get model configuration
-    modelConfig = await getModelConfig(modelId)
-
-    // Initialize Google AI
-    const googleAI = getGoogleAI(apiKey, baseURL)
-    const model = googleAI(modelConfig.model_id)
-
-    // Generate the response
-    const result = await generateText({
-      model,
-      messages,
-      temperature,
-      maxTokens,
-      ...(Object.keys(tools).length > 0 ? { tools } : {}),
-    })
-
-    return result
-  } catch (error) {
-    console.error("Error generating Google AI response:", error)
-    throw error
-  }
+  const modelConfig = await getModelConfig(modelId);
+  const { apiKey: providerApiKey, baseUrl: providerBaseUrl } = getProviderConfig(modelConfig);
+  const googleAI = getGoogleAI(
+    apiKey || providerApiKey,
+    baseURL || providerBaseUrl
+  );
+  const model = googleAI(modelConfig.model_id);
+  const coreMessages = convertToCoreMessages(messages, isToolSet(tools) ? { tools } : undefined);
+  return generateText({
+    model,
+    messages: coreMessages,
+    temperature,
+    maxTokens,
+    ...(isToolSet(tools) ? { tools } : {}),
+  });
 }
+
+// ---
+// Docs:
+// https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
+// https://ai-sdk.dev/docs/reference/ai-sdk-ui/convert-to-core-messages
+// https://ai-sdk.dev/docs/reference/ai-sdk-ui/stream-text
+// https://ai-sdk.dev/docs/reference/ai-sdk-ui/generate-text
+// https://ai-sdk.dev/docs/reference/ai-sdk-ui/create-data-stream
+// https://ai-sdk.dev/docs/reference/ai-sdk-ui/create-data-stream-response
+// https://ai-sdk.dev/docs/reference/ai-sdk-ui/pipe-data-stream-to-response
+// ---

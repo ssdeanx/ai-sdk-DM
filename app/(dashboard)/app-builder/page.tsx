@@ -26,8 +26,9 @@ import CodeMirror from "@uiw/react-codemirror"
 import { javascript } from "@codemirror/lang-javascript"
 import { json } from "@codemirror/lang-json"
 import { vscodeDark } from "@uiw/codemirror-theme-vscode"
-import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import ChatBar from '@/components/appBuilder/chatBar';
+import CanvasDisplay from '@/components/appBuilder/canvasDisplay';
 
 // Define the form schema
 const appFormSchema = z.object({
@@ -73,18 +74,41 @@ export default function AppBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Fetch apps from the API
-  const {
-    data: apps,
-    isLoading,
-    error,
-    connectionError,
-    refresh: refreshApps
-  } = useSupabaseFetch<App>({
-    endpoint: "/api/apps",
-    resourceName: "Apps",
-    dataKey: "apps",
-  })
+  // Add state for canvas/terminal/code output
+  const [displayMode, setDisplayMode] = useState<'terminal' | 'canvas' | 'code'>('terminal');
+  const [displayContent, setDisplayContent] = useState('');
+
+  // App CRUD state
+  const [apps, setApps] = useState<App[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [connectionError, setConnectionError] = useState<boolean>(false);
+
+  // Example: handle chat message to update display (now used for output)
+  function handleChatMessage(message: string, _fullResponse?: { role: string; content: string }) {
+    setDisplayContent(message);
+    setDisplayMode('terminal'); // You can switch mode based on content if needed
+  }
+
+  // Fetch apps from the new API
+  async function fetchApps() {
+    setIsLoading(true);
+    setConnectionError(false);
+    try {
+      const res = await fetch('/api/ai-sdk/apps');
+      if (!res.ok) throw new Error('Failed to fetch apps');
+      const data = await res.json();
+      setApps(data.apps || []);
+    } catch (e) {
+      setConnectionError(true);
+      setApps([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
 
   const form = useForm<z.infer<typeof appFormSchema>>({
     resolver: zodResolver(appFormSchema),
@@ -186,7 +210,7 @@ async function execute(params) {
       }
 
       // Refresh the apps list
-      refreshApps()
+      fetchApps()
 
       // Close the dialog and reset form
       setOpen(false)
@@ -234,20 +258,8 @@ async function execute(params) {
       })
 
       // Refresh the apps list
-      refreshApps()
+      fetchApps()
     } catch (error) {
-      console.error("Error deleting app:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while deleting the app",
-        variant: "destructive",
-      })
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  async function handleRunTest() {
     setIsRunning(true)
     setTestOutput("")
 
@@ -305,6 +317,20 @@ async function execute(params) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* --- AI Chat + Output Section --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="flex flex-col h-full">
+          <ChatBar
+            apiEndpoint="/api/ai-sdk/chat"
+            className="h-full"
+            onMessageSend={handleChatMessage}
+          />
+        </div>
+        <div className="flex flex-col h-full">
+          <CanvasDisplay mode={displayMode} content={displayContent} className="h-full" />
+        </div>
+      </div>
+      {/* --- Existing App Builder UI --- */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">App Builder</h1>

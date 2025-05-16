@@ -36,7 +36,7 @@ import {
 
 // --- Upstash Client Utilities ---
 // These are re-exported for use in supabase.ts and other modules
-export { getRedisClient, getVectorClient, isUpstashAvailable } from './upstash/memoryStore';
+export { getRedisClient, getVectorClient, isUpstashRedisAvailable } from './upstash/upstashClients';
 export {
   RedisConfigSchema,
   VectorConfigSchema,
@@ -322,7 +322,7 @@ async function upstashFirst<T>(fnUpstash: () => Promise<T>, fnSupabase: () => Pr
 
 // Generic CRUD Functions
 
-type TableName = keyof Database['public']['Tables'];
+export type TableName = keyof Database['public']['Tables'];
 type TableRow<T extends TableName> = Database['public']['Tables'][T]['Row'];
 type TableInsert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
 type TableUpdate<T extends TableName> = Database['public']['Tables'][T]['Update'];
@@ -467,7 +467,7 @@ export async function createItem<T extends TableName>(
     async () => {
       const client = getSupabaseTransactionClient();
       if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const data = await client.from(tableName as any).create(item as Omit<TableRow<T>, 'id'>);
+      const data = await client.from(tableName as T).create(item as Omit<TableRow<T>, 'id'>);
       queryCache.clear();
       return data as TableRow<T>;
     },
@@ -476,14 +476,14 @@ export async function createItem<T extends TableName>(
       if (!isSupabaseClient(client)) throw new Error('Supabase not available');
       const result = await client
         .from(tableName as T)
-        .insert(item as unknown as Record<string, unknown>)
+        .insert([item] as TableInsert<T>[], options)
         .select(options?.select || "*")
         .single();
       if (result.error) throw result.error;
       queryCache.clear();
-      return result.data as unknown as TableRow<T>;
-    }    );
-
+      return result.data as TableRow<T>;
+    }
+  );
 }
 
 export async function updateItem<T extends TableName>(
@@ -496,22 +496,22 @@ export async function updateItem<T extends TableName>(
     async () => {
       const client = getSupabaseTransactionClient();
       if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const data = await client.from(tableName as any).update(id, itemUpdates);
+      const data = await client.from(tableName as T).update(id, itemUpdates);
       queryCache.clear();
-      return data as unknown as TableRow<T> | null;
+      return data as TableRow<T> | null;
     },
     async () => {
       const client = getSupabaseTransactionClient();
       if (!isSupabaseClient(client)) throw new Error('Supabase not available');
       const result = await client
         .from(tableName as T)
-        .update(itemUpdates as TableUpdate<T>)
-        .eq('id', id as keyof TableRow<T>)
+        .update(itemUpdates as TableUpdate<T>, options)
+        .eq('id', id)
         .select(options?.select || "*")
         .single();
       if (result.error) throw result.error;
       queryCache.clear();
-      return result.data as unknown as TableRow<T> | null;
+      return result.data as TableRow<T> | null;
     }
   );
 }
@@ -535,7 +535,7 @@ export async function deleteItem<T extends TableName>(
       const result = await client
         .from(tableName as T)
         .delete()
-        .eq('id', id as keyof TableRow<T>);
+        .eq('id', id);
       if (result.error) throw result.error;
       queryCache.clear();
       return { success: true };

@@ -78,6 +78,20 @@
       "when": 1746785552042,
       "tag": "0010_update_future_threads",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1747402493857,
+      "tag": "0011_--upstash-conn",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1747403791664,
+      "tag": "0012_--providers",
+      "breakpoints": true
     }
   ]
 }

@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     const modelSettings: ModelSettings = modelConfig || {
       id: model,
       name: model,
-      provider: modelProvider as import("@/lib/models/model-registry").ModelProvider,
+      provider: modelProvider as "google" | "openai" | "anthropic" | "custom" | "vertex",
       model_id: model,
       max_tokens: 8192,
       input_cost_per_token: 0,
