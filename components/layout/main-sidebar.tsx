@@ -9,8 +9,6 @@ import {
   motion,
   AnimatePresence,
   useMotionTemplate,
-  useMotionValue,
-  useSpring,
   useTransform,
   useScroll,
   useInView,
@@ -261,19 +259,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   // Get scroll position for parallax effects
   const { scrollY } = useScroll()
 
-  // Mouse position for hover effects
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-
-  // Spring animations for smoother motion
-  const springConfig = { stiffness: 300, damping: 30 }
-  const mouseXSpring = useSpring(mouseX, springConfig)
-  const mouseYSpring = useSpring(mouseY, springConfig)
-
-  // Transform values for 3D hover effects
-  const rotateX = useTransform(mouseYSpring, [0, 300], prefersReducedMotion ? [0, 0] : [2, -2])
-  const rotateY = useTransform(mouseXSpring, [0, 300], prefersReducedMotion ? [0, 0] : [-2, 2])
-
   // Gradient background animation with reduced motion preference
   const gradientRotate = useTransform(
     scrollY,
@@ -354,12 +339,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   const toggleSubmenu = (title: string) => {
     if (collapsed) return
     setOpenSubmenu((prev) => (prev === title ? null : title))
-  }
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const { left, top } = e.currentTarget.getBoundingClientRect()
-    mouseX.set(e.clientX - left)
-    mouseY.set(e.clientY - top)
   }
 
   // Use router for programmatic navigation
@@ -515,11 +494,7 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
       initial={false}
       animate={collapsed ? "collapsed" : "expanded"}
       variants={sidebarVariants}
-      onMouseMove={handleMouseMove}
       style={{
-        rotateX,
-        rotateY,
-        transformPerspective: 1000,
         width: `${sidebarWidth}px`,
         transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.3,0.1,0.3,1)',
       }}

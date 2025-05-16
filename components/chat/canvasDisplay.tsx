@@ -6,7 +6,6 @@ import styles from './canvasDisplay.module.css';
 // Import xterm.js and the canvas addon
 import { Terminal } from "@xterm/xterm";
 import { CanvasAddon } from "@xterm/addon-canvas";
-import "xterm/css/xterm.css";
 
 export interface CanvasDisplayProps {
   width?: number;

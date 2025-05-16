@@ -34,7 +34,6 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ModeToggle } from "@/components/layout/mode-toggle"
 import {
@@ -53,7 +52,6 @@ export const TopNavbar = memo(function TopNavbar() {
   const pathname = usePathname()
   // Router is used for programmatic navigation in production
   const router = useRouter()
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [showSignIn, setShowSignIn] = useState(false)
   const [showSignUp, setShowSignUp] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -96,9 +94,6 @@ export const TopNavbar = memo(function TopNavbar() {
   useEffect(() => {
     // Function to handle route changes
     function handleRouteChange() {
-      // Reset search when navigating
-      setIsSearchOpen(false)
-
       // Update notifications based on current path
       if (pathname.includes('/dashboard')) {
         setNotifications(3)
@@ -231,29 +226,8 @@ export const TopNavbar = memo(function TopNavbar() {
           </SheetContent>
         </Sheet>
 
-        {/* Search */}
-        <div className={cn("flex-1 md:grow-0", isSearchOpen ? "flex" : "hidden md:flex")}>
-          <form className="relative">
-            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search..."
-              className="h-8 w-full rounded-lg bg-background pl-8 md:w-[180px] lg:w-[240px]"
-            />
-          </form>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="ml-auto h-8 w-8 md:hidden"
-          onClick={() => setIsSearchOpen(!isSearchOpen)}
-        >
-          {isSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-          <span className="sr-only">Toggle search</span>
-        </Button>
-
-        <div className="flex flex-1 items-center justify-end space-x-2">
+        {/* Move right-side buttons to the left where search bar was */}
+        <div className="flex flex-1 items-center justify-end space-x-2 md:justify-end">
           <nav className="hidden md:flex items-center space-x-3">
             {/* Quick Navigation Buttons */}
             <motion.div
@@ -356,11 +330,6 @@ export const TopNavbar = memo(function TopNavbar() {
                 <motion.div
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  style={{
-                    rotateX,
-                    rotateY,
-                    transformPerspective: 1000
-                  }}
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
@@ -508,11 +477,6 @@ export const TopNavbar = memo(function TopNavbar() {
               initial={{ opacity: 0, x: -5 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.3 }}
-              style={{
-                rotateX,
-                rotateY,
-                transformPerspective: 1000
-              }}
             >
               <Button
                 variant="ghost"
@@ -570,11 +534,6 @@ export const TopNavbar = memo(function TopNavbar() {
               initial={{ opacity: 0, x: -5 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.4 }}
-              style={{
-                rotateX,
-                rotateY,
-                transformPerspective: 1000
-              }}
             >
               <Button
                 variant="gradient"
@@ -640,11 +599,6 @@ export const TopNavbar = memo(function TopNavbar() {
               initial={{ opacity: 0, x: -5 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: 0.5 }}
-              style={{
-                rotateX,
-                rotateY,
-                transformPerspective: 1000
-              }}
             >
               <Button
                 variant="ghost"
@@ -706,11 +660,6 @@ export const TopNavbar = memo(function TopNavbar() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3, delay: 0.6 }}
-                  style={{
-                    rotateX,
-                    rotateY,
-                    transformPerspective: 1000
-                  }}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                 >
