@@ -109,7 +109,6 @@ export const TopNavbar = memo(function TopNavbar() {
       }
 
       // Analytics tracking would go here in production
-      console.log(`Route changed to: ${pathname}`)
     }
 
     // Call the function once on mount
@@ -161,8 +160,11 @@ export const TopNavbar = memo(function TopNavbar() {
   return (
     <motion.header
       ref={headerRef}
-      className="sticky top-0 z-40 border-b backdrop-blur-md"
+      className="sticky top-0 z-40 border-b backdrop-blur-md w-full"
       style={{
+        width: '100vw',
+        left: 0,
+        right: 0,
         height: navbarHeight,
         backgroundColor: `rgba(var(--background), ${navbarOpacity.get()})`,
         borderColor: `rgba(var(--border), ${navbarOpacity.get() / 3})`,
@@ -172,7 +174,7 @@ export const TopNavbar = memo(function TopNavbar() {
       transition={{ duration: 0.3 }}
       onMouseMove={handleMouseMove}
     >
-      <div className="container flex h-full items-center">
+      <div className="flex h-full items-center w-full px-4 md:px-8">
         <div className="mr-4 hidden md:flex">
           <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
             <motion.div
@@ -1098,9 +1100,56 @@ const MobileNav = memo(function MobileNav({
           variant="gradient"
           size="sm"
           onClick={() => setShowSignUp(true)}
-          className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 border-none"
+          className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 border-none relative overflow-hidden shadow-lg"
         >
-          Sign Up
+          <motion.span
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            className="relative z-10"
+          >
+            Sign Up
+          </motion.span>
+          {/* Animated particles/gradient effect */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-green-400/30 via-blue-400/30 to-purple-400/30 blur-md"
+            animate={{
+              backgroundPosition: ['0% 0%', '100% 100%'],
+              opacity: [0.7, 1, 0.7],
+            }}
+            transition={{
+              duration: 6,
+              repeat: Infinity,
+              repeatType: 'reverse',
+              ease: 'linear',
+            }}
+          />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-white/30"
+              style={{
+                width: `${8 + Math.random() * 8}px`,
+                height: `${8 + Math.random() * 8}px`,
+                left: `${Math.random() * 90}%`,
+                top: `${Math.random() * 80}%`,
+                filter: 'blur(2px)',
+                zIndex: 1,
+              }}
+              animate={{
+                opacity: [0.7, 0.2, 0.7],
+                y: [0, Math.random() * 10 - 5, 0],
+                x: [0, Math.random() * 10 - 5, 0],
+              }}
+              transition={{
+                duration: 4 + Math.random() * 2,
+                repeat: Infinity,
+                repeatType: 'reverse',
+                ease: 'easeInOut',
+                delay: i * 0.2,
+              }}
+            />
+          ))}
         </Button>
       </div>
       <div className="flex items-center space-x-2">

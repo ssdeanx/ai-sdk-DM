@@ -1,4 +1,4 @@
- "use client"
+"use client"
 
 import type React from "react"
 
@@ -14,7 +14,6 @@ import {
   useTransform,
   useScroll,
   useInView,
-  MotionValue,
   useReducedMotion,
   useDragControls
 } from "framer-motion"
@@ -28,7 +27,6 @@ import {
   Network,
   FileText,
   Settings,
-  Home,
   BarChart3,
   Layers,
   Code,
@@ -37,18 +35,7 @@ import {
   Sparkles,
   Rocket,
   Activity,
-  LayoutDashboard,
-  Star,
-  PlusCircle,
-  GripVertical,
-  Pin,
-  PinOff,
-  Bookmark,
-  BookmarkPlus,
-  Search,
-  X,
-  Filter,
-  ArrowUpDown
+  LayoutDashboard
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -58,19 +45,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { DatabaseStatus } from "@/components/ui/database-status"
 import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
 import { useToast } from "@/components/ui/use-toast"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuGroup,
-  DropdownMenuShortcut
-} from "@/components/ui/dropdown-menu"
 
 interface MainSidebarProps {
   className?: string
@@ -86,6 +61,168 @@ interface NavItem {
   badge?: string | null
   shortcut?: string
 }
+
+// Enhanced navigation items with additional metadata
+const navItems: NavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    isPinned: true,
+    isNew: false,
+    badge: null,
+    shortcut: "d"
+  },
+  {
+    title: "Chat",
+    href: "/chat",
+    icon: <MessageSquare className="h-4 w-4" />,
+    isPinned: true,
+    isNew: false,
+    badge: null,
+    shortcut: "c"
+  },
+  {
+    title: "Demo Chat",
+    href: "/demo-chat",
+    icon: <Sparkles className="h-4 w-4" />,
+    isPinned: false,
+    isNew: true,
+    badge: "New",
+    shortcut: "n"
+  },
+  {
+    title: "Models",
+    href: "/models",
+    icon: <Database className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "m"
+  },
+  {
+    title: "Tools",
+    href: "/tools",
+    icon: <Wrench className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "t"
+  },
+  {
+    title: "Agents",
+    href: "/agents",
+    icon: <Bot className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "a"
+  },
+  {
+    title: "Workflows",
+    href: "/workflows",
+    icon: <Zap className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "w"
+  },
+  {
+    title: "Analytics",
+    href: "/analytics",
+    icon: <BarChart3 className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "y"
+  },
+  {
+    title: "Content",
+    href: "#",
+    icon: <FileText className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "o",
+    submenu: [
+      {
+        title: "Blog",
+        href: "/blog",
+        icon: <FileText className="h-4 w-4" />,
+        isPinned: false,
+        isNew: false,
+        badge: null,
+        shortcut: "b"
+      },
+      {
+        title: "MDX Builder",
+        href: "/mdx-builder",
+        icon: <Layers className="h-4 w-4" />,
+        isPinned: false,
+        isNew: true,
+        badge: "Beta",
+        shortcut: "x"
+      },
+      {
+        title: "Code Editor",
+        href: "/code-editor",
+        icon: <Code className="h-4 w-4" />,
+        isPinned: false,
+        isNew: false,
+        badge: null,
+        shortcut: "e"
+      },
+    ],
+  },
+  {
+    title: "Networks",
+    href: "/networks",
+    icon: <Network className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "k"
+  },
+  {
+    title: "Team",
+    href: "/team",
+    icon: <Users className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "u"
+  },
+  {
+    title: "Deployment",
+    href: "/deployment",
+    icon: <Rocket className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "p"
+  },
+  {
+    title: "Observability",
+    href: "/observability",
+    icon: <Activity className="h-4 w-4" />,
+    isPinned: false,
+    isNew: true,
+    badge: "New",
+    shortcut: "v"
+  },
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: <Settings className="h-4 w-4" />,
+    isPinned: false,
+    isNew: false,
+    badge: null,
+    shortcut: "s"
+  },
+]
+
+// Define a type for statusData[0]
+type StatusData = { supabase?: boolean; libsql?: boolean };
 
 /**
  * MainSidebar Component
@@ -104,9 +241,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   const [collapsed, setCollapsed] = useState(false)
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
-  const [pinnedItems, setPinnedItems] = useState<string[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showSearch, setShowSearch] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(240)
   const [isDragging, setIsDragging] = useState(false)
@@ -119,7 +253,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   // Refs for animations and interactions
   const sidebarRef = useRef<HTMLDivElement>(null)
   const navRef = useRef<HTMLDivElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
   const resizeHandleRef = useRef<HTMLDivElement>(null)
 
   // Check if nav is in view for animations
@@ -166,7 +299,7 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   )
 
   // Handle resize functionality
-  const handleResize = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleResize = useCallback(() => {
     if (resizeHandleRef.current) {
       setIsResizing(true)
 
@@ -186,10 +319,8 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
     }
   }, [])
 
-  // Will be used after navItems is defined
-
   // Fetch system status using useSupabaseFetch with error handling
-  const { data: statusData, isLoading: statusLoading, error: statusError } = useSupabaseFetch<any>({
+  const { data: statusData, isLoading: statusLoading, error: statusError } = useSupabaseFetch<StatusData[]>({
     endpoint: "/api/system/status",
     resourceName: "System Status",
     dataKey: "status",
@@ -219,171 +350,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
       }
     }
   }, [pathname, collapsed])
-
-  // Enhanced navigation items with additional metadata
-  const navItems: NavItem[] = [
-    {
-      title: "Dashboard",
-      href: "/dashboard",
-      icon: <LayoutDashboard className="h-4 w-4" />,
-      isPinned: true,
-      isNew: false,
-      badge: null,
-      shortcut: "d"
-    },
-    {
-      title: "Chat",
-      href: "/chat",
-      icon: <MessageSquare className="h-4 w-4" />,
-      isPinned: true,
-      isNew: false,
-      badge: null,
-      shortcut: "c"
-    },
-    {
-      title: "Demo Chat",
-      href: "/demo-chat",
-      icon: <Sparkles className="h-4 w-4" />,
-      isPinned: false,
-      isNew: true,
-      badge: "New",
-      shortcut: "n"
-    },
-    {
-      title: "Models",
-      href: "/models",
-      icon: <Database className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "m"
-    },
-    {
-      title: "Tools",
-      href: "/tools",
-      icon: <Wrench className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "t"
-    },
-    {
-      title: "Agents",
-      href: "/agents",
-      icon: <Bot className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "a"
-    },
-    {
-      title: "Workflows",
-      href: "/workflows",
-      icon: <Zap className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "w"
-    },
-    {
-      title: "Analytics",
-      href: "/analytics",
-      icon: <BarChart3 className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "y"
-    },
-    {
-      title: "Content",
-      href: "#",
-      icon: <FileText className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "o",
-      submenu: [
-        {
-          title: "Blog",
-          href: "/blog",
-          icon: <FileText className="h-4 w-4" />,
-          isPinned: false,
-          isNew: false,
-          badge: null,
-          shortcut: "b"
-        },
-        {
-          title: "MDX Builder",
-          href: "/mdx-builder",
-          icon: <Layers className="h-4 w-4" />,
-          isPinned: false,
-          isNew: true,
-          badge: "Beta",
-          shortcut: "x"
-        },
-        {
-          title: "Code Editor",
-          href: "/code-editor",
-          icon: <Code className="h-4 w-4" />,
-          isPinned: false,
-          isNew: false,
-          badge: null,
-          shortcut: "e"
-        },
-      ],
-    },
-    {
-      title: "Networks",
-      href: "/networks",
-      icon: <Network className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "k"
-    },
-    {
-      title: "Team",
-      href: "/team",
-      icon: <Users className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "u"
-    },
-    {
-      title: "Deployment",
-      href: "/deployment",
-      icon: <Rocket className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "p"
-    },
-    {
-      title: "Observability",
-      href: "/observability",
-      icon: <Activity className="h-4 w-4" />,
-      isPinned: false,
-      isNew: true,
-      badge: "New",
-      shortcut: "v"
-    },
-    {
-      title: "Settings",
-      href: "/settings",
-      icon: <Settings className="h-4 w-4" />,
-      isPinned: false,
-      isNew: false,
-      badge: null,
-      shortcut: "s"
-    },
-  ]
-
-  // Get pinned items for quick access
-  const pinnedNavItems = navItems.filter(item => item.isPinned)
-
-  // Get new items for highlighting
-  const newNavItems = navItems.filter(item => item.isNew)
 
   const toggleSubmenu = (title: string) => {
     if (collapsed) return
@@ -554,7 +520,8 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
         rotateX,
         rotateY,
         transformPerspective: 1000,
-        width: isResizing ? `${sidebarWidth}px` : undefined
+        width: `${sidebarWidth}px`,
+        transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.3,0.1,0.3,1)',
       }}
       className={cn(
         "relative h-screen border-r bg-background/80 backdrop-blur-md shadow-sm z-20 overflow-hidden",
@@ -671,84 +638,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
 
         {/* Navigation */}
         <ScrollArea className="flex-1 py-2 px-2">
-          {/* Pinned Items Section */}
-          {!collapsed && pinnedItems.length > 0 && (
-            <div className="mb-3">
-              <div className="text-xs font-medium text-muted-foreground mb-2 px-2">
-                Pinned
-              </div>
-              <div className="grid gap-1">
-                {pinnedNavItems.map((item) => (
-                  <div key={`pinned-${item.title}`} className="block">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "w-full justify-start h-8 text-xs",
-                        pathname === item.href && "bg-accent/50 text-accent-foreground",
-                        "border-l-2 border-green-500"
-                      )}
-                      onClick={() => navigateToPage(item.href)}
-                      draggable
-                      onPointerDown={(e) => startDrag(e, item.title)}
-                    >
-                      <span className="mr-2">{item.icon}</span>
-                      <span>{item.title}</span>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <div className="h-px bg-border/50 my-3" />
-            </div>
-          )}
-
-          {/* New Items Section */}
-          {!collapsed && newNavItems.length > 0 && (
-            <div className="mb-3">
-              <div className="text-xs font-medium text-muted-foreground mb-2 px-2 flex items-center">
-                <Sparkles className="h-3 w-3 mr-1 text-green-500" />
-                New Features
-              </div>
-              <div className="grid gap-1">
-                {newNavItems.map((item) => (
-                  <div key={`new-${item.title}`} className="block">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "w-full justify-start h-8 text-xs relative overflow-hidden",
-                        pathname === item.href && "bg-accent/50 text-accent-foreground"
-                      )}
-                      onClick={() => navigateToPage(item.href)}
-                      draggable
-                      onPointerDown={(e) => startDrag(e, item.title)}
-                    >
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-blue-600/5"
-                        animate={{
-                          opacity: [0.2, 0.5, 0.2],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          repeatType: 'reverse',
-                        }}
-                      />
-                      <span className="mr-2 relative z-10">{item.icon}</span>
-                      <span className="relative z-10">{item.title}</span>
-                      {item.badge && (
-                        <Badge className="ml-auto text-[9px] bg-gradient-to-r from-green-500 to-blue-600">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <div className="h-px bg-border/50 my-3" />
-            </div>
-          )}
-
           <motion.nav
             ref={navRef}
             className="grid gap-1"
@@ -986,9 +875,9 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
                 <div className="text-xs font-medium">Database Status</div>
                 {statusData && statusData[0] && (
                   <div className="text-xs text-muted-foreground">
-                    Supabase: {statusData[0].supabase ? 'Connected' : 'Error'}
+                    Supabase: {(statusData[0] as StatusData).supabase ? 'Connected' : 'Error'}
                     <br />
-                    LibSQL: {statusData[0].libsql ? 'Connected' : 'Error'}
+                    LibSQL: {(statusData[0] as StatusData).libsql ? 'Connected' : 'Error'}
                   </div>
                 )}
               </TooltipContent>
