@@ -640,9 +640,9 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
             <div className="relative flex items-center justify-center">
               <motion.div
                 initial={{ rotate: 0, scale: 1 }}
-                animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+                animate={{ rotate: 360, scale: [1, 1.02, 1] }}
                 transition={{
-                  rotate: { duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
+                  rotate: { duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
                   scale: { duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
                 }}
                 className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500 via-teal-500 to-blue-600 opacity-70 blur-sm"
@@ -650,7 +650,7 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
               <motion.div
                 initial={{ rotate: 0 }}
                 animate={{ rotate: -360 }}
-                transition={{ duration: 15, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
                 className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 opacity-70 blur-[2px]"
               />
               <div className="relative h-7 w-7 rounded-full bg-background flex items-center justify-center">
@@ -755,11 +755,11 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
             initial={{ opacity: 0, y: 20 }}
             animate={{
               opacity: isNavInView ? 1 : 0.5,
-              y: isNavInView ? 0 : 20,
+              y: isNavInView ? 0 : 10,
               scale: isNavInView ? 1 : 0.98
             }}
             transition={{
-              duration: 0.5,
+              duration: 0.3,
               staggerChildren: 0.1
             }}
             style={{ y: itemY }}

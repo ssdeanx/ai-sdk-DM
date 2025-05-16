@@ -1,18 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send } from 'lucide-react';
+import { useChat, Message as AIChatMessage } from '@ai-sdk/react'; // Import useChat and Message type
 
-export interface Message {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
-
+// Re-export Message type for external use if needed, or align with AI SDK's type
+export type Message = AIChatMessage
 export interface ChatBarProps {
   apiEndpoint?: string;
   initialMessages?: Message[];
-  modelId?: string;
+  modelId?: string; // Note: model, provider, systemPrompt, tools might be configured server-side with AI SDK
   provider?: string;
   systemPrompt?: string;
   tools?: string[];
@@ -20,87 +17,81 @@ export interface ChatBarProps {
   onMessageSend?: (assistantMessage: string, fullResponse?: Message) => void;
 }
 
-function generateId() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
+// Remove generateId as AI SDK handles IDs
 
 export function ChatBar({
-  apiEndpoint = '/api/ai-sdk/chat',
+  apiEndpoint = '/api/ai-sdk/chat', // Default API endpoint for AI SDK
   initialMessages = [],
-  modelId = 'gemini-2.0-flash-exp',
-  provider = 'google',
-  systemPrompt,
-  tools = [],
+  // modelId, provider, systemPrompt, tools are typically configured on the API route
+  // but we can pass them as parameters if the API route supports it.
+  // For simplicity with useChat, we'll rely on the API route configuration
+  // or pass them as query parameters/body if the backend is set up for it.
+  // The useChat hook primarily takes the API endpoint and initial messages.
   className,
   onMessageSend,
 }: ChatBarProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
+    api: apiEndpoint,
+    initialMessages: initialMessages as AIChatMessage[], // Cast to AI SDK's Message type
+    // Additional parameters like model, provider, etc. might need to be passed
+    // via the body or query parameters depending on your API route implementation.
+    // useChat's `append` function allows passing options, including body.
+    // For now, we'll keep it simple and assume the API route handles model/provider config.
+    onFinish: (message) => {
+      // onFinish is called when the assistant message is complete
+      if (onMessageSend && message.role === 'assistant') {
+        onMessageSend(message.content, message as Message);
+      }
+    },
+    onError: (error) => {
+      console.error('AI SDK Chat Error:', error);
+      // useChat automatically adds error messages to the messages array
+    }
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages]); // messages state is now managed by useChat
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Modify handleSubmit to use append from useChat
+  const handleSend = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    const userMessage: Message = { id: generateId(), role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setIsLoading(true);
-    setInput('');
-    try {
-      const res = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          model: modelId,
-          provider,
-          systemPrompt,
-          tools,
-        }),
-      });
-      if (!res.ok) throw new Error('API error');
-      const data = await res.json();
-      // Expecting { role, content } or similar from backend
-      const assistantMessage: Message = {
-        id: generateId(),
-        role: data.role || 'assistant',
-        content: data.content || (typeof data === 'string' ? data : ''),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      if (onMessageSend) onMessageSend(assistantMessage.content, assistantMessage);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { id: generateId(), role: 'assistant', content: 'Error: ' + (err instanceof Error ? err.message : String(err)) },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    if (!input.trim() || isLoading) return;
+
+    // useChat's append function sends the user message and handles the assistant response
+    await append({
+      role: 'user',
+      content: input,
+    });
+
+    // useChat manages the input state internally, so no need to clear manually here
+    // setInput(''); // This line is removed
   };
+
 
   return (
     <div className={className}>
       <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-72">
-        {messages.map((m: Message, idx: number) => (
+        {messages.map((m: AIChatMessage, idx: number) => ( // Use AIChatMessage type from useChat
           <div key={m.id || idx} className={`text-sm ${m.role === 'user' ? 'text-right' : 'text-left'}`}>{m.content}</div>
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2 items-end p-2 border-t bg-background">
+      <form onSubmit={handleSend} className="flex gap-2 items-end p-2 border-t bg-background">
         <Textarea
-          value={input}
-          onChange={handleInputChange}
+          value={input} // input state is managed by useChat
+          onChange={handleInputChange} // handleInputChange is provided by useChat
           placeholder="Type a message..."
           className="min-h-[40px] max-h-[120px] flex-1 resize-none"
-          disabled={isLoading}
+          disabled={isLoading} // isLoading state is managed by useChat
+          onKeyPress={(e) => { // Added support for sending on Enter key press
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend(e);
+            }
+          }}
         />
         <Button type="submit" size="icon" disabled={isLoading || input.trim() === ''}>
           <Send className="h-4 w-4" />
