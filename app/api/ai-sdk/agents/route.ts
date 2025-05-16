@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTrace } from "@/lib/langfuse-integration";
-import { v4 as uuidv4 } from "uuid";
+import { generateId } from "ai";
 import { z } from "zod";
 import { getMemoryProvider } from "@/lib/memory/factory";
+import { upstashLogger } from "@/lib/memory/upstash/upstash-logger";
 
 // Import Upstash adapter functions
 import {
@@ -60,11 +61,16 @@ async function deleteAgentFromUpstash(id: string) {
   });
 
   for (const tool of agentTools) {
-    await deleteItem('agent_tools', tool.id);
+    await deleteItem('agent_tools', getAgentToolKey(tool.agent_id, tool.tool_id));
   }
 
   // Then delete the agent
   return deleteItem('agents', id);
+}
+
+// Helper to get composite key for agent_tools
+function getAgentToolKey(agent_id: string, tool_id: string) {
+  return `${agent_id}:${tool_id}`;
 }
 
 // Import LibSQL client for fallback
@@ -193,6 +199,19 @@ export async function GET(request: Request) {
         });
       } catch (error) {
         // If Upstash fails, fall back to LibSQL
+        await upstashLogger.error(
+          "agents",
+          "Upstash fallback error during agent listing",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation: "list_agents",
+            timestamp: new Date().toISOString(),
+            search,
+            limit,
+            offset
+          }
+        );
+
         // Create trace for error with detailed logging
         await createTrace({
           name: "upstash_fallback",
@@ -203,8 +222,6 @@ export async function GET(request: Request) {
             timestamp: new Date().toISOString()
           }
         });
-
-        // TODO: Add proper logging mechanism
       }
     }
 
@@ -327,7 +344,7 @@ export async function POST(request: Request) {
         }
 
         // Create agent
-        const id = uuidv4();
+        const id = generateId();
         const now = new Date().toISOString();
 
         // Create the agent in Upstash
@@ -375,6 +392,19 @@ export async function POST(request: Request) {
         });
       } catch (error) {
         // If Upstash fails, fall back to LibSQL
+        await upstashLogger.error(
+          "agents",
+          "Upstash fallback error during agent creation",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation: "create_agent",
+            timestamp: new Date().toISOString(),
+            modelId,
+            name,
+            toolIds
+          }
+        );
+
         // Create trace for error with detailed logging
         await createTrace({
           name: "upstash_fallback",
@@ -385,8 +415,6 @@ export async function POST(request: Request) {
             timestamp: new Date().toISOString()
           }
         });
-
-        // TODO: Add proper logging mechanism
       }
     }
 
@@ -404,7 +432,7 @@ export async function POST(request: Request) {
     }
 
     // Create agent
-    const id = uuidv4();
+    const id = generateId();
     const now = new Date().toISOString();
 
     await db.execute({
@@ -532,7 +560,7 @@ export async function PATCH(request: Request) {
 
           // Delete existing tool associations
           for (const assoc of existingAssociations) {
-            await deleteItem('agent_tools', assoc.id);
+            await deleteItem('agent_tools', getAgentToolKey(assoc.agent_id, assoc.tool_id));
           }
 
           // Add new tool associations
@@ -585,6 +613,19 @@ export async function PATCH(request: Request) {
           updatedAt: updatedAgent.updated_at
         });
       } catch (error) {
+        await upstashLogger.error(
+          "agents",
+          "Upstash fallback error during agent update",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation: "update_agent",
+            agentId: id,
+            timestamp: new Date().toISOString(),
+            name,
+            toolIds
+          }
+        );
+
         // Create trace for error with detailed logging
         await createTrace({
           name: "upstash_fallback",
@@ -596,8 +637,6 @@ export async function PATCH(request: Request) {
             timestamp: new Date().toISOString()
           }
         });
-
-        // TODO: Add proper logging mechanism instead of console.error
 
         // Fall back to LibSQL
         useLibSQL = true;
@@ -793,6 +832,17 @@ export async function DELETE(request: Request) {
           return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
 
+        await upstashLogger.error(
+          "agents",
+          "Upstash fallback error during agent deletion",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation: "delete_agent",
+            agentId: id,
+            timestamp: new Date().toISOString()
+          }
+        );
+
         // Create trace for error with detailed logging
         await createTrace({
           name: "upstash_fallback",
@@ -804,8 +854,6 @@ export async function DELETE(request: Request) {
             timestamp: new Date().toISOString()
           }
         });
-
-        // TODO: Add proper logging mechanism instead of console.error
 
         // Fall back to LibSQL
         useLibSQL = true;

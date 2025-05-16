@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
 import { handleApiError } from "@/lib/api-error-handler";
-import { v4 as uuidv4 } from "uuid";
+import { generateId } from 'ai';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { getMemoryProvider } from '@/lib/memory/factory';
 import { getData, createItem, UpstashAdapterError, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
 
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name = 'New Chat', metadata = {} } = body;
     const provider = getMemoryProvider();
-    const id = uuidv4();
+    const id = generateId();
     const now = new Date().toISOString();
     const threadMetadata = { ...metadata, source: 'ai-sdk-ui', created_at: now };
 
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
           created_at: now,
           updated_at: now
         });
+        await upstashLogger.info('threads', 'Thread created', { threadId: id, name });
         return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
       } catch (err) {
         if (!(err instanceof UpstashAdapterError)) throw err;
@@ -141,8 +143,10 @@ export async function POST(request: Request) {
       sql: `INSERT INTO memory_threads (id, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?)` ,
       args: [id, name, JSON.stringify(threadMetadata), now, now]
     });
+    await upstashLogger.info('threads', 'Thread created', { threadId: id, name });
     return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
   } catch (error) {
+    await upstashLogger.error('threads', 'Thread creation error', error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error);
   }
 }

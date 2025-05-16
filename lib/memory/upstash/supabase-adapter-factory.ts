@@ -15,9 +15,6 @@ import {
   deleteItem,
   vectorSearch,
   upsertSupabaseVectors,
-  TableRow,
-  FilterOptions,
-  QueryOptions
 } from './index';
 import {
   entityApi,
@@ -26,23 +23,29 @@ import {
   countItems,
   batchGetItems,
   VectorMetadata,
-  VectorQueryOptions
+  VectorQueryOptions,
+  TableName,
+  TableRow,
+  TableInsert,
+  TableUpdate,
+  FilterOptions,
+  QueryOptions
 } from './supabase-adapter';
 
 // --- Enhanced Type-Safe TableClient ---
-export interface TableClient<T extends TableRow = TableRow> {
-  getAll(options?: QueryOptions): Promise<T[]>;
-  getById(id: string): Promise<T | null>;
-  create(item: Omit<T, 'id'> & { id?: string }): Promise<T>;
-  update(id: string, updates: Partial<T>): Promise<T>;
+export interface TableClient<T extends TableName = TableName> {
+  getAll(options?: QueryOptions): Promise<TableRow<T>[]>;
+  getById(id: string): Promise<TableRow<T> | null>;
+  create(item: TableInsert<T>): Promise<TableRow<T>>;
+  update(id: string, updates: TableUpdate<T>): Promise<TableRow<T>>;
   delete(id: string): Promise<boolean>;
-  upsert(item: T): Promise<T>;
+  upsert(item: TableRow<T>): Promise<TableRow<T>>;
   exists(id: string): Promise<boolean>;
   count(options?: QueryOptions): Promise<number>;
-  batchGet(ids: string[]): Promise<(T | null)[]>;
-  select(...columns: (keyof T)[]): TableClient<T>;
-  filter(field: keyof T, operator: FilterOptions['operator'], value: unknown): TableClient<T>;
-  order(column: keyof T, ascending?: boolean): TableClient<T>;
+  batchGet(ids: string[]): Promise<(TableRow<T> | null)[]>;
+  select(...columns: (keyof TableRow<T>)[]): TableClient<T>;
+  filter(field: keyof TableRow<T>, operator: FilterOptions['operator'], value: unknown): TableClient<T>;
+  order(column: keyof TableRow<T>, ascending?: boolean): TableClient<T>;
   limit(limit: number): TableClient<T>;
   offset(offset: number): TableClient<T>;
 }
@@ -71,53 +74,53 @@ export interface VectorClient {
 }
 
 export interface SupabaseClient {
-  from<T extends TableRow = TableRow>(tableName: string): TableClient<T>;
+  from<T extends TableName>(tableName: T): TableClient<T>;
   vector: VectorClient;
   entity: typeof entityApi;
 }
 
 export function createSupabaseClient(): SupabaseClient {
-  function createTableClient<T extends TableRow = TableRow>(tableName: string): TableClient<T> {
+  function createTableClient<T extends TableName>(tableName: T): TableClient<T> {
     let options: QueryOptions = {};
     const client: TableClient<T> = {
       getAll: async (queryOptions?: QueryOptions) => {
-        return getData(tableName as any, { ...options, ...queryOptions }) as unknown as Promise<T[]>;
+        return getData<T>(tableName, { ...options, ...queryOptions });
       },
       getById: async (id: string) => {
-        return getItemById(tableName as any, id) as unknown as Promise<T | null>;
+        return getItemById<T>(tableName, id);
       },
-      create: async (item: Omit<T, 'id'> & { id?: string }) => {
-        return createItem(tableName as any, item) as unknown as Promise<T>;
+      create: async (item: TableInsert<T>) => {
+        return createItem<T>(tableName, item);
       },
-      update: async (id: string, updates: Partial<T>) => {
-        return updateItem(tableName as any, id, updates) as unknown as Promise<T>;
+      update: async (id: string, updates: TableUpdate<T>) => {
+        return updateItem<T>(tableName, id, updates);
       },
       delete: async (id: string) => {
-        return deleteItem(tableName as any, id) as unknown as Promise<boolean>;
+        return deleteItem<T>(tableName, id);
       },
-      upsert: async (item: T) => {
-        return upsertItem(tableName as any, item) as unknown as Promise<T>;
+      upsert: async (item: TableRow<T>) => {
+        return upsertItem<T>(tableName, item);
       },
       exists: async (id: string) => {
-        return existsItem(tableName as any, id) as unknown as Promise<boolean>;
+        return existsItem<T>(tableName, id);
       },
       count: async (queryOptions?: QueryOptions) => {
-        return countItems(tableName as any, queryOptions) as unknown as Promise<number>;
+        return countItems<T>(tableName, queryOptions);
       },
       batchGet: async (ids: string[]) => {
-        return batchGetItems(tableName as any, ids) as unknown as Promise<(T | null)[]>;
+        return batchGetItems<T>(tableName, ids);
       },
-      select: (...columns: (keyof T)[]) => {
+      select: (...columns: (keyof TableRow<T>)[]) => {
         options = { ...options, select: columns as string[] };
         return client;
       },
-      filter: (field: keyof T, operator: FilterOptions['operator'], value: unknown) => {
+      filter: (field: keyof TableRow<T>, operator: FilterOptions['operator'], value: unknown) => {
         const filters = options.filters || [];
         filters.push({ field: field as string, operator, value });
         options = { ...options, filters };
         return client;
       },
-      order: (column: keyof T, ascending?: boolean) => {
+      order: (column: keyof TableRow<T>, ascending?: boolean) => {
         options = { ...options, orderBy: { column: column as string, ascending } };
         return client;
       },

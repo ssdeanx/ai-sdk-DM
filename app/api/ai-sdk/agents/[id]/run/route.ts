@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { createDataStreamResponse } from 'ai';
+import { createDataStreamResponse, generateId } from 'ai';
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTrace, logEvent } from "@/lib/langfuse-integration";
-import { v4 as uuidv4 } from "uuid";
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { agentRegistry } from "@/lib/agents/registry";
 import { runAgent } from "@/lib/agents/agent-service";
 import { AgentRunOptions } from "@/lib/agents/agent.types";
@@ -33,7 +33,14 @@ export async function POST(
     } = body;
 
     // Generate thread ID if not provided
-    const threadId = providedThreadId || uuidv4();
+    const threadId = providedThreadId || generateId();
+
+    // Log agent run start
+    await upstashLogger.info(
+      'agents',
+      'Agent run started',
+      { agentId: id, threadId, input: typeof input === 'string' ? input.slice(0, 100) : undefined }
+    );
 
     // Health check: ensure Supabase/Upstash is available
     const supabaseHealth = await (async () => {
@@ -166,6 +173,13 @@ export async function POST(
     // Run the agent (Upstash/Supabase logic handled in runAgent)
     const response = await runAgent(id, threadId, input, options);
 
+    // Log agent run completion
+    await upstashLogger.info(
+      'agents',
+      'Agent run completed',
+      { agentId: id, threadId, output: response?.output ? String(response.output).slice(0, 100) : undefined }
+    );
+
     // Use streamResult if available
     if (response.streamResult) {
       return response.streamResult.toDataStreamResponse({
@@ -189,6 +203,12 @@ export async function POST(
       });
     }
   } catch (error) {
+    await upstashLogger.error(
+      'agents',
+      'Agent run error',
+      error instanceof Error ? error : new Error(String(error)),
+      { agentId: params?.id }
+    );
     return handleApiError(error);
   }
 }

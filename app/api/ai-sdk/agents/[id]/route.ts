@@ -6,6 +6,7 @@ import { personaManager } from "@/lib/agents/personas/persona-manager";
 import { getSupabaseClient } from "@/lib/memory/supabase";
 import { getMemoryProvider } from "@/lib/memory/factory";
 import { getData, getItemById, updateItem, deleteItem, createItem } from "@/lib/memory/upstash/supabase-adapter";
+import { upstashLogger } from "@/lib/memory/upstash/upstash-logger";
 import { z } from "zod";
 
 // Define a type for the agent from registry which might have different property names
@@ -93,10 +94,14 @@ export async function GET(
     if (personaId) {
       try {
         await personaManager.init();
-        // Use getPersonaById which is the correct method
         persona = await personaManager.getPersonaById(personaId);
       } catch (error) {
-        // Log error to trace instead of console
+        await upstashLogger.error(
+          "agents",
+          "Failed to fetch persona for agent",
+          error instanceof Error ? error : new Error(String(error)),
+          { agentId: id, personaId }
+        );
         await createTrace({
           name: "persona_fetch_error",
           userId: id,
@@ -248,6 +253,11 @@ export async function PATCH(
         existingAgent = await getItemById('agents', id);
 
         if (!existingAgent) {
+          await upstashLogger.warn(
+            "agents",
+            "Tried to update non-existent agent",
+            { agentId: id }
+          );
           return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
 
@@ -272,7 +282,7 @@ export async function PATCH(
 
           // Delete existing tool associations
           for (const assoc of existingAssociations) {
-            await deleteItem('agent_tools', assoc.id);
+            await deleteItem('agent_tools', `${assoc.agent_id}:${assoc.tool_id}`);
           }
 
           // Add new tool associations
@@ -286,7 +296,19 @@ export async function PATCH(
             }
           }
         }
+
+        await upstashLogger.info(
+          "agents",
+          "Agent updated",
+          { agentId: id, name, toolIds, provider: 'upstash' }
+        );
       } catch (error) {
+        await upstashLogger.error(
+          "agents",
+          "Upstash error during agent update",
+          error instanceof Error ? error : new Error(String(error)),
+          { agentId: id, name, toolIds }
+        );
         // Fall back to LibSQL if Upstash fails
         // Create a trace for the error
         await createTrace({
@@ -528,16 +550,34 @@ export async function DELETE(
 
         // Delete tool associations first (foreign key constraint)
         for (const assoc of toolAssociations) {
-          await deleteItem('agent_tools', assoc.id);
+          await deleteItem('agent_tools', `${assoc.agent_id}:${assoc.tool_id}`);
         }
 
         // Delete the agent
         success = await deleteItem('agents', id);
 
         if (!success) {
+          await upstashLogger.error(
+            "agents",
+            "Failed to delete agent",
+            new Error("Delete returned false"),
+            { agentId: id }
+          );
           return NextResponse.json({ error: "Failed to delete agent" }, { status: 500 });
         }
+
+        await upstashLogger.info(
+          "agents",
+          "Agent deleted",
+          { agentId: id, provider: 'upstash' }
+        );
       } catch (error) {
+        await upstashLogger.error(
+          "agents",
+          "Upstash error during agent deletion",
+          error instanceof Error ? error : new Error(String(error)),
+          { agentId: id }
+        );
         // Fall back to LibSQL if Upstash fails
         await createTrace({
           name: "upstash_fallback",

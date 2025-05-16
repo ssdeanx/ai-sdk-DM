@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
 import { logEvent } from "@/lib/langfuse-integration";
-import { v4 as uuidv4 } from "uuid";
-import { countTokens } from "@/lib/memory/memory";
+import { generateId } from "ai";
+import { upstashLogger } from "@/lib/memory/upstash/upstash-logger";
 import { getMemoryProvider } from "@/lib/memory/factory";
 import {
   getItemById,
@@ -39,14 +39,14 @@ export async function GET(
         }
 
         messages = await getData("messages", {
-          filters: [{ field: "memory_thread_id", operator: "eq", value: id }],
+          filters: [{ field: "thread_id", operator: "eq", value: id }],
           orderBy: { column: "created_at", ascending: true },
           limit,
           offset
         });
 
         count = (await getData("messages", {
-          filters: [{ field: "memory_thread_id", operator: "eq", value: id }]
+          filters: [{ field: "thread_id", operator: "eq", value: id }]
         })).length;
       } catch {
         useLibSQL = true;
@@ -68,7 +68,7 @@ export async function GET(
       }
 
       const messagesResult = await db.execute({
-        sql: `SELECT * FROM messages WHERE memory_thread_id = ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
+        sql: `SELECT * FROM messages WHERE thread_id = ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
         args: [id, limit, offset]
       });
 
@@ -90,7 +90,7 @@ export async function GET(
       });
 
       const countResult = await db.execute({
-        sql: `SELECT COUNT(*) as count FROM messages WHERE memory_thread_id = ?`,
+        sql: `SELECT COUNT(*) as count FROM messages WHERE thread_id = ?`,
         args: [id]
       });
 
@@ -153,15 +153,8 @@ export async function POST(
 
     const provider = getMemoryProvider();
     let useLibSQL = false;
-    const messageId = uuidv4();
+    const messageId = generateId();
     const now = new Date().toISOString();
-    let tokenCount: number | null = null;
-
-    try {
-      tokenCount = countTokens(content);
-    } catch {
-      // ignore
-    }
 
     const messageMetadata = {
       ...metadata,
@@ -178,10 +171,9 @@ export async function POST(
 
         await createItem("messages", {
           id: messageId,
-          memory_thread_id: id,
+          thread_id: id,
           role,
           content,
-          token_count: tokenCount,
           metadata: JSON.stringify(messageMetadata),
           created_at: now
         });
@@ -207,8 +199,8 @@ export async function POST(
       }
 
       await db.execute({
-        sql: `INSERT INTO messages (id, memory_thread_id, role, content, token_count, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        args: [messageId, id, role, content, tokenCount, JSON.stringify(messageMetadata), now]
+        sql: `INSERT INTO messages (id, thread_id, role, content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [messageId, id, role, content, JSON.stringify(messageMetadata), now]
       });
 
       await db.execute({
@@ -224,21 +216,22 @@ export async function POST(
         messageId,
         threadId: id,
         role,
-        tokenCount,
         timestamp: now
       }
     });
+
+    await upstashLogger.info('threads', 'Message created', { messageId, threadId: id, role });
 
     return NextResponse.json({
       id: messageId,
       threadId: id,
       role,
       content,
-      tokenCount,
       metadata: messageMetadata,
       createdAt: now
     });
   } catch (error) {
+    await upstashLogger.error('threads', 'Message creation error', error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error);
   }
 }

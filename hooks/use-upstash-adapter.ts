@@ -106,15 +106,7 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
             qstashEnabled: data.qstashEnabled,
             isReady: true
           }));
-
-          // Log configuration for debugging
-          console.log('Upstash adapter configuration:', {
-            redisUrl: data.redisUrl ? '✓ Available' : '✗ Not available',
-            vectorUrl: data.vectorUrl ? '✓ Available' : '✗ Not available',
-            qstashEnabled: data.qstashEnabled ? '✓ Enabled' : '✗ Disabled'
-          });
         } catch (error) {
-          console.error('Error fetching Upstash adapter configuration:', error);
           setConfig(prev => ({
             ...prev,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -130,28 +122,74 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
 }
 
 /**
- * Utility function to determine if Upstash adapter should be used
- * @returns Whether Upstash adapter should be used
+ * Custom hook to determine if Upstash adapter should be used
  */
-export function shouldUseUpstashAdapter(): boolean {
-  // Use the memory provider utility
+export function useShouldUseUpstashAdapter(): boolean {
   return useMemoryProvider().useUpstashAdapter;
 }
 
 /**
- * Utility function to check if Upstash Redis is available
- * @returns Whether Upstash Redis is available
+ * Custom hook to check if Upstash Redis is available
  */
-export function isUpstashRedisAvailable(): boolean {
+export function useIsUpstashRedisAvailable(): boolean {
   return useMemoryProvider().isRedisAvailable;
 }
 
 /**
- * Utility function to check if Upstash Vector is available
- * @returns Whether Upstash Vector is available
+ * Custom hook to check if Upstash Vector is available
  */
-export function isUpstashVectorAvailable(): boolean {
+export function useIsUpstashVectorAvailable(): boolean {
   return useMemoryProvider().isVectorAvailable;
+}
+
+/**
+ * Upstash CRUD Client - provides a Supabase-like CRUD interface using Upstash via the /api/ai-sdk/crud/[table] API
+ */
+export function useUpstashCrudClient() {
+  const config = useUpstashAdapter();
+
+  // Generic CRUD methods using the API route
+  async function getAll(table: string) {
+    const res = await fetch(`/api/ai-sdk/crud/${table}`);
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    return data[table];
+  }
+  async function create(table: string, item: unknown) {
+    const res = await fetch(`/api/ai-sdk/crud/${table}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  }
+  async function update(table: string, id: string, updates: unknown) {
+    const res = await fetch(`/api/ai-sdk/crud/${table}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  }
+  async function remove(table: string, id: string) {
+    const res = await fetch(`/api/ai-sdk/crud/${table}/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return await res.json();
+  }
+
+  return {
+    enabled: config.enabled,
+    isReady: config.isReady,
+    getAll,
+    create,
+    update,
+    remove,
+    config,
+  };
 }
 
 export default useUpstashAdapter;
