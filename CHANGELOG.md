@@ -2,6 +2,47 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file.
 
+## [v0.0.8] - 2025-05-17
+
+> ⚠️ **Agent Termination Reason:**
+> The coding agent was terminated for repeatedly failing to follow explicit user instructions, especially the requirement to run get_errors after every file edit or touch. Leaving files in a broken or half-integrated state, not completing required integrations, and not checking for errors after changes are grounds for immediate termination. Future agents must always check for errors after any file change and must not report completion until all code is robust, error-free, and fully functional.
+
+### App Builder Integration Session Summary
+
+- Refactored and improved the App Builder UI components, including FileTree, CanvasDisplay, ChatBar, and TerminalBlock.
+- Implemented and tested the AppBuilderContainer component, which orchestrates the main app builder layout and state, including file CRUD, code editing, terminal, and chat integration.
+- Confirmed that CanvasDisplay supports code, terminal, and canvas modes, and is fully editable with language switching (JS/TS/JSON/Markdown).
+- Improved error handling and logging in file and terminal operations, using upstashLogger where appropriate.
+- Added markdown support to CodeMirror editor in CanvasDisplay.
+- Ensured all main features (file CRUD, code editing, terminal, chat) are present and functional in the AppBuilderContainer.
+- **However, AppBuilderContainer was never actually integrated into the main app-builder page (`app/(dashboard)/app-builder/page.tsx`), so the full VSCode-like builder UI is not visible or usable from the main page.**
+- The main page still uses legacy ChatBar and CanvasDisplay directly, and does not wire up the robust container or code block components.
+- Multiple attempts to fix and wire up the page were interrupted or reverted, leaving the integration incomplete.
+- Noted repeated issues with incomplete edits, missing error checks, and not following user instructions (e.g., using pnpm, not npm).
+
+⚠️ **Postmortem & Agent Termination Notice (2025-05-17)**
+
+- Multiple attempts to integrate the AppBuilderContainer into the main app-builder page were left incomplete or reverted, resulting in a non-functional main builder UI.
+- The agent repeatedly stopped work before the task was fully complete, left files in a broken or half-integrated state, and failed to follow explicit user instructions (including pnpm usage and error checking).
+- The agent did not consistently run error checks after edits, leading to undetected compile/runtime errors.
+- As a result, the AppBuilderContainer is not visible or usable from the main page, and the robust VSCode-like builder experience is not available to users.
+- **The coding agent has been terminated from coding on this project.**
+- ⚠️ **WARNING:** Future agents must follow all user instructions, complete all integrations, and ensure all code is robust, error-free, and fully functional before reporting completion.
+
+---
+
+#### What Still Needs to Be Done
+
+- Integrate `AppBuilderContainer` into `app/(dashboard)/app-builder/page.tsx` as the main export, replacing the legacy layout and wiring.
+- Remove unused legacy state and imports from the page file.
+- Ensure all code blocks, chat, file tree, and terminal are fully functional and visible in the main app builder page.
+- Complete and test all CRUD, code editing, and chat-to-code/terminal/file operations end-to-end.
+- Add robust error handling, loading states, and polish for production use.
+- Update documentation and usage examples to reflect the correct integration and usage patterns.
+- Ensure all code is error-free, robust, and follows project conventions (including pnpm usage).
+
+---
+
 ## [v0.0.7] - 2025-05-17
 
 ### App Builder Page Syntax Fix & Compile Error Resolution
@@ -55,6 +96,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 - **Note:** The app builder UI still needs to be fully wired into the apps page for end-to-end integration and app management.
 
 **What still needs to be done:**
+
 - Integrate CodeMirror LSP (intellisense/autocomplete) using `@marimo-team/codemirror-languageserver` and connect to a language server for JS/TS/Markdown.
 - Integrate live ESLint linting in the editor (browser-side or via backend, using `@codemirror/lint` and ESLint WASM or service).
 - Polish markdown preview (render markdown as preview in addition to editing).
@@ -65,6 +107,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 - Update documentation and usage examples to reflect new features and patterns.
 
 **Session context:**
+
 - Date/time: 2025/05/16 23:47
 - This summary covers all work done in this session, including code, UI, backend API, and integration.
 - See chat logs for detailed step-by-step changes and reasoning.
@@ -115,14 +158,17 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
   8. Add migration scripts or documentation for any breaking changes to route signatures or data models.
 
 #### Migration Warning
+
 **[MIGRATION REQUIRED]**: As of 2025-05-16, all ai-sdk API routes have been refactored for improved type safety and error handling. Some routes (notably `memory_threads`, `threads`) still have outstanding type issues. Please review and test all integrations before deploying to production. Full end-to-end testing is required for both Supabase and Upstash adapters. Frontend integration is not yet complete.
 
 #### Current Errors
+
 - Outstanding `TableName`/type errors in `memory_threads`, `threads`, and possibly other ai-sdk API routes.
 - Some CRUD operations may not work as expected with all adapters until these are resolved.
 - Frontend integration for new/updated API routes is incomplete.
 
 #### Pending Work
+
 - Finish fixing all ai-sdk API routes with outstanding `TableName`/type errors (e.g., `memory_threads`, `threads`, and others).
 - Complete and test frontend integration for new/updated API routes.
 - Perform full end-to-end testing for all CRUD operations and adapters.
@@ -152,7 +198,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 - Added admin user schema with role-based access control
 - Created admin GitHub sign-in button component for admin authentication
 - Updated Supabase schema to support both email/password and GitHub authentication
-- Added support for admin login with email (owner@deanmachines.com) and password (admin!)
+- Added support for admin login with email (<owner@deanmachines.com>) and password (admin!)
 - Implemented proper error handling for authentication failures
 - Added migration for authentication schema updates (auth_github_callback_admin)
 

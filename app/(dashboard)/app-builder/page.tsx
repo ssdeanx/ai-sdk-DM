@@ -28,7 +28,8 @@ import { json } from "@codemirror/lang-json"
 import { vscodeDark } from "@uiw/codemirror-theme-vscode"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import ChatBar from '@/components/appBuilder/chatBar';
-import CanvasDisplay from '@/components/appBuilder/canvasDisplay';
+import { CanvasDisplay } from '@/components/appBuilder/canvasDisplay';
+import { AppBuilderContainer } from '@/components/appBuilder/appBuilderContainer';
 
 // Define the form schema
 const appFormSchema = z.object({
@@ -98,7 +99,7 @@ export default function AppBuilderPage() {
       if (!res.ok) throw new Error('Failed to fetch apps');
       const data = await res.json();
       setApps(data.apps || []);
-    } catch (e) {
+    } catch {
       setConnectionError(true);
       setApps([]);
     } finally {
@@ -171,7 +172,7 @@ async function execute(params) {
 
       if (editingApp) {
         // Update existing app
-        const response = await fetch(`/api/apps/${editingApp.id}`, {
+        const response = await fetch(`/api/ai-sdk/apps/${editingApp.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -190,7 +191,7 @@ async function execute(params) {
         })
       } else {
         // Create new app
-        const response = await fetch("/api/apps", {
+        const response = await fetch("/api/ai-sdk/apps", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -218,7 +219,7 @@ async function execute(params) {
       setEditingApp(null)
       setCode("")
     } catch (error) {
-      console.error("Error saving app:", error)
+      // Optionally log error to a remote logger here
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An error occurred while saving the app",
@@ -234,7 +235,7 @@ async function execute(params) {
     form.reset({
       name: app.name,
       description: app.description,
-      type: app.type as any,
+      type: app.type === "tool" || app.type === "workflow" || app.type === "agent" ? app.type : "tool",
     })
     setOpen(true)
   }
@@ -243,7 +244,7 @@ async function execute(params) {
     setIsDeleting(true)
 
     try {
-      const response = await fetch(`/api/apps/${id}`, {
+      const response = await fetch(`/api/ai-sdk/apps/${id}`, {
         method: "DELETE",
       })
 
@@ -270,7 +271,6 @@ async function execute(params) {
     }
   }
 
-  // --- Test/Run App Functionality (moved from catch block) ---
   async function handleTest() {
     setIsRunning(true)
     setTestOutput("")
@@ -279,18 +279,16 @@ async function execute(params) {
       const input = testInput ? JSON.parse(testInput) : {}
       // Create a safe execution environment
       const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor
-      // Capture console output
-      const originalConsoleLog = console.log
+      // Capture logs without using console.log
       const logs: string[] = [];
-      console.log = (...args) => {
+      const logProxy = (...args: unknown[]) => {
         logs.push(args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg))).join(" "))
-        originalConsoleLog(...args)
       }
       try {
         // Create a function from the code
-        const executeFunction = AsyncFunction("params", code)
-        // Execute the function with the input
-        const result = await executeFunction(input)
+        const executeFunction = AsyncFunction("params", "log", code)
+        // Execute the function with the input and logProxy
+        const result = await executeFunction(input, logProxy)
         // Format the result
         setTestOutput(
           JSON.stringify(
@@ -302,20 +300,17 @@ async function execute(params) {
             2,
           ),
         )
-      } finally {
-        // Restore console.log
-        console.log = originalConsoleLog
+      } catch (error) {
+        setTestOutput(
+          JSON.stringify(
+            {
+              error: error && (error as Error).message ? (error as Error).message : String(error),
+            },
+            null,
+            2,
+          ),
+        )
       }
-    } catch (error: any) {
-      setTestOutput(
-        JSON.stringify(
-          {
-            error: error && error.message ? error.message : String(error),
-          },
-          null,
-          2,
-        ),
-      )
     } finally {
       setIsRunning(false)
     }
@@ -329,17 +324,8 @@ async function execute(params) {
   return (
     <div className="flex flex-col gap-4">
       {/* --- AI Chat + Output Section --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="flex flex-col h-full">
-          <ChatBar
-            apiEndpoint="/api/ai-sdk/chat"
-            className="h-full"
-            onMessageSend={handleChatMessage}
-          />
-        </div>
-        <div className="flex flex-col h-full">
-          <CanvasDisplay mode={displayMode} content={displayContent} className="h-full" />
-        </div>
+      <div className="h-[calc(100vh-4rem)] mb-6">
+        <AppBuilderContainer />
       </div>
       {/* --- Existing App Builder UI --- */}
       <div className="flex items-center justify-between">
@@ -514,7 +500,7 @@ async function execute(params) {
               <Code className="h-10 w-10 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No apps found</h3>
               <p className="text-muted-foreground mt-1">
-                You haven't created any apps yet. Click the "Create New App" button to get started.
+                You haven&apos;t created any apps yet. Click the &quot;Create New App&quot; button to get started.
               </p>
             </div>
           </Card>

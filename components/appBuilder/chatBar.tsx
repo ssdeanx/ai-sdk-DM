@@ -31,7 +31,13 @@ export function ChatBar({
   className,
   onMessageSend,
 }: ChatBarProps) {
-  const { messages, input, handleInputChange, isLoading, append } = useChat({
+  const {
+    messages,
+    input,
+    handleInputChange,
+    isLoading,
+    append,
+  } = useChat({
     api: apiEndpoint,
     initialMessages: initialMessages as AIChatMessage[], // Cast to AI SDK's Message type
     // Additional parameters like model, provider, etc. might need to be passed
@@ -86,8 +92,8 @@ export function ChatBar({
           onChange={handleInputChange} // handleInputChange is provided by useChat
           placeholder="Type a message..."
           className="min-h-[40px] max-h-[120px] flex-1 resize-none"
-          disabled={isLoading} // isLoading state is managed by useChat
-          onKeyPress={(e) => { // Added support for sending on Enter key press
+          disabled={isLoading || input.trim() === ''}
+          onKeyDown={(e) => { // Changed from onKeyPress to onKeyDown
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleSend(e);
