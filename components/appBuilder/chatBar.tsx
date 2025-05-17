@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send } from 'lucide-react';
 import { useChat, Message as AIChatMessage } from '@ai-sdk/react'; // Import useChat and Message type
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 
 // Re-export Message type for external use if needed, or align with AI SDK's type
 export type Message = AIChatMessage
@@ -30,7 +31,7 @@ export function ChatBar({
   className,
   onMessageSend,
 }: ChatBarProps) {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
+  const { messages, input, handleInputChange, isLoading, append } = useChat({
     api: apiEndpoint,
     initialMessages: initialMessages as AIChatMessage[], // Cast to AI SDK's Message type
     // Additional parameters like model, provider, etc. might need to be passed
@@ -44,7 +45,7 @@ export function ChatBar({
       }
     },
     onError: (error) => {
-      console.error('AI SDK Chat Error:', error);
+      upstashLogger.error('chatBar', 'AI SDK Chat Error', error);
       // useChat automatically adds error messages to the messages array
     }
   });

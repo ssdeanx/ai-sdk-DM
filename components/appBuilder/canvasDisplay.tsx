@@ -1,72 +1,152 @@
-import React from 'react';
-import CodeMirror from '@uiw/react-codemirror';
+import React, { useRef, useEffect, useState } from 'react';
+import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
-import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { markdown } from '@codemirror/lang-markdown';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { autocompletion } from '@codemirror/autocomplete';
+import { linter, lintGutter } from '@codemirror/lint';
+// For future: import { lsp } from '@marimo-team/codemirror-languageserver';
+import { Button } from '@/components/ui/button';
+import { Copy } from 'lucide-react';
 
 export interface CanvasDisplayProps {
   mode?: 'terminal' | 'canvas' | 'code';
   content?: string;
   className?: string;
+  editable?: boolean;
+  language?: 'javascript' | 'json' | 'typescript' | 'markdown';
+  onChange?: (value: string) => void;
 }
 
-// Define components or rendering logic for each mode
-const TerminalDisplay: React.FC<{ content: string }> = ({ content }) => (
-  <pre className="whitespace-pre-wrap break-words">{content}</pre>
+const TerminalDisplay: React.FC<{ content: string; className?: string }> = ({ content, className }) => (
+  <pre className={"whitespace-pre-wrap break-words text-xs bg-black text-green-400 p-2 rounded h-full overflow-auto " + (className || '')}>{content}</pre>
 );
 
-const CodeDisplay: React.FC<{ content: string }> = ({ content }) => (
-  <CodeMirror
-    value={content}
-    extensions={[javascript(), json()]} // Add relevant language extensions
-    theme={vscodeDark} // Use a theme
-    editable={false} // Make it read-only for display
-    basicSetup={{
-      lineNumbers: true,
-      foldGutter: true,
-      drawSelection: false,
-      dropCursor: false,
-      allowMultipleSelections: false,
-      indentOnInput: false,
-      syntaxHighlighting: true,
-      bracketMatching: true,
-      closeBrackets: true,
-      autocompletion: false,
-      rectangularSelection: false,
-      crosshairCursor: false,
-      highlightActiveLine: false,
-      highlightActiveLineGutter: false,
-    }}
-    style={{
-      fontSize: '0.875rem', // text-sm
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace', // font-mono
-    }}
-  />
-);
-
-const CanvasPlaceholder: React.FC = () => (
-  <div className="flex items-center justify-center h-full text-gray-500">Canvas content goes here</div>
-);
-
-// Map modes to their respective display components/logic
-const displayModeMap: Record<string, React.FC<any>> = {
-  terminal: TerminalDisplay,
-  code: CodeDisplay,
-  canvas: CanvasPlaceholder, // Use a placeholder for now
+const languageExtensions = {
+  javascript: javascript(),
+  typescript: javascript({ typescript: true }),
+  json: json(),
+  markdown: markdown(),
 };
 
-export function CanvasDisplay({ mode = 'terminal', content = '', className }: CanvasDisplayProps) {
-  const DisplayComponent = displayModeMap[mode] || TerminalDisplay; // Default to TerminalDisplay
+// Example ESLint linter (stub, replace with real ESLint integration or WASM/worker)
+const fakeLinter = linter(() => []); // No diagnostics, placeholder
+
+const EditableCodeBlock: React.FC<{
+  value: string;
+  editable?: boolean;
+  language?: 'javascript' | 'json' | 'typescript' | 'markdown';
+  onChange?: (value: string) => void;
+  className?: string;
+  onLanguageChange?: (lang: 'javascript' | 'json' | 'typescript' | 'markdown') => void;
+}> = ({ value, editable = false, language = 'javascript', onChange, className, onLanguageChange }) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [currentLang, setCurrentLang] = useState<'javascript' | 'json' | 'typescript' | 'markdown'>(language);
+
+  useEffect(() => {
+    setCurrentLang(language);
+  }, [language]);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (viewRef.current) {
+      // If already initialized, just update value
+      if (viewRef.current.state.doc.toString() !== value) {
+        viewRef.current.dispatch({
+          changes: { from: 0, to: viewRef.current.state.doc.length, insert: value },
+        });
+      }
+      return;
+    }
+    const extensions = [
+      basicSetup,
+      languageExtensions[currentLang],
+      oneDark,
+      EditorView.lineWrapping,
+      EditorView.editable.of(editable),
+      autocompletion(),
+      lintGutter(),
+      fakeLinter, // Replace with real ESLint linter for live diagnostics
+      // For future: lsp({ serverUri: 'ws://localhost:3001' })
+      EditorView.updateListener.of((v) => {
+        if (v.docChanged && onChange) {
+          onChange(v.state.doc.toString());
+        }
+      }),
+    ];
+    viewRef.current = new EditorView({
+      doc: value,
+      extensions,
+      parent: editorRef.current,
+    });
+    return () => {
+      if (viewRef.current) {
+        viewRef.current.destroy();
+        viewRef.current = null;
+      }
+    };
+  }, [value, editable, onChange, currentLang]);
+
+  const handleCopy = async () => {
+    if (viewRef.current) {
+      await navigator.clipboard.writeText(viewRef.current.state.doc.toString());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const lang = e.target.value as 'javascript' | 'json' | 'typescript' | 'markdown';
+    setCurrentLang(lang);
+    if (onLanguageChange) onLanguageChange(lang);
+  };
 
   return (
-    <div className={`border rounded-md bg-black text-white p-2 font-mono min-h-[200px] ${className || ''}`}>
-      <div className="text-xs mb-1 opacity-60">{mode.toUpperCase()} DISPLAY</div>
-      {/* CodeMirror handles its own padding/styling, so we might adjust the container padding */}
-      <div className={mode === 'code' ? '' : 'flex-1 overflow-y-auto'}>
-         <DisplayComponent content={content} />
+    <div className={"rounded border border-border bg-zinc-950 text-xs font-mono min-h-[200px] max-h-[400px] overflow-auto relative " + (className || '')}>
+      <div className="flex items-center justify-between px-2 py-1 bg-zinc-900 border-b border-border">
+        <div className="flex gap-2 items-center">
+          <span className="text-xs text-muted-foreground">{currentLang}</span>
+          <select
+            aria-label="Select language"
+            className="bg-zinc-900 text-xs text-white border border-border rounded px-1 py-0.5"
+            value={currentLang}
+            onChange={handleLangChange}
+          >
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="json">JSON</option>
+            <option value="markdown">Markdown</option>
+          </select>
+        </div>
+        <Button variant="ghost" size="icon-sm" onClick={handleCopy}>
+          <Copy className={copied ? 'text-green-500' : ''} />
+        </Button>
       </div>
+      <div ref={editorRef} className="w-full h-[180px]" />
     </div>
   );
+};
+
+const CanvasPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={"flex items-center justify-center h-full text-muted-foreground " + (className || '')}>Canvas mode coming soon</div>
+);
+
+const displayModeMap = {
+  terminal: TerminalDisplay,
+  code: EditableCodeBlock,
+  canvas: CanvasPlaceholder,
+};
+
+export function CanvasDisplay({ mode = 'terminal', content = '', className, editable = false, language = 'javascript', onChange }: CanvasDisplayProps) {
+  if (mode === 'code') {
+    return <EditableCodeBlock value={content} editable={editable} language={language} onChange={onChange} className={className} />;
+  }
+  // For terminal/canvas, pass content/className only
+  const DisplayComponent = displayModeMap[mode] || TerminalDisplay;
+  return <DisplayComponent content={content} className={className} />;
 }
 
-export default CanvasDisplay;
+export { EditableCodeBlock };

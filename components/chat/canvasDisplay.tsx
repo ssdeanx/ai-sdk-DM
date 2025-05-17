@@ -1,113 +1,150 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
-import styles from './canvasDisplay.module.css';
-// Import xterm.js and the canvas addon
-import { Terminal } from "@xterm/xterm";
-import { CanvasAddon } from "@xterm/addon-canvas";
+import React, { useEffect, useRef, useState, Suspense } from "react";
+import styles from "./canvasDisplay.module.css";
+import { upstashLogger } from "@/lib/memory/upstash/upstash-logger";
+
+// Dynamic imports for CodeMirror and xterm.js (avoid SSR issues)
+const CodeMirror = React.lazy(() => import("@uiw/react-codemirror"));
+let Terminal: any = null;
+if (typeof window !== "undefined") {
+  import("xterm").then((mod) => {
+    Terminal = mod.Terminal;
+  });
+}
+
+export type CanvasDisplayMode = "code" | "canvas" | "terminal";
 
 export interface CanvasDisplayProps {
+  mode: CanvasDisplayMode;
+  code?: string;
+  language?: string;
+  onCodeChange?: (code: string) => void;
+  canvasDraw?: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void;
+  terminalContent?: string;
+  onTerminalInput?: (input: string) => void;
   width?: number;
   height?: number;
   className?: string;
-  draw?: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void;
-  children?: React.ReactNode;
-  terminal?: boolean; // If true, show a terminal in the canvas
-  terminalOptions?: ConstructorParameters<typeof Terminal>[0];
-  terminalWelcomeMessage?: string;
+  fileName?: string;
 }
 
-/**
- * CanvasDisplay: Renders a live HTML5 canvas and allows custom drawing via a draw callback.
- * You can use this to render code, terminal, or even a VSCode-like UI in the canvas.
- *
- * Example usage:
- * <CanvasDisplay width={600} height={400} draw={(ctx, canvas) => { ctx.fillStyle = '#222'; ctx.fillRect(0,0,canvas.width,canvas.height); }} />
- */
-export function CanvasDisplay({
-  width = 600,
-  height = 400,
+export const CanvasDisplay: React.FC<CanvasDisplayProps> = ({
+  mode,
+  code = "",
+  language = "typescript",
+  onCodeChange,
+  canvasDraw,
+  terminalContent = "",
+  onTerminalInput,
+  width = 800,
+  height = 600,
   className,
-  draw,
-  children,
-  terminal = false,
-  terminalOptions,
-  terminalWelcomeMessage = 'Welcome to the AI SDK Canvas Terminal!',
-}: CanvasDisplayProps) {
+  fileName,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [term, setTerm] = useState<Terminal | null>(null);
+  const [term, setTerm] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Canvas drawing effect
   useEffect(() => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, width, height);
-    if (draw) {
-      setIsDrawing(true);
-      draw(ctx, canvasRef.current);
-      setIsDrawing(false);
-    }
-  }, [draw, width, height, children]);
-
-  // Terminal effect
-  useEffect(() => {
-    if (!terminal || !terminalRef.current) return;
-    if (term) return;
-    const xterm = new Terminal({
-      fontSize: 16,
-      theme: {
-        background: '#18181b',
-        foreground: '#e5e5e5',
-        cursor: '#00ff00',
-      },
-      ...terminalOptions,
-    });
-    const canvasAddon = new CanvasAddon();
-    xterm.loadAddon(canvasAddon);
-    xterm.open(terminalRef.current);
-    xterm.writeln(terminalWelcomeMessage);
-    const prompt = () => {
-      xterm.write('\r\n$ ');
-    };
-    prompt();
-    xterm.onKey(({ key, domEvent }: { key: string; domEvent: KeyboardEvent }) => {
-      if (domEvent.key === 'Enter') {
-        prompt();
-      } else if (domEvent.key === 'Backspace') {
-        if (xterm.buffer.active.cursorX > 2) {
-          xterm.write('\b \b');
+    if (mode === "canvas" && canvasRef.current && canvasDraw) {
+      try {
+        const ctx = canvasRef.current.getContext("2d");
+        if (ctx) {
+          canvasDraw(ctx, canvasRef.current);
         }
-      } else if (domEvent.key.length === 1) {
-        xterm.write(key);
+      } catch (err: any) {
+        setError("Canvas error: " + err.message);
+        upstashLogger("Canvas error", err);
       }
-    });
-    setTerm(xterm);
-    return () => {
-      xterm.dispose();
-      setTerm(null);
-    };
-  }, [terminal, terminalOptions, terminalWelcomeMessage, term]);
+    }
+  }, [mode, canvasDraw]);
 
+  // Terminal effect (xterm.js)
+  useEffect(() => {
+    if (mode === "terminal" && terminalRef.current && typeof window !== "undefined" && Terminal) {
+      try {
+        if (!term) {
+          const t = new Terminal({
+            cols: 80,
+            rows: 24,
+            theme: {
+              background: "#18181b",
+              foreground: "#e4e4e7",
+            },
+          });
+          t.open(terminalRef.current);
+          t.write(terminalContent || "\u001b[1;32mWelcome to the AI Terminal\u001b[0m\r\n");
+          t.onData((input: string) => {
+            onTerminalInput?.(input);
+          });
+          setTerm(t);
+        } else {
+          term.write(terminalContent || "");
+        }
+      } catch (err: any) {
+        setError("Terminal error: " + err.message);
+        upstashLogger("Terminal error", err);
+      }
+    }
+    // Cleanup
+    return () => {
+      if (term) {
+        term.dispose();
+        setTerm(null);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, terminalContent]);
+
+  // Error display
+  if (error) {
+    return (
+      <div className={styles.error + " p-4 text-red-500 bg-red-50 dark:bg-red-900/20 rounded"}>
+        <strong>Error:</strong> {error}
+      </div>
+    );
+  }
+
+  // Main render
   return (
-    <div className={cn(styles.canvasDisplayRoot, className)}>
-      <canvas
-        ref={canvasRef}
-        width={width}
-        height={height}
-        className={styles.canvas}
-      />
-      {terminal && (
-        <div
-          ref={terminalRef}
-          className={styles.terminal}
+    <div className={className || styles.canvasDisplay} style={{ width, height, minHeight: 300 }}>
+      {mode === "code" && (
+        <Suspense fallback={<div>Loading editor…</div>}>
+          <CodeMirror
+            value={code}
+            height={height - 32}
+            width={width}
+            theme="dark"
+            extensions={[]}
+            onChange={onCodeChange}
+            basicSetup={{ lineNumbers: true, highlightActiveLine: true }}
+            style={{ fontSize: 16, borderRadius: 8 }}
+          />
+        </Suspense>
+      )}
+      {mode === "canvas" && (
+        <canvas
+          ref={canvasRef}
+          width={width}
+          height={height}
+          className="rounded border border-border/30 bg-background"
         />
       )}
-      {children && <div className="hidden">{children}</div>}
-      {isDrawing && <div className={styles.drawingStatus}>Drawing...</div>}
+      {mode === "terminal" && (
+        <div
+          ref={terminalRef}
+          className="rounded border border-border/30 bg-black text-green-400 p-2"
+          style={{ width, height, minHeight: 200, overflow: "auto" }}
+        >
+          {/* xterm.js will mount here */}
+          {!Terminal && <div>Loading terminal…</div>}
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default CanvasDisplay;

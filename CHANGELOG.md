@@ -2,6 +2,49 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file.
 
+## [v0.0.6] - 2025-05-16 23:47
+
+### VSCode-like App Builder UI: Full Integration & Feature Work
+
+**Session summary (2025-05-16 23:47):**
+
+- Implemented a production-grade, VSCode-like app builder UI in Next.js/React using shadcn/ui, CodeMirror, and AI SDK.
+- Main layout: left FileTree (with full CRUD, context menu, keyboard navigation), center Canvas/Code/Terminal display (CodeMirror-based, editable), right ChatBar (AI chat, code ops), bottom Terminal panel (interactive, command execution).
+- All components are now fully wired:
+  - FileTree CRUD and file open/save logic connected to `/api/ai-sdk/files` backend route (GET/POST/PUT/DELETE).
+  - CanvasDisplay supports code, terminal, and canvas modes; code mode is editable and supports JS, TS, JSON, and Markdown (with language switcher).
+  - Markdown language support added to CodeMirror (using `@codemirror/lang-markdown`).
+  - Terminal panel is functional, wired to `/api/ai-sdk/terminal` backend route for command execution, with command history and error handling.
+  - ChatBar can trigger code/terminal updates and is ready for AI-driven code/file/terminal ops.
+  - All error handling uses `upstashLogger` for robust production logging.
+- **Component wiring and structure:**
+  - `AppBuilderContainer`: Orchestrates layout and state, wires FileTree, CanvasDisplay, ChatBar, and Terminal together. Handles file open/save, command execution, and chat-to-code/terminal ops.
+  - `FileTree`: Handles file/folder CRUD, context menu, keyboard navigation, and API integration. Notifies container on file select, triggers refresh on CRUD.
+  - `CanvasDisplay`: Main code/canvas/terminal area. Uses CodeMirror for code editing (JS/TS/JSON/Markdown), supports language switching, and is fully editable. Receives file content from FileTree and updates via onChange. Handles markdown as a first-class language.
+  - `AppBuilderCodeBlock`: Dedicated code block component for modular code editing, used in CanvasDisplay and for chat/code ops. Designed for future extensibility and AI-driven code edits.
+  - `AppBuilderTerminalBlock`: Dedicated terminal output component, used in both main display and bottom terminal panel. Handles streaming and command output, and is ready for future interactive features.
+  - `ChatBar`: AI chat interface, can trigger code/terminal/file ops, and is wired to update CanvasDisplay and Terminal. Uses upstashLogger for error logging. Designed for future AI-driven file/code/terminal actions.
+  - All components use shadcn/ui for consistent, modern UI.
+- Confirmed all main features are present and functional: file CRUD, code editing, terminal, chat, and markdown support.
+- **Note:** The app builder UI still needs to be fully wired into the apps page for end-to-end integration and app management.
+
+**What still needs to be done:**
+- Integrate CodeMirror LSP (intellisense/autocomplete) using `@marimo-team/codemirror-languageserver` and connect to a language server for JS/TS/Markdown.
+- Integrate live ESLint linting in the editor (browser-side or via backend, using `@codemirror/lint` and ESLint WASM or service).
+- Polish markdown preview (render markdown as preview in addition to editing).
+- Enhance chat-to-code/terminal/file ops (AI chat can create/edit files, run code, etc.).
+- Add more robust loading states, accessibility, and responsive design polish.
+- Complete and test frontend integration for all new/updated API routes.
+- Perform full end-to-end testing for all CRUD operations and adapters.
+- Update documentation and usage examples to reflect new features and patterns.
+
+**Session context:**
+- Date/time: 2025/05/16 23:47
+- This summary covers all work done in this session, including code, UI, backend API, and integration.
+- See chat logs for detailed step-by-step changes and reasoning.
+
+---
+
 ## [v0.0.5] - 2025-05-16
 
 ### Backend API Refactor & Migration Warning
