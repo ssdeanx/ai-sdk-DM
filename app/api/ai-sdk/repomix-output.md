@@ -1,15 +1,12 @@
 # File Summary
 
 ## Purpose
-
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
-
 The content is organized as follows:
-
 1. This summary section
 2. Repository information
 3. Directory structure
@@ -19,7 +16,6 @@ The content is organized as follows:
   b. The full contents of the file in a code block
 
 ## Usage Guidelines
-
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -28,7 +24,6 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
-
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: app/api/ai-sdk
@@ -43,24 +38,39 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
-
-```bash
+```
 app/api/ai-sdk/agents/[id]/route.ts
 app/api/ai-sdk/agents/[id]/run/route.ts
 app/api/ai-sdk/agents/route.ts
 app/api/ai-sdk/apps/[id]/route.ts
 app/api/ai-sdk/apps/route.ts
 app/api/ai-sdk/assistant/route.ts
+app/api/ai-sdk/auth/callback/admin-github/route.ts
+app/api/ai-sdk/auth/callback/github/route.ts
+app/api/ai-sdk/auth/signin/route.ts
+app/api/ai-sdk/auth/signup/route.ts
 app/api/ai-sdk/chat/route.ts
+app/api/ai-sdk/code/route.ts
 app/api/ai-sdk/content/route.ts
 app/api/ai-sdk/crud/[table]/route.ts
 app/api/ai-sdk/dashboard/route.ts
 app/api/ai-sdk/files/route.ts
+app/api/ai-sdk/integrations/route.ts
+app/api/ai-sdk/memory/config/route.ts
+app/api/ai-sdk/memory/upstash-adapter/route.ts
+app/api/ai-sdk/memory/upstash-config/route.ts
+app/api/ai-sdk/models/[id]/route.ts
 app/api/ai-sdk/models/route.ts
-app/api/ai-sdk/observability/route.ts
+app/api/ai-sdk/models/seed/route.ts
+app/api/ai-sdk/observability/costs/route.ts
+app/api/ai-sdk/observability/evaluations/route.ts
+app/api/ai-sdk/observability/metrics/route.ts
+app/api/ai-sdk/observability/performance/route.ts
+app/api/ai-sdk/observability/traces/route.ts
 app/api/ai-sdk/providers/route.ts
 app/api/ai-sdk/settings/route.ts
 app/api/ai-sdk/system/route.ts
+app/api/ai-sdk/system/status/route.ts
 app/api/ai-sdk/terminal/route.ts
 app/api/ai-sdk/threads/[id]/messages/route.ts
 app/api/ai-sdk/threads/[id]/route.ts
@@ -71,8 +81,161 @@ app/api/ai-sdk/tools/route.ts
 
 # Files
 
-## File: app/api/ai-sdk/files/route.ts
+## File: app/api/ai-sdk/auth/callback/admin-github/route.ts
+```typescript
+import { NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/memory/supabase'
+/**
+ * Admin GitHub OAuth callback handler
+ * This route is called by Supabase after an admin authenticates with GitHub
+ */
+export async function GET(request: Request)
+⋮----
+// Get the code and state from the URL
+⋮----
+// Create a Supabase client
+⋮----
+// Exchange the code for a session
+⋮----
+// TEMPORARY: Allow all authenticated users to access admin features
+// In a real app, you would check a role or a specific claim
+// For now, we'll allow any authenticated user to access admin features
+// Original admin check (commented out for now)
+// if (data.user.email !== 'owner@deanmachines.com') {
+//   console.error('User is not an admin:', data.user.email)
+//   return NextResponse.redirect(`${origin}/admin/login?error=not_admin`)
+// }
+// Handle successful authentication
+const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+⋮----
+// Local development environment
+⋮----
+// Production with load balancer
+⋮----
+// Production without load balancer
+```
 
+## File: app/api/ai-sdk/auth/callback/github/route.ts
+```typescript
+import { NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/memory/supabase'
+/**
+ * GitHub OAuth callback handler
+ * This route is called by Supabase after a user authenticates with GitHub
+ */
+export async function GET(request: Request)
+⋮----
+// Get the code and state from the URL
+⋮----
+// Create a Supabase client
+⋮----
+// Exchange the code for a session
+⋮----
+// Handle successful authentication
+const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+⋮----
+// Local development environment
+⋮----
+// Production with load balancer
+⋮----
+// Production without load balancer
+```
+
+## File: app/api/ai-sdk/auth/signin/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+// POST /api/auth/signin - Sign in a user
+export async function POST(request: Request)
+⋮----
+// Authenticate via Supabase Auth
+⋮----
+// Return user and session info
+```
+
+## File: app/api/ai-sdk/auth/signup/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+import { v4 as uuidv4 } from "uuid"
+// POST /api/auth/signup - Register a new user
+export async function POST(request: Request)
+⋮----
+// Attempt to sign up the user with Supabase Auth
+⋮----
+name: name || email.split("@")[0], // Optional: pass additional user metadata
+⋮----
+// Check if the error is due to the user already existing
+⋮----
+// Handle cases where sign up might require confirmation (email verification)
+// or if user is successfully created but session is null initially.
+⋮----
+// This might happen if email confirmation is required.
+// Adjust response as needed for your application flow.
+⋮----
+// Return user information upon successful sign up
+```
+
+## File: app/api/ai-sdk/code/route.ts
+```typescript
+// API route for CRUD operations on app_code_blocks (AppBuilder code blocks)
+import { NextRequest, NextResponse } from 'next/server';
+import { getLibSQLClient } from '@/lib/memory/db';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import {
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+  getData,
+  TableRow,
+  TableInsert,
+  TableUpdate
+} from '@/lib/memory/upstash/supabase-adapter';
+⋮----
+export async function GET(req: NextRequest)
+export async function POST(req: NextRequest)
+⋮----
+// LibSQL fallback
+⋮----
+export async function PUT(req: NextRequest)
+⋮----
+// LibSQL fallback
+⋮----
+export async function DELETE(req: NextRequest)
+⋮----
+// LibSQL fallback
+⋮----
+// Generated on 2025-05-17: CRUD API for app_code_blocks table, cross-backend compatible, type-safe, and ready for AppBuilder code block UI integration.
+```
+
+## File: app/api/ai-sdk/content/route.ts
+```typescript
+// Content API route for CRUD operations
+import { NextRequest, NextResponse } from 'next/server';
+import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+⋮----
+export async function GET(req: NextRequest)
+export async function POST(req: NextRequest)
+export async function PUT(req: NextRequest)
+export async function DELETE(req: NextRequest)
+```
+
+## File: app/api/ai-sdk/crud/[table]/route.ts
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { getData, createItem, updateItem, deleteItem, TableName } from '@/lib/memory/supabase';
+// Allowed tables for CRUD
+⋮----
+function getTableName(param: string): TableName
+export async function GET(req: NextRequest,
+export async function POST(req: NextRequest,
+export async function PUT(req: NextRequest,
+export async function DELETE(req: NextRequest,
+```
+
+## File: app/api/ai-sdk/files/route.ts
 ```typescript
 // filepath: app/api/ai-sdk/files/route.ts
 import { NextRequest, NextResponse } from 'next/server';
@@ -87,100 +250,431 @@ export async function PUT(req: NextRequest)
 export async function DELETE(req: NextRequest)
 ```
 
-## File: app/api/ai-sdk/terminal/route.ts
-
+## File: app/api/ai-sdk/integrations/route.ts
 ```typescript
-// filepath: app/api/ai-sdk/terminal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
+import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-export async function POST(req: NextRequest)
-```
-
-## File: app/api/ai-sdk/assistant/route.ts
-
-```typescript
-// Assistant API route for CRUD operations (agent_personas)
-import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
 ⋮----
+// GET: List all integrations or get by id
 export async function GET(req: NextRequest)
+⋮----
+// List all integrations (filter by key prefix)
+⋮----
+type SettingsRow = { key: string; value: string; [k: string]: unknown };
+⋮----
+// POST: Create a new integration
 export async function POST(req: NextRequest)
+// PUT: Update an integration
 export async function PUT(req: NextRequest)
+// DELETE: Remove an integration
 export async function DELETE(req: NextRequest)
 ```
 
-## File: app/api/ai-sdk/content/route.ts
-
+## File: app/api/ai-sdk/memory/config/route.ts
 ```typescript
-// Content API route for CRUD operations
-import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { NextResponse } from 'next/server';
+import { checkUpstashAvailability } from '@/lib/memory/upstash';
+import { isMemoryAvailable, getMemoryProvider } from '@/lib/memory/factory';
+/**
+ * GET /api/memory/config
+ * 
+ * Returns the current memory provider configuration
+ */
+export async function GET()
 ⋮----
-export async function GET(req: NextRequest)
-export async function POST(req: NextRequest)
-export async function PUT(req: NextRequest)
-export async function DELETE(req: NextRequest)
+// Get the configured memory provider
+⋮----
+// Check if Upstash adapter should be used
+⋮----
+// Check if memory provider is available
+⋮----
+// Check Upstash availability if adapter is enabled
+⋮----
+provider: 'libsql', // Default to LibSQL
 ```
 
-## File: app/api/ai-sdk/crud/[table]/route.ts
-
+## File: app/api/ai-sdk/memory/upstash-adapter/route.ts
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { getData, createItem, updateItem, deleteItem, TableName } from '@/lib/memory/supabase';
-// Allowed tables for CRUD
+import { NextResponse } from 'next/server';
+import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
+import { checkUpstashAvailability } from '@/lib/memory/upstash';
+/**
+ * GET /api/memory/upstash-adapter
+ * 
+ * Returns information about the Upstash adapter configuration
+ */
+export async function GET()
 ⋮----
-function getTableName(param: string): TableName
-export async function GET(req: NextRequest,
-export async function POST(req: NextRequest,
-export async function PUT(req: NextRequest,
-export async function DELETE(req: NextRequest,
+// Check if Upstash adapter is enabled
+⋮----
+// Check Upstash availability
+⋮----
+/**
+ * POST /api/memory/upstash-adapter
+ * 
+ * Test the Upstash adapter by performing a simple operation
+ */
+export async function POST(request: Request)
+⋮----
+// Check if Upstash adapter is enabled
+⋮----
+// Create Supabase client with Upstash adapter
+⋮----
+// Perform a simple operation to test the adapter
+⋮----
+// Use a test table that won't affect production data
+⋮----
+// If the table doesn't exist, that's okay - just return success
+if (error.code === '42P01') { // undefined_table
 ```
 
-## File: app/api/ai-sdk/dashboard/route.ts
-
+## File: app/api/ai-sdk/memory/upstash-config/route.ts
 ```typescript
-// Dashboard API route for CRUD operations (apps table)
-import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { NextResponse } from 'next/server';
+/**
+ * GET /api/memory/upstash-config
+ * 
+ * Returns the Upstash adapter configuration
+ * This endpoint is safe to call from the client as it only returns
+ * public URLs without tokens
+ */
+export async function GET()
 ⋮----
-export async function GET(req: NextRequest)
-export async function POST(req: NextRequest)
-export async function PUT(req: NextRequest)
-export async function DELETE(req: NextRequest)
+// Check if Upstash adapter is enabled
+⋮----
+// Get Upstash Redis URL (without token)
+⋮----
+// Get Upstash Vector URL (without token)
+⋮----
+// Check if QStash is configured
+⋮----
+// Do not include tokens in the response
 ```
 
-## File: app/api/ai-sdk/observability/route.ts
-
+## File: app/api/ai-sdk/observability/costs/route.ts
 ```typescript
-// Observability API route for CRUD operations (traces and spans)
-import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+import { createTrace, logEvent } from "@/lib/langfuse-integration"
+/**
+ * API route for fetching cost estimation data for observability dashboard
+ * Provides cost metrics for different AI models
+ */
+export async function GET(request: Request)
 ⋮----
-export async function GET(req: NextRequest)
+// Get URL parameters
 ⋮----
-const type = searchParams.get('type'); // 'trace' or 'span'
+// Create a trace for this API call
 ⋮----
-export async function POST(req: NextRequest)
-export async function PUT(req: NextRequest)
-export async function DELETE(req: NextRequest)
+// Log API call event
+⋮----
+// Get Supabase client
+⋮----
+// Convert time range to milliseconds
+⋮----
+// If modelId is provided, get specific model cost data
+⋮----
+// Try to connect to Supabase and get real data
+⋮----
+// If no cost data found, return mock data
+⋮----
+// Otherwise, get list of model costs
+⋮----
+// Try to get real cost data from Supabase
+⋮----
+// If no cost data found, return mock data
+⋮----
+// Return error response
+⋮----
+/**
+ * Generate mock cost data for a specific model
+ */
+function getMockModelCost(modelId: string, timeRange: string)
+⋮----
+// Generate random usage data
+⋮----
+// Generate time series data
+⋮----
+// Calculate daily average and projected monthly cost
+⋮----
+/**
+ * Generate a list of mock model costs
+ */
+function getMockModelCosts(timeRange: string)
+⋮----
+// Generate random usage data
+⋮----
+// Generate time series data
+⋮----
+// Calculate daily average and projected monthly cost
 ```
 
-## File: app/api/ai-sdk/providers/route.ts
-
+## File: app/api/ai-sdk/observability/evaluations/route.ts
 ```typescript
-// Providers API route for CRUD operations
-import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+import { createTrace, logEvent } from "@/lib/langfuse-integration"
+/**
+ * API route for fetching model evaluation data for observability dashboard
+ * Provides evaluation metrics for different AI models
+ */
+export async function GET(request: Request)
 ⋮----
-export async function GET(req: NextRequest)
-export async function POST(req: NextRequest)
-export async function PUT(req: NextRequest)
-export async function DELETE(req: NextRequest)
+// Get URL parameters
+⋮----
+// Create a trace for this API call
+⋮----
+// Log API call event
+⋮----
+// Get Supabase client
+⋮----
+// Convert time range to milliseconds
+⋮----
+// If modelId is provided, get specific model evaluation
+⋮----
+// Try to connect to Supabase and get real data
+⋮----
+// If no evaluation found, return mock data
+⋮----
+// Otherwise, get list of model evaluations
+⋮----
+// Try to get real evaluations from Supabase
+⋮----
+// If no evaluations found, return mock data
+⋮----
+// Return error response
+⋮----
+/**
+ * Generate a mock model evaluation for a specific model ID
+ */
+function getMockModelEvaluation(modelId: string)
+⋮----
+// Generate random metrics
+⋮----
+value: Math.random() * 0.4 + 0.6, // Between 0.6 and 1.0
+⋮----
+// Calculate overall score
+⋮----
+// Generate example evaluations
+⋮----
+exampleScores[metric.name] = Math.random() * 0.4 + 0.6 // Between 0.6 and 1.0
+⋮----
+previousScore: overallScore - (Math.random() * 0.1 - 0.05), // Slight variation from current
+⋮----
+/**
+ * Generate a list of mock model evaluations
+ */
+function getMockModelEvaluations()
+⋮----
+// Generate random metrics
+⋮----
+value: Math.random() * 0.4 + 0.6, // Between 0.6 and 1.0
+⋮----
+// Calculate overall score
+⋮----
+// Generate example evaluations
+⋮----
+exampleScores[metric.name] = Math.random() * 0.4 + 0.6 // Between 0.6 and 1.0
+⋮----
+previousScore: overallScore - (Math.random() * 0.1 - 0.05), // Slight variation from current
+```
+
+## File: app/api/ai-sdk/observability/metrics/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+import { createTrace, logEvent } from "@/lib/langfuse-integration"
+/**
+ * API route for fetching system metrics data for observability dashboard
+ * Provides system health metrics like CPU usage, memory usage, etc.
+ */
+export async function GET(request: Request)
+⋮----
+// Get URL parameters
+⋮----
+// Create a trace for this API call
+⋮----
+// Log API call event
+⋮----
+// Get Supabase client
+⋮----
+// Convert time range to milliseconds
+let timeInMs = 24 * 60 * 60 * 1000 // Default: 24 hours
+⋮----
+// Check if we can connect to Supabase
+⋮----
+// Generate mock data points based on time range
+⋮----
+// Return mock data if we can't connect to Supabase
+⋮----
+// If we can connect, get real metrics from the database
+⋮----
+// Calculate summary metrics
+⋮----
+// Return error response
+⋮----
+// Helper function to generate time series data for mock metrics
+function generateTimeSeriesData(timeRange: string)
+⋮----
+let timeInMs = 24 * 60 * 60 * 1000 // Default: 24 hours
+let dataPoints = 24 // Default: hourly data points for 24 hours
+⋮----
+dataPoints = 60 // Minute-by-minute for 1 hour
+⋮----
+dataPoints = 72 // 5-minute intervals for 6 hours
+⋮----
+dataPoints = 168 // Hourly for 7 days
+⋮----
+dataPoints = 30 // Daily for 30 days
+⋮----
+// Base values
+⋮----
+// Generate data points with realistic variations
+⋮----
+// Add some randomness but maintain trends
+⋮----
+// Add daily patterns for more realism
+```
+
+## File: app/api/ai-sdk/observability/performance/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+import { createTrace, logEvent } from "@/lib/langfuse-integration"
+/**
+ * API route for fetching model performance data for observability dashboard
+ * Provides performance metrics for different AI models like latency, tokens per second, etc.
+ */
+export async function GET(request: Request)
+⋮----
+// Get URL parameters
+⋮----
+// Create a trace for this API call
+⋮----
+// Log API call event
+⋮----
+// Get Supabase client
+⋮----
+// Convert time range to milliseconds
+let timeInMs = 24 * 60 * 60 * 1000 // Default: 24 hours
+⋮----
+// Check if we can connect to Supabase
+⋮----
+// Generate mock model performance data
+⋮----
+// Filter by model if specified
+⋮----
+// Generate performance data for each model
+⋮----
+// Generate time series data
+⋮----
+// Calculate aggregated metrics
+⋮----
+// Return mock data
+⋮----
+// If we can connect, get real performance data from the database
+⋮----
+// Filter by model if specified
+⋮----
+// Process and aggregate the data by model
+⋮----
+// Calculate aggregated metrics for each model
+⋮----
+// Return error response
+⋮----
+// Helper function to generate time series data for mock model performance
+function generateModelTimeSeriesData(timeRange: string, modelId: string)
+⋮----
+let timeInMs = 24 * 60 * 60 * 1000 // Default: 24 hours
+let dataPoints = 24 // Default: hourly data points for 24 hours
+⋮----
+dataPoints = 60 // Minute-by-minute for 1 hour
+⋮----
+dataPoints = 72 // 5-minute intervals for 6 hours
+⋮----
+dataPoints = 168 // Hourly for 7 days
+⋮----
+dataPoints = 30 // Daily for 30 days
+⋮----
+// Base values - different for each model
+⋮----
+// Set base values based on model
+⋮----
+// Generate data points with realistic variations
+⋮----
+const dailyPattern = Math.sin(timeOffset * Math.PI * 2) * 0.2 // 20% variation based on time of day
+// Calculate values with some randomness and daily patterns
+```
+
+## File: app/api/ai-sdk/observability/traces/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/memory/supabase"
+import { createTrace, logEvent } from "@/lib/langfuse-integration"
+/**
+ * API route for fetching trace data for observability dashboard
+ * Supports fetching a list of traces or a single trace by ID
+ */
+export async function GET(request: Request)
+⋮----
+// Get URL parameters
+⋮----
+// Create a trace for this API call for meta-observability
+⋮----
+// Log API call event
+⋮----
+// Get Supabase client
+⋮----
+// Convert time range to milliseconds
+⋮----
+// If traceId is provided, get specific trace details
+⋮----
+// Try to connect to Supabase and get real data
+⋮----
+// If no trace found, return mock data
+⋮----
+// Otherwise, get list of traces
+⋮----
+// Try to get real traces from Supabase
+⋮----
+// If no traces found, return mock data
+⋮----
+// Return error response
+⋮----
+/**
+ * Generate a detailed mock trace for a specific trace ID
+ */
+function getDetailedMockTrace(traceId: string)
+⋮----
+const startTime = now - 1000 * 60 * 5 // 5 minutes ago
+const endTime = now - 1000 * 60 * 4 // 4 minutes ago
+// Generate model ID and provider
+⋮----
+// Generate spans with realistic timing
+const spanCount = Math.floor(Math.random() * 3) + 3 // 3-5 spans
+⋮----
+// Generate events
+⋮----
+// Add tool events if applicable
+⋮----
+// Add completion event
+⋮----
+/**
+ * Generate metadata for a specific span type
+ */
+function getSpanMetadata(spanType: string, provider: string, modelId: string)
+/**
+ * Generate a list of mock traces
+ */
+function getMockTraceList(timeInMs: number)
+⋮----
+const traceCount = Math.floor(Math.random() * 15) + 15 // 15-30 traces
+⋮----
+const duration = Math.floor(Math.random() * 60000) + 1000 // 1-61 seconds
 ```
 
 ## File: app/api/ai-sdk/system/route.ts
-
 ```typescript
 // System Metrics API route for CRUD operations
 import { NextRequest, NextResponse } from 'next/server';
@@ -192,20 +686,156 @@ export async function PUT(req: NextRequest)
 export async function DELETE(req: NextRequest)
 ```
 
-## File: app/api/ai-sdk/apps/[id]/route.ts
-
+## File: app/api/ai-sdk/terminal/route.ts
 ```typescript
+// filepath: app/api/ai-sdk/terminal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { exec } from 'child_process';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+export async function POST(req: NextRequest)
+```
+
+## File: app/api/ai-sdk/assistant/route.ts
+```typescript
+import { NextResponse } from "next/server";
+import { AssistantResponse } from "ai";
+import OpenAI from "openai";
+import { createMemoryThread, saveMessage } from "@/lib/memory/memory";
+import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { handleApiError } from "@/lib/api-error-handler";
+import { v4 as uuidv4 } from "uuid";
+// Initialize OpenAI client
 ⋮----
-export async function GET(req: NextRequest,
-export async function PUT(req: NextRequest,
-export async function DELETE(req: NextRequest,
+export async function POST(req: Request)
+⋮----
+// Validate request
+⋮----
+// Create a trace for this assistant interaction
+⋮----
+// Log the user message event
+⋮----
+async process(
+⋮----
+// Create a thread if needed
+⋮----
+// If this is a new thread, create a memory thread for persistence
+⋮----
+// Save user message to memory
+⋮----
+// Add user message to thread
+⋮----
+// Send initial status
+⋮----
+// Run the assistant
+⋮----
+// Handle tool calls if needed
+⋮----
+// Process each tool call
+⋮----
+// Log tool call
+⋮----
+// Execute the tool (in a real implementation, you would have a tool registry)
+⋮----
+// Log tool result
+⋮----
+// Add to tool outputs
+⋮----
+// Submit tool outputs
+⋮----
+// Get the assistant's response
+⋮----
+// Save assistant message to memory
+⋮----
+// Log assistant message
+⋮----
+// Send completion status
+⋮----
+// Mock tool implementations
+async function executeWeatherTool(args:
+⋮----
+// In a real implementation, this would call a weather API
+⋮----
+async function executeSearchTool(args:
+⋮----
+// In a real implementation, this would call a search API
+```
+
+## File: app/api/ai-sdk/dashboard/route.ts
+```typescript
+// Dashboard API route for CRUD operations (apps table)
+import { NextRequest, NextResponse } from 'next/server';
+import { getLibSQLClient } from '@/lib/memory/db';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import {
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+  getData,
+  TableRow,
+  TableInsert,
+  TableUpdate
+} from '@/lib/memory/upstash/supabase-adapter';
+⋮----
+export async function GET(req: NextRequest)
+export async function POST(req: NextRequest)
+⋮----
+// LibSQL fallback
+⋮----
+export async function PUT(req: NextRequest)
+⋮----
+// LibSQL fallback
+⋮----
+export async function DELETE(req: NextRequest)
+⋮----
+// LibSQL fallback
+⋮----
+// Generated on 2025-05-17: Refactored to use type-safe generics for all CRUD operations on the 'apps' table, removing all 'any' usages.
+```
+
+## File: app/api/ai-sdk/models/[id]/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { getItemById, updateItem, deleteItem, getDrizzleClient } from "@/lib/memory/supabase"
+import type { Model } from "@/types/models"
+import { handleApiError } from "@/lib/api-error-handler"
+import { models } from "@/db/supabase/schema"
+import { eq } from "drizzle-orm"
+export async function GET(request: Request,
+⋮----
+// Try using Drizzle first
+⋮----
+// Continue to Supabase fallback
+⋮----
+// Fall back to Supabase client
+⋮----
+export async function PUT(request: Request,
+⋮----
+// Format the data to match schema
+⋮----
+// Try using Drizzle first
+⋮----
+// Update the model
+⋮----
+// Get the updated model
+⋮----
+// Continue to Supabase fallback
+⋮----
+// Fall back to Supabase client
+⋮----
+export async function DELETE(request: Request,
+⋮----
+// Try using Drizzle first
+⋮----
+// Delete the model
+⋮----
+// Continue to Supabase fallback
+⋮----
+// Fall back to Supabase client
 ```
 
 ## File: app/api/ai-sdk/models/route.ts
-
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
@@ -217,8 +847,38 @@ export async function PUT(req: NextRequest)
 export async function DELETE(req: NextRequest)
 ```
 
-## File: app/api/ai-sdk/settings/route.ts
+## File: app/api/ai-sdk/models/seed/route.ts
+```typescript
+import { NextResponse } from "next/server";
+import { seedDefaultModels } from "@/lib/services/model-service";
+import { handleApiError } from "@/lib/api-error-handler";
+/**
+ * Seed default models from the model registry
+ * @route POST /api/models/seed
+ */
+export async function POST(request: Request)
+⋮----
+// Get provider from request body
+⋮----
+// Seed models
+```
 
+## File: app/api/ai-sdk/providers/route.ts
+```typescript
+// Providers API route for CRUD operations
+import { NextRequest, NextResponse } from 'next/server';
+import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+⋮----
+export async function GET(req: NextRequest)
+⋮----
+type SettingsRow = { key: string; value: string; [k: string]: unknown };
+⋮----
+export async function POST(req: NextRequest)
+export async function PUT(req: NextRequest)
+export async function DELETE(req: NextRequest)
+```
+
+## File: app/api/ai-sdk/settings/route.ts
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
@@ -232,8 +892,31 @@ export async function PUT(req: NextRequest)
 export async function DELETE(req: NextRequest)
 ```
 
-## File: app/api/ai-sdk/threads/[id]/route.ts
+## File: app/api/ai-sdk/system/status/route.ts
+```typescript
+import { NextResponse } from "next/server"
+import { isSupabaseAvailable } from "@/lib/memory/supabase"
+import { isLibSQLAvailable } from "@/lib/memory/libsql"
+import { getRedisClient } from "@/lib/memory/upstash/upstashClients"
+import { handleApiError } from "@/lib/api-error-handler"
+// Example: List of API routes to check
+⋮----
+async function checkUpstashAvailable()
+async function checkSupabaseAvailable()
+async function checkLibSQLAvailable()
+async function checkApiRoutes()
+export async function GET()
+⋮----
+// Check Supabase connection
+⋮----
+// Check LibSQL connection
+⋮----
+// Check Upstash connection
+⋮----
+// Check API route health
+```
 
+## File: app/api/ai-sdk/threads/[id]/route.ts
 ```typescript
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
@@ -291,21 +974,27 @@ export async function DELETE(
 // LibSQL fallback
 ```
 
-## File: app/api/ai-sdk/apps/route.ts
-
+## File: app/api/ai-sdk/apps/[id]/route.ts
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import { getLibSQLClient } from '@/lib/memory/db';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { getData, updateItem, deleteItem } from '@/lib/memory/upstash/supabase-adapter';
 ⋮----
-export async function GET(_req: NextRequest)
-export async function POST(req: NextRequest)
-export async function PUT(req: NextRequest)
-export async function DELETE(req: NextRequest)
+export async function GET(req: Request)
+⋮----
+// LibSQL fallback
+⋮----
+export async function PUT(req: Request)
+⋮----
+// LibSQL fallback
+⋮----
+export async function DELETE(req: Request)
+⋮----
+// LibSQL fallback
 ```
 
 ## File: app/api/ai-sdk/threads/[id]/messages/route.ts
-
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -349,47 +1038,38 @@ export async function POST(
 // Validate required fields
 ```
 
-## File: app/api/ai-sdk/threads/route.ts
-
+## File: app/api/ai-sdk/apps/route.ts
 ```typescript
-import { NextResponse } from "next/server";
-import { getLibSQLClient } from "@/lib/memory/db";
-import { handleApiError } from "@/lib/api-error-handler";
-import { generateId } from 'ai';
-import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
+import { getLibSQLClient } from '@/lib/memory/db';
 import { getMemoryProvider } from '@/lib/memory/factory';
-import { getData, createItem, UpstashAdapterError, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
-/**
- * GET /api/ai-sdk/threads
- * 
- * Fetch all threads for AI SDK UI
- */
-export async function GET(request: Request)
+import {
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+  getData,
+  TableName,
+  TableInsert,
+  TableUpdate
+} from '@/lib/memory/upstash/supabase-adapter';
 ⋮----
-// Upstash: get threads with source 'ai-sdk-ui'
-⋮----
-// Upstash: get total count
-⋮----
-// Fallback to LibSQL
+export async function GET(req: NextRequest)
+export async function POST(req: NextRequest)
 ⋮----
 // LibSQL fallback
 ⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function PUT(req: NextRequest)
 ⋮----
-/**
- * POST /api/ai-sdk/threads
- * 
- * Create a new thread for AI SDK UI
- */
-export async function POST(request: Request)
+// LibSQL fallback
 ⋮----
-// Fallback to LibSQL
+export async function DELETE(req: NextRequest)
 ⋮----
 // LibSQL fallback
 ```
 
 ## File: app/api/ai-sdk/chat/route.ts
-
 ```typescript
 /**
  * AI SDK Chat API Route
@@ -461,8 +1141,51 @@ middleware: middlewareConfig.languageModel // Pass only the language model middl
 // Return the appropriate response based on the stream protocol
 ```
 
-## File: app/api/ai-sdk/tools/route.ts
+## File: app/api/ai-sdk/threads/route.ts
+```typescript
+import { NextResponse } from "next/server";
+import { getLibSQLClient } from "@/lib/memory/db";
+import { handleApiError } from "@/lib/api-error-handler";
+import { generateId } from 'ai';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { getData, createItem, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
+/**
+ * GET /api/ai-sdk/threads
+ * 
+ * Fetch all threads for AI SDK UI
+ */
+export async function GET(request: Request)
+⋮----
+// Upstash: get threads with source 'ai-sdk-ui'
+⋮----
+// Upstash: get total count
+⋮----
+// Fallback to LibSQL if Upstash fails
+⋮----
+// LibSQL fallback
+⋮----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+⋮----
+// Normalize all fields to string/null as needed
+const normalize = (v: unknown): string | null =>
+// Only include message_count in the response, not in the TableRow type
+⋮----
+metadata: parsedMetadata as unknown as import('@/types/supabase').Json, // Cast to Json type
+⋮----
+/**
+ * POST /api/ai-sdk/threads
+ * 
+ * Create a new thread for AI SDK UI
+ */
+export async function POST(request: Request)
+⋮----
+// Fallback to LibSQL
+⋮----
+// LibSQL fallback
+```
 
+## File: app/api/ai-sdk/tools/route.ts
 ```typescript
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
@@ -526,6 +1249,11 @@ export async function POST(request: Request)
 ⋮----
 // If implementation is provided, save it to the apps table
 ⋮----
+name, // Assuming tool name can serve as app name for this context
+description: `Implementation for tool: ${name}`, // Optional: add a description
+⋮----
+// parameters_schema and metadata can be omitted if they have defaults or are nullable
+⋮----
 // Create trace for tool creation
 ⋮----
 // Fall back to LibSQL if needed
@@ -540,7 +1268,6 @@ export async function POST(request: Request)
 ```
 
 ## File: app/api/ai-sdk/tools/execute/route.ts
-
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -572,7 +1299,6 @@ type ToolExecutionRow = {
 ```
 
 ## File: app/api/ai-sdk/agents/[id]/route.ts
-
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -756,7 +1482,6 @@ export async function DELETE(
 ```
 
 ## File: app/api/ai-sdk/agents/route.ts
-
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -1001,7 +1726,6 @@ export async function DELETE(request: Request)
 ```
 
 ## File: app/api/ai-sdk/agents/[id]/run/route.ts
-
 ```typescript
 import { NextResponse } from "next/server";
 import { createDataStreamResponse, generateId } from 'ai';

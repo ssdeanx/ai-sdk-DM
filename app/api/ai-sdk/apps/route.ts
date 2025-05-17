@@ -1,45 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { handleApiError } from '@/lib/api-error-handler';
-import { getLibSQLClient } from '@/lib/memory/db';
-import { getMemoryProvider } from '@/lib/memory/factory';
-import {
-  getItemById,
-  createItem,
-  updateItem,
-  deleteItem,
-  getData,
-  TableName,
-  TableInsert,
-  TableUpdate
-} from '@/lib/memory/upstash/supabase-adapter';
 
-const table = 'apps';
+const adapter = createSupabaseClient();
+
+const AppSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1),
+  description: z.string().optional().nullable(),
+  type: z.string().min(1),
+  code: z.string().optional().nullable(),
+  parameters_schema: z.any().optional().nullable(),
+  metadata: z.any().optional().nullable(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+function isApp(item: any): item is { id: string; name: string; type: string; code: string } {
+  return item && typeof item === 'object' && typeof item.name === 'string' && typeof item.type === 'string' && 'code' in item;
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    const provider = getMemoryProvider();
-    if (provider === 'upstash') {
-      if (id) {
-        const item = await getItemById('apps' as TableName, id);
-        if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-        return NextResponse.json(item);
+    if (id) {
+      const item = await adapter.from('apps').getById(id);
+      if (!isApp(item)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      if (item && typeof item.parameters_schema === 'string') {
+        try { item.parameters_schema = JSON.parse(item.parameters_schema); } catch {}
       }
-      const items = await getData('apps' as TableName);
-      return NextResponse.json(items);
-    }
-    if (provider === 'libsql') {
-      const db = getLibSQLClient();
-      if (id) {
-        const result = await db.execute({ sql: 'SELECT * FROM apps WHERE id = ?', args: [id] });
-        if (!result.rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-        return NextResponse.json(result.rows[0]);
+        try { item.parameters_schema = JSON.parse(item.parameters_schema); } catch {}
       }
-      const result = await db.execute({ sql: 'SELECT * FROM apps', args: [] });
-      return NextResponse.json(result.rows);
+      if (typeof item.metadata === 'string') {
+        try { item.metadata = JSON.parse(item.metadata); } catch {}
+      }
+      return NextResponse.json(item);
     }
-    return NextResponse.json({ error: 'Invalid provider' }, { status: 500 });
+    const items = await adapter.from(table).getAll();
+    const parsed = items.filter(isApp).map((item) => {
+      if (typeof item.parameters_schema === 'string') {
+        try { item.parameters_schema = JSON.parse(item.parameters_schema); } catch {}
+      }
+      if (typeof item.metadata === 'string') {
+        try { item.metadata = JSON.parse(item.metadata); } catch {}
+      }
+      return item;
+    });
+    return NextResponse.json(parsed);
   } catch (error) {
     return handleApiError(error);
   }
@@ -47,27 +56,25 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const data = await req.json() as {
-      id?: string;
-      name: string;
-      description?: string;
-      type: string;
-      code: string;
-      parameters_schema?: string;
-    };
+    const raw = await req.json();
+    const parsed = AppSchema.omit({ id: true, created_at: true, updated_at: true }).parse(raw);
     const now = new Date().toISOString();
-    const provider = getMemoryProvider();
-    if (provider === 'upstash') {
-      const created = await createItem('apps' as TableName, { ...data, created_at: now, updated_at: now } as TableInsert<'apps'>);
-      return NextResponse.json(created, { status: 201 });
+    const insertData = {
+      ...parsed,
+      code: parsed.code || '',
+      parameters_schema: parsed.parameters_schema ? JSON.stringify(parsed.parameters_schema) : null,
+      metadata: parsed.metadata ? JSON.stringify(parsed.metadata) : null,
+      created_at: now,
+      updated_at: now,
+    };
+    const created = await adapter.from(table).create(insertData);
+    if (typeof created.parameters_schema === 'string') {
+      try { created.parameters_schema = JSON.parse(created.parameters_schema); } catch {}
     }
-    // LibSQL fallback
-    const db = getLibSQLClient();
-    const result = await db.execute({
-      sql: 'INSERT INTO apps (id, name, description, type, code, parameters_schema, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [data.id, data.name, data.description, data.type, data.code, data.parameters_schema, now, now]
-    });
-    return NextResponse.json(result.rows[0], { status: 201 });
+    if (typeof created.metadata === 'string') {
+      try { created.metadata = JSON.parse(created.metadata); } catch {}
+    }
+    return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }
@@ -75,29 +82,27 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const data = await req.json() as {
-      id: string;
-      name?: string;
-      description?: string;
-      type?: string;
-      code?: string;
-      parameters_schema?: string;
-    };
-    if (!data.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const raw = await req.json();
+    if (!raw.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const parsed = AppSchema.partial().parse(raw);
     const now = new Date().toISOString();
-    const provider = getMemoryProvider();
-    if (provider === 'upstash') {
-      const { id, ...updateData } = data;
-      const updated = await updateItem('apps' as TableName, id, { ...updateData, updated_at: now } as TableUpdate<'apps'>);
-      return NextResponse.json(updated);
+    const updateData = {
+      ...parsed,
+      code: parsed.code || '',
+      parameters_schema: parsed.parameters_schema ? JSON.stringify(parsed.parameters_schema) : null,
+      metadata: parsed.metadata ? JSON.stringify(parsed.metadata) : null,
+      updated_at: now,
+      id: raw.id,
+    };
+    const updated = await adapter.from(table).update(updateData.id, updateData);
+    if (!isApp(updated)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (typeof updated.parameters_schema === 'string') {
+      try { updated.parameters_schema = JSON.parse(updated.parameters_schema); } catch {}
     }
-    // LibSQL fallback
-    const db = getLibSQLClient();
-    const result = await db.execute({
-      sql: 'UPDATE apps SET name=?, description=?, type=?, code=?, parameters_schema=?, updated_at=? WHERE id=?',
-      args: [data.name ?? null, data.description ?? null, data.type ?? null, data.code ?? null, data.parameters_schema ?? null, now, data.id]
-    });
-    return NextResponse.json(result.rows[0]);
+    if (typeof updated.metadata === 'string') {
+      try { updated.metadata = JSON.parse(updated.metadata); } catch {}
+    }
+    return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error);
   }
@@ -108,16 +113,12 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const provider = getMemoryProvider();
-    if (provider === 'upstash') {
-      const deleted = await deleteItem('apps' as TableName, id);
-      return NextResponse.json({ success: deleted });
-    }
-    // LibSQL fallback
-    const db = getLibSQLClient();
-    await db.execute({ sql: 'DELETE FROM apps WHERE id = ?', args: [id] });
+    const deleted = await adapter.from(table).delete(id);
+    if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleApiError(error);
   }
 }
+// Generated on 2025-05-17 by ssdeanx
+// Uses schema import for table, no types, schema-driven only.

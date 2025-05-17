@@ -1,15 +1,12 @@
 # File Summary
 
 ## Purpose
-
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
-
 The content is organized as follows:
-
 1. This summary section
 2. Repository information
 3. Directory structure
@@ -19,7 +16,6 @@ The content is organized as follows:
   b. The full contents of the file in a code block
 
 ## Usage Guidelines
-
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -28,7 +24,6 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
-
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: components/appBuilder
@@ -43,11 +38,11 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
-
-```bash
+```
 components/appBuilder/appBuilderContainer.tsx
 components/appBuilder/canvasDisplay.tsx
 components/appBuilder/chatBar.tsx
+components/appBuilder/chatinputMessage.tsx
 components/appBuilder/codeBlock.module.css
 components/appBuilder/codeBlock.tsx
 components/appBuilder/FileTree.tsx
@@ -57,34 +52,29 @@ components/appBuilder/terminalBlock.tsx
 
 # Files
 
-## File: components/appBuilder/codeBlock.module.css
+## File: components/appBuilder/chatinputMessage.tsx
+```typescript
+import React, { useState, useRef } from "react";
+import { useChat } from "@ai-sdk/react";
+import { Button } from "@/components/ui/button";
+import { Send } from "lucide-react";
+interface ChatInputMessageProps {
+  onSend: (message: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+⋮----
+const handleSend = (e: React.FormEvent) =>
+⋮----
+onChange=
+```
 
+## File: components/appBuilder/codeBlock.module.css
 ```css
 .appbuilder-codeblock {
 ```
 
-## File: components/appBuilder/codeBlock.tsx
-
-```typescript
-import React, { useEffect, useRef } from 'react';
-import { EditorView, basicSetup } from 'codemirror';
-import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
-import { oneDark } from '@codemirror/theme-one-dark';
-⋮----
-interface AppBuilderCodeBlockProps {
-  code: string;
-  language?: 'typescript' | 'json';
-  editable?: boolean;
-  onChange?: (val: string) => void;
-  className?: string;
-}
-⋮----
-// eslint-disable-next-line
-```
-
 ## File: components/appBuilder/FileTree.tsx
-
 ```typescript
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronRight, FileText, Folder, Plus, Trash2, Edit2, RefreshCw } from 'lucide-react';
@@ -126,79 +116,117 @@ className=
 ```
 
 ## File: components/appBuilder/terminalBlock.module.css
-
 ```css
 .appbuilder-terminalblock {
 ```
 
-## File: components/appBuilder/terminalBlock.tsx
-
-```typescript
-import React, { useEffect, useRef } from 'react';
-⋮----
-interface AppBuilderTerminalBlockProps {
-  content: string;
-  className?: string;
-}
-export const AppBuilderTerminalBlock: React.FC<AppBuilderTerminalBlockProps> = (
-```
-
 ## File: components/appBuilder/appBuilderContainer.tsx
-
 ```typescript
 // components/appBuilder/appBuilderContainer.tsx
-import React, { useState, useEffect } from 'react';
-import { ChatBar } from './chatBar';
-import { CanvasDisplay } from './canvasDisplay';
-import { Button } from '@/components/ui/button';
-import { FileTree } from './FileTree';
-import { AppBuilderCodeBlock } from './codeBlock';
-import { AppBuilderTerminalBlock } from './terminalBlock';
+import React, { useState } from 'react'
+import { ChatBar } from './chatBar'
+import { CanvasDisplay } from './canvasDisplay'
+import { Button } from '@/components/ui/button'
+import { FileTree } from './FileTree'
+import { AppBuilderCodeBlock } from './codeBlock'
+import { AppBuilderTerminalBlock } from './terminalBlock'
 ⋮----
-const [fileTreeKey, setFileTreeKey] = useState(0); // for FileTree refresh
+// Combined code editor and canvas view
 ⋮----
-// Refresh FileTree (after CRUD)
-const refreshFileTree = ()
-// Function to analyze AI message and update canvas display
-const handleAssistantMessage = (assistantMessage: string) =>
-const handleClearCanvas = () =>
+// FileTree refresh
+const refreshTree = ()
+const handleCanvasChange = (val: string)
 // Save file handler
 const handleSaveFile = async () =>
+// Toolbar: current file & actions
 ⋮----
-// Log error
+setActiveFile(path)
 ⋮----
-// Canvas onChange handler (only for editable mode)
-const handleCanvasChange = (val: string) =>
-// File open handler
-const handleFileSelect = async (file:
+{/* Main area: Code editor and Canvas display */}
 ⋮----
-// Fetch file content from API and setCanvasContent
+{/* Chat panel */}
 ⋮----
-// Optionally: show error in terminalContent
+// Append message to terminal content
+setTerminalContent(prev
 ⋮----
-// Terminal command execution
-const handleTerminalCommand = async (e: React.FormEvent) =>
-// Terminal input history navigation
-const handleTerminalInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) =>
-// Ensure activeFile is always used (fix unused warning)
+{/* Terminal bottom */}
+```
+
+## File: components/appBuilder/codeBlock.tsx
+```typescript
+import React, { useState, useCallback } from 'react'
+import { foldGutter } from '@codemirror/language'
+import { indentOnInput } from '@codemirror/language'
+import { highlightSelectionMatches } from '@codemirror/search'
+import { autocompletion } from '@codemirror/autocomplete'
+import { history } from '@codemirror/commands'
+import { lintGutter } from '@codemirror/lint'
+import { javascript } from '@codemirror/lang-javascript'
+import { json } from '@codemirror/lang-json'
+import CodeMirror from '@uiw/react-codemirror'
+import { vscodeDark } from '@uiw/codemirror-theme-vscode'
+import { Copy, Maximize, Minimize } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+export interface AppBuilderCodeBlockProps {
+  code: string
+  language?: 'typescript' | 'javascript' | 'json'
+  editable?: boolean
+  onChange?: (val: string) => void
+  className?: string
+}
+export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
+  code,
+  language = 'typescript',
+  editable = false,
+  onChange,
+  className = '',
+}) =>
 ⋮----
-// Optionally, highlight active file in FileTree or show file path in UI
+{/* Toolbar */}
 ⋮----
-{/* Sidebar: File Tree */}
+{/* CodeMirror Editor */}
+```
+
+## File: components/appBuilder/terminalBlock.tsx
+```typescript
+import React, { useRef, useEffect } from 'react'
+import { Terminal } from '@xterm/xterm'
 ⋮----
-{/* Main area: Code/Canvas and Chat */}
+import { CanvasAddon } from '@xterm/addon-canvas'
+interface AppBuilderTerminalBlockProps {
+  /** Initial content to display in the terminal (static mode) */
+  content?: string
+  className?: string
+  /** Callback for command handling in non-interactive mode */
+  onCommand?: (cmd: string) => void
+  /** Enable interactive terminal mode: user input is sent to backend */
+  interactive?: boolean
+}
 ⋮----
-{/* Main code/canvas area */}
+/** Initial content to display in the terminal (static mode) */
 ⋮----
-{/* Use AppBuilderCodeBlock for code, AppBuilderTerminalBlock for terminal */}
+/** Callback for command handling in non-interactive mode */
 ⋮----
-{/* Chat bar as a right panel */}
+/** Enable interactive terminal mode: user input is sent to backend */
 ⋮----
-{/* Terminal at the bottom */}
+export const AppBuilderTerminalBlock: React.FC<AppBuilderTerminalBlockProps> = (
+⋮----
+// Initialize terminal once
+⋮----
+// Write initial content
+⋮----
+// Show prompt in interactive mode
+⋮----
+// Key handling for interactive or delegated command execution
+⋮----
+// Execute command via backend
+⋮----
+// eslint-disable-next-line react-hooks/exhaustive-deps
+⋮----
+// Update static display when content changes (non-interactive)
 ```
 
 ## File: components/appBuilder/canvasDisplay.tsx
-
 ```typescript
 import React, { useRef, useEffect, useState } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
@@ -208,7 +236,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { autocompletion } from '@codemirror/autocomplete';
 import { linter, lintGutter } from '@codemirror/lint';
-// For future: import { lsp } from '@marimo-team/codemirror-languageserver';
+import { languageId, languageServer, languageServerWithClient } from '@marimo-team/codemirror-languageserver';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 export interface CanvasDisplayProps {
@@ -237,7 +265,6 @@ if (mode === 'code')
 ```
 
 ## File: components/appBuilder/chatBar.tsx
-
 ```typescript
 import React, { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -294,6 +321,5 @@ const handleSend = async (e: React.FormEvent | React.KeyboardEvent) =>
 value={input} // input state is managed by useChat
 onChange={handleInputChange} // handleInputChange is provided by useChat
 ⋮----
-disabled={isLoading} // isLoading state is managed by useChat
-onKeyPress={(e) => { // Added support for sending on Enter key press
+onKeyDown={(e) => { // Changed from onKeyPress to onKeyDown
 ```

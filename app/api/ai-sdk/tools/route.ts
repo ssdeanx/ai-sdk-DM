@@ -220,12 +220,16 @@ export async function POST(request: Request) {
 
         // If implementation is provided, save it to the apps table
         if (implementation) {
-          await (await import("@/lib/memory/upstash/supabase-adapter")).createItem('apps', {
-            name,
-            type: 'tool',
+          await(
+            await import("@/lib/memory/upstash/supabase-adapter")
+          ).createItem<"apps">("apps", {
+            name, // Assuming tool name can serve as app name for this context
+            description: `Implementation for tool: ${name}`, // Optional: add a description
+            type: "tool",
             code: implementation,
+            // parameters_schema and metadata can be omitted if they have defaults or are nullable
             created_at: now,
-            updated_at: now
+            updated_at: now,
           });
         }
 

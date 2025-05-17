@@ -163,3 +163,59 @@ export const terminal_sessions = sqliteTable('terminal_sessions', {
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
 });
+
+// Types for the tables
+// Assuming your SQLite schema tables are available in the current scope
+// (e.g., if this code is at the end of your schema.ts or you've imported them)
+
+// For the 'memory_threads' table
+export type MemoryThread = typeof memory_threads.$inferSelect;
+export type NewMemoryThread = typeof memory_threads.$inferInsert;
+
+// For the 'messages' table
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
+
+// For the 'embeddings' table
+export type Embedding = typeof embeddings.$inferSelect;
+export type NewEmbedding = typeof embeddings.$inferInsert;
+
+// For the 'agent_states' table
+export type AgentState = typeof agent_states.$inferSelect;
+export type NewAgentState = typeof agent_states.$inferInsert;
+
+// For the 'workflows' table
+export type Workflow = typeof workflows.$inferSelect;
+export type NewWorkflow = typeof workflows.$inferInsert;
+
+// For the 'workflow_steps' table
+export type WorkflowStep = typeof workflow_steps.$inferSelect;
+export type NewWorkflowStep = typeof workflow_steps.$inferInsert;
+
+// For the 'gqlCache' table
+export type GqlCache = typeof gqlCache.$inferSelect;
+export type NewGqlCache = typeof gqlCache.$inferInsert;
+
+// For the 'apps' table
+export type App = typeof apps.$inferSelect;
+export type NewApp = typeof apps.$inferInsert;
+
+// For the 'users' table
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+// For the 'integrations' table
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
+
+// For the 'app_code_blocks' table
+export type AppCodeBlock = typeof app_code_blocks.$inferSelect;
+export type NewAppCodeBlock = typeof app_code_blocks.$inferInsert;
+
+// For the 'files' table
+export type File = typeof files.$inferSelect;
+export type NewFile = typeof files.$inferInsert;
+
+// For the 'terminal_sessions' table
+export type TerminalSession = typeof terminal_sessions.$inferSelect;
+export type NewTerminalSession = typeof terminal_sessions.$inferInsert;

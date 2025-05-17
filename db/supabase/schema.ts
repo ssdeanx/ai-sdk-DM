@@ -703,3 +703,154 @@ export const scheduledTaskRunsRelations = relations(scheduled_task_runs, ({ one 
 // Note: I renamed the 'content' table to 'content_table' and its 'content' column to 'content_data'
 // in the schema above to avoid potential SQL or ORM conflicts if 'content' is a reserved keyword
 // or causes ambiguity. Please adjust if your setup handles this differently.
+
+// Assuming your schema tables are available in the current scope
+// (e.g., if this code is at the end of your schema.ts or you've imported them)
+
+// For the 'users' table
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+// For the 'apps' table
+export type App = typeof apps.$inferSelect;
+export type NewApp = typeof apps.$inferInsert;
+
+// For the 'app_code_blocks' table
+export type AppCodeBlock = typeof app_code_blocks.$inferSelect;
+export type NewAppCodeBlock = typeof app_code_blocks.$inferInsert;
+
+// For the 'integrations' table
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
+
+// For the 'files' table
+export type File = typeof files.$inferSelect;
+export type NewFile = typeof files.$inferInsert;
+
+// For the 'terminal_sessions' table
+export type TerminalSession = typeof terminal_sessions.$inferSelect;
+export type NewTerminalSession = typeof terminal_sessions.$inferInsert;
+
+// For the 'workflows' table
+export type Workflow = typeof workflows.$inferSelect;
+export type NewWorkflow = typeof workflows.$inferInsert;
+
+// For the 'models' table
+export type Model = typeof models.$inferSelect;
+export type NewModel = typeof models.$inferInsert;
+
+// For the 'providers' table
+export type Provider = typeof providers.$inferSelect;
+export type NewProvider = typeof providers.$inferInsert;
+
+// For the 'agent_personas' table
+export type AgentPersona = typeof agent_personas.$inferSelect;
+export type NewAgentPersona = typeof agent_personas.$inferInsert;
+
+// For the 'agents' table
+export type Agent = typeof agents.$inferSelect;
+export type NewAgent = typeof agents.$inferInsert;
+
+// For the 'tools' table
+export type Tool = typeof tools.$inferSelect;
+export type NewTool = typeof tools.$inferInsert;
+
+// For the 'workflow_steps' table
+export type WorkflowStep = typeof workflow_steps.$inferSelect;
+export type NewWorkflowStep = typeof workflow_steps.$inferInsert;
+
+// For the 'agent_tools' junction table
+export type AgentTool = typeof agent_tools.$inferSelect;
+export type NewAgentTool = typeof agent_tools.$inferInsert;
+
+// For the 'settings' table
+export type Setting = typeof settings.$inferSelect;
+export type NewSetting = typeof settings.$inferInsert;
+
+// For the 'blog_posts' table
+export type BlogPost = typeof blog_posts.$inferSelect;
+export type NewBlogPost = typeof blog_posts.$inferInsert;
+
+// For the 'mdx_documents' table
+export type MdxDocument = typeof mdx_documents.$inferSelect;
+export type NewMdxDocument = typeof mdx_documents.$inferInsert;
+
+// For the 'content_table' (renamed from 'content')
+export type ContentTable = typeof content_table.$inferSelect;
+export type NewContentTable = typeof content_table.$inferInsert;
+
+// For the 'traces' table
+export type Trace = typeof traces.$inferSelect;
+export type NewTrace = typeof traces.$inferInsert;
+
+// For the 'spans' table
+export type Span = typeof spans.$inferSelect;
+export type NewSpan = typeof spans.$inferInsert;
+
+// For the 'events' table (formerly log_events)
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
+
+// For the 'system_metrics' table
+export type SystemMetric = typeof system_metrics.$inferSelect;
+export type NewSystemMetric = typeof system_metrics.$inferInsert;
+
+// For the 'model_performance' table
+export type ModelPerformance = typeof model_performance.$inferSelect;
+export type NewModelPerformance = typeof model_performance.$inferInsert;
+
+// For the 'model_costs' table
+export type ModelCost = typeof model_costs.$inferSelect;
+export type NewModelCost = typeof model_costs.$inferInsert;
+
+// For the 'model_evaluations' table
+export type ModelEvaluation = typeof model_evaluations.$inferSelect;
+export type NewModelEvaluation = typeof model_evaluations.$inferInsert;
+
+// For the 'evaluation_metrics' table
+export type EvaluationMetric = typeof evaluation_metrics.$inferSelect;
+export type NewEvaluationMetric = typeof evaluation_metrics.$inferInsert;
+
+// For the 'persona_scores' table
+export type PersonaScore = typeof persona_scores.$inferSelect;
+export type NewPersonaScore = typeof persona_scores.$inferInsert;
+
+// For the 'evaluation_examples' table
+export type EvaluationExample = typeof evaluation_examples.$inferSelect;
+export type NewEvaluationExample = typeof evaluation_examples.$inferInsert;
+
+// For the 'gql_cache' table
+export type GqlCache = typeof gql_cache.$inferSelect;
+export type NewGqlCache = typeof gql_cache.$inferInsert;
+
+// For the 'documents' table
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;
+
+// For the 'memory_threads' table
+export type MemoryThread = typeof memory_threads.$inferSelect;
+export type NewMemoryThread = typeof memory_threads.$inferInsert;
+
+// For the 'messages' table
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
+
+// For the 'database_connections' table
+export type DatabaseConnection = typeof database_connections.$inferSelect;
+export type NewDatabaseConnection = typeof database_connections.$inferInsert;
+
+// For the 'database_transactions' table
+export type DatabaseTransaction = typeof database_transactions.$inferSelect;
+export type NewDatabaseTransaction = typeof database_transactions.$inferInsert;
+
+// For the 'database_queries' table
+export type DatabaseQuery = typeof database_queries.$inferSelect;
+export type NewDatabaseQuery = typeof database_queries.$inferInsert;
+
+// For the 'scheduled_tasks' table
+export type ScheduledTask = typeof scheduled_tasks.$inferSelect;
+export type NewScheduledTask = typeof scheduled_tasks.$inferInsert;
+
+// For the 'scheduled_task_runs' table
+export type ScheduledTaskRun = typeof scheduled_task_runs.$inferSelect;
+export type NewScheduledTaskRun = typeof scheduled_task_runs.$inferInsert;

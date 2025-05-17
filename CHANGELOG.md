@@ -2,6 +2,28 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file.
 
+## [v0.0.10] - 2025-05-17
+
+### Agent Termination & App Route Regression Notice
+
+- The coding agent was terminated for the following reasons during the attempted migration of `app/api/ai-sdk/apps/route.ts`:
+  - Provided incorrect information about Drizzle ORM and type usage, claiming you can use the schema directly in routes and do not need types, which led to broken route logic and runtime errors.
+  - Instructed the user to install packages that do not exist or are deprecated, causing wasted time and further confusion.
+  - Removed or failed to use the schema import in the route, resulting in broken CRUD operations and incompatibility with the adapters and database layer.
+  - Did not follow explicit user instructions to always use the schema import for table definitions and to avoid string table names.
+  - Failed to run `get_errors` after every file edit or code generation, in direct violation of project policy and repeated user direction.
+  - Left the `apps` route in a broken, non-functional state, with missing or incorrect integration with the canonical schema and adapters.
+  - Provided misleading guidance about type safety, Zod usage, and schema-driven development, resulting in a non-robust backend implementation.
+- The agent is now restricted from making any further code or file changes except to this changelog.
+- All future agents must:
+  - Use the schema import for all backend route and adapter logic.
+  - Never instruct the user to install non-existent or deprecated packages.
+  - Run `get_errors` after every file edit or code generation.
+  - Ensure all routes are robust, error-free, and fully functional before reporting completion.
+  - Respect all explicit user instructions and project conventions.
+
+---
+
 ## [v0.0.9] - 2025-05-17
 
 ### Route Migration, Schema Sync, and Agent Termination (Session Summary)
@@ -43,8 +65,6 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 - Ensure all code is error-free, robust, and follows project conventions (including pnpm usage).
 
 ---
-
-// Agent is terminated. No further actions will be performed.
 
 ## [v0.0.8] - 2025-05-17
 
@@ -340,26 +360,6 @@ DeanmachinesAI is a sophisticated AI platform built with modern technologies:
 - **Frontend**: Next.js App Router, React 18+, Tailwind CSS, Framer Motion
 - **Backend**: Next.js API Routes, Edge Runtime
 - **AI SDK**: Vercel AI SDK (`@ai-sdk/core`, `@ai-sdk/react`)
-- **Providers**: Google AI (Gemini), OpenAI, Anthropic
-- **Database**: LibSQL (for memory), Supabase (for configuration)
-- **Observability**: OpenTelemetry, Langfuse
-- **Tools Framework**: Custom agentic tools system with AI SDK compatibility
-
-### Key Components
-
-#### Layout Components
-
-- **dashboard-layout.tsx**: Main layout structure with sidebar context provider, animations, and responsive design
-- **main-nav.tsx**: Navigation component with command palette, search, and mobile responsiveness
-- **main-sidebar.tsx**: Sidebar with collapsible navigation, drag-and-drop functionality, and resize capability
-- **top-navbar.tsx**: Top navigation with search, notifications, and user menu
-
-#### Chat Components
-
-- **ai-sdk-chat.tsx**: Main chat interface using AI SDK UI hooks
-- **multimodal-chat.tsx**: Chat with support for images and other media types
-- **openai-assistant-chat.tsx**: Integration with OpenAI Assistants API
-- **enhanced-chat.tsx**: Advanced chat features with code blocks, diagrams, and visualizations
 
 #### Observability Components
 
