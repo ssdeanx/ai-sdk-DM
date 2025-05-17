@@ -32,3 +32,9 @@ next-env.d.ts
 Supabase/
 supa.md
 bundles.json
+
+/llm-docs
+/docs
+repomix-api.txt*
+repomix-comp.txt*
+repomix-hooks.txt*
