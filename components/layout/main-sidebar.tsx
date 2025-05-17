@@ -312,7 +312,7 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   }, [])
 
   // Fetch system status using useSupabaseFetch with error handling
-  const { data: statusData, isLoading: statusLoading, error: statusError } = useSupabaseFetch<StatusData[]>({
+  const { data: statusData, isLoading: statusLoading, error: statusError } = useSupabaseFetch<StatusData>({
     endpoint: "/api/system/status",
     resourceName: "System Status",
     dataKey: "status",
@@ -408,11 +408,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
   }
 
   // Additional animation variants for future use
-  const itemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 }
-  }
-
   const textVariants = {
     expanded: {
       opacity: 1,
@@ -433,12 +428,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
         ease: [0.3, 0.1, 0.3, 1]
       }
     },
-  }
-
-  const buttonVariants = {
-    rest: { scale: 1 },
-    hover: { scale: 1.05 },
-    tap: { scale: 0.95 }
   }
 
   // Apply custom order to nav items if available
@@ -495,6 +484,13 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
     }
   }, [draggedItem, customOrder])
 
+  // Define status variables based on statusData
+  const currentStatus = statusData?.[0];
+  const supabaseStatus = !!currentStatus?.supabase;
+  const libsqlStatus = !!currentStatus?.libsql;
+  const upstashStatus = !!currentStatus?.upstash;
+
+  // Sidebar main render
   return (
     <motion.div
       ref={sidebarRef}
@@ -504,6 +500,7 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
       style={{
         width: `${sidebarWidth}px`,
         transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.3,0.1,0.3,1)',
+        paddingTop: '4rem', // Ensure no overlap with top navbar
       }}
       className={cn(
         "relative h-screen border-r bg-background/80 backdrop-blur-md shadow-sm z-20 overflow-hidden",
@@ -534,9 +531,9 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
         animate={{ opacity: 0.5 }}
         transition={{ duration: 1 }}
       >
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 20 }).map((_, index) => (
           <motion.div
-            key={i}
+            key={`particle-${index}`}
             className="absolute w-1 h-1 rounded-full bg-primary/30"
             initial={{
               x: Math.random() * 100 + "%",
@@ -557,20 +554,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
           />
         ))}
       </motion.div>
-      {/* Collapse toggle button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute -right-3 top-6 z-30 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent"
-        onClick={() => setCollapsed(!collapsed)}
-      >
-        {collapsed ? (
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        ) : (
-          <ChevronLeft className="h-3 w-3 text-muted-foreground" />
-        )}
-        <span className="sr-only">{collapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
-      </Button>
 
       {/* Resizable handle */}
       <motion.div
@@ -583,8 +566,8 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
       />
 
       <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-16 items-center border-b px-3">
+        {/* Logo (fixed, no overlap) */}
+        <div className="flex h-16 items-center border-b px-3 fixed top-0 left-0 w-[inherit] bg-background/80 z-30">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold group">
             <div className="relative flex items-center justify-center">
               <motion.div
@@ -618,20 +601,39 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
           </Link>
         </div>
 
-        {/* Sidebar top section: DB status */}
-        <div className="flex flex-row items-center gap-2 mb-4">
+        {/* DB Status Section */}
+        <div className="flex flex-row items-center gap-2 mb-4 mt-16">
           {dbStatusItems.map((db) => (
             <Tooltip key={db.key} delayDuration={100}>
               <TooltipTrigger asChild>
                 <div className="flex items-center cursor-pointer p-1 rounded-lg hover:bg-accent/30 transition-colors">
                   {db.icon}
                   <span className="ml-1 text-xs font-medium text-muted-foreground">{db.label}</span>
-                  {/* Add a status dot or checkmark based on backend status */}
-                  <span className={`ml-1 h-2 w-2 rounded-full ${statusData && statusData[0] && statusData[0][db.key] ? 'bg-green-500' : 'bg-red-400'}`}></span>
+                  <span className={`ml-1 h-2 w-2 rounded-full ${
+                    db.key === "supabase"
+                      ? supabaseStatus
+                        ? 'bg-green-500'
+                        : 'bg-red-400'
+                      : db.key === "libsql"
+                        ? libsqlStatus
+                          ? 'bg-green-500'
+                          : 'bg-red-400'
+                        : db.key === "upstash"
+                          ? upstashStatus
+                            ? 'bg-green-500'
+                            : 'bg-red-400'
+                          : 'bg-red-400'
+                  }`}></span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
-                {db.label} {statusData && statusData[0] && statusData[0][db.key] ? 'Online' : 'Offline'}
+                {db.label} {db.key === "supabase"
+                  ? supabaseStatus ? "Online" : "Offline"
+                  : db.key === "libsql"
+                    ? libsqlStatus ? "Online" : "Offline"
+                    : db.key === "upstash"
+                      ? upstashStatus ? "Online" : "Offline"
+                      : "Offline"}
               </TooltipContent>
             </Tooltip>
           ))}
@@ -655,7 +657,6 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
             style={{ y: itemY }}
           >
             <TooltipProvider delayDuration={0}>
-              {/* Use ordered items if available */}
               {(orderedItems || navItems).map((item) => {
                 const isActive = item.href !== "#" && pathname === item.href
                 const hasSubmenu = item.submenu && item.submenu.length > 0
@@ -783,9 +784,9 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
           </motion.nav>
         </ScrollArea>
 
-        {/* Footer */}
+        {/* Footer: DB status, API health, and collapse toggle at the bottom */}
         <motion.div
-          className="border-t p-3"
+          className="border-t p-3 mt-auto"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.3 }}
@@ -798,10 +799,7 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <DatabaseStatus
-                    showLabels={false}
-                    className="relative"
-                  />
+                  <DatabaseStatus showLabels={false} className="relative" />
                   {statusLoading && (
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-blue-600/20 rounded-full"
@@ -875,6 +873,23 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
             ) : (
               <div className="text-xs text-muted-foreground">Loading API status...</div>
             )}
+          </div>
+
+          {/* Collapse toggle button at the bottom */}
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full border bg-background shadow-md hover:bg-accent"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="sr-only">{collapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
+            </Button>
           </div>
         </motion.div>
       </div>

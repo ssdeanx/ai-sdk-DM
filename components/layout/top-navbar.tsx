@@ -14,15 +14,12 @@ import {
 } from "framer-motion"
 import {
   Menu,
-  X,
   ChevronDown,
-  Search,
   Bell,
   Settings,
   User,
   LogOut,
   Home,
-  Github as GithubIcon, // Keep deprecated GitHub icon as requested
   Database,
   Rocket,
   Sparkles,
@@ -260,7 +257,7 @@ export const TopNavbar = memo(function TopNavbar() {
                     { id: "features", label: "Features", icon: <Rocket className="h-3.5 w-3.5" />, href: "/features" },
                     { id: "observability", label: "Observability", icon: <Activity className="h-3.5 w-3.5" />, href: "/observability" },
                     { id: "settings", label: "Settings", icon: <Settings className="h-3.5 w-3.5" />, href: "/settings" }
-                  ].map((item, index) => (
+                  ].map((item) => (
                     <Tooltip key={item.id} delayDuration={100}>
                       <TooltipTrigger asChild>
                         <Button
@@ -368,7 +365,7 @@ export const TopNavbar = memo(function TopNavbar() {
                     >
                       <div className="flex items-center w-full">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-background mr-2">
-                          <GithubIcon className="h-4 w-4 text-foreground" />
+                          <Database className="h-4 w-4 text-foreground" />
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">GitHub</span>
@@ -857,7 +854,7 @@ const MobileNav = memo(function MobileNav({
 
       {/* Quick Navigation */}
       <div className="grid grid-cols-4 gap-2 p-1">
-        {["dashboard", "chat", "features", "settings"].map((item, index) => {
+        {["dashboard", "chat", "features", "settings"].map((item) => {
           const isActive = pathname.includes(`/${item}`);
           const icons = {
             dashboard: <Home className="h-4 w-4" />,
@@ -877,7 +874,7 @@ const MobileNav = memo(function MobileNav({
               key={item}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
