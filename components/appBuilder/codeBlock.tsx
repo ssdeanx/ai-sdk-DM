@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useCallback } from 'react'
 import { foldGutter } from '@codemirror/language'
 import { indentOnInput } from '@codemirror/language'

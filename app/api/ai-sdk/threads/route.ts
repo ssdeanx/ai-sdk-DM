@@ -4,7 +4,7 @@ import { handleApiError } from "@/lib/api-error-handler";
 import { generateId } from 'ai';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { getMemoryProvider } from '@/lib/memory/factory';
-import { getData, createItem, UpstashAdapterError, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
+import { getData, createItem, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
 
 /**
  * GET /api/ai-sdk/threads
@@ -35,11 +35,13 @@ export async function GET(request: Request) {
         const upstashThreads = await getData('memory_threads', options);
         threads = upstashThreads.map((thread) => ({
           id: thread.id,
+          user_id: thread.user_id ?? null,
+          agent_id: thread.agent_id ?? null,
           name: thread.name,
-          metadata: thread.metadata || {},
-          createdAt: thread.created_at,
-          updatedAt: thread.updated_at,
-          message_count: thread.message_count || 0
+          summary: thread.summary ?? null,
+          metadata: thread.metadata,
+          created_at: thread.created_at,
+          updated_at: thread.updated_at
         }));
         // Upstash: get total count
         const allThreads = await getData('memory_threads', { filters: [{ field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' }] });
@@ -47,8 +49,8 @@ export async function GET(request: Request) {
         hasMore = threads.length === limit;
         return NextResponse.json({ threads, count, hasMore });
       } catch (err) {
-        if (!(err instanceof UpstashAdapterError)) throw err;
-        // Fallback to LibSQL
+        // Fallback to LibSQL if Upstash fails
+        if (typeof err === 'object' && err && 'name' in err && (err as { name: string }).name !== 'UpstashAdapterError') throw err;
       }
     }
 
@@ -56,7 +58,7 @@ export async function GET(request: Request) {
     const db = getLibSQLClient();
     let sql = `
       SELECT 
-        t.id, t.name, t.metadata, t.created_at, t.updated_at,
+        t.id, t.user_id, t.agent_id, t.name, t.summary, t.metadata, t.created_at, t.updated_at,
         (SELECT COUNT(*) FROM messages WHERE memory_thread_id = t.id) as message_count
       FROM memory_threads t
     `;
@@ -85,20 +87,32 @@ export async function GET(request: Request) {
       ) {
         parsedMetadata = thread.metadata as Record<string, unknown>;
       }
+      // Normalize all fields to string/null as needed
+      const normalize = (v: unknown): string | null => {
+        if (typeof v === 'string') return v;
+        if (v === null || v === undefined) return null;
+        if (typeof v === 'number' || typeof v === 'bigint') return v.toString();
+        if (v instanceof ArrayBuffer) return null;
+        return String(v);
+      };
+      // Only include message_count in the response, not in the TableRow type
       return {
-        id: thread.id,
-        name: thread.name,
-        metadata: parsedMetadata,
-        createdAt: thread.created_at,
-        updatedAt: thread.updated_at,
-        message_count: thread.message_count || 0
+        id: normalize(thread.id) ?? '',
+        user_id: normalize(thread.user_id),
+        agent_id: normalize(thread.agent_id),
+        name: normalize(thread.name) ?? '',
+        summary: normalize(thread.summary),
+        metadata: parsedMetadata as unknown as import('@/types/supabase').Json, // Cast to Json type
+        created_at: normalize(thread.created_at) ?? '',
+        updated_at: normalize(thread.updated_at) ?? '',
+        message_count: typeof thread.message_count === 'number' ? thread.message_count : Number(thread.message_count) || 0
       };
     });
-    const countResult = await db.execute({
+    const countQueryResult = await db.execute({
       sql: `SELECT COUNT(*) as count FROM memory_threads WHERE json_extract(metadata, '$.source') = 'ai-sdk-ui'`,
       args: []
     });
-    count = Number(countResult.rows[0].count) || 0;
+    count = Number(countQueryResult.rows[0].count) || 0;
     hasMore = threads.length === limit;
     return NextResponse.json({ threads, count, hasMore });
   } catch (error) {
@@ -132,7 +146,7 @@ export async function POST(request: Request) {
         await upstashLogger.info('threads', 'Thread created', { threadId: id, name });
         return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
       } catch (err) {
-        if (!(err instanceof UpstashAdapterError)) throw err;
+        if (!(err instanceof Error)) throw err;
         // Fallback to LibSQL
       }
     }

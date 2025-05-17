@@ -1,46 +1,67 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import { getLibSQLClient } from '@/lib/memory/db';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { getData, updateItem, deleteItem } from '@/lib/memory/upstash/supabase-adapter';
 
-const adapter = createSupabaseClient();
-const table = 'apps';
+const APPS_PREFIX = 'app:';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: Request) {
   try {
-    const { id } = params;
-    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const app = await adapter.from(table).getById(id);
-    if (!app) return NextResponse.json({ error: 'App not found' }, { status: 404 });
-    return NextResponse.json(app);
+    const url = new URL(req.url);
+    const id = url.pathname.split('/').pop();
+    const provider = getMemoryProvider();
+    if (provider === 'upstash' || provider === 'supabase') {
+      const items = await getData('settings', { filters: [{ field: 'key', operator: 'eq', value: APPS_PREFIX + id }] });
+      if (!items || items.length === 0) return Response.json({ error: 'Not found' }, { status: 404 });
+      return Response.json(items[0]);
+    }
+    // LibSQL fallback
+    const db = getLibSQLClient();
+    const result = await db.execute({ sql: 'SELECT * FROM apps WHERE id = ?', args: [id] });
+    if (!result.rows.length) return Response.json({ error: 'Not found' }, { status: 404 });
+    return Response.json(result.rows[0]);
   } catch (error) {
-    await upstashLogger.error('apps', 'App fetch by id error', error instanceof Error ? error : new Error(String(error)), { appId: params?.id });
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: Request) {
   try {
-    const { id } = params;
-    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const url = new URL(req.url);
+    const id = url.pathname.split('/').pop();
     const data = await req.json();
-    const updated = await adapter.from(table).update(id, { ...data, updated_at: new Date().toISOString() });
-    await upstashLogger.info('apps', 'App updated by id', { appId: id });
-    return NextResponse.json(updated);
+    const now = new Date().toISOString();
+    const provider = getMemoryProvider();
+    if (provider === 'upstash' || provider === 'supabase') {
+      await updateItem('settings', APPS_PREFIX + id, { value: JSON.stringify(data), updated_at: now });
+      return Response.json({ ...data, updated_at: now });
+    }
+    // LibSQL fallback
+    const db = getLibSQLClient();
+    const result = await db.execute({
+      sql: 'UPDATE apps SET name=?, description=?, type=?, code=?, parameters_schema=?, updated_at=? WHERE id=?',
+      args: [data.name, data.description, data.type, data.code, data.parameters_schema, now, id]
+    });
+    return Response.json(result.rows[0]);
   } catch (error) {
-    await upstashLogger.error('apps', 'App update by id error', error instanceof Error ? error : new Error(String(error)), { appId: params?.id });
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request) {
   try {
-    const { id } = params;
-    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const deleted = await adapter.from(table).delete(id);
-    await upstashLogger.info('apps', 'App deleted by id', { appId: id });
-    return NextResponse.json({ success: deleted });
+    const url = new URL(req.url);
+    const id = url.pathname.split('/').pop();
+    const provider = getMemoryProvider();
+    if (provider === 'upstash' || provider === 'supabase') {
+      await deleteItem('settings', APPS_PREFIX + id);
+      return Response.json({ success: true });
+    }
+    // LibSQL fallback
+    const db = getLibSQLClient();
+    await db.execute({ sql: 'DELETE FROM apps WHERE id = ?', args: [id] });
+    return Response.json({ success: true });
   } catch (error) {
-    await upstashLogger.error('apps', 'App delete by id error', error instanceof Error ? error : new Error(String(error)), { appId: params?.id });
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -1,21 +1,26 @@
 # DeanmachinesAI
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square)](https://nextjs.org/)
-[![Vercel AI SDK](https://img.shields.io/badge/Vercel_AI_SDK-1.2.16-black?style=flat-square)](https://sdk.vercel.ai/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.3.1-black?style=flat-square)](https://nextjs.org/)
+[![Vercel AI SDK](https://img.shields.io/badge/Vercel_AI_SDK-3.0.0-black?style=flat-square)](https://sdk.vercel.ai/)
+[![AI SDK React](https://img.shields.io/badge/@ai--sdk/react-3.0.0-black?style=flat-square)](https://sdk.vercel.ai/docs/ai-sdk-react)
+[![Upstash](https://img.shields.io/badge/Upstash-Redis-00DC82?style=flat-square&logo=upstash&logoColor=white)](https://upstash.com/)
+[![CodeMirror](https://img.shields.io/badge/CodeMirror-6.0-1F2937?style=flat-square&logo=codemirror&logoColor=white)](https://codemirror.net/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38bdf8?style=flat-square)](https://tailwindcss.com/)
-[![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-0.29-green?style=flat-square)](https://orm.drizzle.team/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-0.43.1-green?style=flat-square)](https://orm.drizzle.team/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![LibSQL](https://img.shields.io/badge/LibSQL-2775C3?style=flat-square&logo=sqlite&logoColor=white)](https://turso.tech/)
-[![Google AI](https://img.shields.io/badge/Google_AI-Gemini-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Google AI](https://img.shields.io/badge/Google_AI-Gemini--2.0-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-412991?style=flat-square&logo=openai&logoColor=white)](https://openai.com/)
-[![Anthropic](https://img.shields.io/badge/Anthropic-Claude-blueviolet?style=flat-square)](https://anthropic.com/claude)
-[![TypeScript](https://img.shields.io/badge/TypeScript-4.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
-[![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=flat-square&logo=framer&logoColor=white)](https://www.framer.com/motion/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-Claude--3.7-blueviolet?style=flat-square)](https://anthropic.com/claude)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.1-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-11.0.6-0055FF?style=flat-square&logo=framer&logoColor=white)](https://www.framer.com/motion/)
 [![shadcn/ui](https://img.shields.io/badge/shadcn/ui-000000?style=flat-square&logo=shadcnui&logoColor=white)](https://ui.shadcn.com/)
 [![Langfuse](https://img.shields.io/badge/Langfuse-Observability-FF5A5F?style=flat-square)](https://langfuse.com/)
 [![Claude Assisted](https://img.shields.io/badge/AI_Assisted-Claude_3.7-blueviolet?style=flat-square)](https://anthropic.com/claude)
+[![QStash](https://img.shields.io/badge/QStash-Upstash-00DC82?style=flat-square&logo=upstash&logoColor=white)](https://upstash.com/docs/qstash)
+[![Redis FDW](https://img.shields.io/badge/Redis_FDW-Supabase-3ECF8E?style=flat-square&logo=redis&logoColor=white)](https://supabase.com/docs/guides/database/extensions/wrappers/redis)
 
 ---
 
@@ -32,32 +37,14 @@ gantt
     Environment & DB Init      :done, env, after planning, 3d
     Supabase Schema            :done, supa_schema, 2025-04-23, 4d
     LibSQL Memory Setup        :done, libsql, 2025-04-27, 3d
-    Drizzle Migrations         :done, drizzle, 2025-04-28, 3d
-
-    section Core Backend
-    AI Integrations            :done, ai, 2025-04-30, 5d
-    Agent Framework            :done, agents, 2025-05-01, 3d
-    Memory Layer               :done, memory, 2025-05-01, 3d
-    Tools System               :done, tools, 2025-05-01, 3d
-    API Routes                 :done, api, 2025-05-02, 2d
-    Supabase Hooks             :done, hooks, 2025-05-03, 2d
-    Model Registry             :done, models, 2025-05-05, 2d
-    Provider Abstraction       :done, providers, 2025-05-06, 2d
-
-    section Frontend
-    UI Shell & Layout          :done, ui_shell, 2025-05-04, 5d
-    Agents UI & Chat           :done, ui_agents, 2025-05-09, 7d
-    AI SDK Chat                :done, ai_sdk_chat, 2025-05-16, 3d
-    Tools & Models Pages       :active, ui_tools, 2025-05-19, 6d
-    Observability Components   :ui_observability, after ui_tools, 5d
-
-    section Testing & QA
-    Unit & Integration Tests   :tests, after ui_observability, 7d
-    End-to-End Testing         :e2e, after tests, 5d
-
-    section Deployment & Monitoring
-    CI/CD Pipeline             :ci, 2025-06-15, 5d
-    Logging & Telemetry        :telemetry, after ci, 4d
+    Schema Sync                :done, schema_sync, 2025-05-17, 2d
+    Integrations API           :active, integrations_api, 2025-05-19, 5d
+    API Route Migration        :api_migrate, after integrations_api, 7d
+    Type Safety Refactor       :type_safety, after api_migrate, 5d
+    Cross-Backend Adapters     :adapters, 2025-06-01, 7d
+    Redis FDW Integration      :redis_fdw, 2025-06-08, 4d
+    UI Component Refactor      :ui_refactor, 2025-06-12, 5d
+    E2E Testing Phase          :testing, 2025-06-17, 7d
     Final Review & Launch      :launch, 2025-06-30, 3d
 ```
 

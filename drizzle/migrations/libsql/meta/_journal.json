@@ -22,6 +22,13 @@
       "when": 1746609703719,
       "tag": "0002_gql",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1747491173789,
+      "tag": "0003_--appBuilder_Auth_Dashboard_settings_integration",
+      "breakpoints": true
     }
   ]
 }

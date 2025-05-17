@@ -92,6 +92,13 @@
       "when": 1747403791664,
       "tag": "0012_--providers",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1747491151662,
+      "tag": "0013_--appBuilder_Auth_Dashboard_settings_integration",
+      "breakpoints": true
     }
   ]
 }

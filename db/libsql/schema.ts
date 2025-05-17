@@ -80,3 +80,86 @@ export const gqlCache = sqliteTable('gql_cache', {
   response: text('response').notNull(),  // JSON string
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Apps table (cross-backend compatible with Supabase)
+export const apps = sqliteTable('apps', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  type: text('type').notNull(),
+  code: text('code').notNull(),
+  parameters_schema: text('parameters_schema'), // Store as JSON string for LibSQL
+  metadata: text('metadata'), // Store as JSON string for LibSQL
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  avatar_url: text('avatar_url'),
+  role: text('role').notNull(), // 'user' or 'admin'
+  password_hash: text('password_hash').notNull(),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});
+
+/**
+ * Integrations table for storing third-party integration configs.
+ */
+export const integrations = sqliteTable('integrations', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull(),
+  provider: text('provider').notNull(), // e.g. 'github', 'google', 'vercel', 'notion', 'neon'
+  name: text('name'),
+  config: text('config'),        // Store JSON as string for LibSQL (API keys, etc.)
+  credentials: text('credentials'), // Store JSON as string for LibSQL (API keys, etc.)
+  status: text('status').notNull(), // 'active', 'inactive', 'error'
+  last_synced_at: text('last_synced_at'),
+  metadata: text('metadata'),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});
+
+/**
+ * App code blocks table for codeBlock.tsx.
+ */
+export const app_code_blocks = sqliteTable('app_code_blocks', {
+  id: text('id').primaryKey(),
+  app_id: text('app_id').notNull(), // Foreign key to apps.id
+  language: text('language').notNull(), // e.g. 'typescript', 'javascript', 'json'
+  code: text('code').notNull(),
+  description: text('description'),
+  order: integer('order').notNull().default(0),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});
+
+/**
+ * Files table for file tree.
+ */
+export const files = sqliteTable('files', {
+  id: text('id').primaryKey(),
+  app_id: text('app_id').notNull(),
+  parent_id: text('parent_id'),
+  name: text('name').notNull(),
+  type: text('type').notNull(), // 'file' or 'folder'
+  content: text('content'),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});
+
+/**
+ * Terminal sessions table.
+ */
+export const terminal_sessions = sqliteTable('terminal_sessions', {
+  id: text('id').primaryKey(),
+  app_id: text('app_id').notNull(),
+  user_id: text('user_id').notNull(),
+  command: text('command').notNull(),
+  output: text('output'),
+  status: text('status').notNull().default('pending'),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});

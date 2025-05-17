@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useRef, useEffect, useState } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
@@ -6,7 +8,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { autocompletion } from '@codemirror/autocomplete';
 import { linter, lintGutter } from '@codemirror/lint';
-// For future: import { lsp } from '@marimo-team/codemirror-languageserver';
+import { languageId, languageServer, languageServerWithClient } from '@marimo-team/codemirror-languageserver';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 

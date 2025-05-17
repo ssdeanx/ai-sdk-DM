@@ -26,15 +26,93 @@ const withMetadata = () => ({
   metadata: jsonb('metadata').default({}),
 });
 
-// Users table for authentication
+/**
+ * Users table for authentication and roles.
+ */
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   name: text('name'),
   avatar_url: text('avatar_url'),
-  role: text('role').notNull().default('user'),
-  ...standardTimestamps(),
-})
+  role: text('role').notNull().default('user'), // 'user' or 'admin'
+  password_hash: text('password_hash').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+/**
+ * Apps table for AppBuilder.
+ */
+export const apps = pgTable('apps', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  type: text('type').notNull(),
+  code: text('code').notNull(),
+  parameters_schema: jsonb('parameters_schema').default({}),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+/**
+ * App code blocks table for codeBlock.tsx.
+ */
+export const app_code_blocks = pgTable('app_code_blocks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  app_id: uuid('app_id').notNull().references(() => apps.id, { onDelete: 'cascade' }),
+  language: text('language').notNull(), // e.g. 'typescript', 'javascript', 'json'
+  code: text('code').notNull(),
+  description: text('description'),
+  order: integer('order').notNull().default(0),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+/**
+ * Integrations table for external service connections (e.g., GitHub, Google, Notion, Neon, Vercel).
+ */
+export const integrations = pgTable('integrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull(), // or app_id if integration is app-wide
+  provider: text('provider').notNull(), // e.g. 'github', 'google', 'vercel', 'notion', 'neon'
+  name: text('name'),
+  config: jsonb('config').default({}),        // Arbitrary config (e.g. repo, org, workspace, etc.)
+  credentials: jsonb('credentials').default({}), // Encrypted tokens, API keys, etc.
+  status: text('status').notNull().default('inactive'), // 'active', 'inactive', 'error'
+  last_synced_at: timestamp('last_synced_at', { withTimezone: true }),
+  metadata: jsonb('metadata').default({}),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+/**
+ * Files table for file tree.
+ */
+export const files = pgTable('files', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  app_id: uuid('app_id').notNull().references(() => apps.id, { onDelete: 'cascade' }),
+  parent_id: uuid('parent_id'),
+  name: text('name').notNull(),
+  type: text('type').notNull(), // 'file' or 'folder'
+  content: text('content'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+/**
+ * Terminal sessions table.
+ */
+export const terminal_sessions = pgTable('terminal_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  app_id: uuid('app_id').notNull().references(() => apps.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  command: text('command').notNull(),
+  output: text('output'),
+  status: text('status').notNull().default('pending'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
 
 // Workflows table
 export const workflows = pgTable('workflows', {
@@ -45,7 +123,7 @@ export const workflows = pgTable('workflows', {
   status: text('status').notNull(), // Consider an enum if status values are fixed
   ...withMetadata(),
   ...standardTimestamps(),
-})
+});
 
 // Models table
 export const models = pgTable('models', {
@@ -78,7 +156,7 @@ export const models = pgTable('models', {
   api_key: text('api_key'), // Can be null if using a central proxy or service that handles keys
   status: text('status').notNull().default('active'), // e.g., 'active', 'deprecated', 'beta'
   ...standardTimestamps(),
-})
+});
 
 // Providers table
 export const providers = pgTable('providers', {
@@ -110,7 +188,7 @@ export const agent_personas = pgTable('agent_personas', {
   version: integer('version').default(1),
   is_enabled: boolean('is_enabled').default(true),
   ...standardTimestamps(),
-})
+});
 
 // Agents table
 export const agents = pgTable('agents', {
@@ -121,7 +199,7 @@ export const agents = pgTable('agents', {
   system_prompt: text('system_prompt'),
   persona_id: uuid('persona_id').references(() => agent_personas.id, { onDelete: 'set null' }),
   ...standardTimestamps(),
-})
+});
 
 // Tools table
 export const tools = pgTable('tools', {
@@ -135,7 +213,7 @@ export const tools = pgTable('tools', {
   version: text('version'),
   tags: jsonb('tags'), // Storing tags as JSONB array
   ...standardTimestamps(),
-})
+});
 
 // Workflow Steps table
 export const workflow_steps = pgTable('workflow_steps', {
@@ -149,7 +227,7 @@ export const workflow_steps = pgTable('workflow_steps', {
   error: text('error'), // Consider renaming to error_message if 'error' is a reserved word
   ...withMetadata(),
   ...standardTimestamps(),
-})
+});
 
 // Junction table for many-to-many relationship between agents and tools
 export const agent_tools = pgTable('agent_tools', {
@@ -160,7 +238,7 @@ export const agent_tools = pgTable('agent_tools', {
   return {
     pk: primaryKey({ columns: [table.agent_id, table.tool_id] }),
   }
-})
+});
 
 // Settings table
 export const settings = pgTable('settings', {
@@ -172,7 +250,7 @@ export const settings = pgTable('settings', {
   return {
     pk: primaryKey({ columns: [table.category, table.key] }),
   }
-})
+});
 
 // Blog Posts table
 export const blog_posts = pgTable('blog_posts', {
@@ -186,7 +264,7 @@ export const blog_posts = pgTable('blog_posts', {
   featured: boolean('featured').default(false),
   published_at: timestamp('published_at', { withTimezone: true }),
   ...standardTimestamps(),
-})
+});
 
 // MDX Documents table
 export const mdx_documents = pgTable('mdx_documents', {
@@ -196,7 +274,7 @@ export const mdx_documents = pgTable('mdx_documents', {
   excerpt: text('excerpt'),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   ...standardTimestamps(),
-})
+});
 
 // Generic Content table
 export const content_table = pgTable('content', { // Renamed to avoid conflict with 'content' column name
@@ -209,7 +287,7 @@ export const content_table = pgTable('content', { // Renamed to avoid conflict w
   data: jsonb('data'), // For structured content or additional fields
   image_url: text('image_url'),
   ...standardTimestamps(),
-})
+});
 
 // Observability: Traces table
 export const traces = pgTable('traces', {
@@ -223,7 +301,7 @@ export const traces = pgTable('traces', {
   session_id: text('session_id'),
   ...withMetadata(),
   ...standardTimestamps(),
-})
+});
 
 // Observability: Spans table
 export const spans = pgTable('spans', {
@@ -256,7 +334,7 @@ export const events = pgTable('events', {  id: uuid('id').primaryKey().defaultRa
   timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
   attributes: jsonb('attributes').default({}), // OTel alignment
   ...standardTimestamps(),
-})
+});
 
 // System Metrics table
 export const system_metrics = pgTable('system_metrics', {
@@ -271,7 +349,7 @@ export const system_metrics = pgTable('system_metrics', {
   active_users: integer('active_users'),
   ...withMetadata(),
   ...standardTimestamps(),
-})
+});
 
 // Model Performance table
 export const model_performance = pgTable('model_performance', {
@@ -286,7 +364,7 @@ export const model_performance = pgTable('model_performance', {
   error_count: integer('error_count').notNull().default(0),
   ...withMetadata(),
   ...standardTimestamps(),
-})
+});
 
 // Model Costs table
 export const model_costs = pgTable('model_costs', {
@@ -299,7 +377,7 @@ export const model_costs = pgTable('model_costs', {
   requests: integer('requests').notNull().default(0),
   ...withMetadata(),
   ...standardTimestamps(),
-})
+});
 
 // Model Evaluations table
 export const model_evaluations = pgTable('model_evaluations', {
@@ -314,7 +392,7 @@ export const model_evaluations = pgTable('model_evaluations', {
   metadata: jsonb('metadata').default({}), // Store detailed scores, parameters, etc.
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Evaluation Metrics table (detailed metrics for each evaluation)
 export const evaluation_metrics = pgTable('evaluation_metrics', {
@@ -327,7 +405,7 @@ export const evaluation_metrics = pgTable('evaluation_metrics', {
   weight: numeric('weight', { precision: 5, scale: 2 }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Persona Scores table
 export const persona_scores = pgTable('persona_scores', {
@@ -343,7 +421,7 @@ export const persona_scores = pgTable('persona_scores', {
   metadata: jsonb('metadata').default({}),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Evaluation Examples table
 export const evaluation_examples = pgTable('evaluation_examples', {
@@ -356,7 +434,7 @@ export const evaluation_examples = pgTable('evaluation_examples', {
   metadata: jsonb('metadata'), // Any other relevant data for this example
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // GQL Cache table
 export const gql_cache = pgTable('gql_cache', {
@@ -365,7 +443,7 @@ export const gql_cache = pgTable('gql_cache', {
   variables: text('variables'), // Consider jsonb if variables are complex
   response: jsonb('response').notNull(), // Store response as JSONB
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-})
+});
 
 // Documents table (for RAG / Vector Store)
 export const documents = pgTable('documents', {
@@ -390,7 +468,7 @@ export const memory_threads = pgTable('memory_threads', {
   metadata: jsonb('metadata'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Messages table (for Supabase backup of chat/agent memory)
 export const messages = pgTable('messages', {
@@ -422,7 +500,7 @@ export const database_connections = pgTable('database_connections', {
   metadata: jsonb('metadata').default({}),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Database Transactions table
 export const database_transactions = pgTable('database_transactions', {
@@ -438,7 +516,7 @@ export const database_transactions = pgTable('database_transactions', {
   metadata: jsonb('metadata').default({}),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Database Queries table
 export const database_queries = pgTable('database_queries', {
@@ -451,7 +529,7 @@ export const database_queries = pgTable('database_queries', {
   status: text('status').notNull(), // 'completed', 'failed'
   error_message: text('error_message'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Scheduled Tasks table (for pg_cron or similar)
 export const scheduled_tasks = pgTable('scheduled_tasks', {
@@ -470,7 +548,7 @@ export const scheduled_tasks = pgTable('scheduled_tasks', {
   metadata: jsonb('metadata').default({}),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 
 // Scheduled Task Runs table
 export const scheduled_task_runs = pgTable('scheduled_task_runs', {
@@ -484,23 +562,7 @@ export const scheduled_task_runs = pgTable('scheduled_task_runs', {
   error_message: text('error_message'),
   metadata: jsonb('metadata').default({}),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
-
-// Apps table
-export const apps = pgTable('apps', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull().unique(),
-  description: text('description').notNull(),
-  type: text('type').notNull(),
-  code: text('code').notNull(),
-  parameters_schema: jsonb('parameters_schema'),
-  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
-
-// --- Upstash/adapter note ---
-// This table structure is compatible with both Supabase and Upstash adapter (see lib/memory/supabase.ts and lib/memory/upstash/supabase-adapter.ts)
-// All CRUD operations for 'apps' should use the generic getData, createItem, updateItem, deleteItem helpers for cross-backend support.
 
 // --- Drizzle Relations ---
 
