@@ -260,37 +260,43 @@ async function execute(params) {
       // Refresh the apps list
       fetchApps()
     } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while deleting the app",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // --- Test/Run App Functionality (moved from catch block) ---
+  async function handleTest() {
     setIsRunning(true)
     setTestOutput("")
-
     try {
       // Parse the test input
       const input = testInput ? JSON.parse(testInput) : {}
-
       // Create a safe execution environment
       const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor
-
       // Capture console output
       const originalConsoleLog = console.log
-      const logs = []
+      const logs: string[] = [];
       console.log = (...args) => {
         logs.push(args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : String(arg))).join(" "))
         originalConsoleLog(...args)
       }
-
       try {
         // Create a function from the code
         const executeFunction = AsyncFunction("params", code)
-
         // Execute the function with the input
         const result = await executeFunction(input)
-
         // Format the result
         setTestOutput(
           JSON.stringify(
             {
               result,
-              logs,
+              logs
             },
             null,
             2,
@@ -300,11 +306,11 @@ async function execute(params) {
         // Restore console.log
         console.log = originalConsoleLog
       }
-    } catch (error) {
+    } catch (error: any) {
       setTestOutput(
         JSON.stringify(
           {
-            error: error.message,
+            error: error && error.message ? error.message : String(error),
           },
           null,
           2,
@@ -313,6 +319,11 @@ async function execute(params) {
     } finally {
       setIsRunning(false)
     }
+  }
+
+  // Add a refreshApps function for retry button
+  function refreshApps() {
+    fetchApps();
   }
 
   return (
@@ -589,7 +600,7 @@ async function execute(params) {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button onClick={handleRunTest} disabled={isRunning}>
+                      <Button onClick={handleTest} disabled={isRunning}>
                         {isRunning ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

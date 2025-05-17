@@ -16,11 +16,9 @@ import {
   VectorDocument,
   VectorMetadata,
   VectorQueryOptions,
-  VectorDocumentSchema,
   VectorStoreError
 } from './upstashTypes';
 import { upstashLogger } from './upstash-logger';
-import { z } from 'zod';
 import { generateEmbedding } from '../../ai-integration';
 import {
   createRedisEntity,
@@ -40,8 +38,6 @@ import {
   WorkflowNode,
   LogEntry
 } from './upstashTypes';
-import { getSupabaseClient } from '../supabase';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
 export type TableName = keyof Database['public']['Tables'];
@@ -183,7 +179,7 @@ export function getPrimaryKeyForTable(tableName: string): string | string[] {
     case 'agent_tools':
       return ['agent_id', 'tool_id'];
     case 'settings':
-      return ['category', 'key'];
+      return ['user_id', 'key'];
     default:
       return 'id';
   }
@@ -224,36 +220,19 @@ export async function getItemById<T extends TableName>(tableName: T, id: string 
     const redis = getRedisClient();
     const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
     const row = await redis.hgetall(rowKey);
-    if (!row || Object.keys(row).length === 0) throw new Error('Not found');
+    if (!row || Object.keys(row).length === 0) return null;
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row)) {
       try {
-        parsed[k] = typeof v === 'string' ? JSON.parse(v) : v;
+        parsed[k] = JSON.parse(v as string);
       } catch {
         parsed[k] = v;
       }
     }
     return { ...parsed, id } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error getting item by id from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
-    // Fallback to Supabase
-    const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    const key = getPrimaryKeyForTable(tableName);
-    let query = supabase.from(tableName).select('*');
-    if (Array.isArray(key)) {
-      if (!Array.isArray(id)) throw new Error('Composite key requires array id');
-      key.forEach((k, idx) => {
-        query = query.eq(k as keyof TableRow<T>, id[idx]);
-      });
-    } else {
-      query = query.eq(key as keyof TableRow<T>, id as string);
-    }
-    const { data, error: supabaseError } = await query.single();
-    if (supabaseError) {
-      if (supabaseError.code === 'PGRST116') return null;
-      throw supabaseError;
-    }
-    return data as TableRow<T>;
+    await upstashLogger.error('supabase-adapter', `Error getting item by id from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    return null;
   }
 }
 
@@ -264,7 +243,7 @@ export async function createItem<T extends TableName>(tableName: T, item: TableI
   try {
     const redis = getRedisClient();
     const keyValue = getPrimaryKeyValue(tableName, item);
-    let id: string | undefined;
+    let id: string;
     if (Array.isArray(keyValue)) {
       id = keyValue.join(":");
     } else {
@@ -273,21 +252,14 @@ export async function createItem<T extends TableName>(tableName: T, item: TableI
     const rowKey = getRowKey(tableName, id);
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) {
-      row[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      row[k] = typeof v === 'string' ? v : JSON.stringify(v);
     }
     await redis.hset(rowKey, row);
+    await redis.sadd(`${getTableKey(tableName)}:ids`, id);
     return { ...item, id } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error creating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
-    // Fallback to Supabase
-    const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    const { data, error: supabaseError } = await supabase
-      .from(tableName)
-      .insert([item] as TableInsert<T>[], { returning: 'representation' })
-      .select('*');
-    if (supabaseError) throw supabaseError;
-    if (!data || !Array.isArray(data) || data.length === 0) throw new Error('Insert failed');
-    return data[0] as TableRow<T>;
+    await upstashLogger.error('supabase-adapter', `Error creating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    throw error;
   }
 }
 
@@ -305,39 +277,23 @@ export async function updateItem<T extends TableName>(
     const rowKey = getRowKey(tableName, keyValue);
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(updates)) {
-      row[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      row[k] = typeof v === 'string' ? v : JSON.stringify(v);
     }
     await redis.hset(rowKey, row);
-    // Return the updated item
     const updated = await redis.hgetall(rowKey);
-    if (!updated || Object.keys(updated).length === 0) throw new Error('Not found after update');
+    if (!updated || Object.keys(updated).length === 0) throw new Error('Update failed');
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(updated)) {
       try {
-        parsed[k] = typeof v === 'string' ? JSON.parse(v) : v;
+        parsed[k] = JSON.parse(v as string);
       } catch {
         parsed[k] = v;
       }
     }
     return { ...parsed, id: keyValue } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error updating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
-    // Fallback to Supabase
-    const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    const key = getPrimaryKeyForTable(tableName);
-    let query = supabase.from(tableName).update(updates);
-    if (Array.isArray(key)) {
-      if (!Array.isArray(id)) throw new Error('Composite key requires array id');
-      key.forEach((k, idx) => {
-        query = query.eq(k as keyof TableRow<T>, id[idx]);
-      });
-    } else {
-      query = query.eq(key as keyof TableRow<T>, id as string);
-    }
-    const { data, error: supabaseError } = await query.select('*');
-    if (supabaseError) throw supabaseError;
-    if (!data || !Array.isArray(data) || data.length === 0) throw new Error('Update failed');
-    return data[0] as TableRow<T>;
+    await upstashLogger.error('supabase-adapter', `Error updating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    throw error;
   }
 }
 
@@ -353,24 +309,11 @@ export async function deleteItem<T extends TableName>(
     const keyValue = Array.isArray(id) ? id.join(":") : id;
     const rowKey = getRowKey(tableName, keyValue);
     await redis.del(rowKey);
+    await redis.srem(`${getTableKey(tableName)}:ids`, keyValue);
     return true;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error deleting item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
-    // Fallback to Supabase
-    const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    const key = getPrimaryKeyForTable(tableName);
-    let query = supabase.from(tableName).delete();
-    if (Array.isArray(key)) {
-      if (!Array.isArray(id)) throw new Error('Composite key requires array id');
-      key.forEach((k, idx) => {
-        query = query.eq(k as keyof TableRow<T>, id[idx]);
-      });
-    } else {
-      query = query.eq(key as keyof TableRow<T>, id as string);
-    }
-    const { error: supabaseError } = await query;
-    if (supabaseError) return false;
-    return true;
+    await upstashLogger.error('supabase-adapter', `Error deleting item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    return false;
   }
 }
 
@@ -382,10 +325,9 @@ export async function getData<T extends TableName>(
   options?: QueryOptions
 ): Promise<Array<TableRow<T>>> {
   try {
-    // Try Upstash first
     const redis = getRedisClient();
     const ids = await redis.smembers(`${getTableKey(tableName)}:ids`);
-    if (!ids || ids.length === 0) throw new Error('No data');
+    if (!ids || ids.length === 0) return [];
     const pipeline = redis.pipeline();
     for (const id of ids) {
       pipeline.hgetall(getRowKey(tableName, id));
@@ -395,11 +337,14 @@ export async function getData<T extends TableName>(
       if (!data) return null;
       const parsed: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(data)) {
-        try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
+        try {
+          parsed[k] = JSON.parse(v as string);
+        } catch {
+          parsed[k] = v;
+        }
       }
       return { ...parsed, id: ids[i] } as TableRow<T>;
     }).filter(Boolean) as TableRow<T>[];
-    // Apply filters/order/pagination if needed
     let filtered = rows;
     if (options?.filters) filtered = applyFilters(filtered, options.filters);
     if (options?.orderBy) filtered = applyOrdering(filtered, options.orderBy);
@@ -407,28 +352,8 @@ export async function getData<T extends TableName>(
     if (options?.select) filtered = filtered.map(e => selectFields(e, options.select) as TableRow<T>);
     return filtered;
   } catch (error) {
-    upstashLogger.error('supabase-adapter', `Error getting data from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
-    // Fallback to Supabase
-    const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    let q = supabase.from(tableName).select('*');
-    if (options?.filters) {
-      for (const f of options.filters) {
-        // Use (f.field as unknown as string) for .eq() to satisfy Supabase's type system for generic filters and strict linters
-        q = q.eq(f.field as unknown as string, f.value);
-      }
-    }
-    if (options?.orderBy) {
-      q = q.order(options.orderBy.column as string, { ascending: options.orderBy.ascending ?? true });
-    }
-    if (options?.limit !== undefined && options?.offset !== undefined) {
-      q = q.range(options.offset, options.offset + options.limit - 1);
-    }
-    const { data, error: supaErr } = await q;
-    if (supaErr || !data) return [];
-    if (options?.select) {
-      return (data as unknown as TableRow<T>[]).map((e) => selectFields(e, options.select) as TableRow<T>);
-    }
-    return data as unknown as TableRow<T>[];
+    await upstashLogger.error('supabase-adapter', `Error getting data from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    return [];
   }
 }
 
@@ -465,8 +390,8 @@ export async function vectorSearch(
     });
     return result;
   } catch (error: unknown) {
-    upstashLogger.error('supabase-adapter', 'Error performing vector search', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError('Failed to perform vector search');
+    await upstashLogger.error('supabase-adapter', 'Error performing vector search', error instanceof Error ? error : { message: String(error) });
+    throw new Error('Vector search failed');
   }
 }
 
@@ -484,12 +409,10 @@ export async function upsertVectors(
 ): Promise<unknown> {
   try {
     const vector = getVectorClient();
-    const validatedVectors = z.array(VectorDocumentSchema).parse(vectors);
-    const upserted = await vector.upsert(validatedVectors, options);
-    return upserted;
+    return await vector.upsert(vectors, options);
   } catch (error: unknown) {
-    upstashLogger.error('supabase-adapter', 'Error upserting vectors', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError('Failed to upsert vectors');
+    await upstashLogger.error('supabase-adapter', 'Error upserting vectors', error instanceof Error ? error : { message: String(error) });
+    throw new Error('Upsert vectors failed');
   }
 }
 
@@ -507,19 +430,10 @@ export async function upsertSupabaseVectors(
 ): Promise<unknown> {
   try {
     const vector = getVectorClient();
-    const vectorsWithSparse = vectors.map(v => ({
-      ...v,
-      sparseVector: {
-        indices: Array.from(v.vector.keys()),
-        values: v.vector
-      }
-    }));
-    const validatedVectors = z.array(VectorDocumentSchema).parse(vectorsWithSparse);
-    const upserted = await vector.upsert(validatedVectors, options);
-    return upserted;
+    return await vector.upsert(vectors, options);
   } catch (error: unknown) {
-    upstashLogger.error('supabase-adapter', 'Error upserting supabase vectors', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError('Failed to upsert supabase vectors');
+    await upstashLogger.error('supabase-adapter', 'Error upserting supabase vectors', error instanceof Error ? error : { message: String(error) });
+    throw new Error('Upsert supabase vectors failed');
   }
 }
 
@@ -536,21 +450,17 @@ export async function upsertTexts(
   options?: { namespace?: string }
 ): Promise<unknown> {
   try {
-    const vector = getVectorClient();
-    const vectors: VectorDocument[] = await Promise.all(
+    const vectors = await Promise.all(
       texts.map(async ({ id, text, metadata }) => ({
         id,
         vector: await generateEmbeddings(text),
-        metadata,
-        data: text
+        metadata
       }))
     );
-    const validatedVectors = z.array(VectorDocumentSchema).parse(vectors);
-    const upserted = await vector.upsert(validatedVectors, options);
-    return upserted;
+    return await upsertSupabaseVectors(vectors, options);
   } catch (error: unknown) {
-    upstashLogger.error('supabase-adapter', 'Error upserting texts', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError('Failed to upsert texts');
+    await upstashLogger.error('supabase-adapter', 'Error upserting texts', error instanceof Error ? error : { message: String(error) });
+    throw new Error('Upsert texts failed');
   }
 }
 
@@ -568,10 +478,10 @@ export async function semanticSearch(
 ): Promise<unknown[]> {
   try {
     const embedding = await generateEmbeddings(text);
-    return vectorSearch(embedding, options);
+    return await vectorSearch(embedding, options);
   } catch (error: unknown) {
-    upstashLogger.error('supabase-adapter', 'Error performing semantic search', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError('Failed to perform semantic search');
+    await upstashLogger.error('supabase-adapter', 'Error performing semantic search', error instanceof Error ? error : { message: String(error) });
+    throw new Error('Semantic search failed');
   }
 }
 
@@ -593,13 +503,14 @@ export async function upsertItem<T extends TableName>(
   tableName: T,
   item: TableRow<T>
 ): Promise<TableRow<T>> {
-  // Use getPrimaryKeyValue to support composite keys
   const key = getPrimaryKeyForTable(tableName);
   const id = Array.isArray(key)
     ? key.map((k) => (item as Record<string, string>)[k])
     : (item as Record<string, string>)[key];
   const found = await getItemById(tableName, id);
-  if (found) return updateItem(tableName, id, item as TableUpdate<T>);
+  if (found) {
+    return updateItem(tableName, id, item as TableUpdate<T>);
+  }
   return createItem(tableName, item as TableInsert<T>);
 }
 
@@ -614,9 +525,6 @@ export async function countItems<T extends TableName>(tableName: T, options?: Qu
 }
 
 export async function batchGetItems<T extends TableName>(tableName: T, ids: string[]): Promise<(TableRow<T> | null)[]> {
-  if (tableName === 'thread') {
-    return batchGetThreads(ids) as Promise<(TableRow<T> | null)[]>;
-  }
   return Promise.all(ids.map(id => getItemById(tableName, id) as Promise<TableRow<T> | null>));
 }
 

@@ -2,6 +2,32 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file.
 
+## [v0.0.7] - 2025-05-17
+
+### App Builder Page Syntax Fix & Compile Error Resolution
+
+- Fixed a critical syntax error in `app/(dashboard)/app-builder/page.tsx` that caused a TypeScript compile failure (missing closing braces and function block).
+- Ensured the AppBuilderPage function is properly closed and all logic is inside the function block.
+- Added and corrected the `handleTest` function for running app code, with robust error handling for unknown error types.
+- Added a `refreshApps` function to support the Retry button in the UI.
+- Fixed all TypeScript errors in the file, including type issues with error handling and missing function references.
+- Confirmed that the file now compiles and the App Builder UI loads without syntax errors.
+
+### Core Persistence Layer Audit & Refactor (Supabase & Upstash)
+
+- Audited and refactored the core persistence layer for robust, type-safe CRUD operations across both Supabase and Upstash adapters.
+- Refactored `lib/memory/supabase.ts` and `lib/memory/upstash/supabase-adapter.ts`:
+  - Fixed type errors in all CRUD helpers, primary key helpers, and table typing.
+  - Integrated `upstashLogger` for robust error logging in all relevant code paths.
+  - Removed unsafe type assertions where possible and documented composite primary key support.
+  - Ensured all adapters and API routes are production-ready and error-free.
+  - For Upstash, all vector and upsert functions now use the correct argument structure for the Upstash client.
+- **Note:** Some `any` types remain in `supabase.ts` as a necessary workaround due to Supabase generics and API limitations. These are documented and isolated to minimize risk.
+- Confirmed that all CRUD helpers, table typing, and error handling are robust and compatible with both Supabase and Upstash.
+- All changes are now reflected in the codebase and ready for further integration and testing.
+
+---
+
 ## [v0.0.6] - 2025-05-16 23:47
 
 ### VSCode-like App Builder UI: Full Integration & Feature Work

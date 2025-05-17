@@ -33,6 +33,8 @@ import {
   createSupabaseClient,
   SupabaseClient as UpstashSupabaseClient
 } from './upstash/supabase-adapter-factory';
+import { getPrimaryKeyForTable } from './upstash/redis-store';
+import { upstashLogger } from './upstash/upstash-logger';
 
 // --- Upstash Client Utilities ---
 // These are re-exported for use in supabase.ts and other modules
@@ -340,28 +342,39 @@ export async function getData<T extends TableName>(
     cacheTTL?: number;
   }
 ): Promise<Array<TableRow<T>>> {
-  const client = getSupabaseClient();
-  let query = client.from(tableName).select(options?.select || "*");
-  if (options?.match) {
-    for (const [key, value] of Object.entries(options.match)) {
-      query = query.eq(key as keyof TableRow<T>, value as any);
+  try {
+    const client = getSupabaseClient();
+    if (!isSupabaseClient(client)) {
+      throw new Error('getData only supported for SupabaseClient. Use Upstash adapter for Upstash operations.');
     }
+    let query = client.from(tableName).select(options?.select || "*");
+    if (options?.match) {
+      for (const [key, value] of Object.entries(options.match)) {
+        query = query.eq(key as any, value as any);
+      }
+    }
+    if (options?.filters) {
+      query = options.filters(query);
+    }
+    if (options?.orderBy) {
+      query = query.order(options.orderBy.column as string, { ascending: options.orderBy.ascending });
+    }
+    if (options?.limit !== undefined) {
+      query = query.limit(options.limit);
+    }
+    if (options?.offset !== undefined) {
+      query = query.range(options.offset, (options.offset || 0) + (options.limit || 0) - 1);
+    }
+    const { data, error } = await query;
+    if (error) {
+      await upstashLogger.error('supabase', 'Error in getData', error);
+      throw error;
+    }
+    return (Array.isArray(data) ? data : []) as unknown as Array<TableRow<T>>;
+  } catch (err) {
+    await upstashLogger.error('supabase', 'Exception in getData', err instanceof Error ? err : { message: String(err) });
+    throw err;
   }
-  if (options?.filters) {
-    query = options.filters(query);
-  }
-  if (options?.orderBy) {
-    query = query.order(options.orderBy.column as string, { ascending: options.orderBy.ascending });
-  }
-  if (options?.limit !== undefined) {
-    query = query.limit(options.limit);
-  }
-  if (options?.offset !== undefined) {
-    query = query.range(options.offset, (options.offset || 0) + (options.limit || 0) - 1);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data as Array<TableRow<T>>) || [];
 }
 
 export async function getItemById<T extends TableName>(
@@ -369,20 +382,28 @@ export async function getItemById<T extends TableName>(
   id: string,
   options?: { select?: string; cacheKey?: string; cacheTTL?: number }
 ): Promise<TableRow<T> | null> {
-  const client = getSupabaseClient();
-  const key = getPrimaryKeyForTable(tableName);
-  let query = client.from(tableName).select(options?.select || "*");
-  if (Array.isArray(key)) {
-    throw new Error("Composite primary keys not supported in getItemById. Use a custom query.");
-  } else {
-    query = query.eq(key as keyof TableRow<T>, id);
+  try {
+    const client = getSupabaseClient();
+    if (!isSupabaseClient(client)) {
+      throw new Error('getItemById only supported for SupabaseClient. Use Upstash adapter for Upstash operations.');
+    }
+    const key = getPrimaryKeyForTable(tableName);
+    if (Array.isArray(key)) {
+      throw new Error("Composite primary keys not supported in getItemById. Use a custom query.");
+    }
+    let query = client.from(tableName).select(options?.select || "*");
+    query = query.eq(key as any, id as any);
+    const { data, error } = await query.single();
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      await upstashLogger.error('supabase', 'Error in getItemById', error);
+      throw error;
+    }
+    return data as unknown as TableRow<T>;
+  } catch (err) {
+    await upstashLogger.error('supabase', 'Exception in getItemById', err instanceof Error ? err : { message: String(err) });
+    throw err;
   }
-  const { data, error } = await query.single();
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw error;
-  }
-  return data as TableRow<T>;
 }
 
 export async function createItem<T extends TableName>(
@@ -390,14 +411,25 @@ export async function createItem<T extends TableName>(
   item: TableInsert<T>,
   options?: { select?: string }
 ): Promise<TableRow<T>> {
-  const client = getSupabaseClient();
-  const { data, error } = await client
-    .from(tableName)
-    .insert([item] as TableInsert<T>[], { returning: "representation" })
-    .select(options?.select || "*");
-  if (error) throw error;
-  if (!data || !Array.isArray(data) || data.length === 0) throw new Error("Insert failed");
-  return data[0] as TableRow<T>;
+  try {
+    const client = getSupabaseClient();
+    if (!isSupabaseClient(client)) {
+      throw new Error('createItem only supported for SupabaseClient. Use Upstash adapter for Upstash operations.');
+    }
+    const { data, error } = await client
+      .from(tableName)
+      .insert([item] as any)
+      .select(options?.select || "*");
+    if (error) {
+      await upstashLogger.error('supabase', 'Error in createItem', error);
+      throw error;
+    }
+    if (!data || !Array.isArray(data) || data.length === 0) throw new Error("Insert failed");
+    return data[0] as unknown as TableRow<T>;
+  } catch (err) {
+    await upstashLogger.error('supabase', 'Exception in createItem', err instanceof Error ? err : { message: String(err) });
+    throw err;
+  }
 }
 
 export async function updateItem<T extends TableName>(
@@ -406,38 +438,54 @@ export async function updateItem<T extends TableName>(
   itemUpdates: TableUpdate<T>,
   options?: { select?: string }
 ): Promise<TableRow<T> | null> {
-  const client = getSupabaseClient();
-  const key = getPrimaryKeyForTable(tableName);
-  let query = client.from(tableName).update(itemUpdates);
-  if (Array.isArray(key)) {
-    throw new Error("Composite primary keys not supported in updateItem. Use a custom query.");
-  } else {
-    query = query.eq(key as keyof TableRow<T>, id);
+  try {
+    const client = getSupabaseClient();
+    if (!isSupabaseClient(client)) {
+      throw new Error('updateItem only supported for SupabaseClient. Use Upstash adapter for Upstash operations.');
+    }
+    const key = getPrimaryKeyForTable(tableName);
+    if (Array.isArray(key)) {
+      throw new Error("Composite primary keys not supported in updateItem. Use a custom query.");
+    }
+    const { data, error } = await client
+      .from(tableName)
+      .update(itemUpdates as any)
+      .eq(key as any, id as any)
+      .select(options?.select || "*");
+    if (error) {
+      await upstashLogger.error('supabase', 'Error in updateItem', error);
+      throw error;
+    }
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+    return data[0] as unknown as TableRow<T>;
+  } catch (err) {
+    await upstashLogger.error('supabase', 'Exception in updateItem', err instanceof Error ? err : { message: String(err) });
+    throw err;
   }
-  if (options?.select) {
-    query = query.select(options.select);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  if (!data || !Array.isArray(data) || data.length === 0) return null;
-  return data[0] as TableRow<T>;
-}
-
-export async function deleteItem<T extends TableName>(
-  tableName: T,
+}export async function deleteItem<T extends TableName>(  tableName: T,
   id: string
 ): Promise<{ success: boolean; error?: PostgrestError }> {
-  const client = getSupabaseClient();
-  const key = getPrimaryKeyForTable(tableName);
-  let query = client.from(tableName).delete();
-  if (Array.isArray(key)) {
-    throw new Error("Composite primary keys not supported in deleteItem. Use a custom query.");
-  } else {
-    query = query.eq(key as keyof TableRow<T>, id);
+  try {
+    const client = getSupabaseClient();
+    if (!isSupabaseClient(client)) {
+      throw new Error('deleteItem only supported for SupabaseClient. Use Upstash adapter for Upstash operations.');
+    }
+    const key = getPrimaryKeyForTable(tableName);
+    if (Array.isArray(key)) {
+      throw new Error("Composite primary keys not supported in deleteItem. Use a custom query.");
+    }
+    let query = client.from(tableName).delete();
+    query = query.eq(key as any, id as any);
+    const { error } = await query;
+    if (error) {
+      await upstashLogger.error('supabase', 'Error in deleteItem', error);
+      return { success: false, error };
+    }
+    return { success: true };
+  } catch (err) {
+    await upstashLogger.error('supabase', 'Exception in deleteItem', err instanceof Error ? err : { message: String(err) });
+    return { success: false, error: err as PostgrestError };
   }
-  const { error } = await query;
-  if (error) return { success: false, error };
-  return { success: true };
 }
 
 // Document (RAG) Specific Functions
@@ -496,21 +544,20 @@ export async function searchSimilarDocuments(
   return upstashFirst(
     async () => {
       const client = getSupabaseClient();
-      if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const data = await client.vector.search(queryEmbedding, {
-        topK: matchCount,
-        filter: {
-          ...(userId ? { user_id: userId } : {}),
-          ...(documentType ? { document_type: documentType } : {})
-        },
-        includeMetadata: true,
-        namespace: 'documents'
+      if (!isSupabaseClient(client)) throw new Error('Supabase not available');
+      const result = await client.rpc('match_documents', {
+        query_embedding: `[${queryEmbedding.join(',')}]` as string,
+        match_threshold: matchThreshold,
+        match_count: matchCount,
+        p_user_id: userId,
+        p_document_type: documentType,
       });
+      if (result.error) throw result.error;
+      const data = result.data || [];
       queryCache.set(effectiveCacheKey, data, { ttl: 60000 });
       cacheStats.sets++;
       return data || [];
-    },
-    async () => {
+    },    async () => {
       const client = getSupabaseClient();
       if (!isSupabaseClient(client)) throw new Error('Supabase not available');
       const result = await client.rpc('match_documents', {
@@ -632,16 +679,15 @@ export async function deleteMessagesByThreadId(threadId: string): Promise<{ coun
     const pgError: PostgrestError = {
       name: 'PostgrestError',
       message: (err as Error).message || 'Unknown error during message deletion',
-      details: typeof (err as { details?: unknown }).details === 'string' ? (err as { details?: unknown }).details : JSON.stringify((err as { details?: unknown }).details) || '',
-      hint: typeof (err as { hint?: unknown }).hint === 'string' ? (err as { hint?: unknown }).hint : '',
-      code: typeof (err as { code?: unknown }).code === 'string' ? (err as { code?: unknown }).code : 'EXCEPTION_DELETE_MSGS',
+      details: String((err as { details?: unknown }).details || ''),
+      hint: String((err as { hint?: unknown }).hint || ''),
+      code: String((err as { code?: unknown }).code || 'EXCEPTION_DELETE_MSGS'),
     };
     return { count: 0, error: pgError };
   }
 }
 
-export async function getRecentThreadsWithLastMessage(userId: string, limit: number = 10) {
-  const db = getDrizzleClient();
+export async function getRecentThreadsWithLastMessage(userId: string, limit: number = 10) {  const db = getDrizzleClient();
   try {
     const latestMessageTimeCorrectedSq = db
       .select({

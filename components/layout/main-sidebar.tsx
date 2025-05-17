@@ -220,7 +220,14 @@ const navItems: NavItem[] = [
 ]
 
 // Define a type for statusData[0]
-type StatusData = { supabase?: boolean; libsql?: boolean };
+type StatusData = { supabase?: boolean; libsql?: boolean; upstash?: boolean; apiRoutes?: Record<string, string> };
+
+// Add Upstash status to navItems or as a status section
+const dbStatusItems = [
+  { label: "Supabase", icon: <Database className="h-4 w-4" />, key: "supabase" },
+  { label: "LibSQL", icon: <Database className="h-4 w-4" />, key: "libsql" },
+  { label: "Upstash", icon: <Zap className="h-4 w-4 text-green-500" />, key: "upstash" },
+];
 
 /**
  * MainSidebar Component
@@ -611,6 +618,25 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
           </Link>
         </div>
 
+        {/* Sidebar top section: DB status */}
+        <div className="flex flex-row items-center gap-2 mb-4">
+          {dbStatusItems.map((db) => (
+            <Tooltip key={db.key} delayDuration={100}>
+              <TooltipTrigger asChild>
+                <div className="flex items-center cursor-pointer p-1 rounded-lg hover:bg-accent/30 transition-colors">
+                  {db.icon}
+                  <span className="ml-1 text-xs font-medium text-muted-foreground">{db.label}</span>
+                  {/* Add a status dot or checkmark based on backend status */}
+                  <span className={`ml-1 h-2 w-2 rounded-full ${statusData && statusData[0] && statusData[0][db.key] ? 'bg-green-500' : 'bg-red-400'}`}></span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {db.label} {statusData && statusData[0] && statusData[0][db.key] ? 'Online' : 'Offline'}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+
         {/* Navigation */}
         <ScrollArea className="flex-1 py-2 px-2">
           <motion.nav
@@ -726,91 +752,30 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
                 }
 
                 return (
-                  <Tooltip key={item.title}>
+                  <Tooltip key={item.title} delayDuration={100}>
                     <TooltipTrigger asChild>
-                      <div className="block">
-                        <motion.div
-                          whileHover="hover"
-                          whileTap="tap"
-                          initial="hidden"
-                          animate="visible"
-                          variants={{
-                            ...buttonVariants,
-                            ...itemVariants
-                          }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                          onPointerDown={(e) => startDrag(e, item.title)}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "w-full justify-start h-9 relative overflow-hidden group",
-                              isActive ? "bg-gradient-to-r from-green-500/10 to-blue-600/10 text-foreground" : "hover:bg-accent/30",
-                              collapsed && "justify-center px-0",
-                              hoveredItem === item.title && !isActive && "bg-accent/20",
-                              isDragging && draggedItem === item.title && "opacity-50",
-                              item.isPinned && "border-l-2 border-green-500"
-                            )}
-                            onClick={() => navigateToPage(item.href)}
-                            onMouseEnter={() => handleItemHover(item.title)}
-                            onMouseLeave={handleItemLeave}
-                            draggable={!collapsed}
-                            onDragStart={() => handleDragStart(item.title)}
-                            onDragEnd={handleDragEnd}
-                            onDragOver={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault()
-                              handleDrop(item.title)
-                            }}
-                          >
-                            {isActive && (
-                              <motion.div
-                                className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-teal-500/10 to-blue-600/10 opacity-0 group-hover:opacity-100"
-                                animate={{
-                                  opacity: [0.5, 0.8, 0.5],
-                                }}
-                                transition={{
-                                  duration: 2,
-                                  repeat: Infinity,
-                                  repeatType: 'reverse',
-                                }}
-                              />
-                            )}
-                            <span className={cn(
-                              "flex items-center justify-center relative z-10",
-                              !collapsed && "mr-2",
-                              isActive && "text-primary"
-                            )}>
-                              {item.icon}
-                            </span>
-                            <motion.span
-                              variants={textVariants}
-                              className={cn(
-                                "truncate relative z-10",
-                                isActive && "font-medium"
-                              )}
-                            >
-                              {item.title}
-                            </motion.span>
-                            {isActive && !collapsed && (
-                              <motion.div
-                                layoutId="nav-active-indicator"
-                                className="absolute right-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-gradient-to-r from-green-500 to-blue-600"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                              />
-                            )}
-                          </Button>
-                        </motion.div>
-                      </div>
+                      <motion.div
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
+                          pathname === item.href ? "bg-accent/40" : "hover:bg-accent/20"
+                        )}
+                        whileHover={{ scale: 1.04, boxShadow: "0 2px 8px rgba(16,185,129,0.08)" }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigateToPage(item.href)}
+                        aria-label={item.title}
+                      >
+                        {item.icon}
+                        <span className="hidden md:inline text-sm font-medium text-foreground">{item.title}</span>
+                        {item.badge && (
+                          <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-400 to-blue-400 text-white shadow">
+                            {item.badge}
+                          </span>
+                        )}
+                      </motion.div>
                     </TooltipTrigger>
-                    {collapsed && <TooltipContent side="right">{item.title}</TooltipContent>}
+                    <TooltipContent side="right" className="text-xs">
+                      {item.title}
+                    </TooltipContent>
                   </Tooltip>
                 )
               })}
@@ -853,6 +818,8 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
                     Supabase: {(statusData[0] as StatusData).supabase ? 'Connected' : 'Error'}
                     <br />
                     LibSQL: {(statusData[0] as StatusData).libsql ? 'Connected' : 'Error'}
+                    <br />
+                    Upstash: {(statusData[0] as StatusData).upstash ? 'Connected' : 'Error'}
                   </div>
                 )}
               </TooltipContent>
@@ -892,6 +859,23 @@ export const MainSidebar = memo(function MainSidebar({ className }: MainSidebarP
               DeanmachinesAI
             </span> v1.0
           </motion.div>
+
+          {/* API Health Section */}
+          <div className="mt-8 p-2 rounded-xl bg-background/60 border border-border/20 shadow-sm">
+            <div className="text-xs font-semibold mb-1 text-muted-foreground">API Health</div>
+            {statusData && statusData[0] && statusData[0].apiRoutes ? (
+              <ul className="space-y-1">
+                {Object.entries(statusData[0].apiRoutes).map(([route, status]) => (
+                  <li key={route} className="flex items-center gap-2">
+                    <span className="text-xs text-foreground">{route}</span>
+                    <span className={`h-2 w-2 rounded-full ${status === 'ok' ? 'bg-green-500' : 'bg-red-400'}`}></span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-xs text-muted-foreground">Loading API status...</div>
+            )}
+          </div>
         </motion.div>
       </div>
     </motion.div>
