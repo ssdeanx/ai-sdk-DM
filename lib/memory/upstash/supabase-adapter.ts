@@ -227,7 +227,11 @@ export async function getItemById<T extends TableName>(tableName: T, id: string 
     if (!row || Object.keys(row).length === 0) throw new Error('Not found');
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row)) {
-      try { parsed[k] = JSON.parse(v as string); } catch { parsed[k] = v; }
+      try {
+        parsed[k] = typeof v === 'string' ? JSON.parse(v) : v;
+      } catch {
+        parsed[k] = v;
+      }
     }
     return { ...parsed, id } as TableRow<T>;
   } catch (error) {
@@ -235,22 +239,21 @@ export async function getItemById<T extends TableName>(tableName: T, id: string 
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
     const key = getPrimaryKeyForTable(tableName);
-    let q = supabase.from(tableName).select('*');
+    let query = supabase.from(tableName).select('*');
     if (Array.isArray(key)) {
-      if (!Array.isArray(id)) throw new Error('Composite key id must be string[]');
-      // Use (k as unknown as string) for .eq() to satisfy Supabase's type system for composite keys and strict linters
+      if (!Array.isArray(id)) throw new Error('Composite key requires array id');
       key.forEach((k, idx) => {
-        q = q.eq(k as unknown as string, id[idx]);
+        query = query.eq(k as keyof TableRow<T>, id[idx]);
       });
-      const { data, error: supaErr } = await q.single();
-      if (supaErr || !data) return null;
-      return data as unknown as TableRow<T>;
     } else {
-      // Use (key as unknown as string) for .eq() to satisfy Supabase's type system for single keys and strict linters
-      const { data, error: supaErr } = await q.eq(key as unknown as string, id as string).single();
-      if (supaErr || !data) return null;
-      return data as unknown as TableRow<T>;
+      query = query.eq(key as keyof TableRow<T>, id as string);
     }
+    const { data, error: supabaseError } = await query.single();
+    if (supabaseError) {
+      if (supabaseError.code === 'PGRST116') return null;
+      throw supabaseError;
+    }
+    return data as TableRow<T>;
   }
 }
 
@@ -263,26 +266,28 @@ export async function createItem<T extends TableName>(tableName: T, item: TableI
     const keyValue = getPrimaryKeyValue(tableName, item);
     let id: string | undefined;
     if (Array.isArray(keyValue)) {
-      id = keyValue.join(':');
+      id = keyValue.join(":");
     } else {
-      id = keyValue || (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+      id = keyValue;
     }
     const rowKey = getRowKey(tableName, id);
-    const toStore: Record<string, string> = {};
+    const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) {
-      if (k !== 'id') toStore[k] = JSON.stringify(v);
+      row[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
     }
-    await redis.hset(rowKey, toStore);
-    await redis.sadd(`${getTableKey(tableName)}:ids`, id);
+    await redis.hset(rowKey, row);
     return { ...item, id } as TableRow<T>;
   } catch (error) {
     upstashLogger.error('supabase-adapter', `Error creating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
-    // Use [item] as unknown as TableInsert<T>[] to satisfy Supabase's type system for generic inserts and strict linters
-    const { data, error: supaErr } = await supabase.from(tableName).insert([item] as unknown as TableInsert<T>[]).select('*').single();
-    if (supaErr || !data) throw new VectorStoreError(`Failed to create item in table ${String(tableName)}`);
-    return data as unknown as TableRow<T>;
+    const { data, error: supabaseError } = await supabase
+      .from(tableName)
+      .insert([item] as TableInsert<T>[], { returning: 'representation' })
+      .select('*');
+    if (supabaseError) throw supabaseError;
+    if (!data || !Array.isArray(data) || data.length === 0) throw new Error('Insert failed');
+    return data[0] as TableRow<T>;
   }
 }
 
@@ -296,53 +301,43 @@ export async function updateItem<T extends TableName>(
 ): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
-    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
-    const toStore: Record<string, string> = {};
+    const keyValue = Array.isArray(id) ? id.join(":") : id;
+    const rowKey = getRowKey(tableName, keyValue);
+    const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(updates)) {
-      if (k !== "id") toStore[k] = JSON.stringify(v);
+      row[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
     }
-    await redis.hset(rowKey, toStore);
+    await redis.hset(rowKey, row);
+    // Return the updated item
     const updated = await redis.hgetall(rowKey);
-    if (!updated) throw new VectorStoreError("No data found after update");
+    if (!updated || Object.keys(updated).length === 0) throw new Error('Not found after update');
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(updated)) {
       try {
-        parsed[k] = JSON.parse(v as string);
+        parsed[k] = typeof v === 'string' ? JSON.parse(v) : v;
       } catch {
         parsed[k] = v;
       }
     }
-    return { ...parsed, id } as TableRow<T>;
+    return { ...parsed, id: keyValue } as TableRow<T>;
   } catch (error) {
-    upstashLogger.error(
-      "supabase-adapter",
-      `Error updating item in table ${String(tableName)}`,
-      error instanceof Error ? error : { message: String(error) }
-    );
+    upstashLogger.error('supabase-adapter', `Error updating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
     const key = getPrimaryKeyForTable(tableName);
+    let query = supabase.from(tableName).update(updates);
     if (Array.isArray(key)) {
-      if (!Array.isArray(id)) throw new Error("Composite key id must be string[]");
-      // Use updates as unknown as TableUpdate<T> and (k as unknown as string) for .eq() to satisfy Supabase's type system for composite keys and strict linters
-      let q = supabase.from(tableName).update(updates as unknown as TableUpdate<T>);
+      if (!Array.isArray(id)) throw new Error('Composite key requires array id');
       key.forEach((k, idx) => {
-        q = q.eq(k as unknown as string, id[idx]);
+        query = query.eq(k as keyof TableRow<T>, id[idx]);
       });
-      const { data, error: supaErr } = await q.select("*").single();
-      if (supaErr) throw supaErr;
-      return data as unknown as TableRow<T>;
     } else {
-      // Use updates as unknown as TableUpdate<T> and (key as unknown as string) for .eq() to satisfy Supabase's type system for single keys and strict linters
-      const { data, error: supaErr } = await supabase
-        .from(tableName)
-        .update(updates as unknown as TableUpdate<T>)
-        .eq(key as unknown as string, id as string)
-        .select("*")
-        .single();
-      if (supaErr) throw supaErr;
-      return data as unknown as TableRow<T>;
+      query = query.eq(key as keyof TableRow<T>, id as string);
     }
+    const { data, error: supabaseError } = await query.select('*');
+    if (supabaseError) throw supabaseError;
+    if (!data || !Array.isArray(data) || data.length === 0) throw new Error('Update failed');
+    return data[0] as TableRow<T>;
   }
 }
 
@@ -355,38 +350,27 @@ export async function deleteItem<T extends TableName>(
 ): Promise<boolean> {
   try {
     const redis = getRedisClient();
-    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
+    const keyValue = Array.isArray(id) ? id.join(":") : id;
+    const rowKey = getRowKey(tableName, keyValue);
     await redis.del(rowKey);
-    await redis.srem(`${getTableKey(tableName)}:ids`, Array.isArray(id) ? id.join(":") : id);
     return true;
   } catch (error) {
-    upstashLogger.error(
-      "supabase-adapter",
-      `Error deleting item from table ${String(tableName)}`,
-      error instanceof Error ? error : { message: String(error) }
-    );
+    upstashLogger.error('supabase-adapter', `Error deleting item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
     // Fallback to Supabase
     const supabase = getSupabaseClient() as SupabaseClient<Database>;
     const key = getPrimaryKeyForTable(tableName);
+    let query = supabase.from(tableName).delete();
     if (Array.isArray(key)) {
-      if (!Array.isArray(id)) throw new Error("Composite key id must be string[]");
-      // Use (k as unknown as string) for .eq() to satisfy Supabase's type system for composite keys and strict linters
-      let q = supabase.from(tableName).delete();
+      if (!Array.isArray(id)) throw new Error('Composite key requires array id');
       key.forEach((k, idx) => {
-        q = q.eq(k as unknown as string, id[idx]);
+        query = query.eq(k as keyof TableRow<T>, id[idx]);
       });
-      const { error: supaErr } = await q;
-      if (supaErr) throw supaErr;
-      return true;
     } else {
-      // Use (key as unknown as string) for .eq() to satisfy Supabase's type system for single keys and strict linters
-      const { error: supaErr } = await supabase
-        .from(tableName)
-        .delete()
-        .eq(key as unknown as string, id as string);
-      if (supaErr) throw supaErr;
-      return true;
+      query = query.eq(key as keyof TableRow<T>, id as string);
     }
+    const { error: supabaseError } = await query;
+    if (supabaseError) return false;
+    return true;
   }
 }
 

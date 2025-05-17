@@ -180,10 +180,10 @@ export const getSupabaseTransactionClient = (): SupabaseClient<Database> | Upsta
   }
 
   const supabaseDirectUrl = process.env.DATABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseDirectUrl || !supabaseServiceKey) {
-    const errorMsg = "Supabase transaction client credentials not found. Ensure DATABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY as fallback) are set.";
+    const errorMsg = "Supabase transaction client credentials not found. Ensure DATABASE_URL and NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY are set.";
     // Production logging: errorMsg
     throw new Error(errorMsg);
   }
@@ -332,7 +332,7 @@ export async function getData<T extends TableName>(
   options?: {
     select?: string;
     match?: Partial<TableRow<T>>;
-    filters?: (query: ReturnType<SupabaseClient<Database>['from']>) => ReturnType<SupabaseClient<Database>['from']>;
+    filters?: (query: ReturnType<SupabaseClient<Database>["from"]>) => ReturnType<SupabaseClient<Database>["from"]>;
     limit?: number;
     offset?: number;
     orderBy?: { column: keyof TableRow<T>; ascending?: boolean };
@@ -340,207 +340,104 @@ export async function getData<T extends TableName>(
     cacheTTL?: number;
   }
 ): Promise<Array<TableRow<T>>> {
-  const effectiveCacheKey = options?.cacheKey || `getData_${tableName}_${JSON.stringify(options?.match)}_${options?.select}_${options?.limit}_${options?.offset}_${JSON.stringify(options?.orderBy)}`;
-
-  if (queryCache.has(effectiveCacheKey)) {
-    cacheStats.hits++;
-    const cachedData = queryCache.get(effectiveCacheKey);
-    if (cachedData !== undefined && isArrayOf<TableRow<T>>(cachedData, (item): item is TableRow<T> => typeof item === 'object')) {
-      return cachedData as Array<TableRow<T>>;
+  const client = getSupabaseClient();
+  let query = client.from(tableName).select(options?.select || "*");
+  if (options?.match) {
+    for (const [key, value] of Object.entries(options.match)) {
+      query = query.eq(key as keyof TableRow<T>, value as any);
     }
   }
-  cacheStats.misses++;
-
-  return upstashFirst(
-    async () => {
-      const client = getSupabaseClient();
-      if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const tableClient = client.from(tableName as any);
-
-      if (options?.match) {
-        Object.entries(options.match).forEach(([field, value]) => {
-          return tableClient.filter(field as "created_at", 'eq', value);
-        });      }
-
-      if (options?.orderBy) {
-        const { column, ascending = true } = options.orderBy;
-        tableClient.order(column as "created_at", ascending);
-      }
-
-      if (options?.limit !== undefined) {
-        tableClient.limit(options.limit);
-      }
-      if (options?.offset !== undefined) {
-        tableClient.offset(options.offset);
-      }
-
-      const upstashOptions = options ? {
-        ...(options.select ? { select: Array.isArray(options.select) ? options.select : [options.select] } : {}),
-        limit: options.limit,
-        offset: options.offset
-      } : undefined;
-
-      const data = await tableClient.getAll(upstashOptions);
-      queryCache.set(effectiveCacheKey, data, { ttl: options?.cacheTTL });
-      cacheStats.sets++;
-      return (data as unknown as Array<TableRow<T>>) || [];
-    },    async () => {
-      const client = getSupabaseClient();
-      if (!isSupabaseClient(client)) throw new Error('Supabase not available');
-      let query = client.from(tableName as T).select(options?.select || "*");
-
-      if (options?.match) {
-        query = query.match(options.match as Partial<TableRow<T>>);
-      }
-      if (options?.filters) {
-        query = options.filters(query as ReturnType<SupabaseClient<Database>['from']>);
-      }
-
-      if (options?.orderBy) {
-        const { column, ascending = true } = options.orderBy;
-        query = query.order(column as string, { ascending });
-      }
-
-      if (options?.limit !== undefined) {
-        query = query.range(options?.offset || 0, (options?.offset || 0) + options.limit - 1);
-      }
-
-      const result = await query;
-      if (result.error) throw result.error;
-
-      const data = result.data || [];
-      queryCache.set(effectiveCacheKey, data, { ttl: options?.cacheTTL });
-      cacheStats.sets++;
-      return (data as unknown as Array<TableRow<T>>) || [];
-    }
-  );
+  if (options?.filters) {
+    query = options.filters(query);
+  }
+  if (options?.orderBy) {
+    query = query.order(options.orderBy.column as string, { ascending: options.orderBy.ascending });
+  }
+  if (options?.limit !== undefined) {
+    query = query.limit(options.limit);
+  }
+  if (options?.offset !== undefined) {
+    query = query.range(options.offset, (options.offset || 0) + (options.limit || 0) - 1);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as Array<TableRow<T>>) || [];
 }
 
 export async function getItemById<T extends TableName>(
   tableName: T,
   id: string,
-  options?: { select?: string; cacheKey?: string; cacheTTL?: number; }
+  options?: { select?: string; cacheKey?: string; cacheTTL?: number }
 ): Promise<TableRow<T> | null> {
-  const effectiveCacheKey = options?.cacheKey || `getItemById_${tableName}_${id}_${options?.select || "*"}`;
-  if (queryCache.has(effectiveCacheKey)) {
-    cacheStats.hits++;
-    const cachedData = queryCache.get(effectiveCacheKey);
-    if (cachedData !== undefined && typeof cachedData === 'object') {
-      return cachedData as TableRow<T>;
-    }
+  const client = getSupabaseClient();
+  const key = getPrimaryKeyForTable(tableName);
+  let query = client.from(tableName).select(options?.select || "*");
+  if (Array.isArray(key)) {
+    throw new Error("Composite primary keys not supported in getItemById. Use a custom query.");
+  } else {
+    query = query.eq(key as keyof TableRow<T>, id);
   }
-  cacheStats.misses++;
-
-  return upstashFirst(
-    async () => {
-      const client = getSupabaseClient();
-      if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const data = await client.from(tableName as any).getById(id);
-      if (data) {
-        queryCache.set(effectiveCacheKey, data, { ttl: options?.cacheTTL });
-        cacheStats.sets++;
-      }
-      return data as unknown as TableRow<T> | null;
-    },
-    async () => {
-      const client = getSupabaseClient();
-      if (!isSupabaseClient(client)) throw new Error('Supabase not available');
-      const result = await client
-        .from(tableName as T)
-        .select(options?.select || "*")
-        .eq('id', id)
-        .single();
-      if (result.error) throw result.error;
-      const data = result.data as unknown as Record<string, unknown>;
-      queryCache.set(effectiveCacheKey, data, { ttl: options?.cacheTTL });
-      cacheStats.sets++;
-      return data as unknown as TableRow<T> | null;
-
-    }  );}
+  const { data, error } = await query.single();
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return data as TableRow<T>;
+}
 
 export async function createItem<T extends TableName>(
   tableName: T,
   item: TableInsert<T>,
-  options?: { select?: string; }
+  options?: { select?: string }
 ): Promise<TableRow<T>> {
-  return upstashFirst(
-    async () => {
-      const client = getSupabaseTransactionClient();
-      if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const data = await client.from(tableName as T).create(item as Omit<TableRow<T>, 'id'>);
-      queryCache.clear();
-      return data as TableRow<T>;
-    },
-    async () => {
-      const client = getSupabaseTransactionClient();
-      if (!isSupabaseClient(client)) throw new Error('Supabase not available');
-      const result = await client
-        .from(tableName as T)
-        .insert([item] as TableInsert<T>[], options)
-        .select(options?.select || "*")
-        .single();
-      if (result.error) throw result.error;
-      queryCache.clear();
-      return result.data as TableRow<T>;
-    }
-  );
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from(tableName)
+    .insert([item] as TableInsert<T>[], { returning: "representation" })
+    .select(options?.select || "*");
+  if (error) throw error;
+  if (!data || !Array.isArray(data) || data.length === 0) throw new Error("Insert failed");
+  return data[0] as TableRow<T>;
 }
 
 export async function updateItem<T extends TableName>(
   tableName: T,
   id: string,
   itemUpdates: TableUpdate<T>,
-  options?: { select?: string; }
+  options?: { select?: string }
 ): Promise<TableRow<T> | null> {
-  return upstashFirst(
-    async () => {
-      const client = getSupabaseTransactionClient();
-      if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const data = await client.from(tableName as T).update(id, itemUpdates);
-      queryCache.clear();
-      return data as TableRow<T> | null;
-    },
-    async () => {
-      const client = getSupabaseTransactionClient();
-      if (!isSupabaseClient(client)) throw new Error('Supabase not available');
-      const result = await client
-        .from(tableName as T)
-        .update(itemUpdates as TableUpdate<T>, options)
-        .eq('id', id)
-        .select(options?.select || "*")
-        .single();
-      if (result.error) throw result.error;
-      queryCache.clear();
-      return result.data as TableRow<T> | null;
-    }
-  );
+  const client = getSupabaseClient();
+  const key = getPrimaryKeyForTable(tableName);
+  let query = client.from(tableName).update(itemUpdates);
+  if (Array.isArray(key)) {
+    throw new Error("Composite primary keys not supported in updateItem. Use a custom query.");
+  } else {
+    query = query.eq(key as keyof TableRow<T>, id);
+  }
+  if (options?.select) {
+    query = query.select(options.select);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  if (!data || !Array.isArray(data) || data.length === 0) return null;
+  return data[0] as TableRow<T>;
 }
 
 export async function deleteItem<T extends TableName>(
   tableName: T,
   id: string
 ): Promise<{ success: boolean; error?: PostgrestError }> {
-  return upstashFirst(
-    async () => {
-      const client = getSupabaseTransactionClient();
-      if (!isUpstashClient(client)) throw new Error('Upstash not available');
-      const success = await client.from(tableName as any).delete(id);
-      if (!success) throw new Error(`Failed to delete item ${id} from ${tableName}`);
-      queryCache.clear();
-      return { success: true };
-    },
-    async () => {
-      const client = getSupabaseTransactionClient();
-      if (!isSupabaseClient(client)) throw new Error('Supabase not available');
-      const result = await client
-        .from(tableName as T)
-        .delete()
-        .eq('id', id);
-      if (result.error) throw result.error;
-      queryCache.clear();
-      return { success: true };
-    }
-  );
+  const client = getSupabaseClient();
+  const key = getPrimaryKeyForTable(tableName);
+  let query = client.from(tableName).delete();
+  if (Array.isArray(key)) {
+    throw new Error("Composite primary keys not supported in deleteItem. Use a custom query.");
+  } else {
+    query = query.eq(key as keyof TableRow<T>, id);
+  }
+  const { error } = await query;
+  if (error) return { success: false, error };
+  return { success: true };
 }
 
 // Document (RAG) Specific Functions
