@@ -1,14 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { createDataStreamResponse, generateId } from 'ai';
-import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import { handleApiError } from '@/lib/api-error-handler';
+import { createTrace, logEvent } from '@/lib/langfuse-integration';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { agentRegistry } from "@/lib/agents/registry";
-import { runAgent } from "@/lib/agents/agent-service";
-import { AgentRunOptions } from "@/lib/agents/agent.types";
-import { personaManager } from "@/lib/agents/personas/persona-manager";
-import { createMemoryThread, saveMessage, loadMessages, loadAgentState, saveAgentState } from "@/lib/memory/memory";
-import { getSupabaseClient, isSupabaseClient, isUpstashClient } from "@/lib/memory/supabase";
+import { agentRegistry } from '@/lib/agents/registry';
+import { runAgent } from '@/lib/agents/agent-service';
+import { AgentRunOptions } from '@/lib/agents/agent.types';
+import { personaManager } from '@/lib/agents/personas/persona-manager';
+import {
+  createMemoryThread,
+  saveMessage,
+  loadMessages,
+  loadAgentState,
+  saveAgentState,
+} from '@/lib/memory/memory';
+import {
+  getSupabaseClient,
+  isSupabaseClient,
+  isUpstashClient,
+} from '@/lib/memory/supabase';
 
 /**
  * POST /api/ai-sdk/agents/[id]/run
@@ -29,18 +39,18 @@ export async function POST(
       temperature,
       maxTokens,
       systemPrompt,
-      toolChoice
+      toolChoice,
     } = body;
 
     // Generate thread ID if not provided
     const threadId = providedThreadId || generateId();
 
     // Log agent run start
-    await upstashLogger.info(
-      'agents',
-      'Agent run started',
-      { agentId: id, threadId, input: typeof input === 'string' ? input.slice(0, 100) : undefined }
-    );
+    await upstashLogger.info('agents', 'Agent run started', {
+      agentId: id,
+      threadId,
+      input: typeof input === 'string' ? input.slice(0, 100) : undefined,
+    });
 
     // Health check: ensure Supabase/Upstash is available
     const supabaseHealth = await (async () => {
@@ -60,7 +70,10 @@ export async function POST(
       }
     })();
     if (!supabaseHealth) {
-      return NextResponse.json({ error: "Supabase/Upstash is not available" }, { status: 503 });
+      return NextResponse.json(
+        { error: 'Supabase/Upstash is not available' },
+        { status: 503 }
+      );
     }
 
     // Initialize agent registry
@@ -69,7 +82,7 @@ export async function POST(
     // Get agent config using agentRegistry (loads from Upstash/Supabase as needed)
     const agent = await agentRegistry.getAgent(id);
     if (!agent) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
     // Optionally, get persona if present (uses personaManager)
@@ -96,17 +109,12 @@ export async function POST(
 
     // Save user message if input is provided
     if (input) {
-      await saveMessage(
-        threadId,
-        "user",
-        input,
-        {
-          count_tokens: true,
-          generate_embeddings: false,
-          metadata: {},
-          model_name: agent.modelId
-        }
-      );
+      await saveMessage(threadId, 'user', input, {
+        count_tokens: true,
+        generate_embeddings: false,
+        metadata: {},
+        model_name: agent.modelId,
+      });
     }
 
     // Load previous messages
@@ -118,7 +126,7 @@ export async function POST(
 
     // Create trace for this run
     const trace = await createTrace({
-      name: "agent_run",
+      name: 'agent_run',
       userId: threadId,
       metadata: {
         agentId: id,
@@ -126,8 +134,8 @@ export async function POST(
         threadId,
         modelId: agent.modelId,
         messageCount: previousMessages.length + (input ? 1 : 0),
-        hasPersona: !!persona
-      }
+        hasPersona: !!persona,
+      },
     });
 
     // Run options with onFinish to persist assistant message
@@ -141,52 +149,51 @@ export async function POST(
       onFinish: async (data) => {
         // Save assistant message to memory after completion
         if (data?.message?.content) {
-          await saveMessage(
-            threadId,
-            "assistant",
-            data.message.content,
-            {
-              count_tokens: true,
-              generate_embeddings: false,
-              metadata: {},
-              model_name: agent.modelId
-            }
-          );
+          await saveMessage(threadId, 'assistant', data.message.content, {
+            count_tokens: true,
+            generate_embeddings: false,
+            metadata: {},
+            model_name: agent.modelId,
+          });
         }
         // Save agent state if needed
         if (data?.message) {
-          await saveAgentState(threadId, id, { lastRun: new Date().toISOString() });
+          await saveAgentState(threadId, id, {
+            lastRun: new Date().toISOString(),
+          });
         }
         // Log event
         await logEvent({
           traceId: trace!.id,
-          name: "agent_run_finish",
+          name: 'agent_run_finish',
           metadata: {
             agentId: id,
             threadId,
-            finishReason: data?.finishReason
-          }
+            finishReason: data?.finishReason,
+          },
         });
-      }
+      },
     };
 
     // Run the agent (Upstash/Supabase logic handled in runAgent)
     const response = await runAgent(id, threadId, input, options);
 
     // Log agent run completion
-    await upstashLogger.info(
-      'agents',
-      'Agent run completed',
-      { agentId: id, threadId, output: response?.output ? String(response.output).slice(0, 100) : undefined }
-    );
+    await upstashLogger.info('agents', 'Agent run completed', {
+      agentId: id,
+      threadId,
+      output: response?.output
+        ? String(response.output).slice(0, 100)
+        : undefined,
+    });
 
     // Use streamResult if available
     if (response.streamResult) {
       return response.streamResult.toDataStreamResponse({
         headers: {
           'x-thread-id': threadId,
-          'x-agent-id': id
-        }
+          'x-agent-id': id,
+        },
       });
     } else {
       // Fallback: use createDataStreamResponse with execute function
@@ -197,9 +204,9 @@ export async function POST(
           dataStream.writeData({
             status: 'completed',
             output: output ?? null,
-            memoryThreadId
+            memoryThreadId,
           });
-        }
+        },
       });
     }
   } catch (error) {

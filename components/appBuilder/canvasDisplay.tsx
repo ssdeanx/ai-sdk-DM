@@ -8,7 +8,11 @@ import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { autocompletion } from '@codemirror/autocomplete';
 import { linter, lintGutter } from '@codemirror/lint';
-import { languageId, languageServer, languageServerWithClient } from '@marimo-team/codemirror-languageserver';
+import {
+  languageId,
+  languageServer,
+  languageServerWithClient,
+} from '@marimo-team/codemirror-languageserver';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 
@@ -21,8 +25,18 @@ export interface CanvasDisplayProps {
   onChange?: (value: string) => void;
 }
 
-const TerminalDisplay: React.FC<{ content: string; className?: string }> = ({ content, className }) => (
-  <pre className={"whitespace-pre-wrap break-words text-xs bg-black text-green-400 p-2 rounded h-full overflow-auto " + (className || '')}>{content}</pre>
+const TerminalDisplay: React.FC<{ content: string; className?: string }> = ({
+  content,
+  className,
+}) => (
+  <pre
+    className={
+      'whitespace-pre-wrap break-words text-xs bg-black text-green-400 p-2 rounded h-full overflow-auto ' +
+      (className || '')
+    }
+  >
+    {content}
+  </pre>
 );
 
 const languageExtensions = {
@@ -41,12 +55,23 @@ const EditableCodeBlock: React.FC<{
   language?: 'javascript' | 'json' | 'typescript' | 'markdown';
   onChange?: (value: string) => void;
   className?: string;
-  onLanguageChange?: (lang: 'javascript' | 'json' | 'typescript' | 'markdown') => void;
-}> = ({ value, editable = false, language = 'javascript', onChange, className, onLanguageChange }) => {
+  onLanguageChange?: (
+    lang: 'javascript' | 'json' | 'typescript' | 'markdown'
+  ) => void;
+}> = ({
+  value,
+  editable = false,
+  language = 'javascript',
+  onChange,
+  className,
+  onLanguageChange,
+}) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [copied, setCopied] = useState(false);
-  const [currentLang, setCurrentLang] = useState<'javascript' | 'json' | 'typescript' | 'markdown'>(language);
+  const [currentLang, setCurrentLang] = useState<
+    'javascript' | 'json' | 'typescript' | 'markdown'
+  >(language);
 
   useEffect(() => {
     setCurrentLang(language);
@@ -58,7 +83,11 @@ const EditableCodeBlock: React.FC<{
       // If already initialized, just update value
       if (viewRef.current.state.doc.toString() !== value) {
         viewRef.current.dispatch({
-          changes: { from: 0, to: viewRef.current.state.doc.length, insert: value },
+          changes: {
+            from: 0,
+            to: viewRef.current.state.doc.length,
+            insert: value,
+          },
         });
       }
       return;
@@ -101,13 +130,22 @@ const EditableCodeBlock: React.FC<{
   };
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const lang = e.target.value as 'javascript' | 'json' | 'typescript' | 'markdown';
+    const lang = e.target.value as
+      | 'javascript'
+      | 'json'
+      | 'typescript'
+      | 'markdown';
     setCurrentLang(lang);
     if (onLanguageChange) onLanguageChange(lang);
   };
 
   return (
-    <div className={"rounded border border-border bg-zinc-950 text-xs font-mono min-h-[200px] max-h-[400px] overflow-auto relative " + (className || '')}>
+    <div
+      className={
+        'rounded border border-border bg-zinc-950 text-xs font-mono min-h-[200px] max-h-[400px] overflow-auto relative ' +
+        (className || '')
+      }
+    >
       <div className="flex items-center justify-between px-2 py-1 bg-zinc-900 border-b border-border">
         <div className="flex gap-2 items-center">
           <span className="text-xs text-muted-foreground">{currentLang}</span>
@@ -133,7 +171,14 @@ const EditableCodeBlock: React.FC<{
 };
 
 const CanvasPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={"flex items-center justify-center h-full text-muted-foreground " + (className || '')}>Canvas mode coming soon</div>
+  <div
+    className={
+      'flex items-center justify-center h-full text-muted-foreground ' +
+      (className || '')
+    }
+  >
+    Canvas mode coming soon
+  </div>
 );
 
 const displayModeMap = {
@@ -142,9 +187,24 @@ const displayModeMap = {
   canvas: CanvasPlaceholder,
 };
 
-export function CanvasDisplay({ mode = 'terminal', content = '', className, editable = false, language = 'javascript', onChange }: CanvasDisplayProps) {
+export function CanvasDisplay({
+  mode = 'terminal',
+  content = '',
+  className,
+  editable = false,
+  language = 'javascript',
+  onChange,
+}: CanvasDisplayProps) {
   if (mode === 'code') {
-    return <EditableCodeBlock value={content} editable={editable} language={language} onChange={onChange} className={className} />;
+    return (
+      <EditableCodeBlock
+        value={content}
+        editable={editable}
+        language={language}
+        onChange={onChange}
+        className={className}
+      />
+    );
   }
   // For terminal/canvas, pass content/className only
   const DisplayComponent = displayModeMap[mode] || TerminalDisplay;

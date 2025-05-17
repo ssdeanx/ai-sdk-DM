@@ -21,7 +21,8 @@ export interface FileReadSuccess {
   encoding: BufferEncoding;
 }
 export type FileReadResult = FileReadSuccess | ToolFailure;
-export const isFileReadSuccess = (r: FileReadResult): r is FileReadSuccess => r.success;
+export const isFileReadSuccess = (r: FileReadResult): r is FileReadSuccess =>
+  r.success;
 
 /* ------------------------------------------------------------------ */
 /*                               WRITE                                */
@@ -32,7 +33,8 @@ export interface FileWriteSuccess {
   operation: 'write' | 'append';
 }
 export type FileWriteResult = FileWriteSuccess | ToolFailure;
-export const isFileWriteSuccess = (r: FileWriteResult): r is FileWriteSuccess => r.success;
+export const isFileWriteSuccess = (r: FileWriteResult): r is FileWriteSuccess =>
+  r.success;
 
 /* ------------------------------------------------------------------ */
 /*                               LIST                                 */
@@ -44,7 +46,8 @@ export interface FileListSuccess {
   count: number;
 }
 export type FileListResult = FileListSuccess | ToolFailure;
-export const isFileListSuccess = (r: FileListResult): r is FileListSuccess => r.success;
+export const isFileListSuccess = (r: FileListResult): r is FileListSuccess =>
+  r.success;
 
 /* ------------------------------------------------------------------ */
 /*                               INFO                                 */
@@ -63,4 +66,5 @@ export interface FileInfoSuccess {
   accessed: Date;
 }
 export type FileInfoResult = FileInfoSuccess | ToolFailure;
-export const isFileInfoSuccess = (r: FileInfoResult): r is FileInfoSuccess => r.success;
+export const isFileInfoSuccess = (r: FileInfoResult): r is FileInfoSuccess =>
+  r.success;

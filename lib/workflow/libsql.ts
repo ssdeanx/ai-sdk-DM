@@ -12,7 +12,7 @@ import {
   Workflow,
   WorkflowStep,
   CreateWorkflowOptions,
-  AddWorkflowStepOptions
+  AddWorkflowStepOptions,
 } from './index';
 
 export class LibSQLWorkflowProvider implements WorkflowProvider {
@@ -36,7 +36,7 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
         'pending',
         options.metadata ? JSON.stringify(options.metadata) : null,
         now,
-        now
+        now,
       ],
     });
 
@@ -56,7 +56,9 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
     if (options.steps && options.steps.length > 0) {
       for (const stepOption of options.steps) {
         const stepId = uuidv4();
-        const threadId = stepOption.threadId || await memory.createMemoryThread(`Workflow ${options.name} - Step`);
+        const threadId =
+          stepOption.threadId ||
+          (await memory.createMemoryThread(`Workflow ${options.name} - Step`));
 
         await db.execute({
           sql: `
@@ -73,7 +75,7 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
             'pending',
             stepOption.metadata ? JSON.stringify(stepOption.metadata) : null,
             now,
-            now
+            now,
           ],
         });
 
@@ -119,7 +121,7 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
       args: [id],
     });
 
-    const steps: WorkflowStep[] = stepsResult.rows.map(row => {
+    const steps: WorkflowStep[] = stepsResult.rows.map((row) => {
       let metadata = null;
       if (row.metadata) {
         try {
@@ -161,7 +163,12 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
       description: workflowRow.description as string,
       steps,
       currentStepIndex: workflowRow.current_step_index as number,
-      status: workflowRow.status as 'pending' | 'running' | 'completed' | 'failed' | 'paused',
+      status: workflowRow.status as
+        | 'pending'
+        | 'running'
+        | 'completed'
+        | 'failed'
+        | 'paused',
       metadata,
       createdAt: workflowRow.created_at as string,
       updatedAt: workflowRow.updated_at as string,
@@ -201,12 +208,12 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
       await transaction([
         {
           sql: 'DELETE FROM workflow_steps WHERE workflow_id = ?',
-          params: [id]
+          params: [id],
         },
         {
           sql: 'DELETE FROM workflows WHERE id = ?',
-          params: [id]
-        }
+          params: [id],
+        },
       ]);
 
       return true;
@@ -216,7 +223,10 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
     }
   }
 
-  async addWorkflowStep(id: string, options: AddWorkflowStepOptions): Promise<Workflow> {
+  async addWorkflowStep(
+    id: string,
+    options: AddWorkflowStepOptions
+  ): Promise<Workflow> {
     const db = getLibSQLClient();
 
     // Get workflow
@@ -227,7 +237,11 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
 
     const now = new Date().toISOString();
     const stepId = uuidv4();
-    const threadId = options.threadId || await memory.createMemoryThread(`Workflow ${workflow.name} - Step ${workflow.steps.length + 1}`);
+    const threadId =
+      options.threadId ||
+      (await memory.createMemoryThread(
+        `Workflow ${workflow.name} - Step ${workflow.steps.length + 1}`
+      ));
 
     // Create step
     await db.execute({
@@ -245,7 +259,7 @@ export class LibSQLWorkflowProvider implements WorkflowProvider {
         'pending',
         options.metadata ? JSON.stringify(options.metadata) : null,
         now,
-        now
+        now,
       ],
     });
 

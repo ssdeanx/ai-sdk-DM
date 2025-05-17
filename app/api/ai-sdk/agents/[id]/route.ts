@@ -1,13 +1,19 @@
-import { NextResponse } from "next/server";
-import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace } from "@/lib/langfuse-integration";
-import { agentRegistry } from "@/lib/agents/registry";
-import { personaManager } from "@/lib/agents/personas/persona-manager";
-import { getSupabaseClient } from "@/lib/memory/supabase";
-import { getMemoryProvider } from "@/lib/memory/factory";
-import { getData, getItemById, updateItem, deleteItem, createItem } from "@/lib/memory/upstash/supabase-adapter";
-import { upstashLogger } from "@/lib/memory/upstash/upstash-logger";
-import { z } from "zod";
+import { NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
+import { createTrace } from '@/lib/langfuse-integration';
+import { agentRegistry } from '@/lib/agents/registry';
+import { personaManager } from '@/lib/agents/personas/persona-manager';
+import { getSupabaseClient } from '@/lib/memory/supabase';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import {
+  getData,
+  getItemById,
+  updateItem,
+  deleteItem,
+  createItem,
+} from '@/lib/memory/upstash/supabase-adapter';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { z } from 'zod';
 
 // Define a type for the agent from registry which might have different property names
 interface RegistryAgent {
@@ -28,7 +34,7 @@ interface RegistryAgent {
 }
 // Zod validation schemas
 const ParamsSchema = z.object({
-  id: z.string().uuid({ message: "Invalid agent ID format" })
+  id: z.string().uuid({ message: 'Invalid agent ID format' }),
 });
 
 const AgentUpdateSchema = z.object({
@@ -37,7 +43,7 @@ const AgentUpdateSchema = z.object({
   modelId: z.string().optional(),
   toolIds: z.array(z.string()).optional(),
   systemPrompt: z.string().optional(),
-  personaId: z.string().uuid().optional()
+  personaId: z.string().uuid().optional(),
 });
 
 const AgentResponseSchema = z.object({
@@ -50,7 +56,7 @@ const AgentResponseSchema = z.object({
   personaId: z.string().optional(),
   persona: z.record(z.any()).optional(),
   createdAt: z.string().optional(),
-  updatedAt: z.string().optional()
+  updatedAt: z.string().optional(),
 });
 
 /**
@@ -67,7 +73,7 @@ export async function GET(
     const paramsResult = ParamsSchema.safeParse(params);
     if (!paramsResult.success) {
       return NextResponse.json(
-        { error: "Invalid parameters", details: paramsResult.error.format() },
+        { error: 'Invalid parameters', details: paramsResult.error.format() },
         { status: 400 }
       );
     }
@@ -81,7 +87,7 @@ export async function GET(
     const agent = await agentRegistry.getAgent(id);
 
     if (!agent) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
     // Cast agent to RegistryAgent type with proper type conversion
@@ -97,19 +103,19 @@ export async function GET(
         persona = await personaManager.getPersonaById(personaId);
       } catch (error) {
         await upstashLogger.error(
-          "agents",
-          "Failed to fetch persona for agent",
+          'agents',
+          'Failed to fetch persona for agent',
           error instanceof Error ? error : new Error(String(error)),
           { agentId: id, personaId }
         );
         await createTrace({
-          name: "persona_fetch_error",
+          name: 'persona_fetch_error',
           userId: id,
           metadata: {
             agentId: id,
             personaId,
-            error: error instanceof Error ? error.message : String(error)
-          }
+            error: error instanceof Error ? error.message : String(error),
+          },
         });
       }
     }
@@ -121,14 +127,24 @@ export async function GET(
     const response = {
       id: typedAgent.id,
       name: typedAgent.name,
-      description: typedAgent.description || "",
-      modelId: typedAgent.modelId || typedAgent.model_id || "",
-      systemPrompt: typedAgent.systemPrompt || typedAgent.system_prompt || typedAgent.description || "",
+      description: typedAgent.description || '',
+      modelId: typedAgent.modelId || typedAgent.model_id || '',
+      systemPrompt:
+        typedAgent.systemPrompt ||
+        typedAgent.system_prompt ||
+        typedAgent.description ||
+        '',
       toolIds,
       personaId,
       persona,
-      createdAt: typedAgent.createdAt || typedAgent.created_at || new Date().toISOString(),
-      updatedAt: typedAgent.updatedAt || typedAgent.updated_at || new Date().toISOString()
+      createdAt:
+        typedAgent.createdAt ||
+        typedAgent.created_at ||
+        new Date().toISOString(),
+      updatedAt:
+        typedAgent.updatedAt ||
+        typedAgent.updated_at ||
+        new Date().toISOString(),
     };
 
     // Validate response
@@ -138,65 +154,70 @@ export async function GET(
   } catch (error) {
     // Handle Upstash-specific errors with detailed error messages
     if (error && typeof error === 'object' && 'name' in error) {
-      const errorObj = error as { name: string; message?: string; code?: string; status?: number };
+      const errorObj = error as {
+        name: string;
+        message?: string;
+        code?: string;
+        status?: number;
+      };
 
       // Create a trace for the error
       await createTrace({
-        name: "agent_error",
+        name: 'agent_error',
         userId: params?.id || 'unknown',
         metadata: {
-          operation: "get_agent",
+          operation: 'get_agent',
           agentId: params?.id || 'unknown',
           errorName: errorObj.name,
           errorMessage: errorObj.message || 'Unknown error',
           errorCode: errorObj.code,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
 
       // Handle specific Upstash errors
       if (errorObj.name === 'UpstashAdapterError') {
         return NextResponse.json(
           {
-            error: "Upstash adapter error",
+            error: 'Upstash adapter error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'ADAPTER_ERROR'
+            code: errorObj.code || 'ADAPTER_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'RedisStoreError') {
         return NextResponse.json(
           {
-            error: "Redis store error",
+            error: 'Redis store error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'REDIS_ERROR'
+            code: errorObj.code || 'REDIS_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'UpstashClientError') {
         return NextResponse.json(
           {
-            error: "Upstash client error",
+            error: 'Upstash client error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'CLIENT_ERROR'
+            code: errorObj.code || 'CLIENT_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'ConnectionError') {
         return NextResponse.json(
           {
-            error: "Database connection error",
+            error: 'Database connection error',
             message: errorObj.message || 'Failed to connect to the database',
-            code: 'CONNECTION_ERROR'
+            code: 'CONNECTION_ERROR',
           },
           { status: 503 }
         );
       } else if (errorObj.name === 'TimeoutError') {
         return NextResponse.json(
           {
-            error: "Database timeout",
+            error: 'Database timeout',
             message: errorObj.message || 'Database operation timed out',
-            code: 'TIMEOUT_ERROR'
+            code: 'TIMEOUT_ERROR',
           },
           { status: 504 }
         );
@@ -205,7 +226,6 @@ export async function GET(
 
     return handleApiError(error);
   }
-
 }
 
 /**
@@ -222,7 +242,7 @@ export async function PATCH(
     const paramsResult = ParamsSchema.safeParse(params);
     if (!paramsResult.success) {
       return NextResponse.json(
-        { error: "Invalid parameters", details: paramsResult.error.format() },
+        { error: 'Invalid parameters', details: paramsResult.error.format() },
         { status: 400 }
       );
     }
@@ -235,12 +255,13 @@ export async function PATCH(
 
     if (!bodyResult.success) {
       return NextResponse.json(
-        { error: "Invalid request body", details: bodyResult.error.format() },
+        { error: 'Invalid request body', details: bodyResult.error.format() },
         { status: 400 }
       );
     }
 
-    const { name, description, modelId, toolIds, systemPrompt, personaId } = bodyResult.data;
+    const { name, description, modelId, toolIds, systemPrompt, personaId } =
+      bodyResult.data;
 
     // Determine which provider to use
     const provider = getMemoryProvider();
@@ -254,11 +275,14 @@ export async function PATCH(
 
         if (!existingAgent) {
           await upstashLogger.warn(
-            "agents",
-            "Tried to update non-existent agent",
+            'agents',
+            'Tried to update non-existent agent',
             { agentId: id }
           );
-          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: 'Agent not found' },
+            { status: 404 }
+          );
         }
 
         // Prepare update data
@@ -277,12 +301,15 @@ export async function PATCH(
         if (toolIds !== undefined) {
           // Get all existing tool associations
           const existingAssociations = await getData('agent_tools', {
-            filters: [{ field: 'agent_id', operator: 'eq', value: id }]
+            filters: [{ field: 'agent_id', operator: 'eq', value: id }],
           });
 
           // Delete existing tool associations
           for (const assoc of existingAssociations) {
-            await deleteItem('agent_tools', `${assoc.agent_id}:${assoc.tool_id}`);
+            await deleteItem(
+              'agent_tools',
+              `${assoc.agent_id}:${assoc.tool_id}`
+            );
           }
 
           // Add new tool associations
@@ -291,34 +318,35 @@ export async function PATCH(
               await createItem('agent_tools', {
                 agent_id: id,
                 tool_id: toolId,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
               });
             }
           }
         }
 
-        await upstashLogger.info(
-          "agents",
-          "Agent updated",
-          { agentId: id, name, toolIds, provider: 'upstash' }
-        );
+        await upstashLogger.info('agents', 'Agent updated', {
+          agentId: id,
+          name,
+          toolIds,
+          provider: 'upstash',
+        });
       } catch (error) {
         await upstashLogger.error(
-          "agents",
-          "Upstash error during agent update",
+          'agents',
+          'Upstash error during agent update',
           error instanceof Error ? error : new Error(String(error)),
           { agentId: id, name, toolIds }
         );
         // Fall back to LibSQL if Upstash fails
         // Create a trace for the error
         await createTrace({
-          name: "upstash_fallback",
+          name: 'upstash_fallback',
           userId: id,
           metadata: {
-            operation: "update_agent",
+            operation: 'update_agent',
             agentId: id,
-            error: error instanceof Error ? error.message : String(error)
-          }
+            error: error instanceof Error ? error.message : String(error),
+          },
         });
 
         useLibSQL = true;
@@ -335,13 +363,16 @@ export async function PATCH(
       try {
         // Check if agent exists
         const { data: agent, error: checkError } = await supabase
-          .from("agents")
+          .from('agents')
           .select()
-          .eq("id", id)
+          .eq('id', id)
           .single();
 
         if (checkError || !agent) {
-          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: 'Agent not found' },
+            { status: 404 }
+          );
         }
 
         existingAgent = agent;
@@ -357,9 +388,9 @@ export async function PATCH(
 
         // Update agent
         const { error: updateError } = await supabase
-          .from("agents")
+          .from('agents')
           .update(updateData)
-          .eq("id", id)
+          .eq('id', id)
           .select()
           .single();
 
@@ -371,9 +402,9 @@ export async function PATCH(
         if (toolIds !== undefined) {
           // Delete existing tool associations
           const { error: deleteError } = await supabase
-            .from("agent_tools")
+            .from('agent_tools')
             .delete()
-            .eq("agent_id", id);
+            .eq('agent_id', id);
 
           if (deleteError) {
             throw deleteError;
@@ -386,13 +417,15 @@ export async function PATCH(
               tool_id: string;
               created_at?: string;
             }
-            const toolAssociations: ToolAssociation[] = toolIds.map((toolId: string) => ({
-              agent_id: id,
-              tool_id: toolId,
-              created_at: new Date().toISOString()
-            }));
+            const toolAssociations: ToolAssociation[] = toolIds.map(
+              (toolId: string) => ({
+                agent_id: id,
+                tool_id: toolId,
+                created_at: new Date().toISOString(),
+              })
+            );
             const { error: insertError } = await supabase
-              .from("agent_tools")
+              .from('agent_tools')
               .insert(toolAssociations);
             if (insertError) {
               throw insertError;
@@ -409,14 +442,14 @@ export async function PATCH(
 
     // Create trace for agent update
     await createTrace({
-      name: "agent_updated",
+      name: 'agent_updated',
       userId: id,
       metadata: {
         agentId: id,
         name: name || existingAgent.name,
         toolCount: toolIds?.length,
-        provider
-      }
+        provider,
+      },
     });
 
     // Prepare response
@@ -428,7 +461,7 @@ export async function PATCH(
       systemPrompt: systemPrompt || existingAgent.system_prompt,
       toolIds: toolIds || existingAgent.tool_ids || [],
       personaId: personaId || existingAgent.persona_id,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     // Validate response
@@ -438,65 +471,70 @@ export async function PATCH(
   } catch (error) {
     // Handle Upstash-specific errors with detailed error messages
     if (error && typeof error === 'object' && 'name' in error) {
-      const errorObj = error as { name: string; message?: string; code?: string; status?: number };
+      const errorObj = error as {
+        name: string;
+        message?: string;
+        code?: string;
+        status?: number;
+      };
 
       // Create a trace for the error
       await createTrace({
-        name: "agent_error",
+        name: 'agent_error',
         userId: params?.id || 'unknown',
         metadata: {
-          operation: "update_agent",
+          operation: 'update_agent',
           agentId: params?.id || 'unknown',
           errorName: errorObj.name,
           errorMessage: errorObj.message || 'Unknown error',
           errorCode: errorObj.code,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
 
       // Handle specific Upstash errors
       if (errorObj.name === 'UpstashAdapterError') {
         return NextResponse.json(
           {
-            error: "Upstash adapter error",
+            error: 'Upstash adapter error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'ADAPTER_ERROR'
+            code: errorObj.code || 'ADAPTER_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'RedisStoreError') {
         return NextResponse.json(
           {
-            error: "Redis store error",
+            error: 'Redis store error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'REDIS_ERROR'
+            code: errorObj.code || 'REDIS_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'UpstashClientError') {
         return NextResponse.json(
           {
-            error: "Upstash client error",
+            error: 'Upstash client error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'CLIENT_ERROR'
+            code: errorObj.code || 'CLIENT_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'ConnectionError') {
         return NextResponse.json(
           {
-            error: "Database connection error",
+            error: 'Database connection error',
             message: errorObj.message || 'Failed to connect to the database',
-            code: 'CONNECTION_ERROR'
+            code: 'CONNECTION_ERROR',
           },
           { status: 503 }
         );
       } else if (errorObj.name === 'TimeoutError') {
         return NextResponse.json(
           {
-            error: "Database timeout",
+            error: 'Database timeout',
             message: errorObj.message || 'Database operation timed out',
-            code: 'TIMEOUT_ERROR'
+            code: 'TIMEOUT_ERROR',
           },
           { status: 504 }
         );
@@ -522,7 +560,7 @@ export async function DELETE(
     const paramsResult = ParamsSchema.safeParse(params);
     if (!paramsResult.success) {
       return NextResponse.json(
-        { error: "Invalid parameters", details: paramsResult.error.format() },
+        { error: 'Invalid parameters', details: paramsResult.error.format() },
         { status: 400 }
       );
     }
@@ -540,12 +578,15 @@ export async function DELETE(
         const existingAgent = await getItemById('agents', id);
 
         if (!existingAgent) {
-          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: 'Agent not found' },
+            { status: 404 }
+          );
         }
 
         // Get all tool associations
         const toolAssociations = await getData('agent_tools', {
-          filters: [{ field: 'agent_id', operator: 'eq', value: id }]
+          filters: [{ field: 'agent_id', operator: 'eq', value: id }],
         });
 
         // Delete tool associations first (foreign key constraint)
@@ -558,35 +599,37 @@ export async function DELETE(
 
         if (!success) {
           await upstashLogger.error(
-            "agents",
-            "Failed to delete agent",
-            new Error("Delete returned false"),
+            'agents',
+            'Failed to delete agent',
+            new Error('Delete returned false'),
             { agentId: id }
           );
-          return NextResponse.json({ error: "Failed to delete agent" }, { status: 500 });
+          return NextResponse.json(
+            { error: 'Failed to delete agent' },
+            { status: 500 }
+          );
         }
 
-        await upstashLogger.info(
-          "agents",
-          "Agent deleted",
-          { agentId: id, provider: 'upstash' }
-        );
+        await upstashLogger.info('agents', 'Agent deleted', {
+          agentId: id,
+          provider: 'upstash',
+        });
       } catch (error) {
         await upstashLogger.error(
-          "agents",
-          "Upstash error during agent deletion",
+          'agents',
+          'Upstash error during agent deletion',
           error instanceof Error ? error : new Error(String(error)),
           { agentId: id }
         );
         // Fall back to LibSQL if Upstash fails
         await createTrace({
-          name: "upstash_fallback",
+          name: 'upstash_fallback',
           userId: id,
           metadata: {
-            operation: "delete_agent",
+            operation: 'delete_agent',
             agentId: id,
-            error: error instanceof Error ? error.message : String(error)
-          }
+            error: error instanceof Error ? error.message : String(error),
+          },
         });
 
         useLibSQL = true;
@@ -601,16 +644,26 @@ export async function DELETE(
       const supabase: any = getSupabaseClient();
       try {
         // Check if agent exists first
-        const checkResult = await supabase.from("agents").select("id").eq("id", id).single();
+        const checkResult = await supabase
+          .from('agents')
+          .select('id')
+          .eq('id', id)
+          .single();
         const existingAgent = checkResult.data;
         const checkError = checkResult.error;
         if (checkError || !existingAgent) {
-          return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: 'Agent not found' },
+            { status: 404 }
+          );
         }
         // Delete agent tools first (foreign key constraint)
-        await supabase.from("agent_tools").delete().eq("agent_id", id);
+        await supabase.from('agent_tools').delete().eq('agent_id', id);
         // Delete agent
-        const deleteResult = await supabase.from("agents").delete().eq("id", id);
+        const deleteResult = await supabase
+          .from('agents')
+          .delete()
+          .eq('id', id);
         const error = deleteResult.error;
         if (error) {
           throw error;
@@ -623,78 +676,83 @@ export async function DELETE(
 
     // Create trace for agent deletion
     await createTrace({
-      name: "agent_deleted",
+      name: 'agent_deleted',
       userId: id,
       metadata: {
         agentId: id,
         timestamp: new Date().toISOString(),
-        provider: useLibSQL ? 'libsql' : 'upstash'
-      }
+        provider: useLibSQL ? 'libsql' : 'upstash',
+      },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     // Handle Upstash-specific errors with detailed error messages
     if (error && typeof error === 'object' && 'name' in error) {
-      const errorObj = error as { name: string; message?: string; code?: string; status?: number };
+      const errorObj = error as {
+        name: string;
+        message?: string;
+        code?: string;
+        status?: number;
+      };
 
       // Create a trace for the error
       await createTrace({
-        name: "agent_error",
+        name: 'agent_error',
         userId: params?.id || 'unknown',
         metadata: {
-          operation: "delete_agent",
+          operation: 'delete_agent',
           agentId: params?.id || 'unknown',
           errorName: errorObj.name,
           errorMessage: errorObj.message || 'Unknown error',
           errorCode: errorObj.code,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
 
       // Handle specific Upstash errors
       if (errorObj.name === 'UpstashAdapterError') {
         return NextResponse.json(
           {
-            error: "Upstash adapter error",
+            error: 'Upstash adapter error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'ADAPTER_ERROR'
+            code: errorObj.code || 'ADAPTER_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'RedisStoreError') {
         return NextResponse.json(
           {
-            error: "Redis store error",
+            error: 'Redis store error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'REDIS_ERROR'
+            code: errorObj.code || 'REDIS_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'UpstashClientError') {
         return NextResponse.json(
           {
-            error: "Upstash client error",
+            error: 'Upstash client error',
             message: errorObj.message || 'Unknown error',
-            code: errorObj.code || 'CLIENT_ERROR'
+            code: errorObj.code || 'CLIENT_ERROR',
           },
           { status: errorObj.status || 500 }
         );
       } else if (errorObj.name === 'ConnectionError') {
         return NextResponse.json(
           {
-            error: "Database connection error",
+            error: 'Database connection error',
             message: errorObj.message || 'Failed to connect to the database',
-            code: 'CONNECTION_ERROR'
+            code: 'CONNECTION_ERROR',
           },
           { status: 503 }
         );
       } else if (errorObj.name === 'TimeoutError') {
         return NextResponse.json(
           {
-            error: "Database timeout",
+            error: 'Database timeout',
             message: errorObj.message || 'Database operation timed out',
-            code: 'TIMEOUT_ERROR'
+            code: 'TIMEOUT_ERROR',
           },
           { status: 504 }
         );

@@ -39,7 +39,6 @@ const localConsole = new NodeConsole({
 
 (async () => {
   try {
-    // eslint-disable-next-line no-new-func
     const AsyncFn = Object.getPrototypeOf(async () => {}).constructor as (
       ...args: string[]
     ) => (...fnArgs: unknown[]) => Promise<unknown>;

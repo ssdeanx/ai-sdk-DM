@@ -1,35 +1,51 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { createBrowserClient } from '@supabase/ssr'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Separator } from '@/components/ui/separator'
-import { useToast } from '@/components/ui/use-toast'
-import { AdminGitHubSignInButton } from '@/components/auth/admin-github-sign-in-button'
-import { Loader2, Lock, Shield, AlertTriangle } from 'lucide-react'
-import { motion } from 'framer-motion'
-import type { Database } from '@/types/supabase'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createBrowserClient } from '@supabase/ssr';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/components/ui/use-toast';
+import { AdminGitHubSignInButton } from '@/components/auth/admin-github-sign-in-button';
+import { Loader2, Lock, Shield, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import type { Database } from '@/types/supabase';
 
 // Form validation schema
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(5, { message: 'Password must be at least 5 characters' }),
-})
+  password: z
+    .string()
+    .min(5, { message: 'Password must be at least 5 characters' }),
+});
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = z.infer<typeof formSchema>;
 
 export default function AdminLoginPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [loginError, setLoginError] = useState<string | null>(null)
-  const router = useRouter()
-  const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const router = useRouter();
+  const { toast } = useToast();
 
   // Initialize form
   const form = useForm<FormValues>({
@@ -38,28 +54,28 @@ export default function AdminLoginPage() {
       email: '',
       password: '',
     },
-  })
+  });
 
   // Create a Supabase browser client
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  );
 
   // Handle form submission
   const onSubmit = async (values: FormValues) => {
     try {
-      setIsLoading(true)
-      setLoginError(null)
+      setIsLoading(true);
+      setLoginError(null);
 
       // Sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
-      })
+      });
 
       if (error) {
-        throw error
+        throw error;
       }
 
       // TEMPORARY: Allow all authenticated users to access admin features
@@ -75,23 +91,24 @@ export default function AdminLoginPage() {
       toast({
         title: 'Admin login successful',
         description: 'Welcome to the admin dashboard',
-      })
+      });
 
       // Redirect to admin dashboard
-      router.push('/admin/dashboard')
-      router.refresh()
+      router.push('/admin/dashboard');
+      router.refresh();
     } catch (error: any) {
-      console.error('Admin login error:', error)
-      setLoginError(error.message || 'Failed to sign in')
+      console.error('Admin login error:', error);
+      setLoginError(error.message || 'Failed to sign in');
       toast({
         title: 'Admin login failed',
-        description: error.message || 'Please check your credentials and try again',
+        description:
+          error.message || 'Please check your credentials and try again',
         variant: 'destructive',
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -147,7 +164,10 @@ export default function AdminLoginPage() {
 
             {/* Email/Password Form */}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="email"
@@ -170,7 +190,11 @@ export default function AdminLoginPage() {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                          />
                           <Lock className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         </div>
                       </FormControl>
@@ -179,7 +203,11 @@ export default function AdminLoginPage() {
                   )}
                 />
 
-                <Button type="submit" className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
+                  disabled={isLoading}
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -201,5 +229,5 @@ export default function AdminLoginPage() {
         </Card>
       </motion.div>
     </div>
-  )
+  );
 }

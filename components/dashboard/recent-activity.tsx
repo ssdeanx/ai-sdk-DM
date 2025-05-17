@@ -1,33 +1,43 @@
-"use client"
+'use client';
 
-import { motion } from "framer-motion"
-import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { formatDistanceToNow } from "date-fns"
+import { motion } from 'framer-motion';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
 
 interface Activity {
-  id: string
-  type: "agent_created" | "model_added" | "conversation_completed" | "tool_executed"
-  entityId: string
-  entityName: string
-  userId: string
-  userName: string
-  userAvatar?: string
-  timestamp: string
-  details?: Record<string, any>
+  id: string;
+  type:
+    | 'agent_created'
+    | 'model_added'
+    | 'conversation_completed'
+    | 'tool_executed';
+  entityId: string;
+  entityName: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  timestamp: string;
+  details?: Record<string, any>;
 }
 
 export function RecentActivity() {
   // Fetch recent activity from Supabase
   const { data: activities, isLoading } = useSupabaseFetch<Activity>({
-    endpoint: "/api/dashboard/activity",
-    resourceName: "Recent Activity",
-    dataKey: "activities",
-    queryParams: { limit: "5" }
-  })
+    endpoint: '/api/dashboard/activity',
+    resourceName: 'Recent Activity',
+    dataKey: 'activities',
+    queryParams: { limit: '5' },
+  });
 
   // Animation variants
   const container = {
@@ -38,7 +48,7 @@ export function RecentActivity() {
         staggerChildren: 0.05,
       },
     },
-  }
+  };
 
   const item = {
     hidden: { y: 10, opacity: 0 },
@@ -46,44 +56,44 @@ export function RecentActivity() {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: 'spring',
         stiffness: 260,
-        damping: 20
-      }
+        damping: 20,
+      },
     },
-  }
+  };
 
   // Get badge variant based on activity type
-  const getBadgeVariant = (type: Activity["type"]) => {
+  const getBadgeVariant = (type: Activity['type']) => {
     switch (type) {
-      case "agent_created":
-        return "success"
-      case "model_added":
-        return "secondary"
-      case "conversation_completed":
-        return "default"
-      case "tool_executed":
-        return "outline"
+      case 'agent_created':
+        return 'success';
+      case 'model_added':
+        return 'secondary';
+      case 'conversation_completed':
+        return 'default';
+      case 'tool_executed':
+        return 'outline';
       default:
-        return "default"
+        return 'default';
     }
-  }
+  };
 
   // Get human-readable activity description
   const getActivityDescription = (activity: Activity) => {
     switch (activity.type) {
-      case "agent_created":
-        return `created a new agent "${activity.entityName}"`
-      case "model_added":
-        return `added model "${activity.entityName}"`
-      case "conversation_completed":
-        return `completed a conversation with "${activity.entityName}"`
-      case "tool_executed":
-        return `executed tool "${activity.entityName}"`
+      case 'agent_created':
+        return `created a new agent "${activity.entityName}"`;
+      case 'model_added':
+        return `added model "${activity.entityName}"`;
+      case 'conversation_completed':
+        return `completed a conversation with "${activity.entityName}"`;
+      case 'tool_executed':
+        return `executed tool "${activity.entityName}"`;
       default:
-        return `interacted with "${activity.entityName}"`
+        return `interacted with "${activity.entityName}"`;
     }
-  }
+  };
 
   return (
     <Card className="overflow-hidden backdrop-blur-sm border-opacity-40">
@@ -107,7 +117,7 @@ export function RecentActivity() {
           </div>
         ) : (
           // Activity list
-          <motion.div 
+          <motion.div
             className="space-y-4"
             variants={container}
             initial="hidden"
@@ -115,13 +125,16 @@ export function RecentActivity() {
           >
             {activities.length > 0 ? (
               activities.map((activity, i) => (
-                <motion.div 
-                  key={activity.id} 
+                <motion.div
+                  key={activity.id}
                   className="flex items-start gap-4"
                   variants={item}
                 >
                   <Avatar className="h-10 w-10 border-2 border-background">
-                    <AvatarImage src={activity.userAvatar} alt={activity.userName} />
+                    <AvatarImage
+                      src={activity.userAvatar}
+                      alt={activity.userName}
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-violet-500 text-white">
                       {activity.userName.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
@@ -129,7 +142,10 @@ export function RecentActivity() {
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{activity.userName}</span>
-                      <Badge variant={getBadgeVariant(activity.type)} className="text-xs">
+                      <Badge
+                        variant={getBadgeVariant(activity.type)}
+                        className="text-xs"
+                      >
                         {activity.type.replace('_', ' ')}
                       </Badge>
                     </div>
@@ -137,17 +153,21 @@ export function RecentActivity() {
                       {getActivityDescription(activity)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(activity.timestamp), {
+                        addSuffix: true,
+                      })}
                     </p>
                   </div>
                 </motion.div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-6">No recent activity found</p>
+              <p className="text-center text-muted-foreground py-6">
+                No recent activity found
+              </p>
             )}
           </motion.div>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

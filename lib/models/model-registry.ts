@@ -11,7 +11,12 @@ import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { customProvider, wrapLanguageModel, type LanguageModelV1Middleware, type LanguageModel } from 'ai';
+import {
+  customProvider,
+  wrapLanguageModel,
+  type LanguageModelV1Middleware,
+  type LanguageModel,
+} from 'ai';
 
 // --- Zod Schemas ---
 
@@ -23,7 +28,7 @@ export const ModelProviderSchema = z.enum([
   'openai',
   'anthropic',
   'vertex',
-  'custom'
+  'custom',
 ]);
 
 export type ModelProvider = z.infer<typeof ModelProviderSchema>;
@@ -31,28 +36,30 @@ export type ModelProvider = z.infer<typeof ModelProviderSchema>;
 /**
  * Schema for model capabilities
  */
-export const ModelCapabilitiesSchema = z.object({
-  text: z.boolean().default(true),
-  vision: z.boolean().default(false),
-  audio: z.boolean().default(false),
-  video: z.boolean().default(false),
-  functions: z.boolean().default(false),
-  streaming: z.boolean().default(true),
-  json_mode: z.boolean().default(false),
-  fine_tuning: z.boolean().default(false),
-  thinking: z.boolean().default(false),
-  search_grounding: z.boolean().default(false),
-  dynamic_retrieval: z.boolean().default(false),
-  hybrid_grounding: z.boolean().default(false),
-  cached_content: z.boolean().default(false),
-  code_execution: z.boolean().default(false),
-  structured_output: z.boolean().default(false),
-  image_generation: z.boolean().default(false),
-  video_generation: z.boolean().default(false),
-  audio_generation: z.boolean().default(false),
-  response_modalities: z.boolean().default(false),
-  file_inputs: z.boolean().default(false)
-}).partial();
+export const ModelCapabilitiesSchema = z
+  .object({
+    text: z.boolean().default(true),
+    vision: z.boolean().default(false),
+    audio: z.boolean().default(false),
+    video: z.boolean().default(false),
+    functions: z.boolean().default(false),
+    streaming: z.boolean().default(true),
+    json_mode: z.boolean().default(false),
+    fine_tuning: z.boolean().default(false),
+    thinking: z.boolean().default(false),
+    search_grounding: z.boolean().default(false),
+    dynamic_retrieval: z.boolean().default(false),
+    hybrid_grounding: z.boolean().default(false),
+    cached_content: z.boolean().default(false),
+    code_execution: z.boolean().default(false),
+    structured_output: z.boolean().default(false),
+    image_generation: z.boolean().default(false),
+    video_generation: z.boolean().default(false),
+    audio_generation: z.boolean().default(false),
+    response_modalities: z.boolean().default(false),
+    file_inputs: z.boolean().default(false),
+  })
+  .partial();
 
 export type ModelCapabilities = z.infer<typeof ModelCapabilitiesSchema>;
 
@@ -67,7 +74,7 @@ export const ModelCategorySchema = z.enum([
   'video',
   'audio',
   'embedding',
-  'fine-tuning'
+  'fine-tuning',
 ]);
 
 export type ModelCategory = z.infer<typeof ModelCategorySchema>;
@@ -98,8 +105,14 @@ export const ModelSettingsSchema = z.object({
   base_url: z.string().optional().nullable(),
   api_key: z.string().optional(),
   status: z.enum(['active', 'inactive']).default('active'),
-  created_at: z.string().datetime().default(() => new Date().toISOString()),
-  updated_at: z.string().datetime().default(() => new Date().toISOString())
+  created_at: z
+    .string()
+    .datetime()
+    .default(() => new Date().toISOString()),
+  updated_at: z
+    .string()
+    .datetime()
+    .default(() => new Date().toISOString()),
 });
 
 export type ModelSettings = z.infer<typeof ModelSettingsSchema>;
@@ -110,7 +123,7 @@ export type ModelSettings = z.infer<typeof ModelSettingsSchema>;
 export const ModelSettingsInputSchema = ModelSettingsSchema.omit({
   id: true,
   created_at: true,
-  updated_at: true
+  updated_at: true,
 });
 
 export type ModelSettingsInput = z.infer<typeof ModelSettingsInputSchema>;
@@ -121,7 +134,7 @@ export type ModelSettingsInput = z.infer<typeof ModelSettingsInputSchema>;
 export const ModelSettingsUpdateSchema = ModelSettingsSchema.partial().omit({
   id: true,
   created_at: true,
-  updated_at: true
+  updated_at: true,
 });
 
 export type ModelSettingsUpdate = z.infer<typeof ModelSettingsUpdateSchema>;
@@ -138,7 +151,7 @@ export type ModelSettingsUpdate = z.infer<typeof ModelSettingsUpdateSchema>;
 export function createGoogleAIProvider(apiKey?: string, baseURL?: string) {
   return createGoogleGenerativeAI({
     apiKey: apiKey || process.env.GOOGLE_API_KEY,
-    ...(baseURL ? { baseURL } : {})
+    ...(baseURL ? { baseURL } : {}),
   });
 }
 
@@ -152,7 +165,7 @@ export function createGoogleAIProvider(apiKey?: string, baseURL?: string) {
 export function createOpenAIProvider(apiKey?: string, baseURL?: string) {
   return createOpenAI({
     apiKey: apiKey || process.env.OPENAI_API_KEY,
-    ...(baseURL ? { baseURL } : {})
+    ...(baseURL ? { baseURL } : {}),
   });
 }
 
@@ -166,7 +179,7 @@ export function createOpenAIProvider(apiKey?: string, baseURL?: string) {
 export function createAnthropicProvider(apiKey?: string, baseURL?: string) {
   return createAnthropic({
     apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-    ...(baseURL ? { baseURL } : {})
+    ...(baseURL ? { baseURL } : {}),
   });
 }
 
@@ -250,13 +263,22 @@ export class ModelRegistry {
     if (!provider) {
       switch (model.provider) {
         case 'google':
-          provider = createGoogleAIProvider(model.api_key, model.base_url || undefined);
+          provider = createGoogleAIProvider(
+            model.api_key,
+            model.base_url || undefined
+          );
           break;
         case 'openai':
-          provider = createOpenAIProvider(model.api_key, model.base_url || undefined);
+          provider = createOpenAIProvider(
+            model.api_key,
+            model.base_url || undefined
+          );
           break;
         case 'anthropic':
-          provider = createAnthropicProvider(model.api_key, model.base_url || undefined);
+          provider = createAnthropicProvider(
+            model.api_key,
+            model.base_url || undefined
+          );
           break;
         default:
           return undefined;
@@ -296,7 +318,7 @@ export class ModelRegistry {
     if (middlewares && middlewares.length > 0) {
       return wrapLanguageModel({
         model: languageModel,
-        middleware: middlewares
+        middleware: middlewares,
       });
     }
 
@@ -310,10 +332,13 @@ export class ModelRegistry {
    * @param fallbackProvider - Optional fallback provider
    * @returns Custom provider
    */
-  public createCustomProvider(models: Record<string, any>, fallbackProvider?: any): any {
+  public createCustomProvider(
+    models: Record<string, any>,
+    fallbackProvider?: any
+  ): any {
     return customProvider({
       languageModels: models,
-      fallbackProvider
+      fallbackProvider,
     });
   }
 
@@ -323,7 +348,10 @@ export class ModelRegistry {
    * @param modelId - Model ID
    * @param middleware - Middleware to register
    */
-  public registerMiddleware(modelId: string, middleware: LanguageModelV1Middleware): void {
+  public registerMiddleware(
+    modelId: string,
+    middleware: LanguageModelV1Middleware
+  ): void {
     const middlewares = this.middlewares.get(modelId) || [];
     middlewares.push(middleware);
     this.middlewares.set(modelId, middlewares);

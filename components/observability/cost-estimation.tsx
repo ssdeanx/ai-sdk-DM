@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useState, useEffect, useRef } from "react"
-import { motion } from "framer-motion"
-import * as d3 from "d3"
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import * as d3 from 'd3';
 import {
   Activity,
   AlertCircle,
@@ -16,18 +16,36 @@ import {
   Layers,
   RefreshCw,
   Search,
-  Zap
-} from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { ScrollArea } from "@/components/ui/scroll-area"
+  Zap,
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AreaChart,
   Area,
@@ -53,80 +71,89 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   RadialBarChart,
-  RadialBar
-} from "recharts"
-import { cn } from "@/lib/utils"
+  RadialBar,
+} from 'recharts';
+import { cn } from '@/lib/utils';
 
 interface ModelCostData {
-  modelId: string
-  provider: string
-  displayName: string
-  costPerInputToken: number
-  costPerOutputToken: number
-  timeSeriesData: any[]
+  modelId: string;
+  provider: string;
+  displayName: string;
+  costPerInputToken: number;
+  costPerOutputToken: number;
+  timeSeriesData: any[];
   metrics: {
-    totalInputTokens: number
-    totalOutputTokens: number
-    totalCost: number
-    avgCostPerRequest: number
-    dailyAverage: number
-    projectedMonthlyCost: number
-  }
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCost: number;
+    avgCostPerRequest: number;
+    dailyAverage: number;
+    projectedMonthlyCost: number;
+  };
 }
 
 interface CostEstimationProps {
-  costData: ModelCostData[]
-  isLoading: boolean
-  timeRange?: string
+  costData: ModelCostData[];
+  isLoading: boolean;
+  timeRange?: string;
 }
 
 export function CostEstimation({
   costData,
   isLoading,
-  timeRange = '30d'
+  timeRange = '30d',
 }: CostEstimationProps) {
-  const [activeTab, setActiveTab] = useState<string>("overview")
-  const [selectedModel, setSelectedModel] = useState<string | null>(null)
-  const [chartType, setChartType] = useState<string>("bar")
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [chartType, setChartType] = useState<string>('bar');
 
   // Set the first model as selected when data loads
   useEffect(() => {
     if (costData && costData.length > 0 && !selectedModel) {
-      setSelectedModel(costData[0].modelId)
+      setSelectedModel(costData[0].modelId);
     }
-  }, [costData, selectedModel])
+  }, [costData, selectedModel]);
 
   // Get the selected model data
-  const selectedModelData = costData?.find(m => m.modelId === selectedModel)
+  const selectedModelData = costData?.find((m) => m.modelId === selectedModel);
 
   // Calculate total cost across all models
-  const totalCost = costData?.reduce((sum, model) => sum + model.metrics.totalCost, 0) || 0
-  const projectedMonthlyCost = costData?.reduce((sum, model) => sum + model.metrics.projectedMonthlyCost, 0) || 0
+  const totalCost =
+    costData?.reduce((sum, model) => sum + model.metrics.totalCost, 0) || 0;
+  const projectedMonthlyCost =
+    costData?.reduce(
+      (sum, model) => sum + model.metrics.projectedMonthlyCost,
+      0
+    ) || 0;
 
   // Prepare data for cost breakdown chart
-  const costBreakdownData = costData?.map(model => ({
+  const costBreakdownData = costData?.map((model) => ({
     name: model.displayName,
     value: model.metrics.totalCost,
     provider: model.provider,
-    color: getProviderColor(model.provider)
-  }))
+    color: getProviderColor(model.provider),
+  }));
 
   // Prepare time series data for the selected model
-  const timeSeriesData = selectedModelData?.timeSeriesData.map(point => ({
+  const timeSeriesData = selectedModelData?.timeSeriesData.map((point) => ({
     date: new Date(point.date).toLocaleDateString(),
     cost: point.cost,
     inputTokens: point.inputTokens,
     outputTokens: point.outputTokens,
-    requests: point.requests
-  }))
+    requests: point.requests,
+  }));
 
   // Get provider color
   function getProviderColor(provider: string) {
     switch (provider?.toLowerCase()) {
-      case "google": return "#4285F4"
-      case "openai": return "#10a37f"
-      case "anthropic": return "#b668ff"
-      default: return "#64748b"
+      case 'google':
+        return '#4285F4';
+      case 'openai':
+        return '#10a37f';
+      case 'anthropic':
+        return '#b668ff';
+      default:
+        return '#64748b';
     }
   }
 
@@ -136,8 +163,8 @@ export function CostEstimation({
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value)
+      maximumFractionDigits: 2,
+    }).format(value);
   }
 
   // Custom tooltip for charts
@@ -148,14 +175,17 @@ export function CostEstimation({
           <p className="font-medium">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} style={{ color: entry.color || entry.stroke }}>
-              {entry.name}: {entry.name === 'Cost' ? formatCurrency(entry.value) : entry.value.toLocaleString()}
+              {entry.name}:{' '}
+              {entry.name === 'Cost'
+                ? formatCurrency(entry.value)
+                : entry.value.toLocaleString()}
             </p>
           ))}
         </div>
-      )
+      );
     }
-    return null
-  }
+    return null;
+  };
 
   // Animation variants
   const containerVariants = {
@@ -163,10 +193,10 @@ export function CostEstimation({
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
-  }
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -174,57 +204,96 @@ export function CostEstimation({
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: 'spring',
         stiffness: 260,
-        damping: 20
-      }
-    }
-  }
+        damping: 20,
+      },
+    },
+  };
 
   // Generate mock data if needed for demo
   const generateMockCostData = () => {
-    if (costData && costData.length > 0) return costData
+    if (costData && costData.length > 0) return costData;
 
     const mockModels = [
-      { modelId: "gemini-1.5-pro", provider: "google", displayName: "Gemini 1.5 Pro", costPerInputToken: 0.00001, costPerOutputToken: 0.00002 },
-      { modelId: "gpt-4o", provider: "openai", displayName: "GPT-4o", costPerInputToken: 0.00001, costPerOutputToken: 0.00003 },
-      { modelId: "claude-3-opus", provider: "anthropic", displayName: "Claude 3 Opus", costPerInputToken: 0.000015, costPerOutputToken: 0.000075 },
-      { modelId: "gemini-1.5-flash", provider: "google", displayName: "Gemini 1.5 Flash", costPerInputToken: 0.000003, costPerOutputToken: 0.000006 },
-      { modelId: "gpt-3.5-turbo", provider: "openai", displayName: "GPT-3.5 Turbo", costPerInputToken: 0.0000015, costPerOutputToken: 0.000002 }
-    ]
+      {
+        modelId: 'gemini-1.5-pro',
+        provider: 'google',
+        displayName: 'Gemini 1.5 Pro',
+        costPerInputToken: 0.00001,
+        costPerOutputToken: 0.00002,
+      },
+      {
+        modelId: 'gpt-4o',
+        provider: 'openai',
+        displayName: 'GPT-4o',
+        costPerInputToken: 0.00001,
+        costPerOutputToken: 0.00003,
+      },
+      {
+        modelId: 'claude-3-opus',
+        provider: 'anthropic',
+        displayName: 'Claude 3 Opus',
+        costPerInputToken: 0.000015,
+        costPerOutputToken: 0.000075,
+      },
+      {
+        modelId: 'gemini-1.5-flash',
+        provider: 'google',
+        displayName: 'Gemini 1.5 Flash',
+        costPerInputToken: 0.000003,
+        costPerOutputToken: 0.000006,
+      },
+      {
+        modelId: 'gpt-3.5-turbo',
+        provider: 'openai',
+        displayName: 'GPT-3.5 Turbo',
+        costPerInputToken: 0.0000015,
+        costPerOutputToken: 0.000002,
+      },
+    ];
 
-    return mockModels.map(model => {
+    return mockModels.map((model) => {
       // Generate random usage data
-      const totalInputTokens = Math.floor(Math.random() * 10000000) + 1000000
-      const totalOutputTokens = Math.floor(totalInputTokens * 0.3)
-      const totalCost = (totalInputTokens * model.costPerInputToken) + (totalOutputTokens * model.costPerOutputToken)
-      const avgCostPerRequest = totalCost / (Math.floor(Math.random() * 10000) + 1000)
+      const totalInputTokens = Math.floor(Math.random() * 10000000) + 1000000;
+      const totalOutputTokens = Math.floor(totalInputTokens * 0.3);
+      const totalCost =
+        totalInputTokens * model.costPerInputToken +
+        totalOutputTokens * model.costPerOutputToken;
+      const avgCostPerRequest =
+        totalCost / (Math.floor(Math.random() * 10000) + 1000);
 
       // Generate time series data
-      const timeSeriesData = []
-      const days = timeRange === '7d' ? 7 : 30
-      const now = new Date()
+      const timeSeriesData = [];
+      const days = timeRange === '7d' ? 7 : 30;
+      const now = new Date();
 
       for (let i = 0; i < days; i++) {
-        const date = new Date(now)
-        date.setDate(date.getDate() - (days - i))
+        const date = new Date(now);
+        date.setDate(date.getDate() - (days - i));
 
-        const dailyInputTokens = Math.floor(Math.random() * (totalInputTokens / days * 1.5)) + (totalInputTokens / days * 0.5)
-        const dailyOutputTokens = Math.floor(dailyInputTokens * 0.3)
-        const dailyCost = (dailyInputTokens * model.costPerInputToken) + (dailyOutputTokens * model.costPerOutputToken)
+        const dailyInputTokens =
+          Math.floor(Math.random() * ((totalInputTokens / days) * 1.5)) +
+          (totalInputTokens / days) * 0.5;
+        const dailyOutputTokens = Math.floor(dailyInputTokens * 0.3);
+        const dailyCost =
+          dailyInputTokens * model.costPerInputToken +
+          dailyOutputTokens * model.costPerOutputToken;
 
         timeSeriesData.push({
           date: date.toISOString(),
           cost: dailyCost,
           inputTokens: dailyInputTokens,
           outputTokens: dailyOutputTokens,
-          requests: Math.floor(Math.random() * 1000) + 100
-        })
+          requests: Math.floor(Math.random() * 1000) + 100,
+        });
       }
 
       // Calculate daily average and projected monthly cost
-      const dailyAverage = timeSeriesData.reduce((sum, day) => sum + day.cost, 0) / timeSeriesData.length
-      const projectedMonthlyCost = dailyAverage * 30
+      const dailyAverage =
+        timeSeriesData.reduce((sum, day) => sum + day.cost, 0) /
+        timeSeriesData.length;
+      const projectedMonthlyCost = dailyAverage * 30;
 
       return {
         ...model,
@@ -235,14 +304,14 @@ export function CostEstimation({
           totalCost,
           avgCostPerRequest,
           dailyAverage,
-          projectedMonthlyCost
-        }
-      }
-    })
-  }
+          projectedMonthlyCost,
+        },
+      };
+    });
+  };
 
   // Use mock data if no real data is provided
-  const displayData = costData?.length > 0 ? costData : generateMockCostData()
+  const displayData = costData?.length > 0 ? costData : generateMockCostData();
 
   return (
     <motion.div
@@ -253,17 +322,19 @@ export function CostEstimation({
     >
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <Select value={selectedModel || ""} onValueChange={setSelectedModel}>
+        <Select value={selectedModel || ''} onValueChange={setSelectedModel}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Select Model" />
           </SelectTrigger>
           <SelectContent>
-            {displayData?.map(model => (
+            {displayData?.map((model) => (
               <SelectItem key={model.modelId} value={model.modelId}>
                 <div className="flex items-center gap-2">
                   <div
                     className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: getProviderColor(model.provider) }}
+                    style={{
+                      backgroundColor: getProviderColor(model.provider),
+                    }}
                   />
                   {model.displayName}
                 </div>
@@ -317,7 +388,9 @@ export function CostEstimation({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{formatCurrency(totalCost)}</div>
+                  <div className="text-3xl font-bold">
+                    {formatCurrency(totalCost)}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -330,12 +403,12 @@ export function CostEstimation({
                     <BarChart className="h-5 w-5 text-blue-500" />
                     Projected Monthly
                   </CardTitle>
-                  <CardDescription>
-                    Based on current usage
-                  </CardDescription>
+                  <CardDescription>Based on current usage</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{formatCurrency(projectedMonthlyCost)}</div>
+                  <div className="text-3xl font-bold">
+                    {formatCurrency(projectedMonthlyCost)}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -348,15 +421,19 @@ export function CostEstimation({
                     <Layers className="h-5 w-5 text-purple-500" />
                     Total Tokens
                   </CardTitle>
-                  <CardDescription>
-                    Input and output combined
-                  </CardDescription>
+                  <CardDescription>Input and output combined</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">
-                    {displayData.reduce((sum, model) =>
-                      sum + model.metrics.totalInputTokens + model.metrics.totalOutputTokens, 0
-                    ).toLocaleString()}
+                    {displayData
+                      .reduce(
+                        (sum, model) =>
+                          sum +
+                          model.metrics.totalInputTokens +
+                          model.metrics.totalOutputTokens,
+                        0
+                      )
+                      .toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
@@ -370,14 +447,15 @@ export function CostEstimation({
                     <Activity className="h-5 w-5 text-yellow-500" />
                     Avg Cost/Request
                   </CardTitle>
-                  <CardDescription>
-                    Across all models
-                  </CardDescription>
+                  <CardDescription>Across all models</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">
                     {formatCurrency(
-                      displayData.reduce((sum, model) => sum + model.metrics.avgCostPerRequest, 0) / displayData.length
+                      displayData.reduce(
+                        (sum, model) => sum + model.metrics.avgCostPerRequest,
+                        0
+                      ) / displayData.length
                     )}
                   </div>
                 </CardContent>
@@ -412,7 +490,9 @@ export function CostEstimation({
                         fill="#8884d8"
                         dataKey="value"
                         nameKey="name"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
                       >
                         {costBreakdownData?.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -424,8 +504,14 @@ export function CostEstimation({
                       />
                     </PieChart>
                   ) : (
-                    <RechartsBarChart data={costBreakdownData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <RechartsBarChart
+                      data={costBreakdownData}
+                      layout="vertical"
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
                       <XAxis type="number" />
                       <YAxis
                         dataKey="name"
@@ -437,11 +523,7 @@ export function CostEstimation({
                         formatter={(value: number) => formatCurrency(value)}
                         content={<CustomTooltip />}
                       />
-                      <Bar
-                        dataKey="value"
-                        name="Cost"
-                        radius={[0, 4, 4, 0]}
-                      >
+                      <Bar dataKey="value" name="Cost" radius={[0, 4, 4, 0]}>
                         {costBreakdownData?.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
@@ -469,16 +551,17 @@ export function CostEstimation({
               <CardTitle className="text-lg">
                 {selectedModelData.displayName} - Cost Trends
               </CardTitle>
-              <CardDescription>
-                Daily cost trends over time
-              </CardDescription>
+              <CardDescription>Daily cost trends over time</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartType === 'line' ? (
                     <LineChart data={timeSeriesData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
                       <XAxis
                         dataKey="date"
                         tick={{ fill: 'var(--muted-foreground)' }}
@@ -501,7 +584,10 @@ export function CostEstimation({
                     </LineChart>
                   ) : chartType === 'bar' ? (
                     <RechartsBarChart data={timeSeriesData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
                       <XAxis
                         dataKey="date"
                         tick={{ fill: 'var(--muted-foreground)' }}
@@ -522,20 +608,33 @@ export function CostEstimation({
                   ) : (
                     <AreaChart data={timeSeriesData}>
                       <defs>
-                        <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient
+                          id="costGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
                           <stop
                             offset="5%"
-                            stopColor={getProviderColor(selectedModelData.provider)}
+                            stopColor={getProviderColor(
+                              selectedModelData.provider
+                            )}
                             stopOpacity={0.8}
                           />
                           <stop
                             offset="95%"
-                            stopColor={getProviderColor(selectedModelData.provider)}
+                            stopColor={getProviderColor(
+                              selectedModelData.provider
+                            )}
                             stopOpacity={0.1}
                           />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
                       <XAxis
                         dataKey="date"
                         tick={{ fill: 'var(--muted-foreground)' }}
@@ -563,5 +662,5 @@ export function CostEstimation({
         )}
       </TabsContent>
     </motion.div>
-  )
+  );
 }

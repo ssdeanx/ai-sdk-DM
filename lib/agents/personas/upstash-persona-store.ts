@@ -6,26 +6,29 @@ import {
   PersonaScoreSchema,
   PersonaDefinitionSchema,
   MicroPersonaDefinitionSchema,
-  GeminiCapability
+  GeminiCapability,
 } from './persona-library';
 import { z } from 'zod';
 
 // --- Constants for Redis Keys ---
-const PERSONA_PREFIX = "persona:";
-const MICRO_PERSONA_PREFIX = "micro_persona:";
-const PERSONA_INDEX = "personas"; // Sorted set for all personas, scored by last update timestamp
-const MICRO_PERSONA_INDEX = "micro_personas"; // Sorted set for all micro-personas, scored by last update timestamp
-const PERSONA_BY_TAG_PREFIX = "persona:tag:"; // Set of persona IDs for each tag
-const PERSONA_BY_CAPABILITY_PREFIX = "persona:capability:"; // Set of persona IDs for each capability
-const PARENT_MICRO_PERSONAS_PREFIX = "persona:"; // Prefix for parent-specific micro-personas
-const PARENT_MICRO_PERSONAS_SUFFIX = ":micro_personas"; // Suffix for parent-specific micro-personas
-const PERSONA_SCORE_PREFIX = "persona:score:"; // Prefix for persona scores
+const PERSONA_PREFIX = 'persona:';
+const MICRO_PERSONA_PREFIX = 'micro_persona:';
+const PERSONA_INDEX = 'personas'; // Sorted set for all personas, scored by last update timestamp
+const MICRO_PERSONA_INDEX = 'micro_personas'; // Sorted set for all micro-personas, scored by last update timestamp
+const PERSONA_BY_TAG_PREFIX = 'persona:tag:'; // Set of persona IDs for each tag
+const PERSONA_BY_CAPABILITY_PREFIX = 'persona:capability:'; // Set of persona IDs for each capability
+const PARENT_MICRO_PERSONAS_PREFIX = 'persona:'; // Prefix for parent-specific micro-personas
+const PARENT_MICRO_PERSONAS_SUFFIX = ':micro_personas'; // Suffix for parent-specific micro-personas
+const PERSONA_SCORE_PREFIX = 'persona:score:'; // Prefix for persona scores
 
 // --- Error Handling ---
 export class PersonaStoreError extends Error {
-  constructor(message: string, public cause?: any) {
+  constructor(
+    message: string,
+    public cause?: any
+  ) {
     super(message);
-    this.name = "PersonaStoreError";
+    this.name = 'PersonaStoreError';
     Object.setPrototypeOf(this, PersonaStoreError.prototype);
   }
 }
@@ -48,7 +51,7 @@ export async function savePersona(persona: PersonaDefinition): Promise<void> {
     // Update lastUpdatedAt
     const updatedPersona = {
       ...validatedPersona,
-      lastUpdatedAt: new Date().toISOString()
+      lastUpdatedAt: new Date().toISOString(),
     };
 
     // Serialize persona
@@ -71,10 +74,15 @@ export async function savePersona(persona: PersonaDefinition): Promise<void> {
 
       if (existingPersona) {
         try {
-          const parsed = JSON.parse(existingPersona as string) as PersonaDefinition;
+          const parsed = JSON.parse(
+            existingPersona as string
+          ) as PersonaDefinition;
           existingTags = parsed.tags || [];
         } catch (e) {
-          console.warn(`Error parsing existing persona ${validatedPersona.id}:`, e);
+          console.warn(
+            `Error parsing existing persona ${validatedPersona.id}:`,
+            e
+          );
         }
       }
 
@@ -92,30 +100,44 @@ export async function savePersona(persona: PersonaDefinition): Promise<void> {
     }
 
     // Update capability indices
-    if (validatedPersona.capabilities && validatedPersona.capabilities.length > 0) {
+    if (
+      validatedPersona.capabilities &&
+      validatedPersona.capabilities.length > 0
+    ) {
       // First, get existing capabilities for this persona (if any)
       const existingPersona = await redis.get(personaKey);
       let existingCapabilities: GeminiCapability[] = [];
 
       if (existingPersona) {
         try {
-          const parsed = JSON.parse(existingPersona as string) as PersonaDefinition;
+          const parsed = JSON.parse(
+            existingPersona as string
+          ) as PersonaDefinition;
           existingCapabilities = parsed.capabilities || [];
         } catch (e) {
-          console.warn(`Error parsing existing persona ${validatedPersona.id}:`, e);
+          console.warn(
+            `Error parsing existing persona ${validatedPersona.id}:`,
+            e
+          );
         }
       }
 
       // Remove persona from capability sets it no longer belongs to
       for (const capability of existingCapabilities) {
         if (!validatedPersona.capabilities.includes(capability as any)) {
-          pipeline.srem(`${PERSONA_BY_CAPABILITY_PREFIX}${capability.toString()}`, validatedPersona.id);
+          pipeline.srem(
+            `${PERSONA_BY_CAPABILITY_PREFIX}${capability.toString()}`,
+            validatedPersona.id
+          );
         }
       }
 
       // Add persona to capability sets
       for (const capability of validatedPersona.capabilities) {
-        pipeline.sadd(`${PERSONA_BY_CAPABILITY_PREFIX}${capability.toString()}`, validatedPersona.id);
+        pipeline.sadd(
+          `${PERSONA_BY_CAPABILITY_PREFIX}${capability.toString()}`,
+          validatedPersona.id
+        );
       }
     }
 
@@ -124,7 +146,10 @@ export async function savePersona(persona: PersonaDefinition): Promise<void> {
   } catch (error) {
     console.error(`Error saving persona ${persona.id}:`, error);
     if (error instanceof z.ZodError) {
-      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+      console.error(
+        'Validation errors:',
+        JSON.stringify(error.errors, null, 2)
+      );
     }
     throw new PersonaStoreError(`Failed to save persona ${persona.id}`, error);
   }
@@ -135,7 +160,9 @@ export async function savePersona(persona: PersonaDefinition): Promise<void> {
  * @returns A promise that resolves with the persona, or null if not found
  * @throws PersonaStoreError if loading fails
  */
-export async function loadPersona(personaId: string): Promise<PersonaDefinition | null> {
+export async function loadPersona(
+  personaId: string
+): Promise<PersonaDefinition | null> {
   const redis = getRedisClient();
   const personaKey = `${PERSONA_PREFIX}${personaId}`;
 
@@ -159,7 +186,10 @@ export async function loadPersona(personaId: string): Promise<PersonaDefinition 
   } catch (error) {
     console.error(`Error loading persona ${personaId}:`, error);
     if (error instanceof z.ZodError) {
-      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+      console.error(
+        'Validation errors:',
+        JSON.stringify(error.errors, null, 2)
+      );
     }
     throw new PersonaStoreError(`Failed to load persona ${personaId}`, error);
   }
@@ -171,10 +201,13 @@ export async function loadPersona(personaId: string): Promise<PersonaDefinition 
  * @returns A promise that resolves when the micro-persona is saved
  * @throws PersonaStoreError if saving fails
  */
-export async function saveMicroPersona(microPersona: MicroPersonaDefinition): Promise<void> {
+export async function saveMicroPersona(
+  microPersona: MicroPersonaDefinition
+): Promise<void> {
   try {
     // Validate micro-persona with Zod schema
-    const validatedMicroPersona = MicroPersonaDefinitionSchema.parse(microPersona);
+    const validatedMicroPersona =
+      MicroPersonaDefinitionSchema.parse(microPersona);
 
     const redis = getRedisClient();
     const microPersonaKey = `${MICRO_PERSONA_PREFIX}${validatedMicroPersona.id}`;
@@ -184,7 +217,7 @@ export async function saveMicroPersona(microPersona: MicroPersonaDefinition): Pr
     // Update lastUpdatedAt
     const updatedMicroPersona = {
       ...validatedMicroPersona,
-      lastUpdatedAt: new Date().toISOString()
+      lastUpdatedAt: new Date().toISOString(),
     };
 
     // Serialize micro-persona
@@ -197,7 +230,10 @@ export async function saveMicroPersona(microPersona: MicroPersonaDefinition): Pr
     pipeline.set(microPersonaKey, microPersonaJson);
 
     // Update global index with timestamp
-    pipeline.zadd(MICRO_PERSONA_INDEX, { score: now, member: validatedMicroPersona.id });
+    pipeline.zadd(MICRO_PERSONA_INDEX, {
+      score: now,
+      member: validatedMicroPersona.id,
+    });
 
     // Add to parent's micro-personas set
     pipeline.sadd(parentMicroPersonasKey, validatedMicroPersona.id);
@@ -207,9 +243,15 @@ export async function saveMicroPersona(microPersona: MicroPersonaDefinition): Pr
   } catch (error) {
     console.error(`Error saving micro-persona ${microPersona.id}:`, error);
     if (error instanceof z.ZodError) {
-      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+      console.error(
+        'Validation errors:',
+        JSON.stringify(error.errors, null, 2)
+      );
     }
-    throw new PersonaStoreError(`Failed to save micro-persona ${microPersona.id}`, error);
+    throw new PersonaStoreError(
+      `Failed to save micro-persona ${microPersona.id}`,
+      error
+    );
   }
 }
 
@@ -219,7 +261,9 @@ export async function saveMicroPersona(microPersona: MicroPersonaDefinition): Pr
  * @returns A promise that resolves with the micro-persona, or null if not found
  * @throws PersonaStoreError if loading fails
  */
-export async function loadMicroPersona(microPersonaId: string): Promise<MicroPersonaDefinition | null> {
+export async function loadMicroPersona(
+  microPersonaId: string
+): Promise<MicroPersonaDefinition | null> {
   const redis = getRedisClient();
   const microPersonaKey = `${MICRO_PERSONA_PREFIX}${microPersonaId}`;
 
@@ -237,14 +281,23 @@ export async function loadMicroPersona(microPersonaId: string): Promise<MicroPer
     const microPersona = MicroPersonaDefinitionSchema.parse(parsedData);
 
     // Update access timestamp
-    redis.zadd(MICRO_PERSONA_INDEX, { score: Date.now(), member: microPersonaId });
+    redis.zadd(MICRO_PERSONA_INDEX, {
+      score: Date.now(),
+      member: microPersonaId,
+    });
 
     return microPersona;
   } catch (error) {
     console.error(`Error loading micro-persona ${microPersonaId}:`, error);
     if (error instanceof z.ZodError) {
-      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+      console.error(
+        'Validation errors:',
+        JSON.stringify(error.errors, null, 2)
+      );
     }
-    throw new PersonaStoreError(`Failed to load micro-persona ${microPersonaId}`, error);
+    throw new PersonaStoreError(
+      `Failed to load micro-persona ${microPersonaId}`,
+      error
+    );
   }
 }

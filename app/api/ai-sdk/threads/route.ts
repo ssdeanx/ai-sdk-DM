@@ -1,22 +1,28 @@
-import { NextResponse } from "next/server";
-import { getLibSQLClient } from "@/lib/memory/db";
-import { handleApiError } from "@/lib/api-error-handler";
+import { NextResponse } from 'next/server';
+import { getLibSQLClient } from '@/lib/memory/db';
+import { handleApiError } from '@/lib/api-error-handler';
 import { generateId } from 'ai';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { getMemoryProvider } from '@/lib/memory/factory';
-import { getData, createItem, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
+import {
+  getData,
+  createItem,
+  type TableRow,
+  type QueryOptions,
+  type FilterOptions,
+} from '@/lib/memory/upstash/supabase-adapter';
 
 /**
  * GET /api/ai-sdk/threads
- * 
+ *
  * Fetch all threads for AI SDK UI
  */
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const search = url.searchParams.get("search") || "";
-    const limit = parseInt(url.searchParams.get("limit") || "50");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const search = url.searchParams.get('search') || '';
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
     const provider = getMemoryProvider();
     let threads: Array<TableRow<'memory_threads'>> = [];
     let count = 0;
@@ -26,12 +32,21 @@ export async function GET(request: Request) {
       try {
         // Upstash: get threads with source 'ai-sdk-ui'
         const filters: FilterOptions[] = [
-          { field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' }
+          { field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' },
         ];
         if (search) {
-          filters.push({ field: 'name', operator: 'ilike', value: `%${search}%` });
+          filters.push({
+            field: 'name',
+            operator: 'ilike',
+            value: `%${search}%`,
+          });
         }
-        const options: QueryOptions = { filters, limit, offset, orderBy: { column: 'updated_at', ascending: false } };
+        const options: QueryOptions = {
+          filters,
+          limit,
+          offset,
+          orderBy: { column: 'updated_at', ascending: false },
+        };
         const upstashThreads = await getData('memory_threads', options);
         threads = upstashThreads.map((thread) => ({
           id: thread.id,
@@ -41,16 +56,26 @@ export async function GET(request: Request) {
           summary: thread.summary ?? null,
           metadata: thread.metadata,
           created_at: thread.created_at,
-          updated_at: thread.updated_at
+          updated_at: thread.updated_at,
         }));
         // Upstash: get total count
-        const allThreads = await getData('memory_threads', { filters: [{ field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' }] });
+        const allThreads = await getData('memory_threads', {
+          filters: [
+            { field: 'metadata.source', operator: 'eq', value: 'ai-sdk-ui' },
+          ],
+        });
         count = allThreads.length;
         hasMore = threads.length === limit;
         return NextResponse.json({ threads, count, hasMore });
       } catch (err) {
         // Fallback to LibSQL if Upstash fails
-        if (typeof err === 'object' && err && 'name' in err && (err as { name: string }).name !== 'UpstashAdapterError') throw err;
+        if (
+          typeof err === 'object' &&
+          err &&
+          'name' in err &&
+          (err as { name: string }).name !== 'UpstashAdapterError'
+        )
+          throw err;
       }
     }
 
@@ -105,12 +130,15 @@ export async function GET(request: Request) {
         metadata: parsedMetadata as unknown as import('@/types/supabase').Json, // Cast to Json type
         created_at: normalize(thread.created_at) ?? '',
         updated_at: normalize(thread.updated_at) ?? '',
-        message_count: typeof thread.message_count === 'number' ? thread.message_count : Number(thread.message_count) || 0
+        message_count:
+          typeof thread.message_count === 'number'
+            ? thread.message_count
+            : Number(thread.message_count) || 0,
       };
     });
     const countQueryResult = await db.execute({
       sql: `SELECT COUNT(*) as count FROM memory_threads WHERE json_extract(metadata, '$.source') = 'ai-sdk-ui'`,
-      args: []
+      args: [],
     });
     count = Number(countQueryResult.rows[0].count) || 0;
     hasMore = threads.length === limit;
@@ -122,7 +150,7 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/ai-sdk/threads
- * 
+ *
  * Create a new thread for AI SDK UI
  */
 export async function POST(request: Request) {
@@ -132,7 +160,11 @@ export async function POST(request: Request) {
     const provider = getMemoryProvider();
     const id = generateId();
     const now = new Date().toISOString();
-    const threadMetadata = { ...metadata, source: 'ai-sdk-ui', created_at: now };
+    const threadMetadata = {
+      ...metadata,
+      source: 'ai-sdk-ui',
+      created_at: now,
+    };
 
     if (provider === 'upstash') {
       try {
@@ -141,10 +173,19 @@ export async function POST(request: Request) {
           name,
           metadata: threadMetadata,
           created_at: now,
-          updated_at: now
+          updated_at: now,
         });
-        await upstashLogger.info('threads', 'Thread created', { threadId: id, name });
-        return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
+        await upstashLogger.info('threads', 'Thread created', {
+          threadId: id,
+          name,
+        });
+        return NextResponse.json({
+          id,
+          name,
+          metadata: threadMetadata,
+          createdAt: now,
+          updatedAt: now,
+        });
       } catch (err) {
         if (!(err instanceof Error)) throw err;
         // Fallback to LibSQL
@@ -154,13 +195,26 @@ export async function POST(request: Request) {
     // LibSQL fallback
     const db = getLibSQLClient();
     await db.execute({
-      sql: `INSERT INTO memory_threads (id, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?)` ,
-      args: [id, name, JSON.stringify(threadMetadata), now, now]
+      sql: `INSERT INTO memory_threads (id, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      args: [id, name, JSON.stringify(threadMetadata), now, now],
     });
-    await upstashLogger.info('threads', 'Thread created', { threadId: id, name });
-    return NextResponse.json({ id, name, metadata: threadMetadata, createdAt: now, updatedAt: now });
+    await upstashLogger.info('threads', 'Thread created', {
+      threadId: id,
+      name,
+    });
+    return NextResponse.json({
+      id,
+      name,
+      metadata: threadMetadata,
+      createdAt: now,
+      updatedAt: now,
+    });
   } catch (error) {
-    await upstashLogger.error('threads', 'Thread creation error', error instanceof Error ? error : new Error(String(error)));
+    await upstashLogger.error(
+      'threads',
+      'Thread creation error',
+      error instanceof Error ? error : new Error(String(error))
+    );
     return handleApiError(error);
   }
 }

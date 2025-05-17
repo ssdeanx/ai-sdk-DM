@@ -1,6 +1,6 @@
 /**
  * Memory System Barrel File
- * 
+ *
  * This file exports all memory-related functionality from the memory system.
  * It provides a unified API for creating, reading, updating, and deleting memory threads and messages,
  * as well as embedding operations, state management, and database abstractions.
@@ -10,28 +10,23 @@
 export * from './memory';
 
 // Database clients and helpers
-export { 
-  getLibSQLClient, 
-  isDatabaseAvailable, 
-  query, 
-  transaction 
-} from './db';
+export { getLibSQLClient, isDatabaseAvailable, query, transaction } from './db';
 
 // LibSQL direct operations
-export { 
-  isLibSQLAvailable, 
-  getMemory, 
-  addMemory, 
-  getThreads, 
+export {
+  isLibSQLAvailable,
+  getMemory,
+  addMemory,
+  getThreads,
   deleteThread,
   initVectorIndex,
-  vectorSearch
+  vectorSearch,
 } from './libsql';
 
 // Supabase integration
-export { 
-  getSupabaseClient, 
-  getDrizzleClient, 
+export {
+  getSupabaseClient,
+  getDrizzleClient,
   isSupabaseAvailable,
   getData,
   getItemById,
@@ -43,14 +38,14 @@ export {
   isSupabaseClient,
   isUpstashClient,
   type ClientType,
-  type ErrorType
+  type ErrorType,
 } from './supabase';
 
 // Drizzle ORM integration
 export {
   getDrizzleClient as getDrizzleClientForSupabase,
   isDrizzleAvailable,
-  getDataWithDrizzle
+  getDataWithDrizzle,
 } from './drizzle';
 
 // Memory factory for provider abstraction
@@ -60,7 +55,7 @@ export {
   type MemoryInterface,
   type ThreadMetadata,
   type MessageOptions,
-  type SearchOptions
+  type SearchOptions,
 } from './factory';
 
 // Upstash integration
@@ -129,14 +124,14 @@ export {
   // Types
   type Thread as RedisThread,
   type Message as RedisMessage,
-  Thread
+  Thread,
 } from './upstash';
 
 // Re-export types from memory.ts
-export type { 
-  Thread, 
-  Message, 
-  EmbeddingModel, 
-  ThreadOptions, 
-  MessageOptions as MemoryMessageOptions 
+export type {
+  Thread,
+  Message,
+  EmbeddingModel,
+  ThreadOptions,
+  MessageOptions as MemoryMessageOptions,
 } from './memory';

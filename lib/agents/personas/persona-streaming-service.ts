@@ -8,7 +8,11 @@
  */
 
 import { MemoryProcessor } from '../../memory/upstash/memory-processor';
-import { GeminiCapability, PersonaDefinition, MicroPersonaDefinition } from './persona-library';
+import {
+  GeminiCapability,
+  PersonaDefinition,
+  MicroPersonaDefinition,
+} from './persona-library';
 import { Readable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 
@@ -22,9 +26,12 @@ export class PersonaStreamingError extends Error {
    * @param message - Error message
    * @param cause - Optional cause of the error
    */
-  constructor(message: string, public cause?: any) {
+  constructor(
+    message: string,
+    public cause?: any
+  ) {
     super(message);
-    this.name = "PersonaStreamingError";
+    this.name = 'PersonaStreamingError';
     Object.setPrototypeOf(this, PersonaStreamingError.prototype);
   }
 }
@@ -101,19 +108,31 @@ export class PersonaStreamingService {
       limit,
       batchSize = 10,
       includeMicroPersonas = false,
-      customFilter
+      customFilter,
     } = options;
 
     // Create a filter function based on options
     const filter = (persona: PersonaDefinition): boolean => {
       // Apply tag filter if provided
       if (tags && tags.length > 0) {
-        if (!persona.tags?.length || !tags.some(tag => persona.tags?.includes(tag))) {          return false;        }
+        if (
+          !persona.tags?.length ||
+          !tags.some((tag) => persona.tags?.includes(tag))
+        ) {
+          return false;
+        }
       }
 
       // Apply capability filter if provided
       if (capabilities && capabilities.length > 0) {
-        if (!persona.capabilities?.length || !capabilities.some(cap => persona.capabilities?.includes(cap as GeminiCapability))) {          return false;        }
+        if (
+          !persona.capabilities?.length ||
+          !capabilities.some((cap) =>
+            persona.capabilities?.includes(cap as GeminiCapability)
+          )
+        ) {
+          return false;
+        }
       }
 
       // Apply custom filter if provided
@@ -127,13 +146,17 @@ export class PersonaStreamingService {
     // Get the base stream from the memory processor
     const baseStream = this.memoryProcessor.streamPersonas({
       batchSize,
-      filter
+      filter,
     });
 
     // Create a transform stream to handle limit and micro-personas
     const transformStream = new Transform({
       objectMode: true,
-      transform: async function(persona: PersonaDefinition, encoding, callback) {
+      transform: async function (
+        persona: PersonaDefinition,
+        encoding,
+        callback
+      ) {
         try {
           // Check if we've reached the limit
           if (limit !== undefined && (this as any).count >= limit) {
@@ -152,8 +175,10 @@ export class PersonaStreamingService {
           // If includeMicroPersonas is true, fetch and attach micro-personas
           if (includeMicroPersonas) {
             try {
-              const microPersonaStream = PersonaStreamingService.getInstance()
-                .streamMicroPersonas({ parentPersonaId: persona.id });
+              const microPersonaStream =
+                PersonaStreamingService.getInstance().streamMicroPersonas({
+                  parentPersonaId: persona.id,
+                });
 
               const microPersonas: MicroPersonaDefinition[] = [];
 
@@ -164,16 +189,22 @@ export class PersonaStreamingService {
               // Attach micro-personas to the persona using type assertion
               (persona as any).microPersonas = microPersonas;
             } catch (error) {
-              console.error(`Error fetching micro-personas for persona ${persona.id}:`, error);
+              console.error(
+                `Error fetching micro-personas for persona ${persona.id}:`,
+                error
+              );
             }
           }
 
           // Push the persona to the output stream
           callback(null, persona);
         } catch (error) {
-          callback(new PersonaStreamingError('Error processing persona', error));
+          callback(
+            new PersonaStreamingError('Error processing persona', error)
+          );
         }
-      }    });
+      },
+    });
 
     // Pipe the base stream through the transform stream
     return baseStream.pipe(transformStream);
@@ -186,12 +217,7 @@ export class PersonaStreamingService {
    * @returns A readable stream of micro-personas
    */
   public streamMicroPersonas(options: StreamMicroPersonasOptions): Readable {
-    const {
-      parentPersonaId,
-      limit,
-      batchSize = 10,
-      customFilter
-    } = options;
+    const { parentPersonaId, limit, batchSize = 10, customFilter } = options;
 
     // If no parentPersonaId is provided, return an empty stream
     // (This would be enhanced in a real implementation to stream all micro-personas)
@@ -201,7 +227,7 @@ export class PersonaStreamingService {
         objectMode: true,
         read() {
           this.push(null); // End the stream immediately
-        }
+        },
       });
     }
 
@@ -210,14 +236,18 @@ export class PersonaStreamingService {
       parentPersonaId,
       {
         batchSize,
-        filter: customFilter
+        filter: customFilter,
       }
     );
 
     // Create a transform stream to handle limit
     const transformStream = new Transform({
       objectMode: true,
-      transform: function(microPersona: MicroPersonaDefinition, encoding, callback) {
+      transform: function (
+        microPersona: MicroPersonaDefinition,
+        encoding,
+        callback
+      ) {
         try {
           // Check if we've reached the limit
           if (limit !== undefined && (this as any).count >= limit) {
@@ -236,9 +266,11 @@ export class PersonaStreamingService {
           // Push the micro-persona to the output stream
           callback(null, microPersona);
         } catch (error) {
-          callback(new PersonaStreamingError('Error processing micro-persona', error));
+          callback(
+            new PersonaStreamingError('Error processing micro-persona', error)
+          );
         }
-      }
+      },
     });
 
     // Pipe the base stream through the transform stream
@@ -251,7 +283,9 @@ export class PersonaStreamingService {
    * @param options - Stream options
    * @returns Promise resolving to an array of personas
    */
-  public async getAllPersonas(options: StreamPersonasOptions = {}): Promise<PersonaDefinition[]> {
+  public async getAllPersonas(
+    options: StreamPersonasOptions = {}
+  ): Promise<PersonaDefinition[]> {
     const stream = this.streamPersonas(options);
     const personas: PersonaDefinition[] = [];
 
@@ -268,7 +302,9 @@ export class PersonaStreamingService {
    * @param options - Stream options
    * @returns Promise resolving to an array of micro-personas
    */
-  public async getAllMicroPersonas(options: StreamMicroPersonasOptions): Promise<MicroPersonaDefinition[]> {
+  public async getAllMicroPersonas(
+    options: StreamMicroPersonasOptions
+  ): Promise<MicroPersonaDefinition[]> {
     const stream = this.streamMicroPersonas(options);
     const microPersonas: MicroPersonaDefinition[] = [];
 
@@ -294,14 +330,23 @@ export class PersonaStreamingService {
 
     const processorStream = new Transform({
       objectMode: true,
-      transform: async function(persona: PersonaDefinition, encoding, callback) {
+      transform: async function (
+        persona: PersonaDefinition,
+        encoding,
+        callback
+      ) {
         try {
           await handler(persona);
           callback(null, persona);
         } catch (error) {
-          callback(new PersonaStreamingError(`Error processing persona ${persona.id}`, error));
+          callback(
+            new PersonaStreamingError(
+              `Error processing persona ${persona.id}`,
+              error
+            )
+          );
         }
-      }
+      },
     });
 
     await pipeline(stream, processorStream);

@@ -7,11 +7,11 @@
  * and collaborate on solving problems.
  */
 
-import { BaseAgent } from "./baseAgent";
-import { agentRegistry } from "./registry";
-import { loadMessages, saveMessage } from "../memory/memory";
-import { v4 as uuidv4 } from "uuid";
-import { toolRegistry } from "../tools/toolRegistry";
+import { BaseAgent } from './baseAgent';
+import { agentRegistry } from './registry';
+import { loadMessages, saveMessage } from '../memory/memory';
+import { v4 as uuidv4 } from 'uuid';
+import { toolRegistry } from '../tools/toolRegistry';
 
 /**
  * Represents a step in a multi-agent workflow
@@ -27,7 +27,7 @@ export interface WorkflowStep {
   /** Optional thread ID to use for this step */
   threadId?: string;
   /** Status of the workflow step */
-  status: "pending" | "running" | "completed" | "failed";
+  status: 'pending' | 'running' | 'completed' | 'failed';
   /** Result of the step execution */
   result?: string;
   /** Error message if the step failed */
@@ -54,7 +54,7 @@ export interface Workflow {
   /** Current step index */
   currentStepIndex: number;
   /** Status of the workflow */
-  status: "pending" | "running" | "completed" | "failed" | "paused";
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused';
   /** Timestamp when the workflow was created */
   createdAt: Date;
   /** Timestamp when the workflow was last updated */
@@ -118,7 +118,7 @@ export class MultiAgentOrchestrator {
       description: options.description,
       steps: [],
       currentStepIndex: 0,
-      status: "pending",
+      status: 'pending',
       createdAt: now,
       updatedAt: now,
     };
@@ -130,7 +130,7 @@ export class MultiAgentOrchestrator {
         agentId: step.agentId,
         input: step.input,
         threadId: step.threadId || uuidv4(),
-        status: "pending",
+        status: 'pending',
         createdAt: now,
         updatedAt: now,
       }));
@@ -166,7 +166,7 @@ export class MultiAgentOrchestrator {
       agentId,
       input,
       threadId: threadId || uuidv4(),
-      status: "pending",
+      status: 'pending',
       createdAt: now,
       updatedAt: now,
     };
@@ -190,11 +190,13 @@ export class MultiAgentOrchestrator {
       throw new Error(`Workflow with ID ${workflowId} not found`);
     }
 
-    if (workflow.status === "completed" || workflow.status === "failed") {
-      throw new Error(`Workflow with ID ${workflowId} is already ${workflow.status}`);
+    if (workflow.status === 'completed' || workflow.status === 'failed') {
+      throw new Error(
+        `Workflow with ID ${workflowId} is already ${workflow.status}`
+      );
     }
 
-    workflow.status = "running";
+    workflow.status = 'running';
     workflow.updatedAt = new Date();
     this.workflows.set(workflowId, workflow);
 
@@ -208,7 +210,7 @@ export class MultiAgentOrchestrator {
         workflow.currentStepIndex = i;
 
         // Update step status
-        step.status = "running";
+        step.status = 'running';
         step.updatedAt = new Date();
         this.workflows.set(workflowId, workflow);
 
@@ -220,17 +222,17 @@ export class MultiAgentOrchestrator {
           const result = await agent.run(step.input, step.threadId);
 
           // Update step with result
-          step.status = "completed";
+          step.status = 'completed';
           step.result = result.output;
           step.updatedAt = new Date();
         } catch (error) {
           // Handle step execution error
-          step.status = "failed";
+          step.status = 'failed';
           step.error = error instanceof Error ? error.message : String(error);
           step.updatedAt = new Date();
 
           // Mark workflow as failed
-          workflow.status = "failed";
+          workflow.status = 'failed';
           workflow.updatedAt = new Date();
           this.workflows.set(workflowId, workflow);
 
@@ -239,7 +241,7 @@ export class MultiAgentOrchestrator {
       }
 
       // All steps completed successfully
-      workflow.status = "completed";
+      workflow.status = 'completed';
       workflow.updatedAt = new Date();
       this.workflows.set(workflowId, workflow);
 
@@ -263,11 +265,11 @@ export class MultiAgentOrchestrator {
       throw new Error(`Workflow with ID ${workflowId} not found`);
     }
 
-    if (workflow.status !== "running") {
+    if (workflow.status !== 'running') {
       throw new Error(`Cannot pause workflow with status ${workflow.status}`);
     }
 
-    workflow.status = "paused";
+    workflow.status = 'paused';
     workflow.updatedAt = new Date();
     this.workflows.set(workflowId, workflow);
 
@@ -286,7 +288,7 @@ export class MultiAgentOrchestrator {
       throw new Error(`Workflow with ID ${workflowId} not found`);
     }
 
-    if (workflow.status !== "paused") {
+    if (workflow.status !== 'paused') {
       throw new Error(`Cannot resume workflow with status ${workflow.status}`);
     }
 
@@ -348,11 +350,15 @@ export class MultiAgentOrchestrator {
 
     // Add custom message if provided
     if (options.message) {
-      await saveMessage(threadId, "system", options.message);
+      await saveMessage(threadId, 'system', options.message);
     }
 
     // Add the input as a user message
-    await saveMessage(threadId, "user", `[From Agent: ${sourceAgent.name}] ${input}`);
+    await saveMessage(
+      threadId,
+      'user',
+      `[From Agent: ${sourceAgent.name}] ${input}`
+    );
 
     // Run the target agent with the prepared thread
     const result = await targetAgent.run(undefined, threadId);

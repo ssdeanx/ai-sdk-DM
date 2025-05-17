@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EnhancedChat } from '@/components/chat/enhanced-chat';
 import { AiSdkChat } from '@/components/chat/ai-sdk-chat';
@@ -23,14 +29,10 @@ export default function DemoChatPage() {
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" asChild>
-              <Link href="/chat">
-                Main Chat
-              </Link>
+              <Link href="/chat">Main Chat</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/chat/ai-sdk">
-                AI SDK Chat
-              </Link>
+              <Link href="/chat/ai-sdk">AI SDK Chat</Link>
             </Button>
           </div>
         </div>
@@ -40,7 +42,7 @@ export default function DemoChatPage() {
             <TabsTrigger value="enhanced">Enhanced Chat</TabsTrigger>
             <TabsTrigger value="ai-sdk">AI SDK Chat</TabsTrigger>
           </TabsList>
-          
+
           <div className="mt-6">
             <TabsContent value="enhanced" className="m-0">
               <Card className="h-[calc(100vh-12rem)]">
@@ -49,7 +51,7 @@ export default function DemoChatPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="ai-sdk" className="m-0">
               <Card className="h-[calc(100vh-12rem)]">
                 <CardContent className="p-0 h-full">

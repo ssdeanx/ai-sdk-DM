@@ -1,8 +1,8 @@
 /**
  * @file Vercel AI SDK “file” tools (read, write, list, info).
  * @remarks
- *   • Every path is resolved *within* `FILE_ROOT` to block path-traversal.  
- *   • Returns discriminated-union results for exhaustive type-checking.  
+ *   • Every path is resolved *within* `FILE_ROOT` to block path-traversal.
+ *   • Returns discriminated-union results for exhaustive type-checking.
  *   • Fully compatible with `generateText` / `streamText`.
  */
 
@@ -71,22 +71,31 @@ export const fileInfoSchema = z.object({
 /**
  * Read a file.
  */
-async function fileRead(params: z.infer<typeof fileReadSchema>): Promise<FileReadResult> {
+async function fileRead(
+  params: z.infer<typeof fileReadSchema>
+): Promise<FileReadResult> {
   const { filePath, encoding } = params;
   try {
     const p = resolveWithinRoot(filePath);
     await fs.access(p);
-    const content = await fs.readFile(p, { encoding: encoding as BufferEncoding });
+    const content = await fs.readFile(p, {
+      encoding: encoding as BufferEncoding,
+    });
     return { success: true, filePath: p, content, encoding };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /**
  * Write or append to a file.
  */
-async function fileWrite(params: z.infer<typeof fileWriteSchema>): Promise<FileWriteResult> {
+async function fileWrite(
+  params: z.infer<typeof fileWriteSchema>
+): Promise<FileWriteResult> {
   const { filePath, content, encoding, append } = params;
   try {
     const p = resolveWithinRoot(filePath);
@@ -96,16 +105,25 @@ async function fileWrite(params: z.infer<typeof fileWriteSchema>): Promise<FileW
     } else {
       await fs.writeFile(p, content, { encoding: encoding as BufferEncoding });
     }
-    return { success: true, filePath: p, operation: append ? 'append' : 'write' };
+    return {
+      success: true,
+      filePath: p,
+      operation: append ? 'append' : 'write',
+    };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /**
  * List files in a directory.
  */
-async function fileList(params: z.infer<typeof fileListSchema>): Promise<FileListResult> {
+async function fileList(
+  params: z.infer<typeof fileListSchema>
+): Promise<FileListResult> {
   const { directoryPath, recursive, pattern } = params;
   try {
     const dir = resolveWithinRoot(directoryPath);
@@ -123,7 +141,9 @@ async function fileList(params: z.infer<typeof fileListSchema>): Promise<FileLis
     };
 
     const files = await walk(dir);
-    const filtered = pattern ? files.filter((f) => new RegExp(pattern).test(f)) : files;
+    const filtered = pattern
+      ? files.filter((f) => new RegExp(pattern).test(f))
+      : files;
 
     return {
       success: true,
@@ -136,14 +156,19 @@ async function fileList(params: z.infer<typeof fileListSchema>): Promise<FileLis
       count: filtered.length,
     };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /**
  * Get detailed information about a single file.
  */
-async function fileInfo(params: z.infer<typeof fileInfoSchema>): Promise<FileInfoResult> {
+async function fileInfo(
+  params: z.infer<typeof fileInfoSchema>
+): Promise<FileInfoResult> {
   const { filePath } = params;
   try {
     const p = resolveWithinRoot(filePath);
@@ -162,7 +187,10 @@ async function fileInfo(params: z.infer<typeof fileInfoSchema>): Promise<FileInf
       accessed: stats.atime,
     };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 

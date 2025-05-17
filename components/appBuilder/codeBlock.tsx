@@ -1,25 +1,25 @@
 'use client';
 
-import React, { useState, useCallback } from 'react'
-import { foldGutter } from '@codemirror/language'
-import { indentOnInput } from '@codemirror/language'
-import { highlightSelectionMatches } from '@codemirror/search'
-import { autocompletion } from '@codemirror/autocomplete'
-import { history } from '@codemirror/commands'
-import { lintGutter } from '@codemirror/lint'
-import { javascript } from '@codemirror/lang-javascript'
-import { json } from '@codemirror/lang-json'
-import CodeMirror from '@uiw/react-codemirror'
-import { vscodeDark } from '@uiw/codemirror-theme-vscode'
-import { Copy, Maximize, Minimize } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import React, { useState, useCallback } from 'react';
+import { foldGutter } from '@codemirror/language';
+import { indentOnInput } from '@codemirror/language';
+import { highlightSelectionMatches } from '@codemirror/search';
+import { autocompletion } from '@codemirror/autocomplete';
+import { history } from '@codemirror/commands';
+import { lintGutter } from '@codemirror/lint';
+import { javascript } from '@codemirror/lang-javascript';
+import { json } from '@codemirror/lang-json';
+import CodeMirror from '@uiw/react-codemirror';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { Copy, Maximize, Minimize } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface AppBuilderCodeBlockProps {
-  code: string
-  language?: 'typescript' | 'javascript' | 'json'
-  editable?: boolean
-  onChange?: (val: string) => void
-  className?: string
+  code: string;
+  language?: 'typescript' | 'javascript' | 'json';
+  editable?: boolean;
+  onChange?: (val: string) => void;
+  className?: string;
 }
 
 export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
@@ -29,11 +29,11 @@ export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
   onChange,
   className = '',
 }) => {
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(code)
-  }, [code])
+    await navigator.clipboard.writeText(code);
+  }, [code]);
 
   const ext = [
     foldGutter(),
@@ -43,8 +43,8 @@ export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
     history(),
     lintGutter(),
     javascript(),
-  ]
-  if (language === 'json') ext.push(json())
+  ];
+  if (language === 'json') ext.push(json());
 
   return (
     <div
@@ -91,5 +91,5 @@ export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
         onChange={onChange}
       />
     </div>
-  )
-}
+  );
+};

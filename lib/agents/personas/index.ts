@@ -79,7 +79,6 @@ import {
   recordFeedbackForPersona as exampleRecordFeedbackForPersona,
 } from './examples/persona-library-example';
 
-
 // Persona Score Example
 import {
   usePersonaForTask as exampleSelectPersonaForTask,

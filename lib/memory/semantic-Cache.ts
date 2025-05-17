@@ -1,5 +1,5 @@
-import { SemanticCache } from "@upstash/semantic-cache";
-import { Index } from "@upstash/vector";
+import { SemanticCache } from '@upstash/semantic-cache';
+import { Index } from '@upstash/vector';
 
 // 👇 your vector database
 const index = new Index();
@@ -8,7 +8,7 @@ const index = new Index();
 const semanticCache = new SemanticCache({ index, minProximity: 0.95 });
 
 async function runDemo() {
-  await semanticCache.set("Capital of Turkey", "Ankara");
+  await semanticCache.set('Capital of Turkey', 'Ankara');
   await delay(1000);
 
   // 👇 outputs: "Ankara"

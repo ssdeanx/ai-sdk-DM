@@ -7,9 +7,19 @@
  * @module model-service
  */
 
-import { getData, getItemById, createItem, updateItem, deleteItem } from '../memory/upstash/supabase-adapter';
+import {
+  getData,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
+} from '../memory/upstash/supabase-adapter';
 import { upstashLogger } from '../memory/upstash/upstash-logger';
-import { ModelSettings, ModelSettingsInput, ModelSettingsUpdate } from '../../types/model-settings';
+import {
+  ModelSettings,
+  ModelSettingsInput,
+  ModelSettingsUpdate,
+} from '../../types/model-settings';
 import { ModelSettingsSchema } from './model-registry';
 import { generateId } from 'ai';
 import { modelRegistry } from './model-registry';
@@ -18,12 +28,14 @@ import { z } from 'zod';
 // Define Zod schema for database options
 export const DatabaseOptionsSchema = z.object({
   filters: z.record(z.any()).optional(),
-  orderBy: z.object({
-    column: z.string(),
-    ascending: z.boolean().default(true)
-  }).optional(),
+  orderBy: z
+    .object({
+      column: z.string(),
+      ascending: z.boolean().default(true),
+    })
+    .optional(),
   limit: z.number().int().positive().optional(),
-  offset: z.number().int().nonnegative().optional()
+  offset: z.number().int().nonnegative().optional(),
 });
 
 // Define Zod schema for Supabase model
@@ -51,13 +63,19 @@ export const SupabaseModelSchema = z.object({
   api_key: z.string().optional(),
   status: z.string().default('active'),
   created_at: z.string(),
-  updated_at: z.string()
+  updated_at: z.string(),
 });
 
 // Helper to convert filters from Record<string, any> to FilterOptions[]
-function convertFilters(filters?: Record<string, unknown>): Array<{ field: string; operator: string; value: unknown }> | undefined {
+function convertFilters(
+  filters?: Record<string, unknown>
+): Array<{ field: string; operator: string; value: unknown }> | undefined {
   if (!filters) return undefined;
-  return Object.entries(filters).map(([field, value]) => ({ field, operator: 'eq', value }));
+  return Object.entries(filters).map(([field, value]) => ({
+    field,
+    operator: 'eq',
+    value,
+  }));
 }
 
 // Helper to wrap errors for logger
@@ -76,8 +94,12 @@ function normalizeProvider(model: Record<string, unknown>): void {
 }
 
 // Type guard to validate provider
-function isValidProvider(provider: unknown): provider is 'google' | 'openai' | 'anthropic' {
-  return provider === 'google' || provider === 'openai' || provider === 'anthropic';
+function isValidProvider(
+  provider: unknown
+): provider is 'google' | 'openai' | 'anthropic' {
+  return (
+    provider === 'google' || provider === 'openai' || provider === 'anthropic'
+  );
 }
 
 // --- Error Handling ---
@@ -92,9 +114,12 @@ export class ModelServiceError extends Error {
    * @param message - Error message
    * @param cause - Optional cause of the error
    */
-  constructor(message: string, public cause?: unknown) {
+  constructor(
+    message: string,
+    public cause?: unknown
+  ) {
     super(message);
-    this.name = "ModelServiceError";
+    this.name = 'ModelServiceError';
     Object.setPrototypeOf(this, ModelServiceError.prototype);
   }
 }
@@ -108,13 +133,19 @@ export class ModelServiceError extends Error {
  * @returns Promise resolving to an array of models
  * @throws ModelServiceError if fetching fails
  */
-export async function getAllModels(options?: z.infer<typeof DatabaseOptionsSchema>): Promise<ModelSettings[]> {
+export async function getAllModels(
+  options?: z.infer<typeof DatabaseOptionsSchema>
+): Promise<ModelSettings[]> {
   // Convert filters to correct format for QueryOptions
-  const validatedOptions = options ? DatabaseOptionsSchema.parse(options) : undefined;
-  const queryOptions = validatedOptions ? {
-    ...validatedOptions,
-    filters: convertFilters(validatedOptions.filters)
-  } : undefined;
+  const validatedOptions = options
+    ? DatabaseOptionsSchema.parse(options)
+    : undefined;
+  const queryOptions = validatedOptions
+    ? {
+        ...validatedOptions,
+        filters: convertFilters(validatedOptions.filters),
+      }
+    : undefined;
   try {
     let modelsData: unknown[] = [];
     modelsData = await getData('models', queryOptions);
@@ -128,12 +159,20 @@ export async function getAllModels(options?: z.infer<typeof DatabaseOptionsSchem
         };
         models.push(ModelSettingsSchema.parse(safeModel));
       } catch (validationError) {
-        upstashLogger.error('model-service', 'Invalid model data', toLoggerError(validationError));
+        upstashLogger.error(
+          'model-service',
+          'Invalid model data',
+          toLoggerError(validationError)
+        );
       }
     }
     return models;
   } catch (error) {
-    upstashLogger.error('model-service', 'Failed to get all models', toLoggerError(error));
+    upstashLogger.error(
+      'model-service',
+      'Failed to get all models',
+      toLoggerError(error)
+    );
     throw new ModelServiceError(`Failed to get all models`, error);
   }
 }
@@ -162,11 +201,22 @@ export async function getModelById(id: string): Promise<ModelSettings | null> {
       modelRegistry.registerModel(validatedModel);
       return validatedModel;
     } catch (validationError) {
-      upstashLogger.error('model-service', `Invalid model data for ${id}`, toLoggerError(validationError));
-      throw new ModelServiceError(`Invalid model data for ${id}`, validationError);
+      upstashLogger.error(
+        'model-service',
+        `Invalid model data for ${id}`,
+        toLoggerError(validationError)
+      );
+      throw new ModelServiceError(
+        `Invalid model data for ${id}`,
+        validationError
+      );
     }
   } catch (error) {
-    upstashLogger.error('model-service', `Failed to get model by ID ${id}`, toLoggerError(error));
+    upstashLogger.error(
+      'model-service',
+      `Failed to get model by ID ${id}`,
+      toLoggerError(error)
+    );
     throw new ModelServiceError(`Failed to get model by ID ${id}`, error);
   }
 }
@@ -178,7 +228,9 @@ export async function getModelById(id: string): Promise<ModelSettings | null> {
  * @returns Promise resolving to the model or null if not found
  * @throws ModelServiceError if fetching fails
  */
-export async function getModelByModelId(modelId: string): Promise<ModelSettings | null> {
+export async function getModelByModelId(
+  modelId: string
+): Promise<ModelSettings | null> {
   try {
     const registryModels = Array.from(modelRegistry['models'].values());
     const registryModel = registryModels.find((model: unknown) => {
@@ -207,12 +259,26 @@ export async function getModelByModelId(modelId: string): Promise<ModelSettings 
       modelRegistry.registerModel(validatedModel);
       return validatedModel;
     } catch (validationError) {
-      upstashLogger.error('model-service', `Invalid model data for model_id ${modelId}`, toLoggerError(validationError));
-      throw new ModelServiceError(`Invalid model data for model_id ${modelId}`, validationError);
+      upstashLogger.error(
+        'model-service',
+        `Invalid model data for model_id ${modelId}`,
+        toLoggerError(validationError)
+      );
+      throw new ModelServiceError(
+        `Invalid model data for model_id ${modelId}`,
+        validationError
+      );
     }
   } catch (error) {
-    upstashLogger.error('model-service', `Failed to get model by model_id ${modelId}`, toLoggerError(error));
-    throw new ModelServiceError(`Failed to get model by model_id ${modelId}`, error);
+    upstashLogger.error(
+      'model-service',
+      `Failed to get model by model_id ${modelId}`,
+      toLoggerError(error)
+    );
+    throw new ModelServiceError(
+      `Failed to get model by model_id ${modelId}`,
+      error
+    );
   }
 }
 
@@ -223,7 +289,9 @@ export async function getModelByModelId(modelId: string): Promise<ModelSettings 
  * @returns Promise resolving to the created model
  * @throws ModelServiceError if creation fails
  */
-export async function createModel(model: ModelSettingsInput): Promise<ModelSettings> {
+export async function createModel(
+  model: ModelSettingsInput
+): Promise<ModelSettings> {
   try {
     const modelData = {
       id: generateId(),
@@ -248,7 +316,11 @@ export async function createModel(model: ModelSettingsInput): Promise<ModelSetti
     modelRegistry.registerModel(validatedModel);
     return validatedModel;
   } catch (error) {
-    upstashLogger.error('model-service', 'Failed to create model', toLoggerError(error));
+    upstashLogger.error(
+      'model-service',
+      'Failed to create model',
+      toLoggerError(error)
+    );
     throw new ModelServiceError(`Failed to create model`, error);
   }
 }
@@ -261,7 +333,10 @@ export async function createModel(model: ModelSettingsInput): Promise<ModelSetti
  * @returns Promise resolving to the updated model
  * @throws ModelServiceError if update fails
  */
-export async function updateModel(id: string, updates: ModelSettingsUpdate): Promise<ModelSettings> {
+export async function updateModel(
+  id: string,
+  updates: ModelSettingsUpdate
+): Promise<ModelSettings> {
   try {
     const existingModel = await getModelById(id);
     if (!existingModel) throw new ModelServiceError(`Model not found: ${id}`);
@@ -287,7 +362,7 @@ export async function updateModel(id: string, updates: ModelSettingsUpdate): Pro
       base_url: z.string().optional().nullable(),
       api_key: z.string().optional(),
       status: z.string().optional(),
-      updated_at: z.string()
+      updated_at: z.string(),
     });
     // Patch: Only allow valid ModelProvider values
     if (updates && typeof updates === 'object' && 'provider' in updates) {
@@ -297,21 +372,47 @@ export async function updateModel(id: string, updates: ModelSettingsUpdate): Pro
       ...updates,
       updated_at: new Date().toISOString(),
     };
-    if (updates.input_cost_per_token !== undefined) supabaseUpdatesData.input_cost_per_token = Number(updates.input_cost_per_token);
-    if (updates.output_cost_per_token !== undefined) supabaseUpdatesData.output_cost_per_token = Number(updates.output_cost_per_token);
-    if (updates.default_temperature !== undefined) supabaseUpdatesData.default_temperature = Number(updates.default_temperature);
-    if (updates.default_top_p !== undefined) supabaseUpdatesData.default_top_p = Number(updates.default_top_p);
-    if (updates.default_frequency_penalty !== undefined) supabaseUpdatesData.default_frequency_penalty = Number(updates.default_frequency_penalty);
-    if (updates.default_presence_penalty !== undefined) supabaseUpdatesData.default_presence_penalty = Number(updates.default_presence_penalty);
-    if (updates.max_tokens !== undefined) supabaseUpdatesData.max_tokens = Number(updates.max_tokens);
-    if (updates.context_window !== undefined) supabaseUpdatesData.context_window = Number(updates.context_window);
+    if (updates.input_cost_per_token !== undefined)
+      supabaseUpdatesData.input_cost_per_token = Number(
+        updates.input_cost_per_token
+      );
+    if (updates.output_cost_per_token !== undefined)
+      supabaseUpdatesData.output_cost_per_token = Number(
+        updates.output_cost_per_token
+      );
+    if (updates.default_temperature !== undefined)
+      supabaseUpdatesData.default_temperature = Number(
+        updates.default_temperature
+      );
+    if (updates.default_top_p !== undefined)
+      supabaseUpdatesData.default_top_p = Number(updates.default_top_p);
+    if (updates.default_frequency_penalty !== undefined)
+      supabaseUpdatesData.default_frequency_penalty = Number(
+        updates.default_frequency_penalty
+      );
+    if (updates.default_presence_penalty !== undefined)
+      supabaseUpdatesData.default_presence_penalty = Number(
+        updates.default_presence_penalty
+      );
+    if (updates.max_tokens !== undefined)
+      supabaseUpdatesData.max_tokens = Number(updates.max_tokens);
+    if (updates.context_window !== undefined)
+      supabaseUpdatesData.context_window = Number(updates.context_window);
     ModelUpdatesSchema.parse(supabaseUpdatesData);
     await updateItem('models', id, supabaseUpdatesData);
-    const updatedModel = { ...existingModel, ...updates, updated_at: supabaseUpdatesData.updated_at };
+    const updatedModel = {
+      ...existingModel,
+      ...updates,
+      updated_at: supabaseUpdatesData.updated_at,
+    };
     modelRegistry.registerModel(updatedModel as ModelSettings);
     return updatedModel as ModelSettings;
   } catch (error) {
-    upstashLogger.error('model-service', `Failed to update model ${id}`, toLoggerError(error));
+    upstashLogger.error(
+      'model-service',
+      `Failed to update model ${id}`,
+      toLoggerError(error)
+    );
     throw new ModelServiceError(`Failed to update model ${id}`, error);
   }
 }
@@ -328,7 +429,11 @@ export async function deleteModel(id: string): Promise<boolean> {
     await deleteItem('models', id);
     return true;
   } catch (error) {
-    upstashLogger.error('model-service', `Failed to delete model ${id}`, toLoggerError(error));
+    upstashLogger.error(
+      'model-service',
+      `Failed to delete model ${id}`,
+      toLoggerError(error)
+    );
     throw new ModelServiceError(`Failed to delete model ${id}`, error);
   }
 }
@@ -348,11 +453,19 @@ export async function getLanguageModel(modelId: string): Promise<any> {
     if (!dbModel) dbModel = await getModelByModelId(modelId);
     if (!dbModel) throw new ModelServiceError(`Model not found: ${modelId}`);
     const languageModel = modelRegistry.getLanguageModel(dbModel.id);
-    if (!languageModel) throw new ModelServiceError(`Language model not found for ${modelId}`);
+    if (!languageModel)
+      throw new ModelServiceError(`Language model not found for ${modelId}`);
     return languageModel;
   } catch (error) {
-    upstashLogger.error('model-service', `Failed to get language model for ${modelId}`, toLoggerError(error));
-    throw new ModelServiceError(`Failed to get language model for ${modelId}`, error);
+    upstashLogger.error(
+      'model-service',
+      `Failed to get language model for ${modelId}`,
+      toLoggerError(error)
+    );
+    throw new ModelServiceError(
+      `Failed to get language model for ${modelId}`,
+      error
+    );
   }
 }
 
@@ -363,5 +476,5 @@ export default {
   createModel,
   updateModel,
   deleteModel,
-  getLanguageModel
+  getLanguageModel,
 };

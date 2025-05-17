@@ -1,23 +1,23 @@
-import { NextResponse } from "next/server";
-import { createMemory } from "@/lib/memory/factory";
-import { handleApiError } from "@/lib/api-error-handler";
-import { z } from "zod";
+import { NextResponse } from 'next/server';
+import { createMemory } from '@/lib/memory/factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import { z } from 'zod';
 
 // Define schemas for validation
 const ThreadParamsSchema = z.object({
-  id: z.string().uuid({ message: "Invalid thread ID format" })
+  id: z.string().uuid({ message: 'Invalid thread ID format' }),
 });
 
 const MessageQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().default(100)
+  limit: z.coerce.number().int().positive().default(100),
 });
 
-const MessageRoleEnum = z.enum(["user", "assistant", "system", "tool"]);
+const MessageRoleEnum = z.enum(['user', 'assistant', 'system', 'tool']);
 
 const CreateMessageSchema = z.object({
   role: MessageRoleEnum,
-  content: z.string().min(1, { message: "Message content cannot be empty" }),
-  metadata: z.record(z.unknown()).optional().default({})
+  content: z.string().min(1, { message: 'Message content cannot be empty' }),
+  metadata: z.record(z.unknown()).optional().default({}),
 });
 
 // Create memory instance using the factory
@@ -37,7 +37,7 @@ export async function GET(
     const paramsResult = ThreadParamsSchema.safeParse(params);
     if (!paramsResult.success) {
       return NextResponse.json(
-        { error: "Invalid thread ID", details: paramsResult.error.format() },
+        { error: 'Invalid thread ID', details: paramsResult.error.format() },
         { status: 400 }
       );
     }
@@ -47,12 +47,15 @@ export async function GET(
     // Validate query parameters
     const url = new URL(request.url);
     const queryResult = MessageQuerySchema.safeParse({
-      limit: url.searchParams.get("limit")
+      limit: url.searchParams.get('limit'),
     });
 
     if (!queryResult.success) {
       return NextResponse.json(
-        { error: "Invalid query parameters", details: queryResult.error.format() },
+        {
+          error: 'Invalid query parameters',
+          details: queryResult.error.format(),
+        },
         { status: 400 }
       );
     }
@@ -84,19 +87,22 @@ export async function GET(
         role: message.role,
         content: message.content,
         createdAt: message.created_at,
-        metadata: parsedMetadata
+        metadata: parsedMetadata,
       };
     });
 
     return NextResponse.json({
       messages: formattedMessages,
-      count: formattedMessages.length
+      count: formattedMessages.length,
     });
   } catch (error: unknown) {
     // Handle Upstash-specific errors
     if (error && typeof error === 'object' && 'name' in error) {
       const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+      if (
+        errorObj.name === 'RedisStoreError' ||
+        errorObj.name === 'UpstashClientError'
+      ) {
         return NextResponse.json(
           { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
           { status: 500 }
@@ -123,7 +129,7 @@ export async function POST(
     const paramsResult = ThreadParamsSchema.safeParse(params);
     if (!paramsResult.success) {
       return NextResponse.json(
-        { error: "Invalid thread ID", details: paramsResult.error.format() },
+        { error: 'Invalid thread ID', details: paramsResult.error.format() },
         { status: 400 }
       );
     }
@@ -136,7 +142,7 @@ export async function POST(
 
     if (!bodyResult.success) {
       return NextResponse.json(
-        { error: "Invalid message data", details: bodyResult.error.format() },
+        { error: 'Invalid message data', details: bodyResult.error.format() },
         { status: 400 }
       );
     }
@@ -146,16 +152,16 @@ export async function POST(
     // Save the message using memory factory
     const messageId = await memory.saveMessage(
       id,
-      role as "user" | "assistant" | "system" | "tool",
+      role as 'user' | 'assistant' | 'system' | 'tool',
       content,
       {
         count_tokens: true,
-        generate_embeddings: role === "assistant", // Generate embeddings for assistant messages
+        generate_embeddings: role === 'assistant', // Generate embeddings for assistant messages
         metadata: {
           ...metadata,
           source: 'ai-sdk-ui',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }
     );
 
@@ -167,14 +173,17 @@ export async function POST(
       metadata: {
         ...metadata,
         source: 'ai-sdk-ui',
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error: unknown) {
     // Handle Upstash-specific errors
     if (error && typeof error === 'object' && 'name' in error) {
       const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+      if (
+        errorObj.name === 'RedisStoreError' ||
+        errorObj.name === 'UpstashClientError'
+      ) {
         return NextResponse.json(
           { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
           { status: 500 }

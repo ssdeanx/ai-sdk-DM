@@ -1,67 +1,79 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Github, Database, Rocket, Search, Plus, Check, ExternalLink } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { IntegrationCard } from "@/components/integrations/integration-card"
-import { ConnectedIntegration } from "@/components/integrations/connected-integration"
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Github,
+  Database,
+  Rocket,
+  Search,
+  Plus,
+  Check,
+  ExternalLink,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { IntegrationCard } from '@/components/integrations/integration-card';
+import { ConnectedIntegration } from '@/components/integrations/connected-integration';
 
 export default function IntegrationsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("all")
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
+
   // Mock data for available integrations
   const availableIntegrations = [
     {
-      id: "github",
-      name: "GitHub",
-      description: "Connect your GitHub repositories to deploy, manage code, and trigger workflows.",
+      id: 'github',
+      name: 'GitHub',
+      description:
+        'Connect your GitHub repositories to deploy, manage code, and trigger workflows.',
       icon: <Github className="h-6 w-6" />,
-      category: "code",
+      category: 'code',
       popular: true,
     },
     {
-      id: "supabase",
-      name: "Supabase",
-      description: "Connect your Supabase projects to access databases, authentication, and storage.",
+      id: 'supabase',
+      name: 'Supabase',
+      description:
+        'Connect your Supabase projects to access databases, authentication, and storage.',
       icon: <Database className="h-6 w-6" />,
-      category: "database",
+      category: 'database',
       popular: true,
     },
     {
-      id: "vercel",
-      name: "Vercel",
-      description: "Deploy and host your applications with Vercel's global edge network.",
+      id: 'vercel',
+      name: 'Vercel',
+      description:
+        "Deploy and host your applications with Vercel's global edge network.",
       icon: <Rocket className="h-6 w-6" />,
-      category: "hosting",
+      category: 'hosting',
       popular: true,
     },
-  ]
-  
+  ];
+
   // Mock data for connected integrations
   const connectedIntegrations = [
     {
-      id: "github-1",
-      name: "GitHub",
-      accountName: "acme-org",
-      connectedAt: "2023-05-15T10:30:00Z",
-      status: "active",
+      id: 'github-1',
+      name: 'GitHub',
+      accountName: 'acme-org',
+      connectedAt: '2023-05-15T10:30:00Z',
+      status: 'active',
       icon: <Github className="h-6 w-6" />,
-    }
-  ]
-  
+    },
+  ];
+
   // Filter integrations based on search query and active tab
-  const filteredIntegrations = availableIntegrations.filter(integration => {
-    const matchesSearch = integration.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         integration.description.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    if (activeTab === "all") return matchesSearch
-    if (activeTab === "popular") return matchesSearch && integration.popular
-    return matchesSearch && integration.category === activeTab
-  })
+  const filteredIntegrations = availableIntegrations.filter((integration) => {
+    const matchesSearch =
+      integration.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      integration.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (activeTab === 'all') return matchesSearch;
+    if (activeTab === 'popular') return matchesSearch && integration.popular;
+    return matchesSearch && integration.category === activeTab;
+  });
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -71,13 +83,13 @@ export default function IntegrationsPage() {
           Connect your AI SDK Framework with external services and tools
         </p>
       </div>
-      
+
       {/* Connected integrations section */}
       {connectedIntegrations.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Connected Services</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {connectedIntegrations.map(integration => (
+            {connectedIntegrations.map((integration) => (
               <ConnectedIntegration
                 key={integration.id}
                 name={integration.name}
@@ -90,7 +102,7 @@ export default function IntegrationsPage() {
           </div>
         </div>
       )}
-      
+
       {/* Available integrations section */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -104,8 +116,12 @@ export default function IntegrationsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full sm:w-auto"
+          >
             <TabsList className="grid grid-cols-4 sm:grid-cols-4 w-full sm:w-auto">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="popular">Popular</TabsTrigger>
@@ -114,9 +130,9 @@ export default function IntegrationsPage() {
             </TabsList>
           </Tabs>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredIntegrations.map(integration => (
+          {filteredIntegrations.map((integration) => (
             <IntegrationCard
               key={integration.id}
               name={integration.name}
@@ -128,5 +144,5 @@ export default function IntegrationsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

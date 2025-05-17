@@ -6,8 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "type-check": "tsc --noEmit",
     "migrate:generate:supabase": "drizzle-kit generate --config drizzle.supabase.config.ts --name",
     "migrate:generate:libsql": "drizzle-kit generate --config drizzle.libsql.config.ts --name",
@@ -18,7 +18,9 @@
     "migrate:all": "pnpm migrate:generate:supabase init && pnpm migrate:up:supabase && pnpm migrate:generate:libsql init && pnpm migrate:up:libsql",
     "generate:types:supabase": "drizzle-orm generate:types --schema=./db/supabase/schema.ts --out=./db/supabase/types.ts",
     "generate:types:libsql": "drizzle-orm generate:types --schema=./db/libsql/schema.ts --out=./db/libsql/types.ts",
-    "generate:types": "pnpm generate:types:supabase && pnpm generate:types:libsql"
+    "generate:types": "pnpm generate:types:supabase && pnpm generate:types:libsql",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "engines": {
     "node": ">=18.17.0"
@@ -260,11 +262,14 @@
     "@typescript-eslint/parser": "^8.32.1",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "6.0.0-rc1",
     "globals": "^16.1.0",
     "plotly.js-dist": "^3.0.1",
     "postcss": "^8.5.3",
+    "prettier": "^3.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1"

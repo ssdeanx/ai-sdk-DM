@@ -53,7 +53,7 @@ export const codeAnalyzeSchema = z.object({
  * @internal The sandbox currently supports JavaScript only.
  */
 async function codeExecute(
-  params: z.infer<typeof codeExecuteSchema>,
+  params: z.infer<typeof codeExecuteSchema>
 ): Promise<ExecuteResult> {
   const { code, language, timeout } = params;
 
@@ -67,11 +67,9 @@ async function codeExecute(
 
   /* ---------------------------  JS via worker thread  --------------------------- */
   return new Promise<ExecuteResult>((resolve) => {
-    /* eslint-disable @typescript-eslint/no-var-requires */
     const worker = new Worker(require.resolve('./code/execute-worker'), {
       workerData: { code },
     });
-    /* eslint-enable @typescript-eslint/no-var-requires */
 
     /* Force-terminate after `timeout` seconds. */
     const timer = setTimeout(() => {
@@ -108,7 +106,7 @@ async function codeExecute(
  * Perform static analysis on the supplied code.
  */
 async function codeAnalyze(
-  params: z.infer<typeof codeAnalyzeSchema>,
+  params: z.infer<typeof codeAnalyzeSchema>
 ): Promise<AnalyzeResult> {
   const { code, language, analysis } = params;
 
@@ -123,7 +121,7 @@ async function codeAnalyze(
           const indentation = line.search(/\S/);
           return indentation > 0 ? indentation / 2 : 0;
         }),
-        0,
+        0
       );
 
       results.complexity = {
@@ -176,13 +174,13 @@ async function codeAnalyze(
  * Bundles the two tools in the format expected by `generateText` / `streamText`.
  *
  * @example
- * 
+ *
  * const result = await generateText({
  *   model,
  *   tools,
  *   prompt: '…',
  * });
- * 
+ *
  */
 export const tools = {
   CodeExecute: tool({

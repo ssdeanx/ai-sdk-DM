@@ -29,7 +29,7 @@ import {
   TableInsert,
   TableUpdate,
   FilterOptions,
-  QueryOptions
+  QueryOptions,
 } from './supabase-adapter';
 
 // --- Enhanced Type-Safe TableClient ---
@@ -44,7 +44,11 @@ export interface TableClient<T extends TableName = TableName> {
   count(options?: QueryOptions): Promise<number>;
   batchGet(ids: string[]): Promise<(TableRow<T> | null)[]>;
   select(...columns: (keyof TableRow<T>)[]): TableClient<T>;
-  filter(field: keyof TableRow<T>, operator: FilterOptions['operator'], value: unknown): TableClient<T>;
+  filter(
+    field: keyof TableRow<T>,
+    operator: FilterOptions['operator'],
+    value: unknown
+  ): TableClient<T>;
   order(column: keyof TableRow<T>, ascending?: boolean): TableClient<T>;
   limit(limit: number): TableClient<T>;
   offset(offset: number): TableClient<T>;
@@ -80,7 +84,9 @@ export interface SupabaseClient {
 }
 
 export function createSupabaseClient(): SupabaseClient {
-  function createTableClient<T extends TableName>(tableName: T): TableClient<T> {
+  function createTableClient<T extends TableName>(
+    tableName: T
+  ): TableClient<T> {
     let options: QueryOptions = {};
     const client: TableClient<T> = {
       getAll: async (queryOptions?: QueryOptions) => {
@@ -114,14 +120,21 @@ export function createSupabaseClient(): SupabaseClient {
         options = { ...options, select: columns as string[] };
         return client;
       },
-      filter: (field: keyof TableRow<T>, operator: FilterOptions['operator'], value: unknown) => {
+      filter: (
+        field: keyof TableRow<T>,
+        operator: FilterOptions['operator'],
+        value: unknown
+      ) => {
         const filters = options.filters || [];
         filters.push({ field: field as string, operator, value });
         options = { ...options, filters };
         return client;
       },
       order: (column: keyof TableRow<T>, ascending?: boolean) => {
-        options = { ...options, orderBy: { column: column as string, ascending } };
+        options = {
+          ...options,
+          orderBy: { column: column as string, ascending },
+        };
         return client;
       },
       limit: (limit: number) => {
@@ -131,7 +144,7 @@ export function createSupabaseClient(): SupabaseClient {
       offset: (offset: number) => {
         options = { ...options, offset };
         return client;
-      }
+      },
     };
     return client;
   }
@@ -139,31 +152,35 @@ export function createSupabaseClient(): SupabaseClient {
   function createVectorClient(): VectorClient {
     return {
       search: async (query, options) => {
-        return vectorSearch(query, options) as Promise<Record<string, unknown>[]>;
+        return vectorSearch(query, options) as Promise<
+          Record<string, unknown>[]
+        >;
       },
       upsert: async (vectors, options) => {
-        const vectorsWithSparse = vectors.map(v => ({
+        const vectorsWithSparse = vectors.map((v) => ({
           ...v,
           sparseVector: {
             indices: Array.from(v.vector.keys()),
-            values: v.vector
-          }
+            values: v.vector,
+          },
         }));
-        return upsertSupabaseVectors(vectorsWithSparse, options) as Promise<Record<string, unknown>>;
+        return upsertSupabaseVectors(vectorsWithSparse, options) as Promise<
+          Record<string, unknown>
+        >;
       },
       upsertTexts: async (texts, options) => {
         return entityApi.upsertTexts(texts, options);
       },
       semanticSearch: async (text, options) => {
         return entityApi.semanticSearch(text, options);
-      }
+      },
     };
   }
 
   return {
     from: createTableClient,
     vector: createVectorClient(),
-    entity: entityApi
+    entity: entityApi,
   };
 }
 

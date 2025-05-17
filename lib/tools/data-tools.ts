@@ -4,7 +4,7 @@
  *       after the tool-suite was moved to `lib/tools/data/`.
  *
  * @remarks
- *   • The real implementation now lives in `lib/tools/data/tools.ts`.  
+ *   • The real implementation now lives in `lib/tools/data/tools.ts`.
  *   • We re-export its `tools` object plus the public `types` and
  *     `constants` modules for direct consumption when needed.
  */

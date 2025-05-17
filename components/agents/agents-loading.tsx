@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function AgentsLoading() {
   return (
@@ -13,7 +13,10 @@ export function AgentsLoading() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(6)].map((_, index) => (
-          <div key={index} className="border rounded-lg p-4 bg-gray-900 border-gray-800">
+          <div
+            key={index}
+            className="border rounded-lg p-4 bg-gray-900 border-gray-800"
+          >
             <Skeleton className="h-8 w-3/4 mb-4" />
             <Skeleton className="h-4 w-full mb-2" />
             <Skeleton className="h-4 w-2/3 mb-4" />
@@ -25,5 +28,5 @@ export function AgentsLoading() {
         ))}
       </div>
     </div>
-  )
+  );
 }

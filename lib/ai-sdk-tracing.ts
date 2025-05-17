@@ -13,11 +13,11 @@ import {
   extractReasoningMiddleware,
   simulateStreamingMiddleware,
   defaultSettingsMiddleware,
-  type LanguageModelV1Middleware
-} from "ai"
-import { createGoogleGenerativeAI } from "@ai-sdk/google"
-import { createOpenAI } from "@ai-sdk/openai"
-import { createAnthropic } from "@ai-sdk/anthropic"
+  type LanguageModelV1Middleware,
+} from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import {
   trace,
   span,
@@ -29,18 +29,21 @@ import {
   evaluationRun,
   userFeedback,
   initializeTracing,
-  shutdown
-} from "./tracing"
-import { SpanKind, SpanStatusCode } from "./otel-tracing"
-import { BaseAgent } from "./agents/baseAgent";
-import { personaManager } from "./agents/personas/persona-manager";
-import * as supabaseMemory from "./memory/supabase";
-import { shouldUseUpstash } from "./memory/supabase";
-import * as upstashAdapter from "./memory/upstash/supabase-adapter";
-import { getRedisClient, getVectorClient } from "./memory/upstash/upstashClients";
-import * as db from "./memory/db";
-import { initializeTools } from "./tools/toolInitializer";
-import * as aiSdkIntegration from "./ai-sdk-integration";
+  shutdown,
+} from './tracing';
+import { SpanKind, SpanStatusCode } from './otel-tracing';
+import { BaseAgent } from './agents/baseAgent';
+import { personaManager } from './agents/personas/persona-manager';
+import * as supabaseMemory from './memory/supabase';
+import { shouldUseUpstash } from './memory/supabase';
+import * as upstashAdapter from './memory/upstash/supabase-adapter';
+import {
+  getRedisClient,
+  getVectorClient,
+} from './memory/upstash/upstashClients';
+import * as db from './memory/db';
+import { initializeTools } from './tools/toolInitializer';
+import * as aiSdkIntegration from './ai-sdk-integration';
 
 // Optionally, import types or utility functions as needed
 // import { Agent, RunResult, AgentState } from "./agents/agent.types";
@@ -48,8 +51,8 @@ import * as aiSdkIntegration from "./ai-sdk-integration";
 // Initialize tracing when this module is imported
 initializeTracing({
   serviceName: 'ai-sdk-chat',
-  serviceVersion: '1.0.0'
-})
+  serviceVersion: '1.0.0',
+});
 
 /**
  * Get an AI provider with tracing based on provider name
@@ -68,17 +71,29 @@ export function getProviderWithTracing(
 ) {
   switch (providerName.toLowerCase()) {
     case 'google':
-      return getGoogleAIWithTracing(apiKey, baseURL, traceName || `google_ai_provider`);
+      return getGoogleAIWithTracing(
+        apiKey,
+        baseURL,
+        traceName || `google_ai_provider`
+      );
     case 'openai':
       if (!apiKey) {
         throw new Error('API key is required for OpenAI');
       }
-      return getOpenAIWithTracing(apiKey, baseURL, traceName || `openai_provider`);
+      return getOpenAIWithTracing(
+        apiKey,
+        baseURL,
+        traceName || `openai_provider`
+      );
     case 'anthropic':
       if (!apiKey) {
         throw new Error('API key is required for Anthropic');
       }
-      return getAnthropicWithTracing(apiKey, baseURL, traceName || `anthropic_provider`);
+      return getAnthropicWithTracing(
+        apiKey,
+        baseURL,
+        traceName || `anthropic_provider`
+      );
     default:
       throw new Error(`Unsupported provider: ${providerName}`);
   }
@@ -117,27 +132,27 @@ export async function streamAIWithTracing({
   dynamicRetrievalConfig,
   responseModalities,
   cachedContent,
-  middleware
+  middleware,
 }: {
-  provider: string
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
-  useSearchGrounding?: boolean
+  provider: string;
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
+  useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
-    dynamicThreshold?: number
-  }
-  responseModalities?: Array<"TEXT" | "IMAGE">
-  cachedContent?: string
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
+  cachedContent?: string;
 }) {
   // Determine which provider-specific function to use
   switch (provider.toLowerCase()) {
@@ -157,7 +172,7 @@ export async function streamAIWithTracing({
         dynamicRetrievalConfig,
         responseModalities,
         cachedContent,
-        middleware
+        middleware,
       });
     case 'openai':
       if (!apiKey) {
@@ -173,7 +188,7 @@ export async function streamAIWithTracing({
         baseURL,
         traceName,
         userId,
-        metadata
+        metadata,
       });
     case 'anthropic':
       if (!apiKey) {
@@ -189,7 +204,7 @@ export async function streamAIWithTracing({
         baseURL,
         traceName,
         userId,
-        metadata
+        metadata,
       });
     default:
       throw new Error(`Unsupported provider: ${provider}`);
@@ -228,26 +243,26 @@ export async function generateAIWithTracing({
   useSearchGrounding,
   dynamicRetrievalConfig,
   responseModalities,
-  cachedContent
+  cachedContent,
 }: {
-  provider: string
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-  useSearchGrounding?: boolean
+  provider: string;
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
-    dynamicThreshold?: number
-  }
-  responseModalities?: Array<"TEXT" | "IMAGE">
-  cachedContent?: string
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
+  cachedContent?: string;
 }) {
   // Determine which provider-specific function to use
   switch (provider.toLowerCase()) {
@@ -266,7 +281,7 @@ export async function generateAIWithTracing({
         useSearchGrounding,
         dynamicRetrievalConfig,
         responseModalities,
-        cachedContent
+        cachedContent,
       });
     case 'openai':
       if (!apiKey) {
@@ -282,7 +297,7 @@ export async function generateAIWithTracing({
         baseURL,
         traceName,
         userId,
-        metadata
+        metadata,
       });
     case 'anthropic':
       if (!apiKey) {
@@ -298,7 +313,7 @@ export async function generateAIWithTracing({
         baseURL,
         traceName,
         userId,
-        metadata
+        metadata,
       });
     default:
       throw new Error(`Unsupported provider: ${provider}`);
@@ -334,130 +349,144 @@ export async function streamTextWithTracing(options: {
   metadata?: any;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
     dynamicThreshold?: number;
   };
-  responseModalities?: Array<"TEXT" | "IMAGE">;
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
   cachedContent?: string;
   [key: string]: any;
 }) {
-  const { traceName, userId, metadata, ...streamOptions } = options
+  const { traceName, userId, metadata, ...streamOptions } = options;
 
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "stream_text",
+    name: traceName || 'stream_text',
     userId,
     metadata: {
       ...metadata,
       model: options.model ? String(options.model) : undefined,
       messages: options.messages ? JSON.stringify(options.messages) : undefined,
-    }
-  })
+    },
+  });
 
-  const traceId = traceObj?.id
-  const startTime = new Date()
+  const traceId = traceObj?.id;
+  const startTime = new Date();
 
   // Create a span for the streaming operation
   const streamSpan = span({
-    traceId: traceId || "",
-    name: "stream_text_operation",
+    traceId: traceId || '',
+    name: 'stream_text_operation',
     metadata: {
-      model: options.model ? String(options.model) : "unknown",
+      model: options.model ? String(options.model) : 'unknown',
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       topP: options.topP,
-      startTime: startTime.toISOString()
-    }
-  })
+      startTime: startTime.toISOString(),
+    },
+  });
 
   try {
     // Log the start of the streaming operation
     if (traceId) {
       await event({
         traceId,
-        name: "stream_start",
+        name: 'stream_start',
         metadata: {
-          timestamp: startTime.toISOString()
-        }
-      })
+          timestamp: startTime.toISOString(),
+        },
+      });
     }
 
     // Call the original streamText function
     const result = await streamText({
       ...streamOptions,
       model: options.model,
-      ...(options.useSearchGrounding !== undefined ? { useSearchGrounding: options.useSearchGrounding } : {}),
-      ...(options.dynamicRetrievalConfig ? { dynamicRetrievalConfig: options.dynamicRetrievalConfig } : {}),
-      ...(options.responseModalities ? { responseModalities: options.responseModalities } : {}),
-      ...(options.cachedContent ? { cachedContent: options.cachedContent } : {})
-    })
+      ...(options.useSearchGrounding !== undefined
+        ? { useSearchGrounding: options.useSearchGrounding }
+        : {}),
+      ...(options.dynamicRetrievalConfig
+        ? { dynamicRetrievalConfig: options.dynamicRetrievalConfig }
+        : {}),
+      ...(options.responseModalities
+        ? { responseModalities: options.responseModalities }
+        : {}),
+      ...(options.cachedContent
+        ? { cachedContent: options.cachedContent }
+        : {}),
+    });
 
     // When the stream completes, log the generation
-    result.text.then(async (text) => {
-      const endTime = new Date()
+    result.text
+      .then(async (text) => {
+        const endTime = new Date();
 
-      if (traceId) {
-        await generation({
-          traceId,
-          name: "stream_completion",
-          model: options.model ? String(options.model) : "unknown",
-          modelParameters: {
-            temperature: options.temperature,
-            maxTokens: options.maxTokens,
-            topP: options.topP,
-          },
-          input: options.messages || options.prompt || "",
-          output: text,
-          startTime,
-          endTime,
-          metadata: {
-            completionTokens: text.length / 4, // Rough estimate
-            totalTokens: (JSON.stringify(options.messages || options.prompt || "").length + text.length) / 4,
-          }
-        })
+        if (traceId) {
+          await generation({
+            traceId,
+            name: 'stream_completion',
+            model: options.model ? String(options.model) : 'unknown',
+            modelParameters: {
+              temperature: options.temperature,
+              maxTokens: options.maxTokens,
+              topP: options.topP,
+            },
+            input: options.messages || options.prompt || '',
+            output: text,
+            startTime,
+            endTime,
+            metadata: {
+              completionTokens: text.length / 4, // Rough estimate
+              totalTokens:
+                (JSON.stringify(options.messages || options.prompt || '')
+                  .length +
+                  text.length) /
+                4,
+            },
+          });
 
-        // End the span
-        await streamSpan.end({
-          success: true,
-          textLength: text.length,
-          durationMs: endTime.getTime() - startTime.getTime()
-        })
-      }
-    }).catch(error => {
-      console.error("Error logging stream completion:", error)
-
-      // End the span with error
-      streamSpan.end({
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
+          // End the span
+          await streamSpan.end({
+            success: true,
+            textLength: text.length,
+            durationMs: endTime.getTime() - startTime.getTime(),
+          });
+        }
       })
-    })
+      .catch((error) => {
+        console.error('Error logging stream completion:', error);
 
-    return result
+        // End the span with error
+        streamSpan.end({
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return result;
   } catch (error) {
     // Log any errors that occur
     if (traceId) {
-      const endTime = new Date()
+      const endTime = new Date();
 
       await event({
         traceId,
-        name: "stream_error",
+        name: 'stream_error',
         metadata: {
           error: error instanceof Error ? error.message : String(error),
           timestamp: endTime.toISOString(),
-          duration: endTime.getTime() - startTime.getTime()
-        }
-      })
+          duration: endTime.getTime() - startTime.getTime(),
+        },
+      });
 
       // End the span with error
       streamSpan.end({
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        durationMs: endTime.getTime() - startTime.getTime()
-      })
+        durationMs: endTime.getTime() - startTime.getTime(),
+      });
     }
 
-    throw error
+    throw error;
   }
 }
 
@@ -490,120 +519,131 @@ export async function generateTextWithTracing(options: {
   metadata?: any;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
     dynamicThreshold?: number;
   };
-  responseModalities?: Array<"TEXT" | "IMAGE">;
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
   cachedContent?: string;
   [key: string]: any;
 }) {
-  const { traceName, userId, metadata, ...generateOptions } = options
+  const { traceName, userId, metadata, ...generateOptions } = options;
 
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "generate_text",
+    name: traceName || 'generate_text',
     userId,
     metadata: {
       ...metadata,
       model: options.model ? String(options.model) : undefined,
       messages: options.messages ? JSON.stringify(options.messages) : undefined,
-    }
-  })
+    },
+  });
 
-  const traceId = traceObj?.id
-  const startTime = new Date()
+  const traceId = traceObj?.id;
+  const startTime = new Date();
 
   // Create a span for the generation operation
   const generateSpan = span({
-    traceId: traceId || "",
-    name: "generate_text_operation",
+    traceId: traceId || '',
+    name: 'generate_text_operation',
     metadata: {
-      model: options.model ? String(options.model) : "unknown",
+      model: options.model ? String(options.model) : 'unknown',
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       topP: options.topP,
-      startTime: startTime.toISOString()
-    }
-  })
+      startTime: startTime.toISOString(),
+    },
+  });
 
   try {
     // Log the start of the generation operation
     if (traceId) {
       await event({
         traceId,
-        name: "generation_start",
+        name: 'generation_start',
         metadata: {
-          timestamp: startTime.toISOString()
-        }
-      })
+          timestamp: startTime.toISOString(),
+        },
+      });
     }
 
     // Call the original generateText function
     const result = await generateText({
       ...generateOptions,
       model: options.model,
-      ...(options.useSearchGrounding !== undefined ? { useSearchGrounding: options.useSearchGrounding } : {}),
-      ...(options.dynamicRetrievalConfig ? { dynamicRetrievalConfig: options.dynamicRetrievalConfig } : {}),
-      ...(options.responseModalities ? { responseModalities: options.responseModalities } : {}),
-      ...(options.cachedContent ? { cachedContent: options.cachedContent } : {})
-    })
+      ...(options.useSearchGrounding !== undefined
+        ? { useSearchGrounding: options.useSearchGrounding }
+        : {}),
+      ...(options.dynamicRetrievalConfig
+        ? { dynamicRetrievalConfig: options.dynamicRetrievalConfig }
+        : {}),
+      ...(options.responseModalities
+        ? { responseModalities: options.responseModalities }
+        : {}),
+      ...(options.cachedContent
+        ? { cachedContent: options.cachedContent }
+        : {}),
+    });
 
     // Log the completed generation
-    const endTime = new Date()
+    const endTime = new Date();
 
     if (traceId) {
       await generation({
         traceId,
-        name: "text_generation",
-        model: options.model ? String(options.model) : "unknown",
+        name: 'text_generation',
+        model: options.model ? String(options.model) : 'unknown',
         modelParameters: {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
           topP: options.topP,
         },
-        input: options.messages || options.prompt || "",
+        input: options.messages || options.prompt || '',
         output: result.text,
         startTime,
         endTime,
         metadata: {
           completionTokens: result.text.length / 4, // Rough estimate
-          totalTokens: (JSON.stringify(options.messages || options.prompt || "").length + result.text.length) / 4,
-        }
-      })
+          totalTokens:
+            (JSON.stringify(options.messages || options.prompt || '').length +
+              result.text.length) /
+            4,
+        },
+      });
 
       // End the span
       await generateSpan.end({
         success: true,
         textLength: result.text.length,
-        durationMs: endTime.getTime() - startTime.getTime()
-      })
+        durationMs: endTime.getTime() - startTime.getTime(),
+      });
     }
 
-    return result
+    return result;
   } catch (error) {
     // Log any errors that occur
     if (traceId) {
-      const endTime = new Date()
+      const endTime = new Date();
 
       await event({
         traceId,
-        name: "generation_error",
+        name: 'generation_error',
         metadata: {
           error: error instanceof Error ? error.message : String(error),
           timestamp: endTime.toISOString(),
-          duration: endTime.getTime() - startTime.getTime()
-        }
-      })
+          duration: endTime.getTime() - startTime.getTime(),
+        },
+      });
 
       // End the span with error
       generateSpan.end({
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        durationMs: endTime.getTime() - startTime.getTime()
-      })
+        durationMs: endTime.getTime() - startTime.getTime(),
+      });
     }
 
-    throw error
+    throw error;
   }
 }
 
@@ -615,24 +655,28 @@ export async function generateTextWithTracing(options: {
  * @param traceName - Optional name for the trace
  * @returns A Google AI provider instance that can be used to create models
  */
-export function getGoogleAIWithTracing(apiKey?: string, baseURL?: string, traceName?: string) {
+export function getGoogleAIWithTracing(
+  apiKey?: string,
+  baseURL?: string,
+  traceName?: string
+) {
   // Use the provided API key or fall back to environment variable
-  const effectiveApiKey = apiKey || process.env.GOOGLE_API_KEY || "";
+  const effectiveApiKey = apiKey || process.env.GOOGLE_API_KEY || '';
 
   if (!effectiveApiKey) {
-    console.warn("No Google API key provided for getGoogleAIWithTracing");
+    console.warn('No Google API key provided for getGoogleAIWithTracing');
   }
 
   // Create a trace for the Google AI provider
   trace({
-    name: traceName || "google_ai_provider",
+    name: traceName || 'google_ai_provider',
     metadata: {
-      provider: "google",
-      baseURL: baseURL || "default",
-      timestamp: new Date().toISOString()
-    }
-  }).catch(error => {
-    console.error("Error creating trace for Google AI provider:", error);
+      provider: 'google',
+      baseURL: baseURL || 'default',
+      timestamp: new Date().toISOString(),
+    },
+  }).catch((error) => {
+    console.error('Error creating trace for Google AI provider:', error);
   });
 
   // Create the Google AI provider
@@ -652,22 +696,28 @@ export function getGoogleAIWithTracing(apiKey?: string, baseURL?: string, traceN
  * @param traceName - Optional name for the trace
  * @returns An OpenAI provider instance that can be used to create models
  */
-export function getOpenAIWithTracing(apiKey?: string, baseURL?: string, traceName?: string) {
+export function getOpenAIWithTracing(
+  apiKey?: string,
+  baseURL?: string,
+  traceName?: string
+) {
   if (!apiKey) {
-    apiKey = process.env.OPENAI_API_KEY || "";
-    console.warn("No OpenAI API key provided for getOpenAIWithTracing, using environment variable");
+    apiKey = process.env.OPENAI_API_KEY || '';
+    console.warn(
+      'No OpenAI API key provided for getOpenAIWithTracing, using environment variable'
+    );
   }
 
   // Create a trace for the OpenAI provider
   trace({
-    name: traceName || "openai_provider",
+    name: traceName || 'openai_provider',
     metadata: {
-      provider: "openai",
-      baseURL: baseURL || "default",
-      timestamp: new Date().toISOString()
-    }
-  }).catch(error => {
-    console.error("Error creating trace for OpenAI provider:", error);
+      provider: 'openai',
+      baseURL: baseURL || 'default',
+      timestamp: new Date().toISOString(),
+    },
+  }).catch((error) => {
+    console.error('Error creating trace for OpenAI provider:', error);
   });
 
   // Create the OpenAI provider
@@ -687,22 +737,28 @@ export function getOpenAIWithTracing(apiKey?: string, baseURL?: string, traceNam
  * @param traceName - Optional name for the trace
  * @returns An Anthropic provider instance that can be used to create models
  */
-export function getAnthropicWithTracing(apiKey?: string, baseURL?: string, traceName?: string) {
+export function getAnthropicWithTracing(
+  apiKey?: string,
+  baseURL?: string,
+  traceName?: string
+) {
   if (!apiKey) {
-    apiKey = process.env.ANTHROPIC_API_KEY || "";
-    console.warn("No Anthropic API key provided for getAnthropicWithTracing, using environment variable");
+    apiKey = process.env.ANTHROPIC_API_KEY || '';
+    console.warn(
+      'No Anthropic API key provided for getAnthropicWithTracing, using environment variable'
+    );
   }
 
   // Create a trace for the Anthropic provider
   trace({
-    name: traceName || "anthropic_provider",
+    name: traceName || 'anthropic_provider',
     metadata: {
-      provider: "anthropic",
-      baseURL: baseURL || "default",
-      timestamp: new Date().toISOString()
-    }
-  }).catch(error => {
-    console.error("Error creating trace for Anthropic provider:", error);
+      provider: 'anthropic',
+      baseURL: baseURL || 'default',
+      timestamp: new Date().toISOString(),
+    },
+  }).catch((error) => {
+    console.error('Error creating trace for Anthropic provider:', error);
   });
 
   // Create the Anthropic provider
@@ -745,79 +801,83 @@ export async function streamGoogleAIWithTracing({
   dynamicRetrievalConfig,
   responseModalities,
   cachedContent,
-  middleware
+  middleware,
 }: {
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-  useSearchGrounding?: boolean
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
-    dynamicThreshold?: number
-  }
-  responseModalities?: Array<"TEXT" | "IMAGE">
-  cachedContent?: string
-  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
+  cachedContent?: string;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "google_ai_stream",
+    name: traceName || 'google_ai_stream',
     userId,
     metadata: {
       ...metadata,
       modelId,
-      provider: "google",
+      provider: 'google',
       temperature,
       maxTokens,
       hasTools: Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
 
   const traceId = traceObj?.id;
 
   // Create a span for the Google AI operation
   const googleAiSpan = span({
-    traceId: traceId || "",
-    name: "google_ai_stream_operation",
+    traceId: traceId || '',
+    name: 'google_ai_stream_operation',
     metadata: {
       modelId,
       temperature,
       maxTokens,
       toolCount: Object.keys(tools).length,
-      startTime: new Date().toISOString()
-    }
+      startTime: new Date().toISOString(),
+    },
   });
 
   try {
     // Initialize Google AI
-    const googleAI = getGoogleAIWithTracing(apiKey, baseURL, `google_ai_provider_${modelId}`)
-    let model = googleAI(modelId)
+    const googleAI = getGoogleAIWithTracing(
+      apiKey,
+      baseURL,
+      `google_ai_provider_${modelId}`
+    );
+    let model = googleAI(modelId);
 
     // Apply middleware if provided
     if (middleware) {
       model = wrapLanguageModel({
         model,
-        middleware
-      })
+        middleware,
+      });
 
       // Log middleware application
       if (traceId) {
         await event({
           traceId,
-          name: "middleware_applied",
+          name: 'middleware_applied',
           metadata: {
             modelId,
             timestamp: new Date().toISOString(),
-            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
-          }
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single',
+          },
         });
       }
     }
@@ -826,11 +886,11 @@ export async function streamGoogleAIWithTracing({
     if (traceId) {
       await event({
         traceId,
-        name: "google_ai_model_initialized",
+        name: 'google_ai_model_initialized',
         metadata: {
           modelId,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -845,37 +905,41 @@ export async function streamGoogleAIWithTracing({
       ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig } : {}),
       ...(responseModalities ? { responseModalities } : {}),
       ...(cachedContent ? { cachedContent } : {}),
-      traceName: `${traceName || "google_ai_stream"}_inner`,
+      traceName: `${traceName || 'google_ai_stream'}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
-        provider: "google",
+        provider: 'google',
         parentTraceId: traceId,
         ...(useSearchGrounding !== undefined ? { useSearchGrounding } : {}),
-        ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig: JSON.stringify(dynamicRetrievalConfig) } : {}),
-        ...(responseModalities ? { responseModalities: JSON.stringify(responseModalities) } : {}),
-        ...(cachedContent ? { cachedContent } : {})
-      }
-    })
+        ...(dynamicRetrievalConfig
+          ? { dynamicRetrievalConfig: JSON.stringify(dynamicRetrievalConfig) }
+          : {}),
+        ...(responseModalities
+          ? { responseModalities: JSON.stringify(responseModalities) }
+          : {}),
+        ...(cachedContent ? { cachedContent } : {}),
+      },
+    });
 
     // End the span successfully
     googleAiSpan.end({
       success: true,
-      durationMs: new Date().getTime() - new Date(googleAiSpan.id).getTime()
+      durationMs: new Date().getTime() - new Date(googleAiSpan.id).getTime(),
     });
 
-    return result
+    return result;
   } catch (error) {
-    console.error("Error streaming Google AI response with tracing:", error)
+    console.error('Error streaming Google AI response with tracing:', error);
 
     // End the span with error
     googleAiSpan.end({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    throw error
+    throw error;
   }
 }
 
@@ -906,73 +970,77 @@ export async function streamOpenAIWithTracing({
   traceName,
   userId,
   metadata,
-  middleware
+  middleware,
 }: {
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "openai_stream",
+    name: traceName || 'openai_stream',
     userId,
     metadata: {
       ...metadata,
       modelId,
-      provider: "openai",
+      provider: 'openai',
       temperature,
       maxTokens,
       hasTools: Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
 
   const traceId = traceObj?.id;
 
   // Create a span for the OpenAI operation
   const openAiSpan = span({
-    traceId: traceId || "",
-    name: "openai_stream_operation",
+    traceId: traceId || '',
+    name: 'openai_stream_operation',
     metadata: {
       modelId,
       temperature,
       maxTokens,
       toolCount: Object.keys(tools).length,
-      startTime: new Date().toISOString()
-    }
+      startTime: new Date().toISOString(),
+    },
   });
 
   try {
     // Initialize OpenAI
-    const openAI = getOpenAIWithTracing(apiKey, baseURL, `openai_provider_${modelId}`)
-    let model = openAI(modelId)
+    const openAI = getOpenAIWithTracing(
+      apiKey,
+      baseURL,
+      `openai_provider_${modelId}`
+    );
+    let model = openAI(modelId);
 
     // Apply middleware if provided
     if (middleware) {
       model = wrapLanguageModel({
         model,
-        middleware
-      })
+        middleware,
+      });
 
       // Log middleware application
       if (traceId) {
         await event({
           traceId,
-          name: "middleware_applied",
+          name: 'middleware_applied',
           metadata: {
             modelId,
-            provider: "openai",
+            provider: 'openai',
             timestamp: new Date().toISOString(),
-            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
-          }
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single',
+          },
         });
       }
     }
@@ -981,11 +1049,11 @@ export async function streamOpenAIWithTracing({
     if (traceId) {
       await event({
         traceId,
-        name: "openai_model_initialized",
+        name: 'openai_model_initialized',
         metadata: {
           modelId,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -996,33 +1064,33 @@ export async function streamOpenAIWithTracing({
       temperature,
       maxTokens,
       ...(Object.keys(tools).length > 0 ? { tools } : {}),
-      traceName: `${traceName || "openai_stream"}_inner`,
+      traceName: `${traceName || 'openai_stream'}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
-        provider: "openai",
-        parentTraceId: traceId
-      }
-    })
+        provider: 'openai',
+        parentTraceId: traceId,
+      },
+    });
 
     // End the span successfully
     openAiSpan.end({
       success: true,
-      durationMs: new Date().getTime() - new Date(openAiSpan.id).getTime()
+      durationMs: new Date().getTime() - new Date(openAiSpan.id).getTime(),
     });
 
-    return result
+    return result;
   } catch (error) {
-    console.error("Error streaming OpenAI response with tracing:", error)
+    console.error('Error streaming OpenAI response with tracing:', error);
 
     // End the span with error
     openAiSpan.end({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    throw error
+    throw error;
   }
 }
 
@@ -1053,73 +1121,77 @@ export async function streamAnthropicWithTracing({
   traceName,
   userId,
   metadata,
-  middleware
+  middleware,
 }: {
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "anthropic_stream",
+    name: traceName || 'anthropic_stream',
     userId,
     metadata: {
       ...metadata,
       modelId,
-      provider: "anthropic",
+      provider: 'anthropic',
       temperature,
       maxTokens,
       hasTools: Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
 
   const traceId = traceObj?.id;
 
   // Create a span for the Anthropic operation
   const anthropicSpan = span({
-    traceId: traceId || "",
-    name: "anthropic_stream_operation",
+    traceId: traceId || '',
+    name: 'anthropic_stream_operation',
     metadata: {
       modelId,
       temperature,
       maxTokens,
       toolCount: Object.keys(tools).length,
-      startTime: new Date().toISOString()
-    }
+      startTime: new Date().toISOString(),
+    },
   });
 
   try {
     // Initialize Anthropic
-    const anthropic = getAnthropicWithTracing(apiKey, baseURL, `anthropic_provider_${modelId}`)
-    let model = anthropic(modelId)
+    const anthropic = getAnthropicWithTracing(
+      apiKey,
+      baseURL,
+      `anthropic_provider_${modelId}`
+    );
+    let model = anthropic(modelId);
 
     // Apply middleware if provided
     if (middleware) {
       model = wrapLanguageModel({
         model,
-        middleware
-      })
+        middleware,
+      });
 
       // Log middleware application
       if (traceId) {
         await event({
           traceId,
-          name: "middleware_applied",
+          name: 'middleware_applied',
           metadata: {
             modelId,
-            provider: "anthropic",
+            provider: 'anthropic',
             timestamp: new Date().toISOString(),
-            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
-          }
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single',
+          },
         });
       }
     }
@@ -1128,11 +1200,11 @@ export async function streamAnthropicWithTracing({
     if (traceId) {
       await event({
         traceId,
-        name: "anthropic_model_initialized",
+        name: 'anthropic_model_initialized',
         metadata: {
           modelId,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -1143,33 +1215,33 @@ export async function streamAnthropicWithTracing({
       temperature,
       maxTokens,
       ...(Object.keys(tools).length > 0 ? { tools } : {}),
-      traceName: `${traceName || "anthropic_stream"}_inner`,
+      traceName: `${traceName || 'anthropic_stream'}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
-        provider: "anthropic",
-        parentTraceId: traceId
-      }
-    })
+        provider: 'anthropic',
+        parentTraceId: traceId,
+      },
+    });
 
     // End the span successfully
     anthropicSpan.end({
       success: true,
-      durationMs: new Date().getTime() - new Date(anthropicSpan.id).getTime()
+      durationMs: new Date().getTime() - new Date(anthropicSpan.id).getTime(),
     });
 
-    return result
+    return result;
   } catch (error) {
-    console.error("Error streaming Anthropic response with tracing:", error)
+    console.error('Error streaming Anthropic response with tracing:', error);
 
     // End the span with error
     anthropicSpan.end({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    throw error
+    throw error;
   }
 }
 
@@ -1204,79 +1276,83 @@ export async function generateGoogleAIWithTracing({
   dynamicRetrievalConfig,
   responseModalities,
   cachedContent,
-  middleware
+  middleware,
 }: {
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
-  useSearchGrounding?: boolean
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
+  useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL"
-    dynamicThreshold?: number
-  }
-  responseModalities?: Array<"TEXT" | "IMAGE">
-  cachedContent?: string
-  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
+    dynamicThreshold?: number;
+  };
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
+  cachedContent?: string;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "google_ai_generate",
+    name: traceName || 'google_ai_generate',
     userId,
     metadata: {
       ...metadata,
       modelId,
-      provider: "google",
+      provider: 'google',
       temperature,
       maxTokens,
       hasTools: Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
 
   const traceId = traceObj?.id;
 
   // Create a span for the Google AI operation
   const googleAiSpan = span({
-    traceId: traceId || "",
-    name: "google_ai_generate_operation",
+    traceId: traceId || '',
+    name: 'google_ai_generate_operation',
     metadata: {
       modelId,
       temperature,
       maxTokens,
       toolCount: Object.keys(tools).length,
-      startTime: new Date().toISOString()
-    }
+      startTime: new Date().toISOString(),
+    },
   });
 
   try {
     // Initialize Google AI
-    const googleAI = getGoogleAIWithTracing(apiKey, baseURL, `google_ai_provider_${modelId}`)
-    let model = googleAI(modelId)
+    const googleAI = getGoogleAIWithTracing(
+      apiKey,
+      baseURL,
+      `google_ai_provider_${modelId}`
+    );
+    let model = googleAI(modelId);
 
     // Apply middleware if provided
     if (middleware) {
       model = wrapLanguageModel({
         model,
-        middleware
-      })
+        middleware,
+      });
 
       // Log middleware application
       if (traceId) {
         await event({
           traceId,
-          name: "middleware_applied",
+          name: 'middleware_applied',
           metadata: {
             modelId,
             timestamp: new Date().toISOString(),
-            middlewareType: Array.isArray(middleware) ? 'array' : 'single'
-          }
+            middlewareType: Array.isArray(middleware) ? 'array' : 'single',
+          },
         });
       }
     }
@@ -1285,11 +1361,11 @@ export async function generateGoogleAIWithTracing({
     if (traceId) {
       await event({
         traceId,
-        name: "google_ai_model_initialized",
+        name: 'google_ai_model_initialized',
         metadata: {
           modelId,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -1304,37 +1380,41 @@ export async function generateGoogleAIWithTracing({
       ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig } : {}),
       ...(responseModalities ? { responseModalities } : {}),
       ...(cachedContent ? { cachedContent } : {}),
-      traceName: `${traceName || "google_ai_generate"}_inner`,
+      traceName: `${traceName || 'google_ai_generate'}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
-        provider: "google",
+        provider: 'google',
         parentTraceId: traceId,
         ...(useSearchGrounding !== undefined ? { useSearchGrounding } : {}),
-        ...(dynamicRetrievalConfig ? { dynamicRetrievalConfig: JSON.stringify(dynamicRetrievalConfig) } : {}),
-        ...(responseModalities ? { responseModalities: JSON.stringify(responseModalities) } : {}),
-        ...(cachedContent ? { cachedContent } : {})
-      }
-    })
+        ...(dynamicRetrievalConfig
+          ? { dynamicRetrievalConfig: JSON.stringify(dynamicRetrievalConfig) }
+          : {}),
+        ...(responseModalities
+          ? { responseModalities: JSON.stringify(responseModalities) }
+          : {}),
+        ...(cachedContent ? { cachedContent } : {}),
+      },
+    });
 
     // End the span successfully
     googleAiSpan.end({
       success: true,
-      durationMs: new Date().getTime() - new Date(googleAiSpan.id).getTime()
+      durationMs: new Date().getTime() - new Date(googleAiSpan.id).getTime(),
     });
 
-    return result
+    return result;
   } catch (error) {
-    console.error("Error generating Google AI response with tracing:", error)
+    console.error('Error generating Google AI response with tracing:', error);
 
     // End the span with error
     googleAiSpan.end({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    throw error
+    throw error;
   }
 }
 
@@ -1366,61 +1446,65 @@ export async function generateOpenAIWithTracing({
   userId,
   metadata,
 }: {
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "openai_generate",
+    name: traceName || 'openai_generate',
     userId,
     metadata: {
       ...metadata,
       modelId,
-      provider: "openai",
+      provider: 'openai',
       temperature,
       maxTokens,
       hasTools: Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
 
   const traceId = traceObj?.id;
 
   // Create a span for the OpenAI operation
   const openAiSpan = span({
-    traceId: traceId || "",
-    name: "openai_generate_operation",
+    traceId: traceId || '',
+    name: 'openai_generate_operation',
     metadata: {
       modelId,
       temperature,
       maxTokens,
       toolCount: Object.keys(tools).length,
-      startTime: new Date().toISOString()
-    }
+      startTime: new Date().toISOString(),
+    },
   });
 
   try {
     // Initialize OpenAI
-    const openAI = getOpenAIWithTracing(apiKey, baseURL, `openai_provider_${modelId}`)
-    const model = openAI(modelId)
+    const openAI = getOpenAIWithTracing(
+      apiKey,
+      baseURL,
+      `openai_provider_${modelId}`
+    );
+    const model = openAI(modelId);
 
     // Add event for model initialization
     if (traceId) {
       await event({
         traceId,
-        name: "openai_model_initialized",
+        name: 'openai_model_initialized',
         metadata: {
           modelId,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -1431,33 +1515,33 @@ export async function generateOpenAIWithTracing({
       temperature,
       maxTokens,
       ...(Object.keys(tools).length > 0 ? { tools } : {}),
-      traceName: `${traceName || "openai_generate"}_inner`,
+      traceName: `${traceName || 'openai_generate'}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
-        provider: "openai",
-        parentTraceId: traceId
-      }
-    })
+        provider: 'openai',
+        parentTraceId: traceId,
+      },
+    });
 
     // End the span successfully
     openAiSpan.end({
       success: true,
-      durationMs: new Date().getTime() - new Date(openAiSpan.id).getTime()
+      durationMs: new Date().getTime() - new Date(openAiSpan.id).getTime(),
     });
 
-    return result
+    return result;
   } catch (error) {
-    console.error("Error generating OpenAI response with tracing:", error)
+    console.error('Error generating OpenAI response with tracing:', error);
 
     // End the span with error
     openAiSpan.end({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    throw error
+    throw error;
   }
 }
 
@@ -1489,61 +1573,65 @@ export async function generateAnthropicWithTracing({
   userId,
   metadata,
 }: {
-  modelId: string
-  messages: any[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, any>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: any
+  modelId: string;
+  messages: any[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, any>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: any;
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
-    name: traceName || "anthropic_generate",
+    name: traceName || 'anthropic_generate',
     userId,
     metadata: {
       ...metadata,
       modelId,
-      provider: "anthropic",
+      provider: 'anthropic',
       temperature,
       maxTokens,
       hasTools: Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
 
   const traceId = traceObj?.id;
 
   // Create a span for the Anthropic operation
   const anthropicSpan = span({
-    traceId: traceId || "",
-    name: "anthropic_generate_operation",
+    traceId: traceId || '',
+    name: 'anthropic_generate_operation',
     metadata: {
       modelId,
       temperature,
       maxTokens,
       toolCount: Object.keys(tools).length,
-      startTime: new Date().toISOString()
-    }
+      startTime: new Date().toISOString(),
+    },
   });
 
   try {
     // Initialize Anthropic
-    const anthropic = getAnthropicWithTracing(apiKey, baseURL, `anthropic_provider_${modelId}`)
-    const model = anthropic(modelId)
+    const anthropic = getAnthropicWithTracing(
+      apiKey,
+      baseURL,
+      `anthropic_provider_${modelId}`
+    );
+    const model = anthropic(modelId);
 
     // Add event for model initialization
     if (traceId) {
       await event({
         traceId,
-        name: "anthropic_model_initialized",
+        name: 'anthropic_model_initialized',
         metadata: {
           modelId,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -1554,33 +1642,33 @@ export async function generateAnthropicWithTracing({
       temperature,
       maxTokens,
       ...(Object.keys(tools).length > 0 ? { tools } : {}),
-      traceName: `${traceName || "anthropic_generate"}_inner`,
+      traceName: `${traceName || 'anthropic_generate'}_inner`,
       userId,
       metadata: {
         ...metadata,
         modelId,
-        provider: "anthropic",
-        parentTraceId: traceId
-      }
-    })
+        provider: 'anthropic',
+        parentTraceId: traceId,
+      },
+    });
 
     // End the span successfully
     anthropicSpan.end({
       success: true,
-      durationMs: new Date().getTime() - new Date(anthropicSpan.id).getTime()
+      durationMs: new Date().getTime() - new Date(anthropicSpan.id).getTime(),
     });
 
-    return result
+    return result;
   } catch (error) {
-    console.error("Error generating Anthropic response with tracing:", error)
+    console.error('Error generating Anthropic response with tracing:', error);
 
     // End the span with error
     anthropicSpan.end({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    throw error
+    throw error;
   }
 }
 
@@ -1602,11 +1690,11 @@ export async function evaluateGeneration({
   generationId,
   comment,
 }: {
-  traceId: string
-  name: string
-  value: number
-  generationId?: string
-  comment?: string
+  traceId: string;
+  name: string;
+  value: number;
+  generationId?: string;
+  comment?: string;
 }) {
   return await score({
     traceId,
@@ -1614,7 +1702,7 @@ export async function evaluateGeneration({
     value,
     generationId,
     comment,
-  })
+  });
 }
 
 /**
@@ -1633,17 +1721,17 @@ export async function trackPromptTemplate({
   version,
   tags,
 }: {
-  name: string
-  promptContent: string | object
-  version?: string
-  tags?: string[]
+  name: string;
+  promptContent: string | object;
+  version?: string;
+  tags?: string[];
 }) {
   return await prompt({
     name,
     prompt: promptContent,
     version,
     tags,
-  })
+  });
 }
 
 /**
@@ -1658,13 +1746,13 @@ export async function createEvaluationDataset({
   name,
   description,
 }: {
-  name: string
-  description?: string
+  name: string;
+  description?: string;
 }) {
   return await dataset({
     name,
     description,
-  })
+  });
 }
 
 /**
@@ -1683,17 +1771,17 @@ export async function runModelEvaluation({
   datasetId,
   metrics,
 }: {
-  name: string
-  modelId: string
-  datasetId: string
-  metrics: Record<string, number>
+  name: string;
+  modelId: string;
+  datasetId: string;
+  metrics: Record<string, number>;
 }) {
   return await evaluationRun({
     name,
     modelId,
     datasetId,
     metrics,
-  })
+  });
 }
 
 /**
@@ -1714,11 +1802,11 @@ export async function recordUserFeedback({
   comment,
   userId,
 }: {
-  traceId: string
-  rating: number | boolean
-  generationId?: string
-  comment?: string
-  userId?: string
+  traceId: string;
+  rating: number | boolean;
+  generationId?: string;
+  comment?: string;
+  userId?: string;
 }) {
   return await userFeedback({
     traceId,
@@ -1726,5 +1814,5 @@ export async function recordUserFeedback({
     generationId,
     comment,
     userId,
-  })
+  });
 }

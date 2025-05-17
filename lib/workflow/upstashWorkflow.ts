@@ -9,7 +9,7 @@ export const createWorkflowGoogleAI = (context: WorkflowContext) => {
   // Get the Google AI provider
   const googleAI = getGoogleAI();
   // Get the model
-  const model = googleAI("gemini-1.5-pro");
+  const model = googleAI('gemini-1.5-pro');
 
   // Return a wrapped model that uses the workflow context for API calls
   return {
@@ -18,17 +18,17 @@ export const createWorkflowGoogleAI = (context: WorkflowContext) => {
       try {
         // Make the API call through the workflow context
         // Pass the parameters directly to the workflow step
-        const responseInfo = await context.call("openai-call-step", params);
+        const responseInfo = await context.call('openai-call-step', params);
 
         return responseInfo;
       } catch (error) {
         if (error instanceof WorkflowAbort) {
           throw error;
         } else {
-          console.error("Error in workflow AI generation:", error);
+          console.error('Error in workflow AI generation:', error);
           throw error;
         }
       }
-    }
+    },
   };
 };

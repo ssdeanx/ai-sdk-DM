@@ -8,49 +8,48 @@ import { z } from 'zod';
  * Agent interface matching Supabase 'agents' table
  */
 export interface Agent {
-    id: string
-    name: string
-    description: string
-    model_id: string
-    provider: string
-    api_key?: string
-    base_url?: string
-    tool_ids: string[]
-    system_prompt?: string | null
-    persona_id?: string | null
-    created_at: string
-    updated_at: string
-  }
+  id: string;
+  name: string;
+  description: string;
+  model_id: string;
+  provider: string;
+  api_key?: string;
+  base_url?: string;
+  tool_ids: string[];
+  system_prompt?: string | null;
+  persona_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 /**
  * Zod schema for Agent
  */
 export const AgentSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    description: z.string(),
-    model_id: z.string(),
-    provider: z.string(),
-    api_key: z.string().optional(),
-    base_url: z.string().optional(),
-    tool_ids: z.array(z.string()),
-    system_prompt: z.string().nullable().optional(),
-    persona_id: z.string().nullable().optional(),
-    created_at: z.string(),
-    updated_at: z.string()
-  });
-
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  model_id: z.string(),
+  provider: z.string(),
+  api_key: z.string().optional(),
+  base_url: z.string().optional(),
+  tool_ids: z.array(z.string()),
+  system_prompt: z.string().nullable().optional(),
+  persona_id: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
 
 /**
  * Tool configuration interface matching Supabase 'tools' table
  */
 export interface ToolConfig {
-  id: string
-  name: string
-  description: string
-  parameters_schema: string
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  description: string;
+  parameters_schema: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -62,27 +61,29 @@ export const ToolConfigSchema = z.object({
   description: z.string(),
   parameters_schema: z.string(),
   created_at: z.string(),
-  updated_at: z.string()
+  updated_at: z.string(),
 });
 
 /**
  * Agent state interface for persistent memory
  */
 export interface AgentState {
-  lastRun?: string
-  runCount?: number
-  memory?: Record<string, any>
-  [key: string]: any
+  lastRun?: string;
+  runCount?: number;
+  memory?: Record<string, any>;
+  [key: string]: any;
 }
 
 /**
  * Zod schema for AgentState
  */
-export const AgentStateSchema = z.object({
-  lastRun: z.string().optional(),
-  runCount: z.number().optional(),
-  memory: z.record(z.any()).optional()
-}).catchall(z.any());
+export const AgentStateSchema = z
+  .object({
+    lastRun: z.string().optional(),
+    runCount: z.number().optional(),
+    memory: z.record(z.any()).optional(),
+  })
+  .catchall(z.any());
 
 /**
  * Result of an agent run
@@ -99,7 +100,7 @@ export interface RunResult {
 export const RunResultSchema = z.object({
   output: z.string().optional(),
   streamResult: z.any().optional(), // StreamTextResult is complex, using any for now
-  memoryThreadId: z.string()
+  memoryThreadId: z.string(),
 });
 /**
  * Options for running an agent
@@ -120,7 +121,7 @@ export type AgentRunTokenUsage = {
 export const AgentRunTokenUsageSchema = z.object({
   promptTokens: z.number(),
   completionTokens: z.number(),
-  totalTokens: z.number()
+  totalTokens: z.number(),
 });
 
 export type AgentRunFinishReason =
@@ -140,7 +141,7 @@ export const AgentRunFinishReasonSchema = z.enum([
   'tool-calls',
   'content-filter',
   'error',
-  'unknown'
+  'unknown',
 ]);
 
 export type AgentRunToolInvocation = {
@@ -158,7 +159,7 @@ export type AgentRunToolInvocation = {
 export const AgentRunToolInvocationSchema = z.object({
   toolCallId: z.string(),
   toolName: z.string(),
-  args: z.any()
+  args: z.any(),
 });
 
 /**
@@ -196,10 +197,10 @@ export const AgentRunFinishDataSchema = z.object({
     role: z.literal('assistant'),
     content: z.string(),
     toolInvocations: z.array(AgentRunToolInvocationSchema).optional(),
-    createdAt: z.date().optional()
+    createdAt: z.date().optional(),
   }),
   usage: AgentRunTokenUsageSchema.optional(),
-  finishReason: AgentRunFinishReasonSchema.optional()
+  finishReason: AgentRunFinishReasonSchema.optional(),
 });
 
 export interface AgentRunOptions {
@@ -222,70 +223,74 @@ export const AgentRunOptionsSchema = z.object({
   toolChoice: z.any().optional(),
   traceId: z.string().optional(),
   streamOutput: z.boolean().optional(),
-  onFinish: z.function()
+  onFinish: z
+    .function()
     .args(AgentRunFinishDataSchema)
     .returns(z.promise(z.void()))
-    .optional()
+    .optional(),
 });
 
 /**
  * Agent lifecycle hooks
  */
 export interface AgentHooks {
-  onStart?: (input: string, threadId: string) => Promise<void>
-  onToolCall?: (toolName: string, params: any) => Promise<void>
-  onFinish?: (result: RunResult) => Promise<void>
+  onStart?: (input: string, threadId: string) => Promise<void>;
+  onToolCall?: (toolName: string, params: any) => Promise<void>;
+  onFinish?: (result: RunResult) => Promise<void>;
 }
 
 /**
  * Zod schema for AgentHooks
  */
 export const AgentHooksSchema = z.object({
-  onStart: z.function()
+  onStart: z
+    .function()
     .args(z.string(), z.string())
     .returns(z.promise(z.void()))
     .optional(),
-  onToolCall: z.function()
+  onToolCall: z
+    .function()
     .args(z.string(), z.any())
     .returns(z.promise(z.void()))
     .optional(),
-  onFinish: z.function()
+  onFinish: z
+    .function()
     .args(RunResultSchema)
     .returns(z.promise(z.void()))
-    .optional()
+    .optional(),
 });
 
 /**
  * Agent persona configuration
  */
 export interface AgentPersona {
-  id: string
-  name: string
-  description: string
-  systemPromptTemplate: string
-  modelSettings?: Record<string, any>
+  id: string;
+  name: string;
+  description: string;
+  systemPromptTemplate: string;
+  modelSettings?: Record<string, any>;
   capabilities?: {
-    text?: boolean
-    vision?: boolean
-    audio?: boolean
-    video?: boolean
-    functions?: boolean
-    streaming?: boolean
-    json_mode?: boolean
-    fine_tuning?: boolean
-    thinking?: boolean
-    search_grounding?: boolean
-    dynamic_retrieval?: boolean
-    hybrid_grounding?: boolean
-    cached_content?: boolean
-    code_execution?: boolean
-    structured_output?: boolean
-    image_generation?: boolean
-    video_generation?: boolean
-    audio_generation?: boolean
-    response_modalities?: boolean
-    file_inputs?: boolean
-  }
+    text?: boolean;
+    vision?: boolean;
+    audio?: boolean;
+    video?: boolean;
+    functions?: boolean;
+    streaming?: boolean;
+    json_mode?: boolean;
+    fine_tuning?: boolean;
+    thinking?: boolean;
+    search_grounding?: boolean;
+    dynamic_retrieval?: boolean;
+    hybrid_grounding?: boolean;
+    cached_content?: boolean;
+    code_execution?: boolean;
+    structured_output?: boolean;
+    image_generation?: boolean;
+    video_generation?: boolean;
+    audio_generation?: boolean;
+    response_modalities?: boolean;
+    file_inputs?: boolean;
+  };
 }
 
 /**
@@ -297,26 +302,28 @@ export const AgentPersonaSchema = z.object({
   description: z.string(),
   systemPromptTemplate: z.string(),
   modelSettings: z.record(z.any()).optional(),
-  capabilities: z.object({
-    text: z.boolean().optional(),
-    vision: z.boolean().optional(),
-    audio: z.boolean().optional(),
-    video: z.boolean().optional(),
-    functions: z.boolean().optional(),
-    streaming: z.boolean().optional(),
-    json_mode: z.boolean().optional(),
-    fine_tuning: z.boolean().optional(),
-    thinking: z.boolean().optional(),
-    search_grounding: z.boolean().optional(),
-    dynamic_retrieval: z.boolean().optional(),
-    hybrid_grounding: z.boolean().optional(),
-    cached_content: z.boolean().optional(),
-    code_execution: z.boolean().optional(),
-    structured_output: z.boolean().optional(),
-    image_generation: z.boolean().optional(),
-    video_generation: z.boolean().optional(),
-    audio_generation: z.boolean().optional(),
-    response_modalities: z.boolean().optional(),
-    file_inputs: z.boolean().optional()
-  }).optional()
+  capabilities: z
+    .object({
+      text: z.boolean().optional(),
+      vision: z.boolean().optional(),
+      audio: z.boolean().optional(),
+      video: z.boolean().optional(),
+      functions: z.boolean().optional(),
+      streaming: z.boolean().optional(),
+      json_mode: z.boolean().optional(),
+      fine_tuning: z.boolean().optional(),
+      thinking: z.boolean().optional(),
+      search_grounding: z.boolean().optional(),
+      dynamic_retrieval: z.boolean().optional(),
+      hybrid_grounding: z.boolean().optional(),
+      cached_content: z.boolean().optional(),
+      code_execution: z.boolean().optional(),
+      structured_output: z.boolean().optional(),
+      image_generation: z.boolean().optional(),
+      video_generation: z.boolean().optional(),
+      audio_generation: z.boolean().optional(),
+      response_modalities: z.boolean().optional(),
+      file_inputs: z.boolean().optional(),
+    })
+    .optional(),
 });

@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id } = params;
-    
+
     // Check if workflow exists
     const existingWorkflow = await workflow.getWorkflow(id);
     if (!existingWorkflow) {
@@ -17,7 +17,7 @@ export async function POST(
         { status: 404 }
       );
     }
-    
+
     // Check if workflow is running
     if (existingWorkflow.status !== 'running') {
       return NextResponse.json(
@@ -25,15 +25,20 @@ export async function POST(
         { status: 400 }
       );
     }
-    
+
     // Pause workflow
-    const updatedWorkflow = await workflow.updateWorkflow(id, { status: 'paused' });
-    
+    const updatedWorkflow = await workflow.updateWorkflow(id, {
+      status: 'paused',
+    });
+
     return NextResponse.json({ workflow: updatedWorkflow });
   } catch (error) {
     console.error(`Error pausing workflow ${params.id}:`, error);
     return NextResponse.json(
-      { error: 'Failed to pause workflow', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to pause workflow',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

@@ -2,28 +2,28 @@ import {
   aiFunction,
   AIFunctionsProvider,
   pruneEmpty,
-  sanitizeSearchParams
-} from '@agentic/core'
-import { XMLParser } from 'fast-xml-parser'
-import defaultKy, { type KyInstance } from 'ky'
-import { z } from 'zod'
+  sanitizeSearchParams,
+} from '@agentic/core';
+import { XMLParser } from 'fast-xml-parser';
+import defaultKy, { type KyInstance } from 'ky';
+import { z } from 'zod';
 
-import { castArray, getProp } from './utils'
-import { createAISDKTools } from './ai-sdk'
+import { castArray, getProp } from './utils';
+import { createAISDKTools } from './ai-sdk';
 
 export namespace arxiv {
-  export const API_BASE_URL = 'https://export.arxiv.org/api'
+  export const API_BASE_URL = 'https://export.arxiv.org/api';
 
   export const SortType = {
     RELEVANCE: 'relevance',
     LAST_UPDATED_DATE: 'lastUpdatedDate',
-    SUBMITTED_DATE: 'submittedDate'
-  } as const
+    SUBMITTED_DATE: 'submittedDate',
+  } as const;
 
   export const SortOrder = {
     ASCENDING: 'ascending',
-    DESCENDING: 'descending'
-  } as const
+    DESCENDING: 'descending',
+  } as const;
 
   export const FilterType = {
     ALL: 'all',
@@ -33,10 +33,10 @@ export namespace arxiv {
     COMMENT: 'comment',
     JOURNAL_REFERENCE: 'journal_reference',
     SUBJECT_CATEGORY: 'subject_category',
-    REPORT_NUMBER: 'report_number'
-  } as const
+    REPORT_NUMBER: 'report_number',
+  } as const;
 
-  export type ValueOf<T extends NonNullable<unknown>> = T[keyof T]
+  export type ValueOf<T extends NonNullable<unknown>> = T[keyof T];
   export const FilterTypeMapping: Record<ValueOf<typeof FilterType>, string> = {
     all: 'all',
     title: 'ti',
@@ -45,45 +45,45 @@ export namespace arxiv {
     comment: 'co',
     journal_reference: 'jr',
     subject_category: 'cat',
-    report_number: 'rn'
-  }
+    report_number: 'rn',
+  };
 
   export const Separators = {
     AND: '+AND+',
     OR: '+OR+',
-    ANDNOT: '+ANDNOT+'
-  } as const
+    ANDNOT: '+ANDNOT+',
+  } as const;
 
   export interface ArXivResponse {
-    totalResults: number
-    startIndex: number
-    itemsPerPage: number
+    totalResults: number;
+    startIndex: number;
+    itemsPerPage: number;
     entries: {
-      id: string
-      title: string
-      summary: string
-      published: string
-      updated: string
-      authors: { name: string; affiliation: string[] }[]
-      doi: string
-      comment: string
-      journalReference: string
-      primaryCategory: string
-      categories: string[]
-      links: string[]
-    }[]
+      id: string;
+      title: string;
+      summary: string;
+      published: string;
+      updated: string;
+      authors: { name: string; affiliation: string[] }[];
+      doi: string;
+      comment: string;
+      journalReference: string;
+      primaryCategory: string;
+      categories: string[];
+      links: string[];
+    }[];
   }
 
   export const extractId = (value: string) =>
     value
       .replace('https://arxiv.org/abs/', '')
       .replace('https://arxiv.org/pdf/', '')
-      .replace(/v\d$/, '')
+      .replace(/v\d$/, '');
 
   const EntrySchema = z.object({
     field: z.nativeEnum(FilterType).default(FilterType.ALL),
-    value: z.string().min(1)
-  })
+    value: z.string().min(1),
+  });
 
   export const SearchParamsSchema = z
     .object({
@@ -99,15 +99,15 @@ export namespace arxiv {
             exclude: z
               .array(EntrySchema)
               .optional()
-              .describe('Filters to exclude results.')
-          })
+              .describe('Filters to exclude results.'),
+          }),
         ])
         .optional(),
       start: z.number().int().min(0).default(0),
-      maxResults: z.number().int().min(1).max(100).default(5)
+      maxResults: z.number().int().min(1).max(100).default(5),
     })
-    .describe('Sorting by date is not supported.')
-  export type SearchParams = z.infer<typeof SearchParamsSchema>
+    .describe('Sorting by date is not supported.');
+  export type SearchParams = z.infer<typeof SearchParamsSchema>;
 }
 
 /**
@@ -116,24 +116,24 @@ export namespace arxiv {
  * @see https://arxiv.org
  */
 export class ArXivClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiBaseUrl: string
+  protected readonly ky: KyInstance;
+  protected readonly apiBaseUrl: string;
 
   constructor({
     apiBaseUrl = arxiv.API_BASE_URL,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiKey?: string
-    apiBaseUrl?: string
-    ky?: KyInstance
+    apiKey?: string;
+    apiBaseUrl?: string;
+    ky?: KyInstance;
   }) {
-    super()
+    super();
 
-    this.apiBaseUrl = apiBaseUrl
+    this.apiBaseUrl = apiBaseUrl;
 
     this.ky = ky.extend({
-      prefixUrl: this.apiBaseUrl
-    })
+      prefixUrl: this.apiBaseUrl,
+    });
   }
 
   /**
@@ -142,18 +142,18 @@ export class ArXivClient extends AIFunctionsProvider {
   @aiFunction({
     name: 'arxiv_search',
     description: 'Searches for research articles published on arXiv.',
-    inputSchema: arxiv.SearchParamsSchema
+    inputSchema: arxiv.SearchParamsSchema,
   })
   async search(queryOrOpts: string | arxiv.SearchParams) {
     const opts =
       typeof queryOrOpts === 'string'
         ? ({ searchQuery: queryOrOpts } as arxiv.SearchParams)
-        : queryOrOpts
+        : queryOrOpts;
 
     if (!opts.ids?.length && !opts.searchQuery) {
       throw new Error(
         `The 'searchQuery' property must be non-empty if the 'ids' property is not provided.`
-      )
+      );
     }
 
     const searchParams = sanitizeSearchParams({
@@ -173,16 +173,16 @@ export class ArXivClient extends AIFunctionsProvider {
                 .map(
                   (tag) => `${arxiv.FilterTypeMapping[tag.field]}:${tag.value}`
                 )
-                .join(arxiv.Separators.ANDNOT)
+                .join(arxiv.Separators.ANDNOT),
             ]
               .filter(Boolean)
               .join(arxiv.Separators.ANDNOT)
         : undefined,
       sortBy: arxiv.SortType.RELEVANCE,
-      sortOrder: arxiv.SortOrder.DESCENDING
-    })
+      sortOrder: arxiv.SortOrder.DESCENDING,
+    });
 
-    const responseText = await this.ky.get('query', { searchParams }).text()
+    const responseText = await this.ky.get('query', { searchParams }).text();
 
     const parser = new XMLParser({
       allowBooleanAttributes: true,
@@ -198,17 +198,17 @@ export class ArXivClient extends AIFunctionsProvider {
       removeNSPrefix: true,
       textNodeName: '#text',
       trimValues: true,
-      ignoreDeclaration: true
-    })
+      ignoreDeclaration: true,
+    });
 
-    const parsedData = parser.parse(responseText)
+    const parsedData = parser.parse(responseText);
 
     let entries: Record<string, any>[] = getProp(
       parsedData,
       ['feed', 'entry'],
       []
-    )
-    entries = castArray(entries)
+    );
+    entries = castArray(entries);
 
     return {
       totalResults: Math.max(
@@ -229,18 +229,18 @@ export class ArXivClient extends AIFunctionsProvider {
             .filter(Boolean)
             .map((author: any) => ({
               name: author.name,
-              affiliation: castArray(author.affiliation ?? [])
+              affiliation: castArray(author.affiliation ?? []),
             })),
           doi: entry.doi,
           comment: entry.comment,
           journalReference: entry.journal_ref,
           primaryCategory: entry.primary_category,
           categories: castArray(entry.category).filter(Boolean),
-          links: castArray(entry.link).filter(Boolean)
+          links: castArray(entry.link).filter(Boolean),
         })
-      )
-    }
+      ),
+    };
   }
 }
 
-export const arxivTools = createAISDKTools(new ArXivClient({}))
+export const arxivTools = createAISDKTools(new ArXivClient({}));

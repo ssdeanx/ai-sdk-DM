@@ -14,25 +14,28 @@ import { v4 as uuidv4 } from 'uuid';
 import { getLibSQLClient } from '@/lib/memory/db';
 import { generateEmbedding, saveEmbedding } from '@/lib/ai-integration';
 // Import LibSQL vector store functions
-import { storeTextEmbedding as libsqlStoreTextEmbedding, searchTextStore as libsqlSearchTextStore } from '@/lib/memory/vector-store';
+import {
+  storeTextEmbedding as libsqlStoreTextEmbedding,
+  searchTextStore as libsqlSearchTextStore,
+} from '@/lib/memory/vector-store';
 // Import Upstash client utilities
 import {
   getVectorClient,
   isUpstashVectorAvailable,
-  shouldUseUpstashAdapter
+  shouldUseUpstashAdapter,
 } from '@/lib/memory/upstash/upstashClients';
 // Import Upstash adapter functions
 import {
   vectorSearch as upstashVectorSearch,
   upsertTexts as upstashUpsertTexts,
-  semanticSearch as upstashSemanticSearch
+  semanticSearch as upstashSemanticSearch,
 } from '@/lib/memory/upstash/supabase-adapter';
 // Import Upstash vector store functions
 import {
   storeTextEmbedding as upstashStoreTextEmbedding,
   searchTextStore as upstashSearchTextStore,
   hybridSearch as upstashHybridSearch,
-  EmbeddingMetadata
+  EmbeddingMetadata,
 } from '@/lib/memory/upstash/vector-store';
 
 import {
@@ -48,23 +51,44 @@ import {
 // Define hybrid vector search schema
 const hybridVectorSearchSchema = z.object({
   query: z.string().describe('Search query to find relevant documents'),
-  limit: z.number().int().min(1).max(MAX_SEARCH_LIMIT).default(DEFAULT_SEARCH_LIMIT).describe('Maximum number of results to return'),
-  filter: z.record(z.any()).optional().describe('Optional metadata filter criteria'),
-  keywordWeight: z.number().min(0).max(1).default(0.3).describe('Weight for keyword matching (0-1)'),
-  vectorWeight: z.number().min(0).max(1).default(0.7).describe('Weight for vector similarity (0-1)'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_SEARCH_LIMIT)
+    .default(DEFAULT_SEARCH_LIMIT)
+    .describe('Maximum number of results to return'),
+  filter: z
+    .record(z.any())
+    .optional()
+    .describe('Optional metadata filter criteria'),
+  keywordWeight: z
+    .number()
+    .min(0)
+    .max(1)
+    .default(0.3)
+    .describe('Weight for keyword matching (0-1)'),
+  vectorWeight: z
+    .number()
+    .min(0)
+    .max(1)
+    .default(0.7)
+    .describe('Weight for vector similarity (0-1)'),
 });
 
 // Define hybrid vector search result type
-type HybridVectorSearchResult = {
-  success: true;
-  query: string;
-  results: Array<{
-    id: string;
-    metadata: Record<string, any>;
-    score: number;
-    content?: string;
-  }>;
-} | ToolFailure;
+type HybridVectorSearchResult =
+  | {
+      success: true;
+      query: string;
+      results: Array<{
+        id: string;
+        metadata: Record<string, any>;
+        score: number;
+        content?: string;
+      }>;
+    }
+  | ToolFailure;
 import {
   DocumentSearchResult,
   DocumentAddResult,
@@ -158,10 +182,7 @@ export const vectorStoreQuerySchema = z.object({
     .enum(VECTOR_PROVIDERS)
     .default('libsql')
     .describe('Vector store provider to use'),
-  namespace: z
-    .string()
-    .optional()
-    .describe('Optional namespace to search in'),
+  namespace: z.string().optional().describe('Optional namespace to search in'),
   filter: z
     .record(z.any())
     .optional()
@@ -233,7 +254,7 @@ function chunkTextRecursive(
   // Split by double newlines (sections)
   const sections = text.split(/\n\s*\n/);
 
-  let chunks: string[] = [];
+  const chunks: string[] = [];
 
   for (const section of sections) {
     if (section.length <= chunkSize) {
@@ -295,7 +316,7 @@ function chunkTextRecursive(
  */
 function chunkText(
   text: string,
-  strategy: typeof CHUNKING_STRATEGIES[number],
+  strategy: (typeof CHUNKING_STRATEGIES)[number],
   chunkSize: number,
   chunkOverlap: number
 ): string[] {
@@ -339,46 +360,48 @@ async function documentSearch(
             FROM documents d
             JOIN embeddings e ON d.embedding_id = e.id
           `,
-          args: []
+          args: [],
         });
 
         // Calculate similarities
-        const similarities = result.rows.map((row) => {
-          // Handle vector data safely
-          const vectorData = row.vector as unknown;
-          let storedVector: Float32Array;
+        const similarities = result.rows
+          .map((row) => {
+            // Handle vector data safely
+            const vectorData = row.vector as unknown;
+            let storedVector: Float32Array;
 
-          if (vectorData instanceof Buffer) {
-            storedVector = new Float32Array(vectorData.buffer);
-          } else if (vectorData instanceof ArrayBuffer) {
-            storedVector = new Float32Array(vectorData);
-          } else if (vectorData instanceof Uint8Array) {
-            storedVector = new Float32Array(vectorData.buffer);
-          } else {
-            console.warn('Unexpected vector data type:', typeof vectorData);
-            return null;
-          }
+            if (vectorData instanceof Buffer) {
+              storedVector = new Float32Array(vectorData.buffer);
+            } else if (vectorData instanceof ArrayBuffer) {
+              storedVector = new Float32Array(vectorData);
+            } else if (vectorData instanceof Uint8Array) {
+              storedVector = new Float32Array(vectorData.buffer);
+            } else {
+              console.warn('Unexpected vector data type:', typeof vectorData);
+              return null;
+            }
 
-          const similarity = cosineSimilarity(queryEmbedding, storedVector);
-          const metadata = JSON.parse((row.metadata as string) || '{}');
+            const similarity = cosineSimilarity(queryEmbedding, storedVector);
+            const metadata = JSON.parse((row.metadata as string) || '{}');
 
-          // Apply filter if provided
-          if (filter) {
-            for (const [key, value] of Object.entries(filter)) {
-              if (metadata[key] !== value) {
-                return null;
+            // Apply filter if provided
+            if (filter) {
+              for (const [key, value] of Object.entries(filter)) {
+                if (metadata[key] !== value) {
+                  return null;
+                }
               }
             }
-          }
 
-          return {
-            id: row.id as string,
-            title: row.title as string,
-            content: row.content as string,
-            metadata,
-            similarity,
-          };
-        }).filter(Boolean) as DocumentSearchItem[];
+            return {
+              id: row.id as string,
+              title: row.title as string,
+              content: row.content as string,
+              metadata,
+              similarity,
+            };
+          })
+          .filter(Boolean) as DocumentSearchItem[];
 
         // Sort by similarity (descending)
         similarities.sort((a, b) => b.similarity - a.similarity);
@@ -404,7 +427,10 @@ async function documentSearch(
               title: 'Untitled', // Default title
               content: '', // Default content
               metadata: {}, // Default empty metadata
-              similarity: 'similarity' in result ? 1 - (result.similarity as number) : 0.5,
+              similarity:
+                'similarity' in result
+                  ? 1 - (result.similarity as number)
+                  : 0.5,
             };
           });
 
@@ -417,7 +443,10 @@ async function documentSearch(
           console.error('Error in Supabase document search:', error);
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error in document search',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Unknown error in document search',
           } as ToolFailure;
         }
       }
@@ -426,7 +455,9 @@ async function documentSearch(
         try {
           // Check if Upstash Vector is available
           if (!isUpstashVectorAvailable()) {
-            throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+            throw new Error(
+              'Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+            );
           }
 
           // Get vector client for direct operations
@@ -440,11 +471,14 @@ async function documentSearch(
             const vectorQueryOptions = {
               topK: limit,
               includeMetadata: true,
-              filter: filter ? JSON.stringify(filter) : undefined
+              filter: filter ? JSON.stringify(filter) : undefined,
             };
 
             // Use upstashVectorSearch for direct vector search
-            const vectorResults = await upstashVectorSearch(Array.from(queryEmbedding) as number[], vectorQueryOptions);
+            const vectorResults = await upstashVectorSearch(
+              Array.from(queryEmbedding) as number[],
+              vectorQueryOptions
+            );
 
             // Format results to match DocumentSearchItem
             const formattedResults = vectorResults.map((result: any) => {
@@ -464,11 +498,18 @@ async function documentSearch(
               results: formattedResults,
             };
           } catch (vectorSearchError) {
-            console.warn('Error using upstashVectorSearch, trying upstashSearchTextStore:', vectorSearchError);
+            console.warn(
+              'Error using upstashVectorSearch, trying upstashSearchTextStore:',
+              vectorSearchError
+            );
 
             // Strategy 2: Try using upstashSearchTextStore (from vector-store.ts)
             try {
-              const searchResults = await upstashSearchTextStore(query, limit, filter ? JSON.stringify(filter) : undefined);
+              const searchResults = await upstashSearchTextStore(
+                query,
+                limit,
+                filter ? JSON.stringify(filter) : undefined
+              );
 
               // Format results to match DocumentSearchItem
               const formattedResults = searchResults.map((result: any) => {
@@ -488,16 +529,22 @@ async function documentSearch(
                 results: formattedResults,
               };
             } catch (searchError) {
-              console.warn('Error using upstashSearchTextStore, falling back to semanticSearch:', searchError);
+              console.warn(
+                'Error using upstashSearchTextStore, falling back to semanticSearch:',
+                searchError
+              );
 
               // Strategy 3: Fall back to semanticSearch from supabase-adapter.ts
               const searchOptions = {
                 topK: limit,
                 includeMetadata: true,
-                ...(filter ? { filter } : {})
+                ...(filter ? { filter } : {}),
               };
 
-              const searchResults = await upstashSemanticSearch(query, searchOptions);
+              const searchResults = await upstashSemanticSearch(
+                query,
+                searchOptions
+              );
 
               // Format results to match DocumentSearchItem
               const formattedResults = searchResults.map((result: any) => {
@@ -522,7 +569,10 @@ async function documentSearch(
           console.error('Error in Upstash document search:', error);
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error in Upstash document search',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Unknown error in Upstash document search',
           } as ToolFailure;
         }
       }
@@ -545,7 +595,12 @@ async function documentSearch(
 async function documentAdd(
   params: z.infer<typeof documentAddSchema>
 ): Promise<DocumentAddResult> {
-  const { title, content, metadata = {}, generateEmbedding: shouldGenerateEmbedding } = params;
+  const {
+    title,
+    content,
+    metadata = {},
+    generateEmbedding: shouldGenerateEmbedding,
+  } = params;
 
   try {
     // Check if Upstash is available and should be used
@@ -554,16 +609,18 @@ async function documentAdd(
         const documentId = uuidv4();
 
         // Use upsertTexts from upstash/supabase-adapter.ts
-        await upstashUpsertTexts([{
-          id: documentId,
-          text: content,
-          metadata: {
-            ...metadata,
-            title,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        }]);
+        await upstashUpsertTexts([
+          {
+            id: documentId,
+            text: content,
+            metadata: {
+              ...metadata,
+              title,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          },
+        ]);
 
         return {
           success: true,
@@ -725,7 +782,9 @@ async function vectorStoreUpsert(
         try {
           // Check if Upstash Vector is available
           if (!isUpstashVectorAvailable()) {
-            throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+            throw new Error(
+              'Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+            );
           }
 
           // Ensure vector client is available
@@ -735,19 +794,22 @@ async function vectorStoreUpsert(
           try {
             for (let i = 0; i < texts.length; i++) {
               const text = texts[i];
-              const metadata = metadatas[i] || {} as EmbeddingMetadata;
+              const metadata = metadatas[i] || ({} as EmbeddingMetadata);
 
               // Store with upstashStoreTextEmbedding
               const id = await upstashStoreTextEmbedding(text, {
                 ...metadata,
                 namespace,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
               });
 
               ids.push(id);
             }
           } catch (storeError) {
-            console.warn('Error using upstashStoreTextEmbedding, falling back to upsertTexts:', storeError);
+            console.warn(
+              'Error using upstashStoreTextEmbedding, falling back to upsertTexts:',
+              storeError
+            );
 
             // Fall back to upsertTexts from supabase-adapter.ts
             // Prepare text items with IDs and metadata
@@ -761,8 +823,8 @@ async function vectorStoreUpsert(
                 metadata: {
                   ...metadata,
                   namespace,
-                  created_at: new Date().toISOString()
-                }
+                  created_at: new Date().toISOString(),
+                },
               };
             });
 
@@ -770,17 +832,19 @@ async function vectorStoreUpsert(
             await upstashUpsertTexts(textItems, { namespace });
 
             // Collect IDs
-            ids.push(...textItems.map(item => item.id));
+            ids.push(...textItems.map((item) => item.id));
 
             // Also try direct vector upsert for future compatibility
-            const vectors = await Promise.all(textItems.map(async (item) => {
-              const embedding = await generateEmbedding(item.text);
-              return {
-                id: item.id,
-                vector: Array.from(embedding) as number[],
-                metadata: item.metadata
-              };
-            }));
+            const vectors = await Promise.all(
+              textItems.map(async (item) => {
+                const embedding = await generateEmbedding(item.text);
+                return {
+                  id: item.id,
+                  vector: Array.from(embedding) as number[],
+                  metadata: item.metadata,
+                };
+              })
+            );
 
             // Upsert vectors directly using the vector client
             const vectorClient = getVectorClient();
@@ -818,7 +882,8 @@ async function vectorStoreUpsert(
 async function vectorStoreQuery(
   params: z.infer<typeof vectorStoreQuerySchema>
 ): Promise<VectorStoreQueryResult> {
-  const { query, provider, namespace, filter, limit, similarityMetric } = params;
+  const { query, provider, namespace, filter, limit, similarityMetric } =
+    params;
 
   try {
     switch (provider) {
@@ -834,74 +899,76 @@ async function vectorStoreQuery(
             FROM documents d
             JOIN embeddings e ON d.embedding_id = e.id
           `,
-          args: []
+          args: [],
         });
 
         // Calculate similarities
-        const similarities = result.rows.map((row) => {
-          // Handle vector data safely
-          const vectorData = row.vector as unknown;
-          let storedVector: Float32Array;
+        const similarities = result.rows
+          .map((row) => {
+            // Handle vector data safely
+            const vectorData = row.vector as unknown;
+            let storedVector: Float32Array;
 
-          if (vectorData instanceof Buffer) {
-            storedVector = new Float32Array(vectorData.buffer);
-          } else if (vectorData instanceof ArrayBuffer) {
-            storedVector = new Float32Array(vectorData);
-          } else if (vectorData instanceof Uint8Array) {
-            storedVector = new Float32Array(vectorData.buffer);
-          } else {
-            console.warn('Unexpected vector data type:', typeof vectorData);
-            return null;
-          }
+            if (vectorData instanceof Buffer) {
+              storedVector = new Float32Array(vectorData.buffer);
+            } else if (vectorData instanceof ArrayBuffer) {
+              storedVector = new Float32Array(vectorData);
+            } else if (vectorData instanceof Uint8Array) {
+              storedVector = new Float32Array(vectorData.buffer);
+            } else {
+              console.warn('Unexpected vector data type:', typeof vectorData);
+              return null;
+            }
 
-          const metadata = JSON.parse((row.metadata as string) || '{}');
+            const metadata = JSON.parse((row.metadata as string) || '{}');
 
-          // Filter by namespace if provided
-          if (namespace && metadata.namespace !== namespace) {
-            return null;
-          }
+            // Filter by namespace if provided
+            if (namespace && metadata.namespace !== namespace) {
+              return null;
+            }
 
-          // Apply additional filters if provided
-          if (filter) {
-            for (const [key, value] of Object.entries(filter)) {
-              if (metadata[key] !== value) {
-                return null;
+            // Apply additional filters if provided
+            if (filter) {
+              for (const [key, value] of Object.entries(filter)) {
+                if (metadata[key] !== value) {
+                  return null;
+                }
               }
             }
-          }
 
-          // Calculate similarity based on the selected metric
-          let score: number;
-          switch (similarityMetric) {
-            case 'cosine':
-              score = cosineSimilarity(queryEmbedding, storedVector);
-              break;
-            case 'euclidean':
-              // Euclidean distance (converted to similarity)
-              let sum = 0;
-              for (let i = 0; i < queryEmbedding.length; i++) {
-                sum += Math.pow(queryEmbedding[i] - storedVector[i], 2);
-              }
-              score = 1 / (1 + Math.sqrt(sum));
-              break;
-            case 'dot':
-              // Dot product
-              let dot = 0;
-              for (let i = 0; i < queryEmbedding.length; i++) {
-                dot += queryEmbedding[i] * storedVector[i];
-              }
-              score = dot;
-              break;
-            default:
-              score = cosineSimilarity(queryEmbedding, storedVector);
-          }
+            // Calculate similarity based on the selected metric
+            let score: number;
+            switch (similarityMetric) {
+              case 'cosine':
+                score = cosineSimilarity(queryEmbedding, storedVector);
+                break;
+              case 'euclidean':
+                // Euclidean distance (converted to similarity)
+                let sum = 0;
+                for (let i = 0; i < queryEmbedding.length; i++) {
+                  sum += Math.pow(queryEmbedding[i] - storedVector[i], 2);
+                }
+                score = 1 / (1 + Math.sqrt(sum));
+                break;
+              case 'dot':
+                // Dot product
+                let dot = 0;
+                for (let i = 0; i < queryEmbedding.length; i++) {
+                  dot += queryEmbedding[i] * storedVector[i];
+                }
+                score = dot;
+                break;
+              default:
+                score = cosineSimilarity(queryEmbedding, storedVector);
+            }
 
-          return {
-            id: row.id as string,
-            metadata,
-            score,
-          };
-        }).filter(Boolean) as VectorStoreQueryItem[];
+            return {
+              id: row.id as string,
+              metadata,
+              score,
+            };
+          })
+          .filter(Boolean) as VectorStoreQueryItem[];
 
         // Sort by score (descending)
         similarities.sort((a, b) => b.score - a.score);
@@ -926,7 +993,10 @@ async function vectorStoreQuery(
             return {
               id: result.id,
               metadata: {}, // Default empty metadata
-              score: 'similarity' in result ? 1 - (result.similarity as number) : 0.5,
+              score:
+                'similarity' in result
+                  ? 1 - (result.similarity as number)
+                  : 0.5,
             };
           });
 
@@ -940,7 +1010,10 @@ async function vectorStoreQuery(
           console.error('Error in Supabase vector search:', error);
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error in vector search',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Unknown error in vector search',
           } as ToolFailure;
         }
       }
@@ -949,7 +1022,9 @@ async function vectorStoreQuery(
         try {
           // Check if Upstash Vector is available
           if (!isUpstashVectorAvailable()) {
-            throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+            throw new Error(
+              'Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+            );
           }
 
           // Use semanticSearch from upstash/supabase-adapter.ts
@@ -957,10 +1032,13 @@ async function vectorStoreQuery(
             topK: limit,
             includeMetadata: true,
             ...(namespace ? { namespace } : {}),
-            ...(filter ? { filter } : {})
+            ...(filter ? { filter } : {}),
           };
 
-          const searchResults = await upstashSemanticSearch(query, searchOptions);
+          const searchResults = await upstashSemanticSearch(
+            query,
+            searchOptions
+          );
 
           // Format results to match VectorStoreQueryItem
           const formattedResults = searchResults.map((result: any) => {
@@ -981,7 +1059,10 @@ async function vectorStoreQuery(
           console.error('Error in Upstash vector search:', error);
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error in Upstash vector search',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Unknown error in Upstash vector search',
           } as ToolFailure;
         }
       }
@@ -1010,7 +1091,9 @@ async function hybridVectorSearch(
   try {
     // Check if Upstash Vector is available
     if (!isUpstashVectorAvailable()) {
-      throw new Error('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+      throw new Error(
+        'Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+      );
     }
 
     // Use hybridSearch from upstash/vector-store.ts
@@ -1018,11 +1101,11 @@ async function hybridVectorSearch(
       limit,
       filter: filter ? JSON.stringify(filter) : undefined,
       keywordWeight,
-      vectorWeight
+      vectorWeight,
     });
 
     // Format results
-    const formattedResults = searchResults.map(result => {
+    const formattedResults = searchResults.map((result) => {
       const metadata = result.metadata || {};
       return {
         id: result.id,
@@ -1080,7 +1163,8 @@ export const tools = {
   }),
 
   HybridVectorSearch: tool({
-    description: 'Perform a hybrid search combining vector similarity with keyword matching (Upstash only)',
+    description:
+      'Perform a hybrid search combining vector similarity with keyword matching (Upstash only)',
     parameters: hybridVectorSearchSchema,
     execute: hybridVectorSearch,
   }),

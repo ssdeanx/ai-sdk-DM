@@ -1,73 +1,80 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Github, Mail, Twitter } from "lucide-react"
-import Link from "next/link"
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Github, Mail, Twitter } from 'lucide-react';
+import Link from 'next/link';
 
 // Default footer links
 const defaultFooterLinks = {
   product: [
-    { title: "Features", href: "/features" },
-    { title: "Use Cases", href: "/use-cases" },
-    { title: "Pricing", href: "/pricing" },
-    { title: "Roadmap", href: "/roadmap" },
+    { title: 'Features', href: '/features' },
+    { title: 'Use Cases', href: '/use-cases' },
+    { title: 'Pricing', href: '/pricing' },
+    { title: 'Roadmap', href: '/roadmap' },
   ],
   resources: [
-    { title: "Documentation", href: "/docs" },
-    { title: "API Reference", href: "/docs/api" },
-    { title: "Tutorials", href: "/tutorials" },
-    { title: "Blog", href: "/blog" },
+    { title: 'Documentation', href: '/docs' },
+    { title: 'API Reference', href: '/docs/api' },
+    { title: 'Tutorials', href: '/tutorials' },
+    { title: 'Blog', href: '/blog' },
   ],
   company: [
-    { title: "About", href: "/about" },
-    { title: "Team", href: "/team" },
-    { title: "Careers", href: "/careers" },
-    { title: "Contact", href: "/contact" },
+    { title: 'About', href: '/about' },
+    { title: 'Team', href: '/team' },
+    { title: 'Careers', href: '/careers' },
+    { title: 'Contact', href: '/contact' },
   ],
   legal: [
-    { title: "Privacy Policy", href: "/privacy" },
-    { title: "Terms of Service", href: "/terms" },
-    { title: "Cookie Policy", href: "/cookies" },
+    { title: 'Privacy Policy', href: '/privacy' },
+    { title: 'Terms of Service', href: '/terms' },
+    { title: 'Cookie Policy', href: '/cookies' },
   ],
   social: [
-    { title: "GitHub", href: "https://github.com/ssdeanx/ai-sdk-DM", icon: Github },
-    { title: "Twitter", href: "https://x.com/deanmachinesai", icon: Twitter },
-    { title: "Email", href: "mailto:info@ai-sdk-framework.com", icon: Mail },
+    {
+      title: 'GitHub',
+      href: 'https://github.com/ssdeanx/ai-sdk-DM',
+      icon: Github,
+    },
+    { title: 'Twitter', href: 'https://x.com/deanmachinesai', icon: Twitter },
+    { title: 'Email', href: 'mailto:info@ai-sdk-framework.com', icon: Mail },
   ],
-}
+};
 
 export default function FooterSection() {
   const [footerData, setFooterData] = useState({
-    companyName: "AI SDK Framework",
-    description: "Building the future of AI applications with agents, tools, and memory.",
+    companyName: 'AI SDK Framework',
+    description:
+      'Building the future of AI applications with agents, tools, and memory.',
     copyright: `© ${new Date().getFullYear()} AI SDK Framework. All rights reserved.`,
     links: defaultFooterLinks,
-  })
+  });
 
   useEffect(() => {
     // Fetch footer content from API
     const fetchFooterContent = async () => {
       try {
-        const response = await fetch("/api/content/footer")
+        const response = await fetch('/api/content/footer');
         if (response.ok) {
-          const data = await response.json()
+          const data = await response.json();
           if (data) {
             setFooterData({
               companyName: data.title || footerData.companyName,
               description: data.description || footerData.description,
-              copyright: data.data?.copyright || `© ${new Date().getFullYear()} ${data.title || footerData.companyName}. All rights reserved.`,
+              copyright:
+                data.data?.copyright ||
+                `© ${new Date().getFullYear()} ${data.title || footerData.companyName}. All rights reserved.`,
               links: data.data?.links || footerData.links,
-            })
+            });
           }
         }
       } catch (error) {
-        console.error("Error fetching footer content:", error)
+        console.error('Error fetching footer content:', error);
       }
-    }
+    };
 
-    fetchFooterContent()
-  }, [])
+    fetchFooterContent();
+  }, []);
 
   return (
     <footer className="bg-gray-950 border-t border-gray-800">
@@ -85,14 +92,16 @@ export default function FooterSection() {
                 <div className="rounded-full bg-gradient-to-r from-blue-500 to-violet-500 p-1">
                   <div className="h-6 w-6 rounded-full bg-gray-950" />
                 </div>
-                <span className="font-bold text-xl text-white">{footerData.companyName}</span>
+                <span className="font-bold text-xl text-white">
+                  {footerData.companyName}
+                </span>
               </Link>
               <p className="text-gray-400 mb-4 max-w-xs">
                 {footerData.description}
               </p>
               <div className="flex space-x-4">
                 {footerData.links.social.map((link, index) => {
-                  const Icon = link.icon
+                  const Icon = link.icon;
                   return (
                     <Link
                       key={index}
@@ -104,7 +113,7 @@ export default function FooterSection() {
                       <Icon className="h-5 w-5" />
                       <span className="sr-only">{link.title}</span>
                     </Link>
-                  )
+                  );
                 })}
               </div>
             </motion.div>
@@ -122,7 +131,10 @@ export default function FooterSection() {
               <ul className="space-y-2">
                 {footerData.links.product.map((link, index) => (
                   <li key={index}>
-                    <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
                       {link.title}
                     </Link>
                   </li>
@@ -143,7 +155,10 @@ export default function FooterSection() {
               <ul className="space-y-2">
                 {footerData.links.resources.map((link, index) => (
                   <li key={index}>
-                    <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
                       {link.title}
                     </Link>
                   </li>
@@ -164,7 +179,10 @@ export default function FooterSection() {
               <ul className="space-y-2">
                 {footerData.links.company.map((link, index) => (
                   <li key={index}>
-                    <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
                       {link.title}
                     </Link>
                   </li>
@@ -185,7 +203,10 @@ export default function FooterSection() {
               <ul className="space-y-2">
                 {footerData.links.legal.map((link, index) => (
                   <li key={index}>
-                    <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
                       {link.title}
                     </Link>
                   </li>
@@ -207,5 +228,5 @@ export default function FooterSection() {
         </motion.div>
       </div>
     </footer>
-  )
+  );
 }

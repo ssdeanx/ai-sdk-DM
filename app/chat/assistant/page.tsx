@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { OpenAIAssistantChat } from '@/components/chat/openai-assistant-chat';
 
 export default function AssistantChatPage() {
@@ -18,7 +24,7 @@ export default function AssistantChatPage() {
         <div className="grid grid-cols-1 gap-6">
           <Card className="h-[calc(100vh-12rem)]">
             <CardContent className="p-0 h-full">
-              <OpenAIAssistantChat 
+              <OpenAIAssistantChat
                 apiEndpoint="/api/assistant"
                 className="h-full"
               />

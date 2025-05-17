@@ -1,16 +1,16 @@
-import { AIFunctionsProvider, assert, getEnv } from '@agentic/core'
-import defaultKy, { type KyInstance } from 'ky'
-import { createAISDKTools } from './ai-sdk'
+import { AIFunctionsProvider, assert, getEnv } from '@agentic/core';
+import defaultKy, { type KyInstance } from 'ky';
+import { createAISDKTools } from './ai-sdk';
 
 // TODO: add aiFunction decorator to select methods
 
 export namespace polygon {
-  export const API_BASE_URL = 'https://api.polygon.io'
+  export const API_BASE_URL = 'https://api.polygon.io';
 
   /**
    * Asset classes available on Polygon.
    */
-  export type ASSET_CLASS = 'stocks' | 'options' | 'crypto' | 'fx'
+  export type ASSET_CLASS = 'stocks' | 'options' | 'crypto' | 'fx';
 
   /**
    * Supported time spans for Polygon's indicator APIs.
@@ -22,45 +22,45 @@ export namespace polygon {
     | 'week'
     | 'month'
     | 'quarter'
-    | 'year'
+    | 'year';
 
   /**
    * Supported series types for Polygon's indicator APIs.
    */
-  export type SERIES_TYPE = 'close' | 'open' | 'high' | 'low'
+  export type SERIES_TYPE = 'close' | 'open' | 'high' | 'low';
 
   /**
    * Order types available on Polygon.
    */
-  export type ORDER_TYPE = 'asc' | 'desc'
+  export type ORDER_TYPE = 'asc' | 'desc';
 
   /**
    * Input parameters for the aggregates API.
    */
   export interface AggregatesInput {
     /** The ticker symbol of the stock/equity. */
-    ticker: string
+    ticker: string;
 
     /** The size of the timespan multiplier. */
-    multiplier: number
+    multiplier: number;
 
     /** The size of the time window. */
-    timespan: TIMESPAN
+    timespan: TIMESPAN;
 
     /** The start of the aggregate time window. Either a date with the format YYYY-MM-DD or a millisecond timestamp. */
-    from: string | number
+    from: string | number;
 
     /** The end of the aggregate time window. Either a date with the format YYYY-MM-DD or a millisecond timestamp. */
-    to: string | number
+    to: string | number;
 
     /** Whether or not the results are adjusted for splits. By default, results are adjusted. Set this to false to get results that are NOT adjusted for splits. */
-    adjusted?: boolean
+    adjusted?: boolean;
 
     /** Sort the results by timestamp. "asc" will return results in ascending order (oldest at the top), "desc" will return results in descending order (newest at the top). */
-    sort?: ORDER_TYPE
+    sort?: ORDER_TYPE;
 
     /** Limits the number of base aggregates queried to create the aggregate results. Max 50000 and Default 5000. */
-    limit?: number
+    limit?: number;
   }
 
   /**
@@ -68,28 +68,28 @@ export namespace polygon {
    */
   export interface AggregatesOutput {
     /** The exchange symbol that this item is traded under. */
-    ticker: string
+    ticker: string;
 
     /** Whether or not this response was adjusted for splits. */
-    adjusted: boolean
+    adjusted: boolean;
 
     /** The number of aggregates (minute or day) used to generate the response. */
-    queryCount: number
+    queryCount: number;
 
     /** A request id assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** The total number of results for this request. */
-    resultsCount: number
+    resultsCount: number;
 
     /** The status of this request's response. */
-    status: string
+    status: string;
 
     /** The results of the query. */
-    results: Aggregate[]
+    results: Aggregate[];
 
     /** If present, this value can be used to fetch the next page of data. */
-    next_url?: string
+    next_url?: string;
   }
 
   /**
@@ -97,18 +97,18 @@ export namespace polygon {
    */
   export type GroupedDailyInput = {
     /** The beginning date for the aggregate window. */
-    date: string
+    date: string;
 
     /** Whether or not the results are adjusted for splits. By default, results are adjusted. Set this to false to get results that are NOT adjusted for splits. */
-    adjusted?: boolean
-  }
+    adjusted?: boolean;
+  };
 
   /**
    * Input parameters for the grouped daily API for stocks.
    */
   export interface GroupedDailyInputStocks extends GroupedDailyInput {
     /** Include OTC securities in the response. Default is false (don't include OTC securities). */
-    include_otc?: boolean
+    include_otc?: boolean;
   }
 
   /**
@@ -116,22 +116,22 @@ export namespace polygon {
    */
   export interface GroupedDailyOutput {
     /** Whether or not this response was adjusted for splits. */
-    adjusted: boolean
+    adjusted: boolean;
 
     /** The number of aggregates (minute or day) used to generate the response. */
-    queryCount: number
+    queryCount: number;
 
     /** A request id assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** The total number of results for this request. */
-    resultsCount: number
+    resultsCount: number;
 
     /** The status of this request's response. */
-    status: string
+    status: string;
 
     /** The results of the query. */
-    results: AggregateDaily[]
+    results: AggregateDaily[];
   }
 
   /**
@@ -139,7 +139,7 @@ export namespace polygon {
    */
   export interface AggregateDaily extends Aggregate {
     /** The exchange symbol that this item is traded under. */
-    T: string
+    T: string;
   }
 
   /**
@@ -147,59 +147,59 @@ export namespace polygon {
    */
   export type TickerDetailsInput = {
     /** The ticker symbol of the asset. */
-    ticker: string
+    ticker: string;
 
     /** Specify a point in time to get information about the ticker available on that date (formatted as YYYY-MM-DD). */
-    date?: string
-  }
+    date?: string;
+  };
 
   /**
    * Daily Open/Close input parameters.
    */
   export type DailyOpenCloseInput = {
     /** The ticker symbol */
-    ticker: string
+    ticker: string;
 
     /** The date of the requested open/close in the format YYYY-MM-DD. */
-    date: string
+    date: string;
 
     /** Whether or not the results are adjusted for splits. By default, results are adjusted. */
-    adjusted?: boolean
-  }
+    adjusted?: boolean;
+  };
 
   /**
    * Result returned by the Daily Open/Close API.
    */
   export interface DailyOpenCloseOutput {
     /** The close price of the ticker symbol in after-hours trading. */
-    afterHours: number
+    afterHours: number;
 
     /** The close price for the symbol in the given time period. */
-    close: number
+    close: number;
 
     /** The requested date. */
-    from: string
+    from: string;
 
     /** The highest price for the symbol in the given time period. */
-    high: number
+    high: number;
 
     /** The lowest price for the symbol in the given time period. */
-    low: number
+    low: number;
 
     /** The open price for the symbol in the given time period. */
-    open: number
+    open: number;
 
     /** The open price of the ticker symbol in pre-market trading. */
-    preMarket: number
+    preMarket: number;
 
     /** The status of this request's response. */
-    status: string
+    status: string;
 
     /** The exchange symbol that this item is traded under. */
-    symbol: string
+    symbol: string;
 
     /** The trading volume of the symbol in the given time period. */
-    volume: number
+    volume: number;
   }
 
   /**
@@ -207,49 +207,49 @@ export namespace polygon {
    */
   export interface PreviousCloseOutput {
     /** Whether or not this response was adjusted for splits. */
-    adjusted: boolean
+    adjusted: boolean;
 
     /** The number of aggregates (minute or day) used to generate the response. */
-    queryCount: number
+    queryCount: number;
 
     /** A request id assigned by the server. */
-    requestId: string
+    requestId: string;
 
     /** Array of results, each containing details for the symbol in the given time period. */
     results: {
       /** The exchange symbol that this item is traded under. */
-      T: string
+      T: string;
 
       /** The close price for the symbol in the given time period. */
-      c: number
+      c: number;
 
       /** The highest price for the symbol in the given time period. */
-      h: number
+      h: number;
 
       /** The lowest price for the symbol in the given time period. */
-      l: number
+      l: number;
 
       /** The open price for the symbol in the given time period. */
-      o: number
+      o: number;
 
       /** The Unix Msec timestamp for the start of the aggregate window. */
-      t: number
+      t: number;
 
       /** The trading volume of the symbol in the given time period. */
-      v: number
+      v: number;
 
       /** The volume weighted average price. */
-      vw: number
-    }[]
+      vw: number;
+    }[];
 
     /** The total number of results for this request. */
-    resultsCount: number
+    resultsCount: number;
 
     /** The status of this request's response. */
-    status: string
+    status: string;
 
     /** The exchange symbol that this item is traded under. */
-    ticker: string
+    ticker: string;
   }
 
   /**
@@ -257,112 +257,112 @@ export namespace polygon {
    */
   export interface TickerDetailsOutput {
     /** A request id assigned by the server. */
-    requestId: string
+    requestId: string;
 
     /** Detailed results for the specific ticker. */
     results: {
       /** Whether the ticker is actively traded. */
-      active: boolean
+      active: boolean;
 
       /** Address of the company. */
       address: {
         /** The first line of the company's headquarters address. */
-        address1: string
+        address1: string;
 
         /** The city of the company's headquarters address. */
-        city: string
+        city: string;
 
         /** The postal code of the company's headquarters address. */
-        postalCode: string
+        postalCode: string;
 
         /** The state of the company's headquarters address. */
-        state: string
-      }
+        state: string;
+      };
 
       /** Branding details of the company. */
       branding: {
         /** A link to this ticker's company's icon. Icon's are generally smaller, square images that represent the company at a glance. */
-        iconUrl: string
+        iconUrl: string;
 
         /** A link to this ticker's company's logo. Note that you must provide an API key when accessing this URL. See the "Authentication" section at the top of this page for more details. */
-        logoUrl: string
-      }
+        logoUrl: string;
+      };
 
       /** Central Index Key (CIK) of the company. */
-      cik: string
+      cik: string;
 
       /** Composite Financial Instrument Global Identifier (FIGI). */
-      compositeFigi: string
+      compositeFigi: string;
 
       /** Name of the currency in which the company trades. */
-      currencyName: string
+      currencyName: string;
 
       /** Date and time the company was delisted, if applicable. */
-      delistedUtc?: string
+      delistedUtc?: string;
 
       /** Description of the company. */
-      description: string
+      description: string;
 
       /** The company's homepage URL. */
-      homepageUrl: string
+      homepageUrl: string;
 
       /** The date when the company was listed. */
-      listDate: string
+      listDate: string;
 
       /** Locale of the company. */
-      locale: string
+      locale: string;
 
       /** Market in which the company trades. */
-      market: string
+      market: string;
 
       /** Market capitalization of the company. */
-      marketCap: number
+      marketCap: number;
 
       /** Name of the company. */
-      name: string
+      name: string;
 
       /** Phone number of the company. */
-      phoneNumber: string
+      phoneNumber: string;
 
       /** The primary exchange on which the company trades. */
-      primaryExchange: string
+      primaryExchange: string;
 
       /** Round lot size for the company's stock. */
-      roundLot: number
+      roundLot: number;
 
       /** Share class FIGI. */
-      shareClassFigi: string
+      shareClassFigi: string;
 
       /** The number of outstanding shares for the share class. */
-      shareClassSharesOutstanding: number
+      shareClassSharesOutstanding: number;
 
       /** The Standard Industrial Classification (SIC) code of the company. */
-      sicCode: string
+      sicCode: string;
 
       /** Description of the SIC code. */
-      sicDescription: string
+      sicDescription: string;
 
       /** The ticker symbol of the company. */
-      ticker: string
+      ticker: string;
 
       /** The root of the ticker symbol. */
-      tickerRoot: string
+      tickerRoot: string;
 
       /** The suffix of the ticker symbol, if applicable. */
-      tickerSuffix?: string
+      tickerSuffix?: string;
 
       /** The total number of employees in the company. */
-      totalEmployees: number
+      totalEmployees: number;
 
       /** The type of the ticker (e.g., common stock, preferred stock, etc.). */
-      type: string
+      type: string;
 
       /** The number of weighted outstanding shares. */
-      weightedSharesOutstanding: number
-    }
+      weightedSharesOutstanding: number;
+    };
 
     /** The status of this request's response. */
-    status: string
+    status: string;
   }
 
   /**
@@ -370,63 +370,63 @@ export namespace polygon {
    */
   export type IndicatorInput = {
     /** The ticker symbol for which to get data. */
-    ticker: string
+    ticker: string;
 
     /** Query by timestamp. Either a date with the format YYYY-MM-DD or a millisecond timestamp. */
-    timestamp?: string
+    timestamp?: string;
 
     /** The size of the aggregate time window. */
-    timespan?: TIMESPAN
+    timespan?: TIMESPAN;
 
     /** Whether or not the aggregates are adjusted for splits. By default, aggregates are adjusted. Set this to false to get results that are NOT adjusted for splits. */
-    adjusted?: boolean
+    adjusted?: boolean;
 
     /** The window size used to calculate the indicator. i.e. a window size of 10 with daily aggregates would result in a 10 day moving average. */
-    window?: number
+    window?: number;
 
     /** The price in the aggregate which will be used to calculate the indicator. */
-    series_type?: SERIES_TYPE
+    series_type?: SERIES_TYPE;
 
     /** Whether or not to include the aggregates used to calculate this indicator in the response. */
-    expand_underlying?: boolean
+    expand_underlying?: boolean;
 
     /** The order in which to return the results, ordered by timestamp. */
-    order?: ORDER_TYPE
+    order?: ORDER_TYPE;
 
     /** Limit the number of results returned, default is 10 and max is 5000 */
-    limit?: number
-  }
+    limit?: number;
+  };
 
   /**
    * Represents an aggregate, which includes data for a given time period.
    */
   export interface Aggregate {
     /** The close price for the symbol in the given time period. */
-    c: number
+    c: number;
 
     /** The highest price for the symbol in the given time period. */
-    h: number
+    h: number;
 
     /** The lowest price for the symbol in the given time period. */
-    l: number
+    l: number;
 
     /** The number of transactions in the aggregate window. */
-    n: number
+    n: number;
 
     /** The open price for the symbol in the given time period. */
-    o: number
+    o: number;
 
     /** Whether or not this aggregate is for an OTC ticker. This field will be left off if false. */
-    otc?: boolean
+    otc?: boolean;
 
     /** The Unix Msec timestamp for the start of the aggregate window. */
-    t: number
+    t: number;
 
     /** The trading volume of the symbol in the given time period. */
-    v: number
+    v: number;
 
     /** The volume weighted average price. */
-    vw?: number
+    vw?: number;
   }
 
   /**
@@ -434,10 +434,10 @@ export namespace polygon {
    */
   export interface IndicatorValue {
     /** The Unix Msec timestamp from the last aggregate used in this calculation. */
-    timestamp: number
+    timestamp: number;
 
     /** The indicator value for this period. */
-    value: number
+    value: number;
   }
 
   /**
@@ -445,28 +445,28 @@ export namespace polygon {
    */
   export interface IndicatorOutput {
     /** If present, this value can be used to fetch the next page of data. */
-    next_url: string
+    next_url: string;
 
     /** A request id assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** Results object containing underlying aggregates and values array. */
     results: {
       /** Underlying object containing aggregates and a URL to fetch underlying data. */
       underlying: {
         /** Array of aggregates used for calculation. */
-        aggregates: Aggregate[]
+        aggregates: Aggregate[];
 
         /** The URL which can be used to request the underlying aggregates used in this request. */
-        url: string
-      }
+        url: string;
+      };
 
       /** Array of calculated indicator values. */
-      values: IndicatorValue[]
-    }
+      values: IndicatorValue[];
+    };
 
     /** The status of this request's response. */
-    status: string
+    status: string;
   }
 
   /**
@@ -474,84 +474,84 @@ export namespace polygon {
    */
   export type TickerInput = {
     /** Specify a ticker symbol. Defaults to empty string which queries all tickers. */
-    ticker?: string
+    ticker?: string;
 
     /** Specify the type of the tickers. */
-    type?: string
+    type?: string;
 
     /** Filter by market type. */
-    market?: 'crypto'
+    market?: 'crypto';
 
     /** Specify the primary exchange of the asset in the ISO code format. */
-    exchange?: string
+    exchange?: string;
 
     /** Specify the CUSIP code of the asset you want to search for. */
-    cusip?: string
+    cusip?: string;
 
     /** Specify the CIK of the asset you want to search for. */
-    cik?: string
+    cik?: string;
 
     /** Specify a point in time to retrieve tickers available on that date. */
-    date?: string
+    date?: string;
 
     /** Search for terms within the ticker and/or company name. */
-    search?: string
+    search?: string;
 
     /** Specify if the tickers returned should be actively traded on the queried date. */
-    active?: boolean
+    active?: boolean;
 
     /** Order results based on the sort field. */
-    order?: ORDER_TYPE
+    order?: ORDER_TYPE;
 
     /** Limit the number of results returned. */
-    limit?: number
+    limit?: number;
 
     /** Sort field used for ordering. */
-    sort?: string
-  }
+    sort?: string;
+  };
 
   /**
    * Represents a ticker that matches the query.
    */
   export interface Ticker {
     /** Whether or not the asset is actively traded. */
-    active: boolean
+    active: boolean;
 
     /** The CIK number for this ticker. */
-    cik: string
+    cik: string;
 
     /** The composite OpenFIGI number for this ticker. */
-    composite_figi: string
+    composite_figi: string;
 
     /** The name of the currency that this asset is traded with. */
-    currency_name: string
+    currency_name: string;
 
     /** The last date that the asset was traded. */
-    delisted_utc: string
+    delisted_utc: string;
 
     /** The information is accurate up to this time. */
-    last_updated_utc: string
+    last_updated_utc: string;
 
     /** The locale of the asset. */
-    locale: 'us' | 'global'
+    locale: 'us' | 'global';
 
     /** The market type of the asset. */
-    market: 'stocks' | 'crypto' | 'fx' | 'otc' | 'indices'
+    market: 'stocks' | 'crypto' | 'fx' | 'otc' | 'indices';
 
     /** The name of the asset. */
-    name: string
+    name: string;
 
     /** The ISO code of the primary listing exchange for this asset. */
-    primary_exchange: string
+    primary_exchange: string;
 
     /** The share Class OpenFIGI number for this ticker. */
-    share_class_figi: string
+    share_class_figi: string;
 
     /** The exchange symbol that this item is traded under. */
-    ticker: string
+    ticker: string;
 
     /** The type of the asset. */
-    type: string
+    type: string;
   }
 
   /**
@@ -559,19 +559,19 @@ export namespace polygon {
    */
   export interface TickerOutput {
     /** The total number of results for this request. */
-    count: number
+    count: number;
 
     /** If present, this value can be used to fetch the next page of data. */
-    next_url: string
+    next_url: string;
 
     /** A request id assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** An array of tickers that match your query. */
-    results: Ticker[]
+    results: Ticker[];
 
     /** The status of this request's response. */
-    status: string
+    status: string;
   }
 
   /**
@@ -579,34 +579,34 @@ export namespace polygon {
    */
   export interface MarketStatusOutput {
     /** Whether or not the market is in post-market hours. */
-    afterHours: boolean
+    afterHours: boolean;
 
     /** The status of the crypto and forex markets. */
     currencies: {
       /** The status of the crypto market. */
-      crypto: string
+      crypto: string;
       /** The status of the forex market. */
-      fx: string
-    }
+      fx: string;
+    };
 
     /** Whether or not the market is in pre-market hours. */
-    earlyHours: boolean
+    earlyHours: boolean;
 
     /** The status of the Nasdaq, NYSE and OTC markets. */
     exchanges: {
       /** The status of the Nasdaq market. */
-      nasdaq: string
+      nasdaq: string;
       /** The status of the NYSE market. */
-      nyse: string
+      nyse: string;
       /** The status of the OTC market. */
-      otc: string
-    }
+      otc: string;
+    };
 
     /** The status of the market as a whole. */
-    market: string
+    market: string;
 
     /** The current time of the server. */
-    serverTime: string
+    serverTime: string;
   }
 
   /**
@@ -614,22 +614,22 @@ export namespace polygon {
    */
   export interface MarketHolidayOutput {
     /** The market close time on the holiday (if it's not closed). */
-    close?: string
+    close?: string;
 
     /** The date of the holiday. */
-    date: string
+    date: string;
 
     /** Which market the record is for. */
-    exchange: string
+    exchange: string;
 
     /** The name of the holiday. */
-    name: string
+    name: string;
 
     /** The market open time on the holiday (if it's not closed). */
-    open?: string
+    open?: string;
 
     /** The status of the market on the holiday. */
-    status: string
+    status: string;
   }
 
   /**
@@ -637,27 +637,27 @@ export namespace polygon {
    */
   export type TickerTypesInput = {
     /** Filter by asset class. */
-    asset_class?: ASSET_CLASS
+    asset_class?: ASSET_CLASS;
 
     /** Filter by locale. */
-    locale?: string
-  }
+    locale?: string;
+  };
 
   /**
    * Output parameters for the ticker types API.
    */
   export interface TickerTypesOutput {
     /** The total number of results for this request. */
-    count: number
+    count: number;
 
     /** A request ID assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** The results of the query. */
-    results: TickerType[]
+    results: TickerType[];
 
     /** The status of this request's response. */
-    status: string
+    status: string;
   }
 
   /**
@@ -665,16 +665,16 @@ export namespace polygon {
    */
   export interface TickerType {
     /** An identifier for a group of similar financial instruments. */
-    asset_class: ASSET_CLASS
+    asset_class: ASSET_CLASS;
 
     /** A code used by Polygon.io to refer to this ticker type. */
-    code: string
+    code: string;
 
     /** A short description of this ticker type. */
-    description: string
+    description: string;
 
     /** An identifier for a geographical location. */
-    locale: string
+    locale: string;
   }
 
   /**
@@ -682,39 +682,39 @@ export namespace polygon {
    */
   export type TickerNewsInput = {
     /** Ticker symbol to return results for. */
-    ticker: string
+    ticker: string;
 
     /** Date to return results published on, before, or after. */
-    published_utc?: string
+    published_utc?: string;
 
     /** Order results based on the sort field. */
-    order?: ORDER_TYPE
+    order?: ORDER_TYPE;
 
     /** Limit the number of results returned, default is 10 and max is 1000. */
-    limit?: number
+    limit?: number;
 
     /** Sort field used for ordering. */
-    sort?: string
-  }
+    sort?: string;
+  };
 
   /**
    * Output parameters for the ticker news API.
    */
   export interface TickerNewsOutput {
     /** The total number of results for this request. */
-    count: number
+    count: number;
 
     /** If present, this value can be used to fetch the next page of data. */
-    next_url: string
+    next_url: string;
 
     /** A request id assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** The results of the query. */
-    results: TickerNews[]
+    results: TickerNews[];
 
     /** The status of this request's response. */
-    status: string
+    status: string;
   }
 
   /**
@@ -722,37 +722,37 @@ export namespace polygon {
    */
   export interface TickerNews {
     /** The mobile friendly Accelerated Mobile Page (AMP) URL. */
-    amp_url?: string
+    amp_url?: string;
 
     /** A link to the news article. */
-    article_url: string
+    article_url: string;
 
     /** The article's author. */
-    author: string
+    author: string;
 
     /** A description of the article. */
-    description?: string
+    description?: string;
 
     /** Unique identifier for the article. */
-    id: string
+    id: string;
 
     /** The article's image URL. */
-    image_url?: string
+    image_url?: string;
 
     /** The keywords associated with the article (which will vary depending on the publishing source). */
-    keywords?: string[]
+    keywords?: string[];
 
     /** The date the article was published on. */
-    published_utc: string
+    published_utc: string;
 
     /** The publisher's details. */
-    publisher: Publisher
+    publisher: Publisher;
 
     /** The ticker symbols associated with the article. */
-    tickers: string[]
+    tickers: string[];
 
     /** The title of the news article. */
-    title: string
+    title: string;
   }
 
   /**
@@ -760,16 +760,16 @@ export namespace polygon {
    */
   export interface Publisher {
     /** The publisher's homepage favicon URL. */
-    favicon_url?: string
+    favicon_url?: string;
 
     /** The publisher's homepage URL. */
-    homepage_url: string
+    homepage_url: string;
 
     /** The publisher's logo URL. */
-    logo_url: string
+    logo_url: string;
 
     /** The publisher's name. */
-    name: string
+    name: string;
   }
 
   /**
@@ -777,27 +777,27 @@ export namespace polygon {
    */
   export type ExchangesInput = {
     /** Filter by asset class. */
-    asset_class?: ASSET_CLASS
+    asset_class?: ASSET_CLASS;
 
     /** Filter by locale. */
-    locale?: string
-  }
+    locale?: string;
+  };
 
   /**
    * Output parameters for the exchanges API.
    */
   export interface ExchangesOutput {
     /** The total number of results for this request. */
-    count: number
+    count: number;
 
     /** A request ID assigned by the server. */
-    request_id: string
+    request_id: string;
 
     /** The results of the query. */
-    results: Exchange[]
+    results: Exchange[];
 
     /** The status of this request's response. */
-    status: string
+    status: string;
   }
 
   /**
@@ -805,34 +805,34 @@ export namespace polygon {
    */
   export interface Exchange {
     /** A commonly used abbreviation for this exchange. */
-    acronym?: string
+    acronym?: string;
 
     /** An identifier for a group of similar financial instruments. */
-    asset_class: ASSET_CLASS
+    asset_class: ASSET_CLASS;
 
     /** A unique identifier used by Polygon.io for this exchange. */
-    id: number
+    id: number;
 
     /** An identifier for a geographical location. */
-    locale: 'us' | 'global'
+    locale: 'us' | 'global';
 
     /** The Market Identifer Code of this exchange (see ISO 10383). */
-    mic: string
+    mic: string;
 
     /** Name of this exchange. */
-    name: string
+    name: string;
 
     /** The MIC of the entity that operates this exchange. */
-    operating_mic: string
+    operating_mic: string;
 
     /** The ID used by SIP's to represent this exchange. */
-    participant_id?: string
+    participant_id?: string;
 
     /** Represents the type of exchange. */
-    type: 'exchange' | 'TRF' | 'SIP'
+    type: 'exchange' | 'TRF' | 'SIP';
 
     /** A link to this exchange's website, if one exists. */
-    url?: string
+    url?: string;
   }
 }
 
@@ -844,34 +844,34 @@ export namespace polygon {
  * @see {@link https://polygon.io/docs}
  */
 export class PolygonClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiKey: string
-  protected readonly apiBaseUrl: string
+  protected readonly ky: KyInstance;
+  protected readonly apiKey: string;
+  protected readonly apiBaseUrl: string;
 
   constructor({
     apiKey = getEnv('POLYGON_API_KEY'),
     apiBaseUrl = polygon.API_BASE_URL,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiKey?: string
-    apiBaseUrl?: string
-    ky?: KyInstance
+    apiKey?: string;
+    apiBaseUrl?: string;
+    ky?: KyInstance;
   } = {}) {
     assert(
       apiKey,
       'PolygonClient missing required "apiKey" (defaults to "POLYGON_API_KEY")'
-    )
-    super()
+    );
+    super();
 
-    this.apiKey = apiKey
-    this.apiBaseUrl = apiBaseUrl
+    this.apiKey = apiKey;
+    this.apiBaseUrl = apiBaseUrl;
 
     this.ky = ky.extend({
       prefixUrl: this.apiBaseUrl,
       headers: {
-        Authorization: `Bearer ${this.apiKey}`
-      }
-    })
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+    });
   }
 
   /**
@@ -881,18 +881,18 @@ export class PolygonClient extends AIFunctionsProvider {
    * @returns promise that resolves to detailed information about a single ticker
    */
   async tickerDetails(params: polygon.TickerDetailsInput) {
-    let searchParams
+    let searchParams;
     if (params.date) {
       searchParams = {
-        date: params.date
-      }
+        date: params.date,
+      };
     }
 
     return this.ky
       .get(`v3/reference/tickers/${params.ticker}`, {
-        searchParams
+        searchParams,
       })
-      .json<polygon.TickerDetailsOutput>()
+      .json<polygon.TickerDetailsOutput>();
   }
 
   /**
@@ -905,10 +905,10 @@ export class PolygonClient extends AIFunctionsProvider {
     return this.ky
       .get(`v1/open-close/${params.ticker}/${params.date}`, {
         searchParams: {
-          adjusted: params.adjusted ?? true
-        }
+          adjusted: params.adjusted ?? true,
+        },
       })
-      .json<polygon.DailyOpenCloseOutput>()
+      .json<polygon.DailyOpenCloseOutput>();
   }
 
   /**
@@ -922,10 +922,10 @@ export class PolygonClient extends AIFunctionsProvider {
     return this.ky
       .get(`v2/aggs/ticker/${ticker}/prev`, {
         searchParams: {
-          adjusted
-        }
+          adjusted,
+        },
       })
-      .json<polygon.PreviousCloseOutput>()
+      .json<polygon.PreviousCloseOutput>();
   }
 
   /**
@@ -937,9 +937,9 @@ export class PolygonClient extends AIFunctionsProvider {
   async sma(params: polygon.IndicatorInput) {
     return this.ky
       .get(`v1/indicators/sma/${params.ticker}`, {
-        searchParams: params
+        searchParams: params,
       })
-      .json<polygon.IndicatorOutput>()
+      .json<polygon.IndicatorOutput>();
   }
 
   /**
@@ -951,9 +951,9 @@ export class PolygonClient extends AIFunctionsProvider {
   async ema(params: polygon.IndicatorInput) {
     return this.ky
       .get(`v1/indicators/ema/${params.ticker}`, {
-        searchParams: params
+        searchParams: params,
       })
-      .json<polygon.IndicatorOutput>()
+      .json<polygon.IndicatorOutput>();
   }
 
   /**
@@ -965,9 +965,9 @@ export class PolygonClient extends AIFunctionsProvider {
   async macd(params: polygon.IndicatorInput) {
     return this.ky
       .get(`v1/indicators/ema/${params.ticker}`, {
-        searchParams: params
+        searchParams: params,
       })
-      .json<polygon.IndicatorOutput>()
+      .json<polygon.IndicatorOutput>();
   }
 
   /**
@@ -979,9 +979,9 @@ export class PolygonClient extends AIFunctionsProvider {
   async rsi(params: polygon.IndicatorInput) {
     return this.ky
       .get(`v1/indicators/rsi/${params.ticker}`, {
-        searchParams: params
+        searchParams: params,
       })
-      .json<polygon.IndicatorOutput>()
+      .json<polygon.IndicatorOutput>();
   }
 
   /**
@@ -993,7 +993,7 @@ export class PolygonClient extends AIFunctionsProvider {
   async tickers(params: polygon.TickerInput): Promise<polygon.TickerOutput> {
     return this.ky
       .get('v3/reference/tickers', { searchParams: params })
-      .json<polygon.TickerOutput>()
+      .json<polygon.TickerOutput>();
   }
 
   /**
@@ -1005,7 +1005,7 @@ export class PolygonClient extends AIFunctionsProvider {
   async tickerTypes(params: polygon.TickerTypesInput = {}) {
     return this.ky
       .get('v3/reference/tickers/types', { searchParams: params })
-      .json<polygon.TickerTypesOutput>()
+      .json<polygon.TickerTypesOutput>();
   }
 
   /**
@@ -1017,7 +1017,7 @@ export class PolygonClient extends AIFunctionsProvider {
   async tickerNews(params: polygon.TickerNewsInput) {
     return this.ky
       .get('v2/reference/news', { searchParams: params })
-      .json<polygon.TickerNewsOutput>()
+      .json<polygon.TickerNewsOutput>();
   }
 
   /**
@@ -1026,7 +1026,9 @@ export class PolygonClient extends AIFunctionsProvider {
    * @returns promise that resolves to the market status
    */
   async marketStatus() {
-    return this.ky.get('v1/marketstatus/now').json<polygon.MarketStatusOutput>()
+    return this.ky
+      .get('v1/marketstatus/now')
+      .json<polygon.MarketStatusOutput>();
   }
 
   /**
@@ -1037,7 +1039,7 @@ export class PolygonClient extends AIFunctionsProvider {
   async marketHolidays(): Promise<polygon.MarketHolidayOutput[]> {
     return this.ky
       .get('v1/marketstatus/upcoming')
-      .json<polygon.MarketHolidayOutput[]>()
+      .json<polygon.MarketHolidayOutput[]>();
   }
 
   /**
@@ -1049,7 +1051,7 @@ export class PolygonClient extends AIFunctionsProvider {
   async exchanges(params: polygon.ExchangesInput = {}) {
     return this.ky
       .get('v3/reference/exchanges', { searchParams: params })
-      .json<polygon.ExchangesOutput>()
+      .json<polygon.ExchangesOutput>();
   }
 
   /**
@@ -1059,11 +1061,11 @@ export class PolygonClient extends AIFunctionsProvider {
    * @returns promise that resolves to list of aggregates
    */
   async aggregates(params: polygon.AggregatesInput) {
-    const { ticker, multiplier, timespan, from, to, ...otherParams } = params
-    const endpoint = `v2/aggs/ticker/${ticker}/range/${multiplier}/${timespan}/${from}/${to}`
+    const { ticker, multiplier, timespan, from, to, ...otherParams } = params;
+    const endpoint = `v2/aggs/ticker/${ticker}/range/${multiplier}/${timespan}/${from}/${to}`;
     return this.ky
       .get(endpoint, { searchParams: otherParams })
-      .json<polygon.AggregatesOutput>()
+      .json<polygon.AggregatesOutput>();
   }
 
   /**
@@ -1077,12 +1079,12 @@ export class PolygonClient extends AIFunctionsProvider {
     assetClass: polygon.ASSET_CLASS,
     params: polygon.GroupedDailyInput
   ) {
-    const { date, ...otherParams } = params
-    const endpoint = `v2/aggs/grouped/locale/us/market/${assetClass}/${date}`
+    const { date, ...otherParams } = params;
+    const endpoint = `v2/aggs/grouped/locale/us/market/${assetClass}/${date}`;
     return this.ky
       .get(endpoint, { searchParams: otherParams })
-      .json<polygon.GroupedDailyOutput>()
+      .json<polygon.GroupedDailyOutput>();
   }
 }
 
-export const polygonTools = createAISDKTools(new PolygonClient())
+export const polygonTools = createAISDKTools(new PolygonClient());

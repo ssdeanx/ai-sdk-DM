@@ -1,7 +1,7 @@
-import { createAIFunction, getEnv } from '@agentic/core'
-import { Sandbox } from '@e2b/code-interpreter'
-import { z } from 'zod'
-import { createAISDKTools } from './ai-sdk'
+import { createAIFunction, getEnv } from '@agentic/core';
+import { Sandbox } from '@e2b/code-interpreter';
+import { z } from 'zod';
+import { createAISDKTools } from './ai-sdk';
 
 /**
  * E2B Python code interpreter sandbox.
@@ -23,35 +23,35 @@ Execute python code in a Jupyter notebook cell and returns any result, stdout, s
     inputSchema: z.object({
       code: z
         .string()
-        .describe('Python code to execute in a single notebook cell.')
-    })
+        .describe('Python code to execute in a single notebook cell.'),
+    }),
   },
   async ({ code }) => {
     const sandbox = await Sandbox.create({
-      apiKey: getEnv('E2B_API_KEY')
-    })
+      apiKey: getEnv('E2B_API_KEY'),
+    });
 
     try {
       const exec = await sandbox.runCode(code, {
         onStderr: (msg) => {
-          console.warn('[Code Interpreter stderr]', msg)
+          console.warn('[Code Interpreter stderr]', msg);
         },
 
         onStdout: (stdout) => {
-          console.log('[Code Interpreter stdout]', stdout)
-        }
-      })
+          console.log('[Code Interpreter stdout]', stdout);
+        },
+      });
 
       if (exec.error) {
-        console.error('[Code Interpreter error]', exec.error)
-        throw new Error(exec.error.value)
+        console.error('[Code Interpreter error]', exec.error);
+        throw new Error(exec.error.value);
       }
 
-      return exec.results.map((result) => result.toJSON())
+      return exec.results.map((result) => result.toJSON());
     } finally {
-      await sandbox.kill()
+      await sandbox.kill();
     }
   }
-)
+);
 
-export const e2bTools = createAISDKTools(e2b)
+export const e2bTools = createAISDKTools(e2b);

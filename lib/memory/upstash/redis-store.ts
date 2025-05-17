@@ -1,5 +1,20 @@
 import { generateId } from 'ai';
-import { createItem, getItemById, updateItem, deleteItem, getData, applyFilters, applyOrdering, applyPagination, selectFields, type QueryOptions, type TableName, type TableRow, type TableInsert, type TableUpdate } from './supabase-adapter';
+import {
+  createItem,
+  getItemById,
+  updateItem,
+  deleteItem,
+  getData,
+  applyFilters,
+  applyOrdering,
+  applyPagination,
+  selectFields,
+  type QueryOptions,
+  type TableName,
+  type TableRow,
+  type TableInsert,
+  type TableUpdate,
+} from './supabase-adapter';
 import { z } from 'zod';
 
 import {
@@ -40,7 +55,7 @@ import {
   AuthProviderEntity,
   AuthProviderEntitySchema,
   DashboardConfigEntity,
-  DashboardConfigEntitySchema
+  DashboardConfigEntitySchema,
 } from './upstashTypes';
 
 import {
@@ -48,15 +63,15 @@ import {
   runRediSearchHybridQuery,
   enqueueQStashTask,
   trackWorkflowNode,
-  shouldFallbackToBackup
+  shouldFallbackToBackup,
 } from './upstashClients';
 import { logError } from './upstash-logger';
 
 // --- Constants for Redis Keys ---
-const THREAD_PREFIX = "thread:";
-const THREADS_SET = "threads"; // Sorted set for all thread IDs, scored by last update timestamp
-const THREAD_MESSAGES_SET_SUFFIX = ":messages"; // Set of message IDs for a thread
-const MESSAGE_PREFIX = "message:";
+const THREAD_PREFIX = 'thread:';
+const THREADS_SET = 'threads'; // Sorted set for all thread IDs, scored by last update timestamp
+const THREAD_MESSAGES_SET_SUFFIX = ':messages'; // Set of message IDs for a thread
+const MESSAGE_PREFIX = 'message:';
 
 // --- Logger-safe error helper ---
 function toLoggerError(err: unknown): Error | { error: string } {
@@ -65,7 +80,9 @@ function toLoggerError(err: unknown): Error | { error: string } {
 }
 
 // Helper to prepare data for Redis (handles metadata stringification)
-function prepareDataForRedis<T extends { metadata?: Record<string, unknown> | null }>(data: T): RedisHashData {
+function prepareDataForRedis<
+  T extends { metadata?: Record<string, unknown> | null },
+>(data: T): RedisHashData {
   const result: RedisHashData = {};
   for (const [k, v] of Object.entries(data)) {
     if (k === 'metadata' && v != null) {
@@ -87,17 +104,25 @@ function prepareDataForRedisGeneric(data: object): RedisHashData {
 }
 
 // Helper to parse raw Redis data and metadata string into the target type
-function parseRedisHashData<T extends { metadata?: Record<string, unknown> | null }>(rawData: RedisHashData | null): T | null {
+function parseRedisHashData<
+  T extends { metadata?: Record<string, unknown> | null },
+>(rawData: RedisHashData | null): T | null {
   if (!rawData) return null;
   const parsed: Record<string, unknown> = { ...rawData };
   if (parsed.metadata && typeof parsed.metadata === 'string') {
-    try { parsed.metadata = JSON.parse(parsed.metadata); } catch { parsed.metadata = null; }
+    try {
+      parsed.metadata = JSON.parse(parsed.metadata);
+    } catch {
+      parsed.metadata = null;
+    }
   }
   return parsed as T;
 }
 
 // Overload for generic objects without metadata
-function parseRedisHashDataGeneric<T extends object>(rawData: RedisHashData | null): T | null {
+function parseRedisHashDataGeneric<T extends object>(
+  rawData: RedisHashData | null
+): T | null {
   if (!rawData) return null;
   return { ...rawData } as T;
 }
@@ -136,7 +161,9 @@ const upstashToSupabaseTable: Record<string, TableName> = {
   auth_provider: 'agent_personas',
   dashboard_config: 'documents',
 };
-export function getSupabaseTableName(entityType: string): TableName | undefined {
+export function getSupabaseTableName(
+  entityType: string
+): TableName | undefined {
   return upstashToSupabaseTable[entityType];
 }
 
@@ -160,22 +187,35 @@ export async function createRedisThread(
     updated_at: now,
   };
   try {
-    await redis.hset(`${THREAD_PREFIX}${threadId}`, prepareDataForRedis(thread));
+    await redis.hset(
+      `${THREAD_PREFIX}${threadId}`,
+      prepareDataForRedis(thread)
+    );
     await redis.zadd(THREADS_SET, { score: Date.now(), member: threadId });
     return thread;
   } catch (err) {
-    await logError('redis-store', 'Failed to create thread', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to create thread',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to create thread', err);
   }
 }
 
-export async function getRedisThreadById(threadId: string): Promise<Thread | null> {
+export async function getRedisThreadById(
+  threadId: string
+): Promise<Thread | null> {
   const redis = getRedisClient();
   try {
     const data = await redis.hgetall(`${THREAD_PREFIX}${threadId}`);
     return parseRedisHashData<Thread>(data as RedisHashData);
   } catch (err) {
-    await logError('redis-store', 'Failed to get thread by id', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to get thread by id',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to get thread by id', err);
   }
 }
@@ -193,11 +233,18 @@ export async function updateRedisThread(
       ...updates,
       updated_at: new Date().toISOString(),
     };
-    await redis.hset(`${THREAD_PREFIX}${threadId}`, prepareDataForRedis(updated));
+    await redis.hset(
+      `${THREAD_PREFIX}${threadId}`,
+      prepareDataForRedis(updated)
+    );
     await redis.zadd(THREADS_SET, { score: Date.now(), member: threadId });
     return updated;
   } catch (err) {
-    await logError('redis-store', 'Failed to update thread', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to update thread',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to update thread', err);
   }
 }
@@ -210,12 +257,21 @@ export async function listRedisThreads(
 ): Promise<Thread[]> {
   const redis = getRedisClient();
   try {
-    const threadIds = (await redis.zrange(THREADS_SET, offset, offset + limit - 1, { rev: true })) as string[];
+    const threadIds = (await redis.zrange(
+      THREADS_SET,
+      offset,
+      offset + limit - 1,
+      { rev: true }
+    )) as string[];
     const threads: Thread[] = [];
     for (const threadId of threadIds) {
       const thread = await getRedisThreadById(threadId);
       if (thread) {
-        if ((userId && thread.user_id !== userId) || (agentId && thread.agent_id !== agentId)) continue;
+        if (
+          (userId && thread.user_id !== userId) ||
+          (agentId && thread.agent_id !== agentId)
+        )
+          continue;
         threads.push(thread);
       }
     }
@@ -229,7 +285,9 @@ export async function listRedisThreads(
 export async function deleteRedisThread(threadId: string): Promise<boolean> {
   const redis = getRedisClient();
   try {
-    const messageIds = (await redis.smembers(`${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`)) as string[];
+    const messageIds = (await redis.smembers(
+      `${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`
+    )) as string[];
     for (const messageId of messageIds) {
       await redis.del(`${MESSAGE_PREFIX}${messageId}`);
     }
@@ -238,7 +296,11 @@ export async function deleteRedisThread(threadId: string): Promise<boolean> {
     await redis.zrem(THREADS_SET, threadId);
     return true;
   } catch (err) {
-    await logError('redis-store', 'Failed to delete thread', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to delete thread',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to delete thread', err);
   }
 }
@@ -258,23 +320,39 @@ export async function createRedisMessage(
     created_at: now,
   };
   try {
-    await redis.hset(`${MESSAGE_PREFIX}${messageId}`, prepareDataForRedis(message));
-    await redis.sadd(`${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`, messageId);
+    await redis.hset(
+      `${MESSAGE_PREFIX}${messageId}`,
+      prepareDataForRedis(message)
+    );
+    await redis.sadd(
+      `${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`,
+      messageId
+    );
     await redis.hset(`${THREAD_PREFIX}${threadId}`, { updated_at: now });
     return message;
   } catch (err) {
-    await logError('redis-store', 'Failed to create message', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to create message',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to create message', err);
   }
 }
 
-export async function getRedisMessageById(messageId: string): Promise<Message | null> {
+export async function getRedisMessageById(
+  messageId: string
+): Promise<Message | null> {
   const redis = getRedisClient();
   try {
     const data = await redis.hgetall(`${MESSAGE_PREFIX}${messageId}`);
     return parseRedisHashData<Message>(data as RedisHashData);
   } catch (err) {
-    await logError('redis-store', 'Failed to get message by id', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to get message by id',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to get message by id', err);
   }
 }
@@ -287,7 +365,9 @@ export async function getRedisMessagesByThreadId(
 ): Promise<Message[]> {
   const redis = getRedisClient();
   try {
-    const messageIds = (await redis.smembers(`${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`)) as string[];
+    const messageIds = (await redis.smembers(
+      `${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`
+    )) as string[];
     const sorted = messageIds.slice();
     if (order === 'asc') sorted.sort();
     else sorted.sort().reverse();
@@ -299,22 +379,33 @@ export async function getRedisMessagesByThreadId(
     }
     return messages;
   } catch (err) {
-    await logError('redis-store', 'Failed to get messages by thread id', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to get messages by thread id',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to get messages by thread id', err);
   }
 }
 
 export async function deleteRedisMessage(
-  threadId: string, 
+  threadId: string,
   messageId: string
 ): Promise<boolean> {
   const redis = getRedisClient();
   try {
     await redis.del(`${MESSAGE_PREFIX}${messageId}`);
-    await redis.srem(`${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`, messageId);
+    await redis.srem(
+      `${THREAD_PREFIX}${threadId}${THREAD_MESSAGES_SET_SUFFIX}`,
+      messageId
+    );
     return true;
   } catch (err) {
-    await logError('redis-store', 'Failed to delete message', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed to delete message',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed to delete message', err);
   }
 }
@@ -341,37 +432,57 @@ export async function hybridThreadSearch({
     // Fallback: If no vector results, do a Redis search
     if (!threadIds.length) {
       const redis = getRedisClient();
-      const allIds = (await redis.zrange(THREADS_SET, 0, -1, { rev: true })) as string[];
+      const allIds = (await redis.zrange(THREADS_SET, 0, -1, {
+        rev: true,
+      })) as string[];
       threadIds = allIds.slice(0, limit);
     }
     const threads: Thread[] = [];
     for (const threadId of threadIds) {
       const thread = await getRedisThreadById(threadId);
       if (thread) {
-        if ((userId && thread.user_id !== userId) || (agentId && thread.agent_id !== agentId)) continue;
+        if (
+          (userId && thread.user_id !== userId) ||
+          (agentId && thread.agent_id !== agentId)
+        )
+          continue;
         threads.push(thread);
       }
     }
     return threads;
   } catch (err) {
-    await logError('redis-store', 'Failed hybrid thread search', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed hybrid thread search',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed hybrid thread search', err);
   }
 }
 
 // --- Advanced RediSearch/Hybrid Search ---
-export async function advancedThreadHybridSearch(query: RediSearchHybridQuery): Promise<RediSearchHybridResult[]> {
+export async function advancedThreadHybridSearch(
+  query: RediSearchHybridQuery
+): Promise<RediSearchHybridResult[]> {
   try {
     const results = await runRediSearchHybridQuery(query);
     return results as RediSearchHybridResult[];
   } catch (err) {
-    await logError('redis-store', 'Failed advanced hybrid search', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed advanced hybrid search',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed advanced hybrid search', err);
   }
 }
 
 // --- QStash/Workflow Integration Example ---
-export async function enqueueThreadWorkflow(threadId: string, type: string, data: Record<string, unknown>) {
+export async function enqueueThreadWorkflow(
+  threadId: string,
+  type: string,
+  data: Record<string, unknown>
+) {
   const payload: QStashTaskPayload = {
     id: generateId(),
     type,
@@ -401,14 +512,21 @@ export async function createRedisEntity<T extends object>(
     const id = (entity as { id?: string }).id || generateId();
     const key = `${entityType}:${id}`;
     // Use correct prepareDataForRedis overload
-    const redisData = 'metadata' in entity
-      ? prepareDataForRedis(entity as { metadata?: Record<string, unknown> | null })
-      : prepareDataForRedisGeneric({ ...entity, id });
+    const redisData =
+      'metadata' in entity
+        ? prepareDataForRedis(
+            entity as { metadata?: Record<string, unknown> | null }
+          )
+        : prepareDataForRedisGeneric({ ...entity, id });
     await redis.hset(key, redisData);
     await redis.sadd(`${entityType}:ids`, id);
     return { ...entity, id };
   } catch (err) {
-    await logError('redis-store', `Failed to create entity: ${entityType}`, toLoggerError(err));
+    await logError(
+      'redis-store',
+      `Failed to create entity: ${entityType}`,
+      toLoggerError(err)
+    );
     if (shouldFallbackToBackup()) {
       const supabaseTable = getSupabaseTableName(entityType);
       if (supabaseTable) {
@@ -425,17 +543,26 @@ export async function createRedisEntity<T extends object>(
 /**
  * Generic get by ID for any entity type
  */
-export async function getRedisEntityById<T extends object>(entityType: string, id: string): Promise<T | null> {
+export async function getRedisEntityById<T extends object>(
+  entityType: string,
+  id: string
+): Promise<T | null> {
   try {
     const redis = getRedisClient();
     const data = await redis.hgetall(`${entityType}:${id}`);
     return parseRedisHashData<T>(data as RedisHashData);
   } catch (err) {
-    await logError('redis-store', `Failed to get entity by id: ${entityType}`, toLoggerError(err));
+    await logError(
+      'redis-store',
+      `Failed to get entity by id: ${entityType}`,
+      toLoggerError(err)
+    );
     if (shouldFallbackToBackup()) {
       const supabaseTable = getSupabaseTableName(entityType);
       if (supabaseTable) {
-        return getItemById(supabaseTable, id) as Promise<TableRow<typeof supabaseTable> | null> as unknown as Promise<T | null>;
+        return getItemById(supabaseTable, id) as Promise<TableRow<
+          typeof supabaseTable
+        > | null> as unknown as Promise<T | null>;
       }
     }
     throw new RedisStoreError(`Failed to get entity by id: ${entityType}`, err);
@@ -445,7 +572,12 @@ export async function getRedisEntityById<T extends object>(entityType: string, i
 /**
  * Generic update for any entity type
  */
-export async function updateRedisEntity<T extends object>(entityType: string, id: string, updates: Partial<T>, schema?: z.ZodType<T>): Promise<T | null> {
+export async function updateRedisEntity<T extends object>(
+  entityType: string,
+  id: string,
+  updates: Partial<T>,
+  schema?: z.ZodType<T>
+): Promise<T | null> {
   try {
     if (schema) schema.parse({ ...updates, id });
     const redis = getRedisClient();
@@ -456,7 +588,11 @@ export async function updateRedisEntity<T extends object>(entityType: string, id
     await redis.hset(key, prepareDataForRedis(updated));
     return updated;
   } catch (err) {
-    await logError('redis-store', `Failed to update entity: ${entityType}`, toLoggerError(err));
+    await logError(
+      'redis-store',
+      `Failed to update entity: ${entityType}`,
+      toLoggerError(err)
+    );
     if (shouldFallbackToBackup()) {
       const supabaseTable = getSupabaseTableName(entityType);
       if (supabaseTable) {
@@ -464,7 +600,9 @@ export async function updateRedisEntity<T extends object>(entityType: string, id
           supabaseTable,
           id,
           updates as TableUpdate<typeof supabaseTable>
-        ) as Promise<TableRow<typeof supabaseTable> | null> as unknown as Promise<T | null>;
+        ) as Promise<TableRow<
+          typeof supabaseTable
+        > | null> as unknown as Promise<T | null>;
       }
     }
     throw new RedisStoreError(`Failed to update entity: ${entityType}`, err);
@@ -474,7 +612,10 @@ export async function updateRedisEntity<T extends object>(entityType: string, id
 /**
  * Generic delete for any entity type
  */
-export async function deleteRedisEntity(entityType: string, id: string): Promise<boolean> {
+export async function deleteRedisEntity(
+  entityType: string,
+  id: string
+): Promise<boolean> {
   try {
     const redis = getRedisClient();
     const key = `${entityType}:${id}`;
@@ -482,7 +623,11 @@ export async function deleteRedisEntity(entityType: string, id: string): Promise
     await redis.srem(`${entityType}:ids`, id);
     return true;
   } catch (err) {
-    await logError('redis-store', `Failed to delete entity: ${entityType}`, toLoggerError(err));
+    await logError(
+      'redis-store',
+      `Failed to delete entity: ${entityType}`,
+      toLoggerError(err)
+    );
     if (shouldFallbackToBackup()) {
       const supabaseTable = getSupabaseTableName(entityType);
       if (supabaseTable) {
@@ -509,22 +654,34 @@ export async function listRedisEntities<T extends object>(
       pipeline.hgetall(`${entityType}:${id}`);
     }
     const results = await pipeline.exec();
-    let entities = (results as Array<Record<string, unknown> | null>).map((data) => {
-      if (!data) return null;
-      return parseRedisHashData<T>(data as RedisHashData);
-    }).filter((e): e is T => !!e);
+    let entities = (results as Array<Record<string, unknown> | null>)
+      .map((data) => {
+        if (!data) return null;
+        return parseRedisHashData<T>(data as RedisHashData);
+      })
+      .filter((e): e is T => !!e);
     if (options?.filters) {
-      const filterArray = Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }));
+      const filterArray = Object.entries(options.filters).map(
+        ([field, value]) => ({ field, operator: 'eq', value })
+      );
       entities = applyFilters(entities, filterArray);
     }
     if (options?.sortBy) {
-      entities = applyOrdering(entities, { column: options.sortBy, ascending: options.sortOrder !== 'DESC' });
+      entities = applyOrdering(entities, {
+        column: options.sortBy,
+        ascending: options.sortOrder !== 'DESC',
+      });
     }
     entities = applyPagination(entities, options?.limit, options?.offset);
-    if (options?.select) entities = entities.map(e => selectFields(e, options.select) as T);
+    if (options?.select)
+      entities = entities.map((e) => selectFields(e, options.select) as T);
     return entities;
   } catch (err) {
-    await logError('redis-store', `Failed to list entities: ${entityType}`, toLoggerError(err));
+    await logError(
+      'redis-store',
+      `Failed to list entities: ${entityType}`,
+      toLoggerError(err)
+    );
     if (shouldFallbackToBackup()) {
       const supabaseTable = getSupabaseTableName(entityType);
       if (supabaseTable) {
@@ -532,13 +689,24 @@ export async function listRedisEntities<T extends object>(
         const queryOptions: QueryOptions = {
           select: options?.select,
           filters: options?.filters
-            ? Object.entries(options.filters).map(([field, value]) => ({ field, operator: 'eq', value }))
+            ? Object.entries(options.filters).map(([field, value]) => ({
+                field,
+                operator: 'eq',
+                value,
+              }))
             : undefined,
-          orderBy: options?.sortBy ? { column: options.sortBy, ascending: options.sortOrder !== 'DESC' } : undefined,
+          orderBy: options?.sortBy
+            ? {
+                column: options.sortBy,
+                ascending: options.sortOrder !== 'DESC',
+              }
+            : undefined,
           limit: options?.limit,
           offset: options?.offset,
         };
-        return getData(supabaseTable, queryOptions) as Promise<TableRow<typeof supabaseTable>[]> as unknown as Promise<T[]>;
+        return getData(supabaseTable, queryOptions) as Promise<
+          TableRow<typeof supabaseTable>[]
+        > as unknown as Promise<T[]>;
       }
     }
     throw new RedisStoreError(`Failed to list entities: ${entityType}`, err);
@@ -546,7 +714,9 @@ export async function listRedisEntities<T extends object>(
 }
 
 // Example: Use pipelining for batch operations
-export async function batchGetThreads(threadIds: string[]): Promise<(Thread | null)[]> {
+export async function batchGetThreads(
+  threadIds: string[]
+): Promise<(Thread | null)[]> {
   try {
     const redis = getRedisClient();
     const pipeline = redis.pipeline();
@@ -564,7 +734,11 @@ export async function batchGetThreads(threadIds: string[]): Promise<(Thread | nu
       }
     });
   } catch (err) {
-    await logError('redis-store', 'Error in batchGetThreads', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Error in batchGetThreads',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Error in batchGetThreads', err);
   }
 }
@@ -584,7 +758,7 @@ export async function searchThreadsByMetadata(
 ): Promise<Thread[]> {
   try {
     const threads = await listRedisThreads(1000, 0); // Get all threads (or a large page)
-    const matches = threads.filter(thread => {
+    const matches = threads.filter((thread) => {
       if (!thread.metadata) return false;
       return Object.entries(query).every(([k, v]) => {
         return thread.metadata && thread.metadata[k] === v;
@@ -594,7 +768,11 @@ export async function searchThreadsByMetadata(
     const limit = options?.limit ?? 10;
     return matches.slice(offset, offset + limit);
   } catch (err) {
-    await logError('redis-store', 'Failed RediSearch query', toLoggerError(err));
+    await logError(
+      'redis-store',
+      'Failed RediSearch query',
+      toLoggerError(err)
+    );
     throw new RedisStoreError('Failed RediSearch query', err);
   }
 }
@@ -608,132 +786,259 @@ export async function createRedisUser(user: UserEntity): Promise<UserEntity> {
 export async function getRedisUserById(id: string): Promise<UserEntity | null> {
   return getRedisEntityById<UserEntity>('user', id);
 }
-export async function updateRedisUser(id: string, updates: Partial<UserEntity>): Promise<UserEntity | null> {
+export async function updateRedisUser(
+  id: string,
+  updates: Partial<UserEntity>
+): Promise<UserEntity | null> {
   return updateRedisEntity<UserEntity>('user', id, updates, UserEntitySchema);
 }
 export async function deleteRedisUser(id: string): Promise<boolean> {
   return deleteRedisEntity('user', id);
 }
-export async function listRedisUsers(options?: ListEntitiesOptions): Promise<UserEntity[]> {
+export async function listRedisUsers(
+  options?: ListEntitiesOptions
+): Promise<UserEntity[]> {
   return listRedisEntities<UserEntity>('user', options);
 }
 
 // --- WorkflowEntity CRUD ---
-export async function createRedisWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
-  return createRedisEntity<WorkflowEntity>('workflow', workflow, WorkflowEntitySchema);
+export async function createRedisWorkflow(
+  workflow: WorkflowEntity
+): Promise<WorkflowEntity> {
+  return createRedisEntity<WorkflowEntity>(
+    'workflow',
+    workflow,
+    WorkflowEntitySchema
+  );
 }
-export async function getRedisWorkflowById(id: string): Promise<WorkflowEntity | null> {
+export async function getRedisWorkflowById(
+  id: string
+): Promise<WorkflowEntity | null> {
   return getRedisEntityById<WorkflowEntity>('workflow', id);
 }
-export async function updateRedisWorkflow(id: string, updates: Partial<WorkflowEntity>): Promise<WorkflowEntity | null> {
-  return updateRedisEntity<WorkflowEntity>('workflow', id, updates, WorkflowEntitySchema);
+export async function updateRedisWorkflow(
+  id: string,
+  updates: Partial<WorkflowEntity>
+): Promise<WorkflowEntity | null> {
+  return updateRedisEntity<WorkflowEntity>(
+    'workflow',
+    id,
+    updates,
+    WorkflowEntitySchema
+  );
 }
 export async function deleteRedisWorkflow(id: string): Promise<boolean> {
   return deleteRedisEntity('workflow', id);
 }
-export async function listRedisWorkflows(options?: ListEntitiesOptions): Promise<WorkflowEntity[]> {
+export async function listRedisWorkflows(
+  options?: ListEntitiesOptions
+): Promise<WorkflowEntity[]> {
   return listRedisEntities<WorkflowEntity>('workflow', options);
 }
 
 // --- ToolExecutionEntity CRUD ---
-export async function createRedisToolExecution(exec: ToolExecutionEntity): Promise<ToolExecutionEntity> {
-  return createRedisEntity<ToolExecutionEntity>('tool_execution', exec, ToolExecutionEntitySchema);
+export async function createRedisToolExecution(
+  exec: ToolExecutionEntity
+): Promise<ToolExecutionEntity> {
+  return createRedisEntity<ToolExecutionEntity>(
+    'tool_execution',
+    exec,
+    ToolExecutionEntitySchema
+  );
 }
-export async function getRedisToolExecutionById(id: string): Promise<ToolExecutionEntity | null> {
+export async function getRedisToolExecutionById(
+  id: string
+): Promise<ToolExecutionEntity | null> {
   return getRedisEntityById<ToolExecutionEntity>('tool_execution', id);
 }
-export async function updateRedisToolExecution(id: string, updates: Partial<ToolExecutionEntity>): Promise<ToolExecutionEntity | null> {
-  return updateRedisEntity<ToolExecutionEntity>('tool_execution', id, updates, ToolExecutionEntitySchema);
+export async function updateRedisToolExecution(
+  id: string,
+  updates: Partial<ToolExecutionEntity>
+): Promise<ToolExecutionEntity | null> {
+  return updateRedisEntity<ToolExecutionEntity>(
+    'tool_execution',
+    id,
+    updates,
+    ToolExecutionEntitySchema
+  );
 }
 export async function deleteRedisToolExecution(id: string): Promise<boolean> {
   return deleteRedisEntity('tool_execution', id);
 }
-export async function listRedisToolExecutions(options?: ListEntitiesOptions): Promise<ToolExecutionEntity[]> {
+export async function listRedisToolExecutions(
+  options?: ListEntitiesOptions
+): Promise<ToolExecutionEntity[]> {
   return listRedisEntities<ToolExecutionEntity>('tool_execution', options);
 }
 
 // --- WorkflowNodeEntity CRUD ---
-export async function createRedisWorkflowNode(node: WorkflowNodeEntity): Promise<WorkflowNodeEntity> {
-  return createRedisEntity<WorkflowNodeEntity>('workflow_node', node, WorkflowNodeEntitySchema);
+export async function createRedisWorkflowNode(
+  node: WorkflowNodeEntity
+): Promise<WorkflowNodeEntity> {
+  return createRedisEntity<WorkflowNodeEntity>(
+    'workflow_node',
+    node,
+    WorkflowNodeEntitySchema
+  );
 }
-export async function getRedisWorkflowNodeById(id: string): Promise<WorkflowNodeEntity | null> {
+export async function getRedisWorkflowNodeById(
+  id: string
+): Promise<WorkflowNodeEntity | null> {
   return getRedisEntityById<WorkflowNodeEntity>('workflow_node', id);
 }
-export async function updateRedisWorkflowNode(id: string, updates: Partial<WorkflowNodeEntity>): Promise<WorkflowNodeEntity | null> {
-  return updateRedisEntity<WorkflowNodeEntity>('workflow_node', id, updates, WorkflowNodeEntitySchema);
+export async function updateRedisWorkflowNode(
+  id: string,
+  updates: Partial<WorkflowNodeEntity>
+): Promise<WorkflowNodeEntity | null> {
+  return updateRedisEntity<WorkflowNodeEntity>(
+    'workflow_node',
+    id,
+    updates,
+    WorkflowNodeEntitySchema
+  );
 }
 export async function deleteRedisWorkflowNode(id: string): Promise<boolean> {
   return deleteRedisEntity('workflow_node', id);
 }
-export async function listRedisWorkflowNodes(options?: ListEntitiesOptions): Promise<WorkflowNodeEntity[]> {
+export async function listRedisWorkflowNodes(
+  options?: ListEntitiesOptions
+): Promise<WorkflowNodeEntity[]> {
   return listRedisEntities<WorkflowNodeEntity>('workflow_node', options);
 }
 
 // --- LogEntryEntity CRUD ---
-export async function createRedisLogEntry(entry: LogEntryEntity): Promise<LogEntryEntity> {
-  return createRedisEntity<LogEntryEntity>('log_entry', entry, LogEntryEntitySchema);
+export async function createRedisLogEntry(
+  entry: LogEntryEntity
+): Promise<LogEntryEntity> {
+  return createRedisEntity<LogEntryEntity>(
+    'log_entry',
+    entry,
+    LogEntryEntitySchema
+  );
 }
-export async function getRedisLogEntryById(id: string): Promise<LogEntryEntity | null> {
+export async function getRedisLogEntryById(
+  id: string
+): Promise<LogEntryEntity | null> {
   return getRedisEntityById<LogEntryEntity>('log_entry', id);
 }
-export async function updateRedisLogEntry(id: string, updates: Partial<LogEntryEntity>): Promise<LogEntryEntity | null> {
-  return updateRedisEntity<LogEntryEntity>('log_entry', id, updates, LogEntryEntitySchema);
+export async function updateRedisLogEntry(
+  id: string,
+  updates: Partial<LogEntryEntity>
+): Promise<LogEntryEntity | null> {
+  return updateRedisEntity<LogEntryEntity>(
+    'log_entry',
+    id,
+    updates,
+    LogEntryEntitySchema
+  );
 }
 export async function deleteRedisLogEntry(id: string): Promise<boolean> {
   return deleteRedisEntity('log_entry', id);
 }
-export async function listRedisLogEntries(options?: ListEntitiesOptions): Promise<LogEntryEntity[]> {
+export async function listRedisLogEntries(
+  options?: ListEntitiesOptions
+): Promise<LogEntryEntity[]> {
   return listRedisEntities<LogEntryEntity>('log_entry', options);
 }
 
 // --- SettingsEntity CRUD ---
-export async function createRedisSettings(settings: SettingsEntity): Promise<SettingsEntity> {
-  return createRedisEntity<SettingsEntity>('settings', settings, SettingsEntitySchema);
+export async function createRedisSettings(
+  settings: SettingsEntity
+): Promise<SettingsEntity> {
+  return createRedisEntity<SettingsEntity>(
+    'settings',
+    settings,
+    SettingsEntitySchema
+  );
 }
-export async function getRedisSettingsById(id: string): Promise<SettingsEntity | null> {
+export async function getRedisSettingsById(
+  id: string
+): Promise<SettingsEntity | null> {
   return getRedisEntityById<SettingsEntity>('settings', id);
 }
-export async function updateRedisSettings(id: string, updates: Partial<SettingsEntity>): Promise<SettingsEntity | null> {
-  return updateRedisEntity<SettingsEntity>('settings', id, updates, SettingsEntitySchema);
+export async function updateRedisSettings(
+  id: string,
+  updates: Partial<SettingsEntity>
+): Promise<SettingsEntity | null> {
+  return updateRedisEntity<SettingsEntity>(
+    'settings',
+    id,
+    updates,
+    SettingsEntitySchema
+  );
 }
 export async function deleteRedisSettings(id: string): Promise<boolean> {
   return deleteRedisEntity('settings', id);
 }
-export async function listRedisSettings(options?: ListEntitiesOptions): Promise<SettingsEntity[]> {
+export async function listRedisSettings(
+  options?: ListEntitiesOptions
+): Promise<SettingsEntity[]> {
   return listRedisEntities<SettingsEntity>('settings', options);
 }
 
 // --- SystemMetricEntity CRUD ---
-export async function createRedisSystemMetric(metric: SystemMetricEntity): Promise<SystemMetricEntity> {
-  return createRedisEntity<SystemMetricEntity>('system_metric', metric, SystemMetricEntitySchema);
+export async function createRedisSystemMetric(
+  metric: SystemMetricEntity
+): Promise<SystemMetricEntity> {
+  return createRedisEntity<SystemMetricEntity>(
+    'system_metric',
+    metric,
+    SystemMetricEntitySchema
+  );
 }
-export async function getRedisSystemMetricById(id: string): Promise<SystemMetricEntity | null> {
+export async function getRedisSystemMetricById(
+  id: string
+): Promise<SystemMetricEntity | null> {
   return getRedisEntityById<SystemMetricEntity>('system_metric', id);
 }
-export async function updateRedisSystemMetric(id: string, updates: Partial<SystemMetricEntity>): Promise<SystemMetricEntity | null> {
-  return updateRedisEntity<SystemMetricEntity>('system_metric', id, updates, SystemMetricEntitySchema);
+export async function updateRedisSystemMetric(
+  id: string,
+  updates: Partial<SystemMetricEntity>
+): Promise<SystemMetricEntity | null> {
+  return updateRedisEntity<SystemMetricEntity>(
+    'system_metric',
+    id,
+    updates,
+    SystemMetricEntitySchema
+  );
 }
 export async function deleteRedisSystemMetric(id: string): Promise<boolean> {
   return deleteRedisEntity('system_metric', id);
 }
-export async function listRedisSystemMetrics(options?: ListEntitiesOptions): Promise<SystemMetricEntity[]> {
+export async function listRedisSystemMetrics(
+  options?: ListEntitiesOptions
+): Promise<SystemMetricEntity[]> {
   return listRedisEntities<SystemMetricEntity>('system_metric', options);
 }
 
 // --- TraceEntity CRUD ---
-export async function createRedisTrace(trace: TraceEntity): Promise<TraceEntity> {
+export async function createRedisTrace(
+  trace: TraceEntity
+): Promise<TraceEntity> {
   return createRedisEntity<TraceEntity>('trace', trace, TraceEntitySchema);
 }
-export async function getRedisTraceById(id: string): Promise<TraceEntity | null> {
+export async function getRedisTraceById(
+  id: string
+): Promise<TraceEntity | null> {
   return getRedisEntityById<TraceEntity>('trace', id);
 }
-export async function updateRedisTrace(id: string, updates: Partial<TraceEntity>): Promise<TraceEntity | null> {
-  return updateRedisEntity<TraceEntity>('trace', id, updates, TraceEntitySchema);
+export async function updateRedisTrace(
+  id: string,
+  updates: Partial<TraceEntity>
+): Promise<TraceEntity | null> {
+  return updateRedisEntity<TraceEntity>(
+    'trace',
+    id,
+    updates,
+    TraceEntitySchema
+  );
 }
 export async function deleteRedisTrace(id: string): Promise<boolean> {
   return deleteRedisEntity('trace', id);
 }
-export async function listRedisTraces(options?: ListEntitiesOptions): Promise<TraceEntity[]> {
+export async function listRedisTraces(
+  options?: ListEntitiesOptions
+): Promise<TraceEntity[]> {
   return listRedisEntities<TraceEntity>('trace', options);
 }
 
@@ -744,98 +1049,185 @@ export async function createRedisSpan(span: SpanEntity): Promise<SpanEntity> {
 export async function getRedisSpanById(id: string): Promise<SpanEntity | null> {
   return getRedisEntityById<SpanEntity>('span', id);
 }
-export async function updateRedisSpan(id: string, updates: Partial<SpanEntity>): Promise<SpanEntity | null> {
+export async function updateRedisSpan(
+  id: string,
+  updates: Partial<SpanEntity>
+): Promise<SpanEntity | null> {
   return updateRedisEntity<SpanEntity>('span', id, updates, SpanEntitySchema);
 }
 export async function deleteRedisSpan(id: string): Promise<boolean> {
   return deleteRedisEntity('span', id);
 }
-export async function listRedisSpans(options?: ListEntitiesOptions): Promise<SpanEntity[]> {
+export async function listRedisSpans(
+  options?: ListEntitiesOptions
+): Promise<SpanEntity[]> {
   return listRedisEntities<SpanEntity>('span', options);
 }
 
 // --- EventEntity CRUD ---
-export async function createRedisEvent(event: EventEntity): Promise<EventEntity> {
+export async function createRedisEvent(
+  event: EventEntity
+): Promise<EventEntity> {
   return createRedisEntity<EventEntity>('event', event, EventEntitySchema);
 }
-export async function getRedisEventById(id: string): Promise<EventEntity | null> {
+export async function getRedisEventById(
+  id: string
+): Promise<EventEntity | null> {
   return getRedisEntityById<EventEntity>('event', id);
 }
-export async function updateRedisEvent(id: string, updates: Partial<EventEntity>): Promise<EventEntity | null> {
-  return updateRedisEntity<EventEntity>('event', id, updates, EventEntitySchema);
+export async function updateRedisEvent(
+  id: string,
+  updates: Partial<EventEntity>
+): Promise<EventEntity | null> {
+  return updateRedisEntity<EventEntity>(
+    'event',
+    id,
+    updates,
+    EventEntitySchema
+  );
 }
 export async function deleteRedisEvent(id: string): Promise<boolean> {
   return deleteRedisEntity('event', id);
 }
-export async function listRedisEvents(options?: ListEntitiesOptions): Promise<EventEntity[]> {
+export async function listRedisEvents(
+  options?: ListEntitiesOptions
+): Promise<EventEntity[]> {
   return listRedisEntities<EventEntity>('event', options);
 }
 
 // --- ProviderEntity CRUD ---
-export async function createRedisProvider(provider: ProviderEntity): Promise<ProviderEntity> {
-  return createRedisEntity<ProviderEntity>('provider', provider, ProviderEntitySchema);
+export async function createRedisProvider(
+  provider: ProviderEntity
+): Promise<ProviderEntity> {
+  return createRedisEntity<ProviderEntity>(
+    'provider',
+    provider,
+    ProviderEntitySchema
+  );
 }
-export async function getRedisProviderById(id: string): Promise<ProviderEntity | null> {
+export async function getRedisProviderById(
+  id: string
+): Promise<ProviderEntity | null> {
   return getRedisEntityById<ProviderEntity>('provider', id);
 }
-export async function updateRedisProvider(id: string, updates: Partial<ProviderEntity>): Promise<ProviderEntity | null> {
-  return updateRedisEntity<ProviderEntity>('provider', id, updates, ProviderEntitySchema);
+export async function updateRedisProvider(
+  id: string,
+  updates: Partial<ProviderEntity>
+): Promise<ProviderEntity | null> {
+  return updateRedisEntity<ProviderEntity>(
+    'provider',
+    id,
+    updates,
+    ProviderEntitySchema
+  );
 }
 export async function deleteRedisProvider(id: string): Promise<boolean> {
   return deleteRedisEntity('provider', id);
 }
-export async function listRedisProviders(options?: ListEntitiesOptions): Promise<ProviderEntity[]> {
+export async function listRedisProviders(
+  options?: ListEntitiesOptions
+): Promise<ProviderEntity[]> {
   return listRedisEntities<ProviderEntity>('provider', options);
 }
 
 // --- ModelEntity CRUD ---
-export async function createRedisModel(model: ModelEntity): Promise<ModelEntity> {
+export async function createRedisModel(
+  model: ModelEntity
+): Promise<ModelEntity> {
   return createRedisEntity<ModelEntity>('model', model, ModelEntitySchema);
 }
-export async function getRedisModelById(id: string): Promise<ModelEntity | null> {
+export async function getRedisModelById(
+  id: string
+): Promise<ModelEntity | null> {
   return getRedisEntityById<ModelEntity>('model', id);
 }
-export async function updateRedisModel(id: string, updates: Partial<ModelEntity>): Promise<ModelEntity | null> {
-  return updateRedisEntity<ModelEntity>('model', id, updates, ModelEntitySchema);
+export async function updateRedisModel(
+  id: string,
+  updates: Partial<ModelEntity>
+): Promise<ModelEntity | null> {
+  return updateRedisEntity<ModelEntity>(
+    'model',
+    id,
+    updates,
+    ModelEntitySchema
+  );
 }
 export async function deleteRedisModel(id: string): Promise<boolean> {
   return deleteRedisEntity('model', id);
 }
-export async function listRedisModels(options?: ListEntitiesOptions): Promise<ModelEntity[]> {
+export async function listRedisModels(
+  options?: ListEntitiesOptions
+): Promise<ModelEntity[]> {
   return listRedisEntities<ModelEntity>('model', options);
 }
 
 // --- AuthProviderEntity CRUD ---
-export async function createRedisAuthProvider(authProvider: AuthProviderEntity): Promise<AuthProviderEntity> {
-  return createRedisEntity<AuthProviderEntity>('auth_provider', authProvider, AuthProviderEntitySchema);
+export async function createRedisAuthProvider(
+  authProvider: AuthProviderEntity
+): Promise<AuthProviderEntity> {
+  return createRedisEntity<AuthProviderEntity>(
+    'auth_provider',
+    authProvider,
+    AuthProviderEntitySchema
+  );
 }
-export async function getRedisAuthProviderById(id: string): Promise<AuthProviderEntity | null> {
+export async function getRedisAuthProviderById(
+  id: string
+): Promise<AuthProviderEntity | null> {
   return getRedisEntityById<AuthProviderEntity>('auth_provider', id);
 }
-export async function updateRedisAuthProvider(id: string, updates: Partial<AuthProviderEntity>): Promise<AuthProviderEntity | null> {
-  return updateRedisEntity<AuthProviderEntity>('auth_provider', id, updates, AuthProviderEntitySchema);
+export async function updateRedisAuthProvider(
+  id: string,
+  updates: Partial<AuthProviderEntity>
+): Promise<AuthProviderEntity | null> {
+  return updateRedisEntity<AuthProviderEntity>(
+    'auth_provider',
+    id,
+    updates,
+    AuthProviderEntitySchema
+  );
 }
 export async function deleteRedisAuthProvider(id: string): Promise<boolean> {
   return deleteRedisEntity('auth_provider', id);
 }
-export async function listRedisAuthProviders(options?: ListEntitiesOptions): Promise<AuthProviderEntity[]> {
+export async function listRedisAuthProviders(
+  options?: ListEntitiesOptions
+): Promise<AuthProviderEntity[]> {
   return listRedisEntities<AuthProviderEntity>('auth_provider', options);
 }
 
 // --- DashboardConfigEntity CRUD ---
-export async function createRedisDashboardConfig(config: DashboardConfigEntity): Promise<DashboardConfigEntity> {
-  return createRedisEntity<DashboardConfigEntity>('dashboard_config', config, DashboardConfigEntitySchema);
+export async function createRedisDashboardConfig(
+  config: DashboardConfigEntity
+): Promise<DashboardConfigEntity> {
+  return createRedisEntity<DashboardConfigEntity>(
+    'dashboard_config',
+    config,
+    DashboardConfigEntitySchema
+  );
 }
-export async function getRedisDashboardConfigById(id: string): Promise<DashboardConfigEntity | null> {
+export async function getRedisDashboardConfigById(
+  id: string
+): Promise<DashboardConfigEntity | null> {
   return getRedisEntityById<DashboardConfigEntity>('dashboard_config', id);
 }
-export async function updateRedisDashboardConfig(id: string, updates: Partial<DashboardConfigEntity>): Promise<DashboardConfigEntity | null> {
-  return updateRedisEntity<DashboardConfigEntity>('dashboard_config', id, updates, DashboardConfigEntitySchema);
+export async function updateRedisDashboardConfig(
+  id: string,
+  updates: Partial<DashboardConfigEntity>
+): Promise<DashboardConfigEntity | null> {
+  return updateRedisEntity<DashboardConfigEntity>(
+    'dashboard_config',
+    id,
+    updates,
+    DashboardConfigEntitySchema
+  );
 }
 export async function deleteRedisDashboardConfig(id: string): Promise<boolean> {
   return deleteRedisEntity('dashboard_config', id);
 }
-export async function listRedisDashboardConfigs(options?: ListEntitiesOptions): Promise<DashboardConfigEntity[]> {
+export async function listRedisDashboardConfigs(
+  options?: ListEntitiesOptions
+): Promise<DashboardConfigEntity[]> {
   return listRedisEntities<DashboardConfigEntity>('dashboard_config', options);
 }
 

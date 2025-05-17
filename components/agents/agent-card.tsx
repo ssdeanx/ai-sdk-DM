@@ -1,8 +1,15 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,11 +17,20 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import type { Agent } from "@/types/agents"
-import { MoreHorizontal, MessageSquare, Edit, Trash2, Bot, Brain, Search, UserCircle } from "lucide-react"
-import { EditAgentDialog } from "@/components/agents/edit-agent-dialog"
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import type { Agent } from '@/types/agents';
+import {
+  MoreHorizontal,
+  MessageSquare,
+  Edit,
+  Trash2,
+  Bot,
+  Brain,
+  Search,
+  UserCircle,
+} from 'lucide-react';
+import { EditAgentDialog } from '@/components/agents/edit-agent-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,49 +40,49 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { useRouter } from "next/navigation"
+} from '@/components/ui/alert-dialog';
+import { useRouter } from 'next/navigation';
 
 interface AgentCardProps {
-  agent: Agent
-  onDelete: (id: string) => Promise<void>
-  onUpdate: (agent: Agent) => Promise<void>
+  agent: Agent;
+  onDelete: (id: string) => Promise<void>;
+  onUpdate: (agent: Agent) => Promise<void>;
 }
 
 export function AgentCard({ agent, onDelete, onUpdate }: AgentCardProps) {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const router = useRouter()
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   const getAgentIcon = (type: string) => {
     switch (type) {
-      case "assistant":
-        return <Bot className="h-5 w-5 text-blue-400" />
-      case "chatbot":
-        return <MessageSquare className="h-5 w-5 text-green-400" />
-      case "researcher":
-        return <Search className="h-5 w-5 text-purple-400" />
+      case 'assistant':
+        return <Bot className="h-5 w-5 text-blue-400" />;
+      case 'chatbot':
+        return <MessageSquare className="h-5 w-5 text-green-400" />;
+      case 'researcher':
+        return <Search className="h-5 w-5 text-purple-400" />;
       default:
-        return <UserCircle className="h-5 w-5 text-gray-400" />
+        return <UserCircle className="h-5 w-5 text-gray-400" />;
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      setIsDeleting(true)
-      await onDelete(agent.id)
-      setIsDeleteDialogOpen(false)
+      setIsDeleting(true);
+      await onDelete(agent.id);
+      setIsDeleteDialogOpen(false);
     } catch (error) {
-      console.error("Error deleting agent:", error)
+      console.error('Error deleting agent:', error);
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const handleChat = () => {
-    router.push(`/chat?agent=${agent.id}`)
-  }
+    router.push(`/chat?agent=${agent.id}`);
+  };
 
   return (
     <>
@@ -75,8 +91,11 @@ export function AgentCard({ agent, onDelete, onUpdate }: AgentCardProps) {
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-2">
               {getAgentIcon(agent.type)}
-              <Badge variant={agent.status === "active" ? "default" : "secondary"} className="text-xs">
-                {agent.status === "active" ? "Active" : "Inactive"}
+              <Badge
+                variant={agent.status === 'active' ? 'default' : 'secondary'}
+                className="text-xs"
+              >
+                {agent.status === 'active' ? 'Active' : 'Inactive'}
               </Badge>
             </div>
             <DropdownMenu>
@@ -85,7 +104,10 @@ export function AgentCard({ agent, onDelete, onUpdate }: AgentCardProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-gray-950 border-gray-800">
+              <DropdownMenuContent
+                align="end"
+                className="bg-gray-950 border-gray-800"
+              >
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleChat}>
@@ -107,18 +129,28 @@ export function AgentCard({ agent, onDelete, onUpdate }: AgentCardProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <CardTitle className="text-lg font-bold text-white mt-2">{agent.name}</CardTitle>
-          <CardDescription className="text-gray-400 line-clamp-2">{agent.description}</CardDescription>
+          <CardTitle className="text-lg font-bold text-white mt-2">
+            {agent.name}
+          </CardTitle>
+          <CardDescription className="text-gray-400 line-clamp-2">
+            {agent.description}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-2">
             <Brain className="h-4 w-4 text-gray-500" />
             <span className="text-sm text-gray-300">{agent.model}</span>
           </div>
-          <div className="text-xs text-gray-500">Created: {new Date(agent.createdAt).toLocaleDateString()}</div>
+          <div className="text-xs text-gray-500">
+            Created: {new Date(agent.createdAt).toLocaleDateString()}
+          </div>
         </CardContent>
         <CardFooter className="flex justify-between pt-2">
-          <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditDialogOpen(true)}
+          >
             <Edit className="h-3.5 w-3.5 mr-1.5" />
             Edit
           </Button>
@@ -136,30 +168,33 @@ export function AgentCard({ agent, onDelete, onUpdate }: AgentCardProps) {
         onUpdateAgent={onUpdate}
       />
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent className="bg-gray-950 border-gray-800">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the agent "{agent.name}" and remove it from our
-              servers.
+              This action cannot be undone. This will permanently delete the
+              agent "{agent.name}" and remove it from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
-                e.preventDefault()
-                handleDelete()
+                e.preventDefault();
+                handleDelete();
               }}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

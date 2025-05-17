@@ -8,15 +8,12 @@
  * @module upstash-supabase-adapter
  */
 
-import {
-  getRedisClient,
-  getVectorClient
-} from './upstashClients';
+import { getRedisClient, getVectorClient } from './upstashClients';
 import {
   VectorDocument,
   VectorMetadata,
   VectorQueryOptions,
-  VectorStoreError
+  VectorStoreError,
 } from './upstashTypes';
 import { upstashLogger } from './upstash-logger';
 import { generateEmbedding } from '../../ai-integration';
@@ -28,7 +25,7 @@ import {
   listRedisEntities,
   batchGetThreads,
   searchThreadsByMetadata,
-  ListEntitiesOptions
+  ListEntitiesOptions,
 } from './redis-store';
 import {
   Thread,
@@ -36,14 +33,17 @@ import {
   AgentState,
   ToolExecutionEntity,
   WorkflowNode,
-  LogEntry
+  LogEntry,
 } from './upstashTypes';
 import type { Database } from '@/types/supabase';
 
 export type TableName = keyof Database['public']['Tables'];
-export type TableRow<T extends TableName = TableName> = Database['public']['Tables'][T]['Row'];
-export type TableInsert<T extends TableName = TableName> = Database['public']['Tables'][T]['Insert'];
-export type TableUpdate<T extends TableName = TableName> = Database['public']['Tables'][T]['Update'];
+export type TableRow<T extends TableName = TableName> =
+  Database['public']['Tables'][T]['Row'];
+export type TableInsert<T extends TableName = TableName> =
+  Database['public']['Tables'][T]['Insert'];
+export type TableUpdate<T extends TableName = TableName> =
+  Database['public']['Tables'][T]['Update'];
 
 // --- Helper Functions ---
 
@@ -70,7 +70,7 @@ function getRowKey(tableName: string, id: string): string {
 
 /**
  * Generates embeddings for text using AI integration
- * 
+ *
  * @param text - Text to generate embeddings for
  * @returns Promise resolving to embeddings array
  */
@@ -80,7 +80,11 @@ async function generateEmbeddings(text: string): Promise<number[]> {
     // generateEmbedding returns Float32Array or number[]
     return Array.isArray(embedding) ? embedding : Array.from(embedding);
   } catch (error) {
-    upstashLogger.error('supabase-adapter', 'Error generating embeddings', error instanceof Error ? error : { message: String(error) });
+    upstashLogger.error(
+      'supabase-adapter',
+      'Error generating embeddings',
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw new VectorStoreError('Failed to generate embeddings');
   }
 }
@@ -92,23 +96,61 @@ async function generateEmbeddings(text: string): Promise<number[]> {
  * @param filters - Filter options
  * @returns Filtered list of items
  */
-function applyFilters<T>(items: T[], filters?: Array<{ field: string; operator: string; value: unknown }>): T[] {
+function applyFilters<T>(
+  items: T[],
+  filters?: Array<{ field: string; operator: string; value: unknown }>
+): T[] {
   if (!filters || filters.length === 0) return items;
-  return items.filter(item => {
-    return filters.every(filter => {
+  return items.filter((item) => {
+    return filters.every((filter) => {
       const value = (item as Record<string, unknown>)[filter.field];
       switch (filter.operator) {
-        case 'eq': return value === filter.value;
-        case 'neq': return value !== filter.value;
-        case 'gt': return typeof value === 'number' && typeof filter.value === 'number' && value > filter.value;
-        case 'gte': return typeof value === 'number' && typeof filter.value === 'number' && value >= filter.value;
-        case 'lt': return typeof value === 'number' && typeof filter.value === 'number' && value < filter.value;
-        case 'lte': return typeof value === 'number' && typeof filter.value === 'number' && value <= filter.value;
-        case 'like': return typeof value === 'string' && typeof filter.value === 'string' && value.includes(filter.value);
-        case 'ilike': return typeof value === 'string' && typeof filter.value === 'string' && value.toLowerCase().includes(filter.value.toLowerCase());
-        case 'in': return Array.isArray(filter.value) && filter.value.includes(value);
-        case 'is': return value === filter.value;
-        default: return false;
+        case 'eq':
+          return value === filter.value;
+        case 'neq':
+          return value !== filter.value;
+        case 'gt':
+          return (
+            typeof value === 'number' &&
+            typeof filter.value === 'number' &&
+            value > filter.value
+          );
+        case 'gte':
+          return (
+            typeof value === 'number' &&
+            typeof filter.value === 'number' &&
+            value >= filter.value
+          );
+        case 'lt':
+          return (
+            typeof value === 'number' &&
+            typeof filter.value === 'number' &&
+            value < filter.value
+          );
+        case 'lte':
+          return (
+            typeof value === 'number' &&
+            typeof filter.value === 'number' &&
+            value <= filter.value
+          );
+        case 'like':
+          return (
+            typeof value === 'string' &&
+            typeof filter.value === 'string' &&
+            value.includes(filter.value)
+          );
+        case 'ilike':
+          return (
+            typeof value === 'string' &&
+            typeof filter.value === 'string' &&
+            value.toLowerCase().includes(filter.value.toLowerCase())
+          );
+        case 'in':
+          return Array.isArray(filter.value) && filter.value.includes(value);
+        case 'is':
+          return value === filter.value;
+        default:
+          return false;
       }
     });
   });
@@ -121,7 +163,10 @@ function applyFilters<T>(items: T[], filters?: Array<{ field: string; operator: 
  * @param orderBy - Order options
  * @returns Ordered list of items
  */
-function applyOrdering<T>(items: T[], orderBy?: { column: string; ascending?: boolean }): T[] {
+function applyOrdering<T>(
+  items: T[],
+  orderBy?: { column: string; ascending?: boolean }
+): T[] {
   if (!orderBy) return items;
   const { column, ascending = true } = orderBy;
   return [...items].sort((a, b) => {
@@ -157,7 +202,10 @@ function applyPagination<T>(items: T[], limit?: number, offset?: number): T[] {
  * @param select - Fields to select
  * @returns Item with selected fields
  */
-function selectFields<T extends object>(item: T, select?: string[]): Partial<T> {
+function selectFields<T extends object>(
+  item: T,
+  select?: string[]
+): Partial<T> {
   if (!select || select.length === 0) return item;
   const result: Partial<T> = {};
   for (const field of select) {
@@ -191,10 +239,13 @@ export function getPrimaryKeyForTable(tableName: string): string | string[] {
  * For composite keys, returns an array of values in the correct order.
  * For single key, returns the value directly.
  */
-export function getPrimaryKeyValue(tableName: string, item: unknown): string | string[] {
+export function getPrimaryKeyValue(
+  tableName: string,
+  item: unknown
+): string | string[] {
   const key = getPrimaryKeyForTable(tableName);
   if (Array.isArray(key)) {
-    return key.map(k => (item as Record<string, string>)[k]);
+    return key.map((k) => (item as Record<string, string>)[k]);
   }
   return (item as Record<string, string>)[key];
 }
@@ -215,10 +266,13 @@ export type QueryOptions = {
 /**
  * Gets an item by ID from a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function getItemById<T extends TableName>(tableName: T, id: string | string[]): Promise<TableRow<T> | null> {
+export async function getItemById<T extends TableName>(
+  tableName: T,
+  id: string | string[]
+): Promise<TableRow<T> | null> {
   try {
     const redis = getRedisClient();
-    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(":") : id);
+    const rowKey = getRowKey(tableName, Array.isArray(id) ? id.join(':') : id);
     const row = await redis.hgetall(rowKey);
     if (!row || Object.keys(row).length === 0) return null;
     const parsed: Record<string, unknown> = {};
@@ -231,7 +285,11 @@ export async function getItemById<T extends TableName>(tableName: T, id: string 
     }
     return { ...parsed, id } as TableRow<T>;
   } catch (error) {
-    await upstashLogger.error('supabase-adapter', `Error getting item by id from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      `Error getting item by id from table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     return null;
   }
 }
@@ -239,13 +297,16 @@ export async function getItemById<T extends TableName>(tableName: T, id: string 
 /**
  * Creates an item in a table (Upstash-first, fallback to Supabase/LibSQL)
  */
-export async function createItem<T extends TableName>(tableName: T, item: TableInsert<T>): Promise<TableRow<T>> {
+export async function createItem<T extends TableName>(
+  tableName: T,
+  item: TableInsert<T>
+): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
     const keyValue = getPrimaryKeyValue(tableName, item);
     let id: string;
     if (Array.isArray(keyValue)) {
-      id = keyValue.join(":");
+      id = keyValue.join(':');
     } else {
       id = keyValue;
     }
@@ -258,7 +319,11 @@ export async function createItem<T extends TableName>(tableName: T, item: TableI
     await redis.sadd(`${getTableKey(tableName)}:ids`, id);
     return { ...item, id } as TableRow<T>;
   } catch (error) {
-    await upstashLogger.error('supabase-adapter', `Error creating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      `Error creating item in table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw error;
   }
 }
@@ -273,7 +338,7 @@ export async function updateItem<T extends TableName>(
 ): Promise<TableRow<T>> {
   try {
     const redis = getRedisClient();
-    const keyValue = Array.isArray(id) ? id.join(":") : id;
+    const keyValue = Array.isArray(id) ? id.join(':') : id;
     const rowKey = getRowKey(tableName, keyValue);
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(updates)) {
@@ -281,7 +346,8 @@ export async function updateItem<T extends TableName>(
     }
     await redis.hset(rowKey, row);
     const updated = await redis.hgetall(rowKey);
-    if (!updated || Object.keys(updated).length === 0) throw new Error('Update failed');
+    if (!updated || Object.keys(updated).length === 0)
+      throw new Error('Update failed');
     const parsed: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(updated)) {
       try {
@@ -292,7 +358,11 @@ export async function updateItem<T extends TableName>(
     }
     return { ...parsed, id: keyValue } as TableRow<T>;
   } catch (error) {
-    await upstashLogger.error('supabase-adapter', `Error updating item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      `Error updating item in table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw error;
   }
 }
@@ -306,13 +376,17 @@ export async function deleteItem<T extends TableName>(
 ): Promise<boolean> {
   try {
     const redis = getRedisClient();
-    const keyValue = Array.isArray(id) ? id.join(":") : id;
+    const keyValue = Array.isArray(id) ? id.join(':') : id;
     const rowKey = getRowKey(tableName, keyValue);
     await redis.del(rowKey);
     await redis.srem(`${getTableKey(tableName)}:ids`, keyValue);
     return true;
   } catch (error) {
-    await upstashLogger.error('supabase-adapter', `Error deleting item in table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      `Error deleting item in table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     return false;
   }
 }
@@ -333,26 +407,35 @@ export async function getData<T extends TableName>(
       pipeline.hgetall(getRowKey(tableName, id));
     }
     const results = await pipeline.exec();
-    const rows = (results as Array<Record<string, unknown> | null>).map((data, i) => {
-      if (!data) return null;
-      const parsed: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(data)) {
-        try {
-          parsed[k] = JSON.parse(v as string);
-        } catch {
-          parsed[k] = v;
+    const rows = (results as Array<Record<string, unknown> | null>)
+      .map((data, i) => {
+        if (!data) return null;
+        const parsed: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(data)) {
+          try {
+            parsed[k] = JSON.parse(v as string);
+          } catch {
+            parsed[k] = v;
+          }
         }
-      }
-      return { ...parsed, id: ids[i] } as TableRow<T>;
-    }).filter(Boolean) as TableRow<T>[];
+        return { ...parsed, id: ids[i] } as TableRow<T>;
+      })
+      .filter(Boolean) as TableRow<T>[];
     let filtered = rows;
     if (options?.filters) filtered = applyFilters(filtered, options.filters);
     if (options?.orderBy) filtered = applyOrdering(filtered, options.orderBy);
     filtered = applyPagination(filtered, options?.limit, options?.offset);
-    if (options?.select) filtered = filtered.map(e => selectFields(e, options.select) as TableRow<T>);
+    if (options?.select)
+      filtered = filtered.map(
+        (e) => selectFields(e, options.select) as TableRow<T>
+      );
     return filtered;
   } catch (error) {
-    await upstashLogger.error('supabase-adapter', `Error getting data from table ${String(tableName)}`, error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      `Error getting data from table ${String(tableName)}`,
+      error instanceof Error ? error : { message: String(error) }
+    );
     return [];
   }
 }
@@ -380,17 +463,23 @@ export async function vectorSearch(
     } else if (typeof options?.filter === 'string') {
       filter = options.filter;
     }
-    const searchQuery = Array.isArray(query) ? query : await generateEmbeddings(query);
+    const searchQuery = Array.isArray(query)
+      ? query
+      : await generateEmbeddings(query);
     const result = await vector.query({
       vector: searchQuery,
       topK,
       includeMetadata,
       includeVectors,
-      filter
+      filter,
     });
     return result;
   } catch (error: unknown) {
-    await upstashLogger.error('supabase-adapter', 'Error performing vector search', error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      'Error performing vector search',
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw new Error('Vector search failed');
   }
 }
@@ -411,7 +500,11 @@ export async function upsertVectors(
     const vector = getVectorClient();
     return await vector.upsert(vectors, options);
   } catch (error: unknown) {
-    await upstashLogger.error('supabase-adapter', 'Error upserting vectors', error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      'Error upserting vectors',
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw new Error('Upsert vectors failed');
   }
 }
@@ -432,14 +525,18 @@ export async function upsertSupabaseVectors(
     const vector = getVectorClient();
     return await vector.upsert(vectors, options);
   } catch (error: unknown) {
-    await upstashLogger.error('supabase-adapter', 'Error upserting supabase vectors', error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      'Error upserting supabase vectors',
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw new Error('Upsert supabase vectors failed');
   }
 }
 
 /**
  * Generates embeddings and upserts text to vector store
- * 
+ *
  * @param texts - Array of text items with IDs and optional metadata
  * @param options - Upsert options
  * @returns Promise resolving to upsert results
@@ -454,19 +551,23 @@ export async function upsertTexts(
       texts.map(async ({ id, text, metadata }) => ({
         id,
         vector: await generateEmbeddings(text),
-        metadata
+        metadata,
       }))
     );
     return await upsertSupabaseVectors(vectors, options);
   } catch (error: unknown) {
-    await upstashLogger.error('supabase-adapter', 'Error upserting texts', error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      'Error upserting texts',
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw new Error('Upsert texts failed');
   }
 }
 
 /**
  * Performs a semantic search using text query
- * 
+ *
  * @param text - Text query
  * @param options - Search options
  * @returns Promise resolving to search results
@@ -480,7 +581,11 @@ export async function semanticSearch(
     const embedding = await generateEmbeddings(text);
     return await vectorSearch(embedding, options);
   } catch (error: unknown) {
-    await upstashLogger.error('supabase-adapter', 'Error performing semantic search', error instanceof Error ? error : { message: String(error) });
+    await upstashLogger.error(
+      'supabase-adapter',
+      'Error performing semantic search',
+      error instanceof Error ? error : { message: String(error) }
+    );
     throw new Error('Semantic search failed');
   }
 }
@@ -495,7 +600,7 @@ export const entityApi = {
   batchGetThreads,
   searchThreadsByMetadata,
   upsertTexts,
-  semanticSearch
+  semanticSearch,
 };
 
 // --- Enhanced Table CRUD helpers ---
@@ -514,18 +619,29 @@ export async function upsertItem<T extends TableName>(
   return createItem(tableName, item as TableInsert<T>);
 }
 
-export async function existsItem<T extends TableName>(tableName: T, id: string): Promise<boolean> {
+export async function existsItem<T extends TableName>(
+  tableName: T,
+  id: string
+): Promise<boolean> {
   const found = await getItemById(tableName, id);
   return !!found;
 }
 
-export async function countItems<T extends TableName>(tableName: T, options?: QueryOptions): Promise<number> {
+export async function countItems<T extends TableName>(
+  tableName: T,
+  options?: QueryOptions
+): Promise<number> {
   const all = await getData(tableName, options);
   return all.length;
 }
 
-export async function batchGetItems<T extends TableName>(tableName: T, ids: string[]): Promise<(TableRow<T> | null)[]> {
-  return Promise.all(ids.map(id => getItemById(tableName, id) as Promise<TableRow<T> | null>));
+export async function batchGetItems<T extends TableName>(
+  tableName: T,
+  ids: string[]
+): Promise<(TableRow<T> | null)[]> {
+  return Promise.all(
+    ids.map((id) => getItemById(tableName, id) as Promise<TableRow<T> | null>)
+  );
 }
 
 // --- Export all types for downstream use ---
@@ -539,7 +655,7 @@ export type {
   LogEntry,
   VectorDocument,
   VectorMetadata,
-  VectorQueryOptions
+  VectorQueryOptions,
 };
 
 export { applyFilters, applyOrdering, applyPagination, selectFields };

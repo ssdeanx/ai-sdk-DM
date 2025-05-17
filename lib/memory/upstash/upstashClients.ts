@@ -10,7 +10,7 @@ import {
   UpstashEntityBase,
   UpstashEntitySchema,
   VectorIndexConfig,
-  RediSearchHybridResult
+  RediSearchHybridResult,
 } from './upstashTypes';
 
 export type IndexConfig = VectorIndexConfig;
@@ -54,7 +54,10 @@ let upstashQueryClient: Query | null = null;
  * Custom error class for Upstash client-related issues.
  */
 export class UpstashClientError extends Error {
-  constructor(message: string, public cause?: unknown) {
+  constructor(
+    message: string,
+    public cause?: unknown
+  ) {
     super(message);
     this.name = 'UpstashClientError';
     Object.setPrototypeOf(this, UpstashClientError.prototype);
@@ -71,14 +74,19 @@ export function validateEnvVars() {
   try {
     const result = EnvVarsSchema.safeParse(process.env);
     if (!result.success) {
-      throw new UpstashClientError(`Environment variables validation failed: ${result.error.message}`);
+      throw new UpstashClientError(
+        `Environment variables validation failed: ${result.error.message}`
+      );
     }
     return result.data;
   } catch (error: unknown) {
     if (error instanceof UpstashClientError) {
       throw error;
     }
-    throw new UpstashClientError('Failed to validate environment variables', error);
+    throw new UpstashClientError(
+      'Failed to validate environment variables',
+      error
+    );
   }
 }
 
@@ -99,15 +107,25 @@ export const getRedisClient = (): Redis => {
   const token = env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
-    upstashLogger.error('upstashClients', 'Upstash Redis credentials not found. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.');
-    throw new UpstashClientError("Upstash Redis credentials not found. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.");
+    upstashLogger.error(
+      'upstashClients',
+      'Upstash Redis credentials not found. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.'
+    );
+    throw new UpstashClientError(
+      'Upstash Redis credentials not found. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables.'
+    );
   }
 
   try {
     const configValidation = RedisConfigSchema.safeParse({ url, token });
     if (!configValidation.success) {
-      upstashLogger.error('upstashClients', `Invalid Redis configuration: ${configValidation.error.message}`);
-      throw new UpstashClientError(`Invalid Redis configuration: ${configValidation.error.message}`);
+      upstashLogger.error(
+        'upstashClients',
+        `Invalid Redis configuration: ${configValidation.error.message}`
+      );
+      throw new UpstashClientError(
+        `Invalid Redis configuration: ${configValidation.error.message}`
+      );
     }
     redisClientInstance = new Redis({
       url,
@@ -115,8 +133,15 @@ export const getRedisClient = (): Redis => {
     });
     upstashLogger.info('upstashClients', 'Upstash Redis client initialized.');
   } catch (error: unknown) {
-    upstashLogger.error('upstashClients', 'Failed to initialize Upstash Redis client.', error instanceof Error ? error : { message: String(error) });
-    throw new UpstashClientError("Failed to initialize Upstash Redis client.", error);
+    upstashLogger.error(
+      'upstashClients',
+      'Failed to initialize Upstash Redis client.',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new UpstashClientError(
+      'Failed to initialize Upstash Redis client.',
+      error
+    );
   }
 
   return redisClientInstance;
@@ -139,34 +164,54 @@ export const getVectorClient = (config?: IndexConfig): Index => {
     const token = env.UPSTASH_VECTOR_REST_TOKEN;
 
     if (!url || !token) {
-      upstashLogger.error('upstashClients', 'Upstash Vector credentials not found. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
-      throw new UpstashClientError("Upstash Vector credentials not found. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.");
+      upstashLogger.error(
+        'upstashClients',
+        'Upstash Vector credentials not found. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+      );
+      throw new UpstashClientError(
+        'Upstash Vector credentials not found. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+      );
     }
 
     try {
       const configToValidate = {
         url,
         token,
-        ...config
+        ...config,
       };
 
       const configValidation = VectorConfigSchema.safeParse(configToValidate);
       if (!configValidation.success) {
-        upstashLogger.error('upstashClients', `Invalid Vector configuration: ${configValidation.error.message}`);
-        throw new UpstashClientError(`Invalid Vector configuration: ${configValidation.error.message}`);
+        upstashLogger.error(
+          'upstashClients',
+          `Invalid Vector configuration: ${configValidation.error.message}`
+        );
+        throw new UpstashClientError(
+          `Invalid Vector configuration: ${configValidation.error.message}`
+        );
       }
 
       const newInstance = new Index({
         url,
         token,
-        ...config
+        ...config,
       });
       vectorClientInstance = newInstance;
-      upstashLogger.info('upstashClients', 'Upstash Vector client initialized.');
+      upstashLogger.info(
+        'upstashClients',
+        'Upstash Vector client initialized.'
+      );
       return vectorClientInstance;
     } catch (error: unknown) {
-      upstashLogger.error('upstashClients', 'Failed to initialize Upstash Vector client.', error instanceof Error ? error : { message: String(error) });
-      throw new UpstashClientError("Failed to initialize Upstash Vector client.", error);
+      upstashLogger.error(
+        'upstashClients',
+        'Failed to initialize Upstash Vector client.',
+        error instanceof Error ? error : { message: String(error) }
+      );
+      throw new UpstashClientError(
+        'Failed to initialize Upstash Vector client.',
+        error
+      );
     }
   }
   return vectorClientInstance;
@@ -184,7 +229,10 @@ export const getUpstashQueryClient = (): Query => {
   const url = env.UPSTASH_REDIS_REST_URL;
   const token = env.UPSTASH_REDIS_REST_TOKEN;
   if (!url) {
-    upstashLogger.error('upstashClients', 'Upstash Query URL not found. Please set UPSTASH_REDIS_REST_URL environment variable.');
+    upstashLogger.error(
+      'upstashClients',
+      'Upstash Query URL not found. Please set UPSTASH_REDIS_REST_URL environment variable.'
+    );
     throw new UpstashClientError('Upstash Query URL not found.');
   }
   // Correct config for @upstash/query: expects { url, token }
@@ -198,7 +246,10 @@ export const getUpstashQueryClient = (): Query => {
  * @returns Whether Upstash Redis is available
  */
 export function isUpstashRedisAvailable(): boolean {
-  return !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+  return (
+    !!process.env.UPSTASH_REDIS_REST_URL &&
+    !!process.env.UPSTASH_REDIS_REST_TOKEN
+  );
 }
 
 /**
@@ -206,7 +257,10 @@ export function isUpstashRedisAvailable(): boolean {
  * @returns Whether Upstash Vector is available
  */
 export function isUpstashVectorAvailable(): boolean {
-  return !!process.env.UPSTASH_VECTOR_REST_URL && !!process.env.UPSTASH_VECTOR_REST_TOKEN;
+  return (
+    !!process.env.UPSTASH_VECTOR_REST_URL &&
+    !!process.env.UPSTASH_VECTOR_REST_TOKEN
+  );
 }
 
 /**
@@ -235,49 +289,83 @@ export const checkUpstashAvailability = async (): Promise<{
   let vectorError: UpstashClientError | Error | unknown = undefined;
 
   if (!isUpstashRedisAvailable()) {
-    redisError = new UpstashClientError("Upstash Redis environment variables not set");
+    redisError = new UpstashClientError(
+      'Upstash Redis environment variables not set'
+    );
     redisAvailable = false;
   } else {
     try {
       const redis = getRedisClient();
       await redis.ping();
       redisAvailable = true;
-      upstashLogger.info('upstashClients', 'Upstash Redis connection successful.');
+      upstashLogger.info(
+        'upstashClients',
+        'Upstash Redis connection successful.'
+      );
     } catch (error: unknown) {
-      upstashLogger.error('upstashClients', 'Upstash Redis connection failed', error instanceof Error ? error : { message: String(error) });
-      redisError = error instanceof UpstashClientError ? error : new UpstashClientError("Redis availability check failed.", error);
+      upstashLogger.error(
+        'upstashClients',
+        'Upstash Redis connection failed',
+        error instanceof Error ? error : { message: String(error) }
+      );
+      redisError =
+        error instanceof UpstashClientError
+          ? error
+          : new UpstashClientError('Redis availability check failed.', error);
       redisAvailable = false;
     }
   }
 
   if (!isUpstashVectorAvailable()) {
-    vectorError = new UpstashClientError("Upstash Vector environment variables not set");
+    vectorError = new UpstashClientError(
+      'Upstash Vector environment variables not set'
+    );
     vectorAvailable = false;
   } else {
     try {
       const vector = getVectorClient();
       await vector.info();
       vectorAvailable = true;
-      upstashLogger.info('upstashClients', 'Upstash Vector connection successful (checked via info()).');
+      upstashLogger.info(
+        'upstashClients',
+        'Upstash Vector connection successful (checked via info()).'
+      );
     } catch (error: unknown) {
-      upstashLogger.error('upstashClients', 'Upstash Vector connection failed or info() call issue', error instanceof Error ? error : { message: String(error) });
-      vectorError = error instanceof UpstashClientError ? error : new UpstashClientError("Vector availability check failed.", error);
+      upstashLogger.error(
+        'upstashClients',
+        'Upstash Vector connection failed or info() call issue',
+        error instanceof Error ? error : { message: String(error) }
+      );
+      vectorError =
+        error instanceof UpstashClientError
+          ? error
+          : new UpstashClientError('Vector availability check failed.', error);
       vectorAvailable = false;
     }
   }
 
-  let overallStatusMessage = "";
+  let overallStatusMessage = '';
   if (redisAvailable && vectorAvailable) {
-    overallStatusMessage = "All Upstash services (Redis, Vector) are available.";
+    overallStatusMessage =
+      'All Upstash services (Redis, Vector) are available.';
   } else if (redisAvailable) {
-    overallStatusMessage = "Upstash Redis is available, but Vector is unavailable.";
+    overallStatusMessage =
+      'Upstash Redis is available, but Vector is unavailable.';
   } else if (vectorAvailable) {
-    overallStatusMessage = "Upstash Vector is available, but Redis is unavailable.";
+    overallStatusMessage =
+      'Upstash Vector is available, but Redis is unavailable.';
   } else {
-    overallStatusMessage = "Both Upstash Redis and Vector services are unavailable.";
+    overallStatusMessage =
+      'Both Upstash Redis and Vector services are unavailable.';
   }
 
-  return { redisAvailable, vectorAvailable, redisError, vectorError, overallStatusMessage };
+  return {
+    redisAvailable,
+    vectorAvailable,
+    redisError,
+    vectorError,
+    overallStatusMessage,
+  };
 };
 
 /**
@@ -287,14 +375,22 @@ export const checkUpstashAvailability = async (): Promise<{
  * @returns Validated Redis configuration
  * @throws UpstashClientError if validation fails
  */
-export function validateRedisConfig(config: unknown): z.infer<typeof RedisConfigSchema> {
+export function validateRedisConfig(
+  config: unknown
+): z.infer<typeof RedisConfigSchema> {
   try {
     return RedisConfigSchema.parse(config);
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
-      throw new UpstashClientError(`Invalid Redis configuration: ${error.message}`, error);
+      throw new UpstashClientError(
+        `Invalid Redis configuration: ${error.message}`,
+        error
+      );
     }
-    throw new UpstashClientError('Failed to validate Redis configuration', error);
+    throw new UpstashClientError(
+      'Failed to validate Redis configuration',
+      error
+    );
   }
 }
 
@@ -305,14 +401,22 @@ export function validateRedisConfig(config: unknown): z.infer<typeof RedisConfig
  * @returns Validated Vector configuration
  * @throws UpstashClientError if validation fails
  */
-export function validateVectorConfig(config: unknown): z.infer<typeof VectorConfigSchema> {
+export function validateVectorConfig(
+  config: unknown
+): z.infer<typeof VectorConfigSchema> {
   try {
     return VectorConfigSchema.parse(config);
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
-      throw new UpstashClientError(`Invalid Vector configuration: ${error.message}`, error);
+      throw new UpstashClientError(
+        `Invalid Vector configuration: ${error.message}`,
+        error
+      );
     }
-    throw new UpstashClientError('Failed to validate Vector configuration', error);
+    throw new UpstashClientError(
+      'Failed to validate Vector configuration',
+      error
+    );
   }
 }
 
@@ -329,13 +433,19 @@ export function isUpstashMainDb(): boolean {
  * Controlled by env var USE_UPSTASH_ADAPTER and presence of backup env vars.
  */
 export function shouldFallbackToBackup(): boolean {
-  return !isUpstashMainDb() && !!process.env.SUPABASE_URL && !!process.env.SUPABASE_KEY;
+  return (
+    !isUpstashMainDb() &&
+    !!process.env.SUPABASE_URL &&
+    !!process.env.SUPABASE_KEY
+  );
 }
 
 /**
  * Helper: Serialize entity for Redis hset
  */
-function serializeEntityForRedis<T extends UpstashEntityBase>(entity: T): Record<string, string | number | boolean | null> {
+function serializeEntityForRedis<T extends UpstashEntityBase>(
+  entity: T
+): Record<string, string | number | boolean | null> {
   const result: Record<string, string | number | boolean | null> = {};
   for (const [k, v] of Object.entries(entity)) {
     if (k === 'metadata' && v != null) {
@@ -349,8 +459,8 @@ function serializeEntityForRedis<T extends UpstashEntityBase>(entity: T): Record
   return result;
 }
 
-/** 
- * Generic create or update for any Upstash entity type. 
+/**
+ * Generic create or update for any Upstash entity type.
  * @param entityType - e.g. 'thread', 'message', 'agent_state', etc.
  * @param entity - The entity object (must match schema)
  * @param schema - The Zod schema for validation
@@ -400,7 +510,13 @@ export async function upstashDeleteEntity(
  */
 export async function upstashListEntities<T extends UpstashEntityBase>(
   entityType: string,
-  options?: { limit?: number; offset?: number; filters?: Record<string, unknown>; sortBy?: string; sortOrder?: 'ASC' | 'DESC' },
+  options?: {
+    limit?: number;
+    offset?: number;
+    filters?: Record<string, unknown>;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  },
   schema: z.ZodType<T> = UpstashEntitySchema as z.ZodType<T>
 ): Promise<T[]> {
   if (options?.filters || options?.sortBy) {
@@ -409,15 +525,20 @@ export async function upstashListEntities<T extends UpstashEntityBase>(
       query: '*',
       ...options,
     };
-    const results = await runRediSearchHybridQuery(query) as RediSearchHybridResult[];
-    return results.map(r => schema.parse(r.fields));
+    const results = (await runRediSearchHybridQuery(
+      query
+    )) as RediSearchHybridResult[];
+    return results.map((r) => schema.parse(r.fields));
   } else {
     const redis = getRedisClient();
     const pattern = `${entityType}:*`;
     let cursor = 0;
     let entities: T[] = [];
     do {
-      const [nextCursor, keys] = await redis.scan(cursor, { match: pattern, count: 100 });
+      const [nextCursor, keys] = await redis.scan(cursor, {
+        match: pattern,
+        count: 100,
+      });
       cursor = Number(nextCursor);
       for (const key of keys) {
         const data = await redis.hgetall(key);
@@ -425,7 +546,10 @@ export async function upstashListEntities<T extends UpstashEntityBase>(
           entities.push(schema.parse(data));
         }
       }
-    } while (cursor !== 0 && (!options?.limit || entities.length < options.limit));
+    } while (
+      cursor !== 0 &&
+      (!options?.limit || entities.length < options.limit)
+    );
     if (options?.limit) entities = entities.slice(0, options.limit);
     return entities;
   }
@@ -434,10 +558,20 @@ export async function upstashListEntities<T extends UpstashEntityBase>(
 /**
  * Add RediSearch/Hybrid Query client helper
  */
-export const runRediSearchHybridQuery = async (query: RediSearchHybridQuery) => {
+export const runRediSearchHybridQuery = async (
+  query: RediSearchHybridQuery
+) => {
   const client: Query = getUpstashQueryClient();
-  type FtSearchFn = (index: string, query: string, options: Record<string, unknown>) => Promise<unknown>;
-  type SearchFn = (index: string, query: string, options: Record<string, unknown>) => Promise<unknown>;
+  type FtSearchFn = (
+    index: string,
+    query: string,
+    options: Record<string, unknown>
+  ) => Promise<unknown>;
+  type SearchFn = (
+    index: string,
+    query: string,
+    options: Record<string, unknown>
+  ) => Promise<unknown>;
   const options = {
     vector: query.vector,
     filters: query.filters,
@@ -446,12 +580,27 @@ export const runRediSearchHybridQuery = async (query: RediSearchHybridQuery) => 
     offset: query.offset,
     limit: query.limit,
   };
-  if (typeof ((client as unknown) as { ftSearch?: FtSearchFn }).ftSearch === 'function') {
-    return ((client as unknown) as { ftSearch: FtSearchFn }).ftSearch(query.index, query.query, options);
-  } else if (typeof ((client as unknown) as { search?: SearchFn }).search === 'function') {
-    return ((client as unknown) as { search: SearchFn }).search(query.index, query.query, options);
+  if (
+    typeof (client as unknown as { ftSearch?: FtSearchFn }).ftSearch ===
+    'function'
+  ) {
+    return (client as unknown as { ftSearch: FtSearchFn }).ftSearch(
+      query.index,
+      query.query,
+      options
+    );
+  } else if (
+    typeof (client as unknown as { search?: SearchFn }).search === 'function'
+  ) {
+    return (client as unknown as { search: SearchFn }).search(
+      query.index,
+      query.query,
+      options
+    );
   } else {
-    throw new UpstashClientError('No RediSearch/hybrid search method found on Query client. Please update @upstash/query or implement advanced search integration.');
+    throw new UpstashClientError(
+      'No RediSearch/hybrid search method found on Query client. Please update @upstash/query or implement advanced search integration.'
+    );
   }
 };
 

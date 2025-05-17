@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id } = params;
-    
+
     // Check if workflow exists
     const existingWorkflow = await workflow.getWorkflow(id);
     if (!existingWorkflow) {
@@ -17,15 +17,18 @@ export async function POST(
         { status: 404 }
       );
     }
-    
+
     // Execute workflow
     const executedWorkflow = await workflow.executeWorkflow(id);
-    
+
     return NextResponse.json({ workflow: executedWorkflow });
   } catch (error) {
     console.error(`Error executing workflow ${params.id}:`, error);
     return NextResponse.json(
-      { error: 'Failed to execute workflow', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to execute workflow',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

@@ -5,11 +5,7 @@
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import {
-  DELIMITERS,
-  LOGICAL_OPERATORS,
-  AGG_FUNCTIONS,
-} from './constants';
+import { DELIMITERS, LOGICAL_OPERATORS, AGG_FUNCTIONS } from './constants';
 import {
   CsvToJsonResult,
   JsonToCsvResult,
@@ -32,7 +28,10 @@ import { markdownTable } from 'markdown-table';
 export const csvToJsonSchema = z.object({
   csv: z.string().describe('CSV content to convert'),
   delimiter: z.enum(DELIMITERS).default(',').describe('CSV delimiter'),
-  hasHeader: z.boolean().default(true).describe('Whether the CSV has a header row'),
+  hasHeader: z
+    .boolean()
+    .default(true)
+    .describe('Whether the CSV has a header row'),
 });
 
 export const jsonToCsvSchema = z.object({
@@ -55,7 +54,7 @@ export const dataAggregationSchema = z.object({
       field: z.string(),
       function: z.enum(AGG_FUNCTIONS),
       as: z.string().optional(),
-    }),
+    })
   ),
 });
 
@@ -98,7 +97,9 @@ const safeJsonParse = <T = unknown>(text: string): T => {
 /* ─────────────────────────  implementations  ───────────────────────── */
 
 /* ------------- CSV → JSON ------------- */
-async function csvToJson(params: z.infer<typeof csvToJsonSchema>): Promise<CsvToJsonResult> {
+async function csvToJson(
+  params: z.infer<typeof csvToJsonSchema>
+): Promise<CsvToJsonResult> {
   const { csv, delimiter, hasHeader } = params;
   try {
     const lines = csv
@@ -110,7 +111,10 @@ async function csvToJson(params: z.infer<typeof csvToJsonSchema>): Promise<CsvTo
 
     const headers = hasHeader
       ? lines[0].split(delimiter).map((h) => h.trim())
-      : Array.from({ length: lines[0].split(delimiter).length }, (_, i) => `field${i + 1}`);
+      : Array.from(
+          { length: lines[0].split(delimiter).length },
+          (_, i) => `field${i + 1}`
+        );
 
     const rows: Record<string, string>[] = [];
     for (const line of lines.slice(hasHeader ? 1 : 0)) {
@@ -122,20 +126,33 @@ async function csvToJson(params: z.infer<typeof csvToJsonSchema>): Promise<CsvTo
       rows.push(row);
     }
 
-    return { success: true, data: rows, rowCount: rows.length, columnCount: headers.length };
+    return {
+      success: true,
+      data: rows,
+      rowCount: rows.length,
+      columnCount: headers.length,
+    };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /* ------------- JSON → CSV ------------- */
-async function jsonToCsv(params: z.infer<typeof jsonToCsvSchema>): Promise<JsonToCsvResult> {
+async function jsonToCsv(
+  params: z.infer<typeof jsonToCsvSchema>
+): Promise<JsonToCsvResult> {
   const { json, delimiter, includeHeader } = params;
   try {
     const data = safeJsonParse<unknown[]>(json);
-    if (!Array.isArray(data) || data.length === 0) throw new Error('Input must be a non-empty array');
+    if (!Array.isArray(data) || data.length === 0)
+      throw new Error('Input must be a non-empty array');
 
-    const keys = Array.from(new Set(data.flatMap((o) => Object.keys(o as Record<string, unknown>))));
+    const keys = Array.from(
+      new Set(data.flatMap((o) => Object.keys(o as Record<string, unknown>)))
+    );
     const lines: string[] = [];
 
     if (includeHeader) lines.push(keys.join(delimiter));
@@ -159,12 +176,17 @@ async function jsonToCsv(params: z.infer<typeof jsonToCsvSchema>): Promise<JsonT
       columnCount: keys.length,
     };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /* ------------- Filter ------------- */
-async function dataFilter(params: z.infer<typeof dataFilterSchema>): Promise<DataFilterResult> {
+async function dataFilter(
+  params: z.infer<typeof dataFilterSchema>
+): Promise<DataFilterResult> {
   const { data, filters, operator } = params;
   try {
     const arr = safeJsonParse<unknown[]>(data);
@@ -181,7 +203,9 @@ async function dataFilter(params: z.infer<typeof dataFilterSchema>): Promise<Dat
         return current?.[parts.at(-1)!] === v;
       });
 
-      return operator === 'AND' ? results.every(Boolean) : results.some(Boolean);
+      return operator === 'AND'
+        ? results.every(Boolean)
+        : results.some(Boolean);
     });
 
     return {
@@ -191,13 +215,16 @@ async function dataFilter(params: z.infer<typeof dataFilterSchema>): Promise<Dat
       originalCount: arr.length,
     };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /* ------------- Aggregate ------------- */
 async function dataAggregation(
-  params: z.infer<typeof dataAggregationSchema>,
+  params: z.infer<typeof dataAggregationSchema>
 ): Promise<DataAggregationResult> {
   const { data, groupBy, aggregations } = params;
   try {
@@ -230,7 +257,9 @@ async function dataAggregation(
             out[name] = numbers.reduce((s, n) => s + n, 0);
             break;
           case 'avg':
-            out[name] = numbers.length ? numbers.reduce((s, n) => s + n, 0) / numbers.length : null;
+            out[name] = numbers.length
+              ? numbers.reduce((s, n) => s + n, 0) / numbers.length
+              : null;
             break;
           case 'min':
             out[name] = numbers.length ? Math.min(...numbers) : null;
@@ -248,13 +277,16 @@ async function dataAggregation(
 
     return { success: true, data: result, groupCount: result.length };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
 /* ------------- YAML → JSON ------------- */
 async function yamlToJson(
-  params: z.infer<typeof yamlToJsonSchema>,
+  params: z.infer<typeof yamlToJsonSchema>
 ): Promise<YamlToJsonResult> {
   try {
     const data = yaml.load(params.yaml);
@@ -266,7 +298,7 @@ async function yamlToJson(
 
 /* ------------- JSON → YAML ------------- */
 async function jsonToYaml(
-  params: z.infer<typeof jsonToYamlSchema>,
+  params: z.infer<typeof jsonToYamlSchema>
 ): Promise<JsonToYamlResult> {
   try {
     const obj = JSON.parse(params.json);
@@ -279,7 +311,7 @@ async function jsonToYaml(
 
 /* ------------- XML → JSON ------------- */
 async function xmlToJson(
-  params: z.infer<typeof xmlToJsonSchema>,
+  params: z.infer<typeof xmlToJsonSchema>
 ): Promise<XmlToJsonResult> {
   try {
     const data = await parseStringPromise(params.xml, { explicitArray: false });
@@ -291,11 +323,14 @@ async function xmlToJson(
 
 /* ------------- JSON → XML ------------- */
 async function jsonToXml(
-  params: z.infer<typeof jsonToXmlSchema>,
+  params: z.infer<typeof jsonToXmlSchema>
 ): Promise<JsonToXmlResult> {
   try {
     const obj = JSON.parse(params.json);
-    const builder = new XmlBuilder({ rootName: params.rootName, headless: true });
+    const builder = new XmlBuilder({
+      rootName: params.rootName,
+      headless: true,
+    });
     const xml = builder.buildObject(obj);
     return { success: true, xml };
   } catch (err) {
@@ -305,7 +340,7 @@ async function jsonToXml(
 
 /* ------------- Markdown-table → JSON ------------- */
 async function mdTableToJson(
-  params: z.infer<typeof mdTableToJsonSchema>,
+  params: z.infer<typeof mdTableToJsonSchema>
 ): Promise<MdTableToJsonResult> {
   try {
     const lines = params.markdown
@@ -315,11 +350,17 @@ async function mdTableToJson(
 
     // crude table parsing (header | separator | rows…)
     if (lines.length < 2) throw new Error('Invalid markdown table');
-    const header = lines[0].split('|').map((h) => h.trim()).filter(Boolean);
+    const header = lines[0]
+      .split('|')
+      .map((h) => h.trim())
+      .filter(Boolean);
     const rows: Record<string, string>[] = [];
 
     for (const line of lines.slice(2)) {
-      const cells = line.split('|').map((c) => c.trim()).filter(Boolean);
+      const cells = line
+        .split('|')
+        .map((c) => c.trim())
+        .filter(Boolean);
       if (cells.length === 0) continue;
       const row: Record<string, string> = {};
       header.forEach((h, i) => {
@@ -336,7 +377,7 @@ async function mdTableToJson(
 
 /* ------------- JSON → Markdown-table ------------- */
 async function jsonToMdTable(
-  params: z.infer<typeof jsonToMdTableSchema>,
+  params: z.infer<typeof jsonToMdTableSchema>
 ): Promise<JsonToMdTableResult> {
   try {
     const arr = JSON.parse(params.json);
@@ -348,7 +389,7 @@ async function jsonToMdTable(
     const table = markdownTable([
       headers,
       ...arr.map((o: Record<string, unknown>) =>
-        headers.map((h) => String(o[h] ?? '')),
+        headers.map((h) => String(o[h] ?? ''))
       ),
     ]);
 

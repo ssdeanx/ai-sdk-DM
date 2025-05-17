@@ -1,9 +1,17 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { useState, useEffect, createContext, useContext, useRef, useCallback, memo } from "react"
-import { usePathname } from "next/navigation"
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  useRef,
+  useCallback,
+  memo,
+} from 'react';
+import { usePathname } from 'next/navigation';
 import {
   motion,
   AnimatePresence,
@@ -12,8 +20,8 @@ import {
   useTransform,
   useScroll,
   useInView,
-  useReducedMotion
-} from "framer-motion"
+  useReducedMotion,
+} from 'framer-motion';
 import {
   Loader2,
   HelpCircle,
@@ -23,32 +31,37 @@ import {
   X,
   Home,
   Settings,
-  ArrowUp
-} from "lucide-react"
+  ArrowUp,
+} from 'lucide-react';
 
-import { cn } from "@/lib/utils"
-import { TopNavbar } from "@/components/layout/top-navbar"
-import { MainSidebar } from "@/components/layout/main-sidebar"
-import { useToast } from "@/components/ui/use-toast"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useMediaQuery } from "@/hooks/use-media-query"
+import { cn } from '@/lib/utils';
+import { TopNavbar } from '@/components/layout/top-navbar';
+import { MainSidebar } from '@/components/layout/main-sidebar';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 // Create a context for sidebar state
 interface SidebarContextType {
-  sidebarOpen: boolean
-  toggleSidebar: () => void
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType>({
   sidebarOpen: true,
-  toggleSidebar: () => {}
-})
+  toggleSidebar: () => {},
+});
 
 // Custom hook to use sidebar context
-export const useSidebar = () => useContext(SidebarContext)
+export const useSidebar = () => useContext(SidebarContext);
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 /**
@@ -57,145 +70,152 @@ interface DashboardLayoutProps {
  * Provides the main layout structure for the dashboard with advanced animations,
  * responsive design, and accessibility features.
  */
-export const DashboardLayout = memo(function DashboardLayout({ children }: DashboardLayoutProps) {
-  const pathname = usePathname()
-  const { toast } = useToast()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [isLoading, setIsLoading] = useState(true)
-  const [mounted, setMounted] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
-  const [showScrollTop, setShowScrollTop] = useState(false)
+export const DashboardLayout = memo(function DashboardLayout({
+  children,
+}: DashboardLayoutProps) {
+  const pathname = usePathname();
+  const { toast } = useToast();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Check if user prefers reduced motion
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion();
 
   // Check if device is mobile
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Refs for sidebar hover detection and scroll
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const hoverZoneRef = useRef<HTMLDivElement>(null)
-  const mainContentRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const hoverZoneRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
 
   // Get scroll position for animations
   const { scrollY } = useScroll({
-    container: mainContentRef
-  })
+    container: mainContentRef,
+  });
 
   // Create ref for content view detection
-  const contentRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Check if elements are in view
-  const contentInView = useInView(contentRef)
+  const contentInView = useInView(contentRef);
 
   // Motion values for animations
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
-  const springConfig = { stiffness: 300, damping: 30 }
-  const mouseXSpring = useSpring(mouseX, springConfig)
-  const mouseYSpring = useSpring(mouseY, springConfig)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springConfig = { stiffness: 300, damping: 30 };
+  const mouseXSpring = useSpring(mouseX, springConfig);
+  const mouseYSpring = useSpring(mouseY, springConfig);
 
   // Transform mouse position for hover effects
-  const hoverRotateX = useTransform(mouseYSpring, [0, 300], [5, -5])
-  const hoverRotateY = useTransform(mouseXSpring, [0, 300], [-5, 5])
+  const hoverRotateX = useTransform(mouseYSpring, [0, 300], [5, -5]);
+  const hoverRotateY = useTransform(mouseXSpring, [0, 300], [-5, 5]);
 
   // Parallax effect for content based on scroll
   const contentY = useTransform(
     scrollY,
     [0, 300],
     [0, prefersReducedMotion ? 0 : -30]
-  )
+  );
 
   // Toggle sidebar function with memoization
   const toggleSidebar = useCallback(() => {
-    setSidebarOpen(prev => {
-      const newState = !prev
+    setSidebarOpen((prev) => {
+      const newState = !prev;
       // Show toast notification
       toast({
-        title: newState ? "Sidebar expanded" : "Sidebar collapsed",
-        description: newState ? "Navigation sidebar is now visible" : "Navigation sidebar is now hidden",
+        title: newState ? 'Sidebar expanded' : 'Sidebar collapsed',
+        description: newState
+          ? 'Navigation sidebar is now visible'
+          : 'Navigation sidebar is now hidden',
         duration: 2000,
-      })
-      return newState
-    })
-  }, [toast])
+      });
+      return newState;
+    });
+  }, [toast]);
 
   // Handle mouse movement for hover zone
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const { left, top } = e.currentTarget.getBoundingClientRect()
-    mouseX.set(e.clientX - left)
-    mouseY.set(e.clientY - top)
-  }, [mouseX, mouseY])
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const { left, top } = e.currentTarget.getBoundingClientRect();
+      mouseX.set(e.clientX - left);
+      mouseY.set(e.clientY - top);
+    },
+    [mouseX, mouseY]
+  );
 
   // Handle hover state for sidebar
   useEffect(() => {
     if (!sidebarOpen) {
-      const handleMouseEnter = () => setIsHovering(true)
-      const handleMouseLeave = () => setIsHovering(false)
+      const handleMouseEnter = () => setIsHovering(true);
+      const handleMouseLeave = () => setIsHovering(false);
 
-      const hoverZone = hoverZoneRef.current
+      const hoverZone = hoverZoneRef.current;
       if (hoverZone) {
-        hoverZone.addEventListener('mouseenter', handleMouseEnter)
-        hoverZone.addEventListener('mouseleave', handleMouseLeave)
+        hoverZone.addEventListener('mouseenter', handleMouseEnter);
+        hoverZone.addEventListener('mouseleave', handleMouseLeave);
 
         return () => {
-          hoverZone.removeEventListener('mouseenter', handleMouseEnter)
-          hoverZone.removeEventListener('mouseleave', handleMouseLeave)
-        }
+          hoverZone.removeEventListener('mouseenter', handleMouseEnter);
+          hoverZone.removeEventListener('mouseleave', handleMouseLeave);
+        };
       }
     }
-  }, [sidebarOpen])
+  }, [sidebarOpen]);
 
   // Handle scroll position for scroll-to-top button
   useEffect(() => {
     const handleScroll = () => {
       if (mainContentRef.current) {
-        setShowScrollTop(mainContentRef.current.scrollTop > 300)
+        setShowScrollTop(mainContentRef.current.scrollTop > 300);
       }
-    }
+    };
 
-    const mainContent = mainContentRef.current
+    const mainContent = mainContentRef.current;
     if (mainContent) {
-      mainContent.addEventListener('scroll', handleScroll)
-      return () => mainContent.removeEventListener('scroll', handleScroll)
+      mainContent.addEventListener('scroll', handleScroll);
+      return () => mainContent.removeEventListener('scroll', handleScroll);
     }
-  }, [])
+  }, []);
 
   // Simulate loading state
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsLoading(false)
+      setIsLoading(false);
 
       // Show welcome toast on first load
       if (!mounted) {
         toast({
-          title: "Welcome to DeanmachinesAI",
-          description: "Your advanced AI platform is ready to use.",
+          title: 'Welcome to DeanmachinesAI',
+          description: 'Your advanced AI platform is ready to use.',
           duration: 5000,
-        })
-        setMounted(true)
+        });
+        setMounted(true);
       }
-    }, 800)
+    }, 800);
 
-    return () => clearTimeout(timer)
-  }, [toast, mounted])
+    return () => clearTimeout(timer);
+  }, [toast, mounted]);
 
   // Scroll to top function
   const scrollToTop = useCallback(() => {
     if (mainContentRef.current) {
       mainContentRef.current.scrollTo({
         top: 0,
-        behavior: 'smooth'
-      })
+        behavior: 'smooth',
+      });
     }
-  }, [])
+  }, []);
 
   return (
     <SidebarContext.Provider value={{ sidebarOpen, toggleSidebar }}>
       <div
         className={cn(
-          "flex min-h-screen flex-col bg-background relative",
-          isLoading && "overflow-hidden"
+          'flex min-h-screen flex-col bg-background relative',
+          isLoading && 'overflow-hidden'
         )}
         // Add ARIA attributes for accessibility
         role="application"
@@ -225,18 +245,30 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                     initial={{ rotate: 0, scale: 1 }}
                     animate={{
                       rotate: prefersReducedMotion ? 0 : 360,
-                      scale: prefersReducedMotion ? 1 : [1, 1.05, 1]
+                      scale: prefersReducedMotion ? 1 : [1, 1.05, 1],
                     }}
                     transition={{
-                      rotate: { duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
-                      scale: { duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
+                      rotate: {
+                        duration: 10,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: 'linear',
+                      },
+                      scale: {
+                        duration: 3,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: 'easeInOut',
+                      },
                     }}
                     className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500 via-teal-500 to-blue-600 opacity-70 blur-sm"
                   />
                   <motion.div
                     initial={{ rotate: 0 }}
                     animate={{ rotate: prefersReducedMotion ? 0 : -360 }}
-                    transition={{ duration: 15, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                    transition={{
+                      duration: 15,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: 'linear',
+                    }}
                     className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 opacity-70 blur-[2px]"
                   />
                   <div className="relative h-12 w-12 rounded-full bg-background flex items-center justify-center">
@@ -252,7 +284,9 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                   <h3 className="font-medium text-lg bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-600">
                     DeanmachinesAI
                   </h3>
-                  <p className="text-sm text-muted-foreground">Loading your AI workspace...</p>
+                  <p className="text-sm text-muted-foreground">
+                    Loading your AI workspace...
+                  </p>
                 </motion.div>
               </motion.div>
             </motion.div>
@@ -269,7 +303,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                   whileHover={{ scale: prefersReducedMotion ? 1 : 1.05 }}
                   whileTap={{ scale: prefersReducedMotion ? 1 : 0.95 }}
                   onClick={toggleSidebar}
-                  aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                  aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
                   aria-expanded={sidebarOpen}
                   aria-controls="main-sidebar"
                 >
@@ -281,7 +315,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                 </motion.button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p>{sidebarOpen ? "Hide sidebar" : "Show sidebar"}</p>
+                <p>{sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -305,15 +339,24 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
               <motion.div
                 id="main-sidebar"
                 ref={sidebarRef}
-                initial={!sidebarOpen ? { width: 0, opacity: 0 } : { width: 240, opacity: 1 }}
-                animate={!sidebarOpen && isHovering ? { width: 240, opacity: 1 } :
-                        sidebarOpen ? { width: 240, opacity: 1 } : { width: 0, opacity: 0 }}
+                initial={
+                  !sidebarOpen
+                    ? { width: 0, opacity: 0 }
+                    : { width: 240, opacity: 1 }
+                }
+                animate={
+                  !sidebarOpen && isHovering
+                    ? { width: 240, opacity: 1 }
+                    : sidebarOpen
+                      ? { width: 240, opacity: 1 }
+                      : { width: 0, opacity: 0 }
+                }
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.3, ease: [0.3, 0.1, 0.3, 1] }}
                 style={{
                   rotateX: prefersReducedMotion ? 0 : hoverRotateX,
                   rotateY: prefersReducedMotion ? 0 : hoverRotateY,
-                  transformPerspective: 1000
+                  transformPerspective: 1000,
                 }}
                 onMouseMove={handleMouseMove}
                 className="h-full overflow-hidden"
@@ -328,7 +371,9 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                   whileHover={{ scale: prefersReducedMotion ? 1 : 1.1 }}
                   whileTap={{ scale: prefersReducedMotion ? 1 : 0.9 }}
                   onClick={toggleSidebar}
-                  aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                  aria-label={
+                    sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'
+                  }
                 >
                   {sidebarOpen ? (
                     <ChevronLeft className="h-3 w-3 text-muted-foreground" />
@@ -359,14 +404,11 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                     animate={{
                       opacity: 1,
                       y: 0,
-                      scale: contentInView ? 1 : 0.98
+                      scale: contentInView ? 1 : 0.98,
                     }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className={cn(
-                      "relative",
-                      isMobile ? "pt-2" : "pt-4"
-                    )}
+                    className={cn('relative', isMobile ? 'pt-2' : 'pt-4')}
                     style={{ y: contentY }}
                   >
                     {/* Page content */}
@@ -380,15 +422,20 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                           <TooltipTrigger asChild>
                             <motion.button
                               className="h-10 w-10 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-shadow"
-                              whileHover={{ scale: prefersReducedMotion ? 1 : 1.05 }}
-                              whileTap={{ scale: prefersReducedMotion ? 1 : 0.95 }}
+                              whileHover={{
+                                scale: prefersReducedMotion ? 1 : 1.05,
+                              }}
+                              whileTap={{
+                                scale: prefersReducedMotion ? 1 : 0.95,
+                              }}
                               onClick={() => {
-                                window.location.href = "/dashboard"
+                                window.location.href = '/dashboard';
                                 toast({
-                                  title: "Navigating to Dashboard",
-                                  description: "Taking you to the main dashboard",
+                                  title: 'Navigating to Dashboard',
+                                  description:
+                                    'Taking you to the main dashboard',
                                   duration: 2000,
-                                })
+                                });
                               }}
                               aria-label="Go to Dashboard"
                             >
@@ -405,15 +452,20 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                           <TooltipTrigger asChild>
                             <motion.button
                               className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-shadow"
-                              whileHover={{ scale: prefersReducedMotion ? 1 : 1.05 }}
-                              whileTap={{ scale: prefersReducedMotion ? 1 : 0.95 }}
+                              whileHover={{
+                                scale: prefersReducedMotion ? 1 : 1.05,
+                              }}
+                              whileTap={{
+                                scale: prefersReducedMotion ? 1 : 0.95,
+                              }}
                               onClick={() => {
-                                window.location.href = "/settings"
+                                window.location.href = '/settings';
                                 toast({
-                                  title: "Navigating to Settings",
-                                  description: "Taking you to the settings page",
+                                  title: 'Navigating to Settings',
+                                  description:
+                                    'Taking you to the settings page',
                                   duration: 2000,
-                                })
+                                });
                               }}
                               aria-label="Go to Settings"
                             >
@@ -430,14 +482,19 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                           <TooltipTrigger asChild>
                             <motion.button
                               className="h-12 w-12 rounded-full bg-gradient-to-r from-teal-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-shadow"
-                              whileHover={{ scale: prefersReducedMotion ? 1 : 1.05 }}
-                              whileTap={{ scale: prefersReducedMotion ? 1 : 0.95 }}
+                              whileHover={{
+                                scale: prefersReducedMotion ? 1 : 1.05,
+                              }}
+                              whileTap={{
+                                scale: prefersReducedMotion ? 1 : 0.95,
+                              }}
                               onClick={() => {
                                 toast({
-                                  title: "Help Center",
-                                  description: "The help center is coming soon. Stay tuned!",
+                                  title: 'Help Center',
+                                  description:
+                                    'The help center is coming soon. Stay tuned!',
                                   duration: 3000,
-                                })
+                                });
                               }}
                               aria-label="Help Center"
                             >
@@ -462,8 +519,12 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
                                 <TooltipTrigger asChild>
                                   <motion.button
                                     className="h-10 w-10 rounded-full bg-gradient-to-r from-gray-500 to-gray-600 flex items-center justify-center shadow-lg shadow-gray-500/20 hover:shadow-gray-500/30 transition-shadow"
-                                    whileHover={{ scale: prefersReducedMotion ? 1 : 1.05 }}
-                                    whileTap={{ scale: prefersReducedMotion ? 1 : 0.95 }}
+                                    whileHover={{
+                                      scale: prefersReducedMotion ? 1 : 1.05,
+                                    }}
+                                    whileTap={{
+                                      scale: prefersReducedMotion ? 1 : 0.95,
+                                    }}
                                     onClick={scrollToTop}
                                     aria-label="Scroll to top"
                                   >
@@ -487,5 +548,5 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: Dashb
         </div>
       </div>
     </SidebarContext.Provider>
-  )
-})
+  );
+});

@@ -1,156 +1,179 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Maximize, Minimize, Download, Copy, Check, Table, Search, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Maximize,
+  Minimize,
+  Download,
+  Copy,
+  Check,
+  Table,
+  Search,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 export interface Column {
-  key: string
-  title: string
-  sortable?: boolean
-  filterable?: boolean
-  render?: (value: any, row: any) => React.ReactNode
+  key: string;
+  title: string;
+  sortable?: boolean;
+  filterable?: boolean;
+  render?: (value: any, row: any) => React.ReactNode;
 }
 
 export interface DataTableProps {
-  title?: string
-  data: any[]
-  columns: Column[]
-  className?: string
-  pagination?: boolean
-  pageSize?: number
+  title?: string;
+  data: any[];
+  columns: Column[];
+  className?: string;
+  pagination?: boolean;
+  pageSize?: number;
 }
 
 export function DataTable({
-  title = "Data Table",
+  title = 'Data Table',
   data = [],
   columns = [],
   className,
   pagination = true,
-  pageSize = 10
+  pageSize = 10,
 }: DataTableProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null)
-  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'asc' | 'desc';
+  } | null>(null);
+  const [filters, setFilters] = useState<Record<string, string>>({});
 
   // Handle copy data
   const handleCopyData = async () => {
-    const dataString = JSON.stringify(data, null, 2)
-    await navigator.clipboard.writeText(dataString)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    const dataString = JSON.stringify(data, null, 2);
+    await navigator.clipboard.writeText(dataString);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Handle download CSV
   const handleDownloadCSV = () => {
     // Create CSV content
-    const headers = columns.map(col => col.title).join(',')
-    const rows = data.map(row =>
-      columns.map(col => {
-        const value = row[col.key]
-        // Handle values with commas by wrapping in quotes
-        return typeof value === 'string' && value.includes(',')
-          ? `"${value}"`
-          : value
-      }).join(',')
-    ).join('\n')
+    const headers = columns.map((col) => col.title).join(',');
+    const rows = data
+      .map((row) =>
+        columns
+          .map((col) => {
+            const value = row[col.key];
+            // Handle values with commas by wrapping in quotes
+            return typeof value === 'string' && value.includes(',')
+              ? `"${value}"`
+              : value;
+          })
+          .join(',')
+      )
+      .join('\n');
 
-    const csvContent = `${headers}\n${rows}`
+    const csvContent = `${headers}\n${rows}`;
 
     // Create and trigger download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${title.replace(/\s+/g, '-').toLowerCase()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute(
+      'download',
+      `${title.replace(/\s+/g, '-').toLowerCase()}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Handle sort
   const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc'
+    let direction: 'asc' | 'desc' = 'asc';
 
     if (sortConfig && sortConfig.key === key) {
-      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc'
+      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
     }
 
-    setSortConfig({ key, direction })
-  }
+    setSortConfig({ key, direction });
+  };
 
   // Handle filter change
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      [key]: value
-    }))
-    setCurrentPage(1) // Reset to first page when filtering
-  }
+      [key]: value,
+    }));
+    setCurrentPage(1); // Reset to first page when filtering
+  };
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1) // Reset to first page when searching
-  }
+    setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   // Apply sorting, filtering and pagination
   const processedData = (() => {
     // First apply search across all columns
     let result = searchQuery
-      ? data.filter(row =>
-          columns.some(col =>
-            String(row[col.key]).toLowerCase().includes(searchQuery.toLowerCase())
+      ? data.filter((row) =>
+          columns.some((col) =>
+            String(row[col.key])
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
           )
         )
-      : [...data]
+      : [...data];
 
     // Then apply column-specific filters
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
-        result = result.filter(row =>
+        result = result.filter((row) =>
           String(row[key]).toLowerCase().includes(value.toLowerCase())
-        )
+        );
       }
-    })
+    });
 
     // Then apply sorting
     if (sortConfig) {
       result.sort((a, b) => {
-        const aValue = a[sortConfig.key]
-        const bValue = b[sortConfig.key]
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
 
         if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1
+          return sortConfig.direction === 'asc' ? -1 : 1;
         }
         if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1
+          return sortConfig.direction === 'asc' ? 1 : -1;
         }
-        return 0
-      })
+        return 0;
+      });
     }
 
-    return result
-  })()
+    return result;
+  })();
 
   // Calculate pagination
-  const totalPages = Math.ceil(processedData.length / pageSize)
+  const totalPages = Math.ceil(processedData.length / pageSize);
   const paginatedData = pagination
     ? processedData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : processedData
+    : processedData;
 
   return (
     <div
       className={cn(
-        "relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background",
-        expanded && "fixed inset-4 z-50 bg-background flex flex-col",
+        'relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background',
+        expanded && 'fixed inset-4 z-50 bg-background flex flex-col',
         className
       )}
       onMouseEnter={() => setHovered(true)}
@@ -173,7 +196,11 @@ export function DataTable({
             className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={handleCopyData}
           >
-            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? (
+              <Check className="h-3.5 w-3.5" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
             <span className="sr-only">Copy data</span>
           </Button>
           <Button
@@ -191,16 +218,21 @@ export function DataTable({
             className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-            <span className="sr-only">{expanded ? "Minimize" : "Maximize"}</span>
+            {expanded ? (
+              <Minimize className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize className="h-3.5 w-3.5" />
+            )}
+            <span className="sr-only">
+              {expanded ? 'Minimize' : 'Maximize'}
+            </span>
           </Button>
         </motion.div>
       </div>
 
-      <div className={cn(
-        "flex flex-col",
-        expanded ? "flex-1" : "max-h-[400px]"
-      )}>
+      <div
+        className={cn('flex flex-col', expanded ? 'flex-1' : 'max-h-[400px]')}
+      >
         {/* Search bar */}
         <div className="p-2 border-b">
           <div className="relative">
@@ -221,7 +253,10 @@ export function DataTable({
             <thead className="bg-muted/50 sticky top-0">
               <tr>
                 {columns.map((column, i) => (
-                  <th key={i} className="px-4 py-2 text-left font-medium text-sm">
+                  <th
+                    key={i}
+                    className="px-4 py-2 text-left font-medium text-sm"
+                  >
                     <div className="flex items-center gap-2">
                       <span>{column.title}</span>
                       {column.sortable && (
@@ -250,7 +285,9 @@ export function DataTable({
                           placeholder={`Filter ${column.title}...`}
                           className="h-6 text-xs"
                           value={filters[column.key] || ''}
-                          onChange={(e) => handleFilterChange(column.key, e.target.value)}
+                          onChange={(e) =>
+                            handleFilterChange(column.key, e.target.value)
+                          }
                         />
                       </div>
                     )}
@@ -292,13 +329,15 @@ export function DataTable({
         {pagination && totalPages > 1 && (
           <div className="p-2 border-t flex items-center justify-between bg-muted/20">
             <div className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, processedData.length)} of {processedData.length} entries
+              Showing {(currentPage - 1) * pageSize + 1} to{' '}
+              {Math.min(currentPage * pageSize, processedData.length)} of{' '}
+              {processedData.length} entries
             </div>
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 Previous
@@ -306,7 +345,9 @@ export function DataTable({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
               >
                 Next
@@ -316,5 +357,5 @@ export function DataTable({
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,42 +1,42 @@
-import type * as wikibase from 'wikibase-sdk'
-import { AIFunctionsProvider, assert, getEnv, throttleKy } from '@agentic/core'
-import defaultKy, { type KyInstance } from 'ky'
-import pThrottle from 'p-throttle'
-import wdk from 'wikibase-sdk/wikidata.org'
-import { createAISDKTools } from './ai-sdk'
+import type * as wikibase from 'wikibase-sdk';
+import { AIFunctionsProvider, assert, getEnv, throttleKy } from '@agentic/core';
+import defaultKy, { type KyInstance } from 'ky';
+import pThrottle from 'p-throttle';
+import wdk from 'wikibase-sdk/wikidata.org';
+import { createAISDKTools } from './ai-sdk';
 
 export namespace wikidata {
   // Allow up to 200 requests per second by default.
   export const throttle = pThrottle({
     limit: 200,
-    interval: 1000
-  })
+    interval: 1000,
+  });
 
-  export type SimplifiedEntityMap = Record<string, SimplifiedEntity>
+  export type SimplifiedEntityMap = Record<string, SimplifiedEntity>;
 
   export interface SimplifiedEntity {
-    id: string
-    type: string
-    claims: Claims
-    modified: string
-    labels?: Descriptions
-    descriptions?: Descriptions
-    aliases?: any
-    sitelinks?: Sitelinks
+    id: string;
+    type: string;
+    claims: Claims;
+    modified: string;
+    labels?: Descriptions;
+    descriptions?: Descriptions;
+    aliases?: any;
+    sitelinks?: Sitelinks;
   }
 
   export interface Claims {
-    [key: string]: Claim[]
+    [key: string]: Claim[];
   }
 
   export interface Claim {
-    value: string
-    qualifiers: Record<string, string[] | number[]>
-    references: Record<string, string[]>[]
+    value: string;
+    qualifiers: Record<string, string[] | number[]>;
+    references: Record<string, string[]>[];
   }
 
-  export type Descriptions = Record<string, string>
-  export type Sitelinks = Record<string, string>
+  export type Descriptions = Record<string, string>;
+  export type Sitelinks = Record<string, string>;
 }
 
 /**
@@ -47,54 +47,54 @@ export namespace wikidata {
  * TODO: support any wikibase instance
  */
 export class WikidataClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiUserAgent: string
+  protected readonly ky: KyInstance;
+  protected readonly apiUserAgent: string;
 
   constructor({
     apiUserAgent = getEnv('WIKIDATA_API_USER_AGENT') ??
       'Agentic (https://github.com/transitive-bullshit/agentic)',
     throttle = true,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiBaseUrl?: string
-    apiUserAgent?: string
-    throttle?: boolean
-    ky?: KyInstance
+    apiBaseUrl?: string;
+    apiUserAgent?: string;
+    throttle?: boolean;
+    ky?: KyInstance;
   } = {}) {
-    assert(apiUserAgent, 'WikidataClient missing required "apiUserAgent"')
-    super()
+    assert(apiUserAgent, 'WikidataClient missing required "apiUserAgent"');
+    super();
 
-    this.apiUserAgent = apiUserAgent
+    this.apiUserAgent = apiUserAgent;
 
-    const throttledKy = throttle ? throttleKy(ky, wikidata.throttle) : ky
+    const throttledKy = throttle ? throttleKy(ky, wikidata.throttle) : ky;
 
     this.ky = throttledKy.extend({
       headers: {
-        'user-agent': apiUserAgent
-      }
-    })
+        'user-agent': apiUserAgent,
+      },
+    });
   }
 
   async getEntityById(
     idOrOpts: string | { id: string; languages?: string[] }
   ): Promise<wikidata.SimplifiedEntity> {
     const { id, languages = ['en'] } =
-      typeof idOrOpts === 'string' ? { id: idOrOpts } : idOrOpts
+      typeof idOrOpts === 'string' ? { id: idOrOpts } : idOrOpts;
 
     const url = wdk.getEntities({
       ids: id as wikibase.EntityId,
-      languages
-    })
+      languages,
+    });
 
-    const res = await this.ky.get(url).json<any>()
+    const res = await this.ky.get(url).json<any>();
     const entities = wdk.simplify.entities(res.entities, {
       // TODO: Make this configurable and double-check defaults.
       keepQualifiers: true,
-      keepReferences: true
-    })
+      keepReferences: true,
+    });
 
-    const entity = entities[id]
-    return entity as wikidata.SimplifiedEntity
+    const entity = entities[id];
+    return entity as wikidata.SimplifiedEntity;
   }
 
   async getEntitiesByIds(
@@ -102,23 +102,23 @@ export class WikidataClient extends AIFunctionsProvider {
   ): Promise<wikidata.SimplifiedEntityMap> {
     const { ids, languages = ['en'] } = Array.isArray(idsOrOpts)
       ? { ids: idsOrOpts }
-      : idsOrOpts
+      : idsOrOpts;
 
     // TODO: Separate between wdk.getEntities and wdk.getManyEntities depending
     // on how many `ids` there are.
     const url = wdk.getEntities({
       ids: ids as wikibase.EntityId[],
-      languages
-    })
+      languages,
+    });
 
-    const res = await this.ky.get(url).json<any>()
+    const res = await this.ky.get(url).json<any>();
     const entities = wdk.simplify.entities(res.entities, {
       keepQualifiers: true,
-      keepReferences: true
-    })
+      keepReferences: true,
+    });
 
-    return entities as wikidata.SimplifiedEntityMap
+    return entities as wikidata.SimplifiedEntityMap;
   }
 }
 
-export const wikidataTools = createAISDKTools(new WikidataClient())
+export const wikidataTools = createAISDKTools(new WikidataClient());

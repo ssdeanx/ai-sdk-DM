@@ -1,11 +1,18 @@
-"use client"
+'use client';
 
-import { ReactNode } from "react"
-import { format } from "date-fns"
-import { Check, MoreHorizontal, Settings } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { ReactNode } from 'react';
+import { format } from 'date-fns';
+import { Check, MoreHorizontal, Settings } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,14 +20,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu';
 
 interface ConnectedIntegrationProps {
-  name: string
-  accountName: string
-  connectedAt: string
-  status: "active" | "inactive" | "error"
-  icon: ReactNode
+  name: string;
+  accountName: string;
+  connectedAt: string;
+  status: 'active' | 'inactive' | 'error';
+  icon: ReactNode;
 }
 
 export function ConnectedIntegration({
@@ -30,8 +37,8 @@ export function ConnectedIntegration({
   status,
   icon,
 }: ConnectedIntegrationProps) {
-  const formattedDate = format(new Date(connectedAt), "MMM d, yyyy")
-  
+  const formattedDate = format(new Date(connectedAt), 'MMM d, yyyy');
+
   return (
     <Card className="border border-border/50 bg-background/50 backdrop-blur-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -66,10 +73,25 @@ export function ConnectedIntegration({
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Connected {formattedDate}</span>
-          <Badge variant={status === "active" ? "success" : status === "error" ? "destructive" : "outline"} className="gap-1">
-            {status === "active" && <Check className="h-3 w-3" />}
-            {status === "active" ? "Active" : status === "error" ? "Error" : "Inactive"}
+          <span className="text-muted-foreground">
+            Connected {formattedDate}
+          </span>
+          <Badge
+            variant={
+              status === 'active'
+                ? 'success'
+                : status === 'error'
+                  ? 'destructive'
+                  : 'outline'
+            }
+            className="gap-1"
+          >
+            {status === 'active' && <Check className="h-3 w-3" />}
+            {status === 'active'
+              ? 'Active'
+              : status === 'error'
+                ? 'Error'
+                : 'Inactive'}
           </Badge>
         </div>
       </CardContent>
@@ -79,5 +101,5 @@ export function ConnectedIntegration({
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }

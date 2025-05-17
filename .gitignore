@@ -39,3 +39,7 @@ docs/*
 repomix-api.txt*
 repomix-comp.txt*
 repomix-hooks.txt*
+
+/docs/*.md
+/llm-docs/*.md
+

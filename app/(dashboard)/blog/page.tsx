@@ -1,65 +1,61 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Search, Filter } from "lucide-react"
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Search, Filter } from 'lucide-react';
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { BlogCard } from "@/components/blog/blog-card"
-import { BlogFeatured } from "@/components/blog/blog-featured"
-import { useToast } from "@/hooks/use-toast"
-import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { BlogCard } from '@/components/blog/blog-card';
+import { BlogFeatured } from '@/components/blog/blog-featured';
+import { useToast } from '@/hooks/use-toast';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
 
 interface BlogPost {
-  id: string
-  title: string
-  excerpt: string
-  author: string
-  imageUrl: string
-  tags: string
-  featured: boolean
-  publishedAt: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  title: string;
+  excerpt: string;
+  author: string;
+  imageUrl: string;
+  tags: string;
+  featured: boolean;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function BlogPage() {
-  const { toast } = useToast()
-  const [featuredPost, setFeaturedPost] = useState<BlogPost | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
+  const { toast } = useToast();
+  const [featuredPost, setFeaturedPost] = useState<BlogPost | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch featured post
-  const {
-    data: featuredPosts,
-    isLoading: isLoadingFeatured,
-  } = useSupabaseFetch<any>({
-    endpoint: "/api/blog",
-    resourceName: "Featured Posts",
-    dataKey: "posts",
-    queryParams: { featured: "true", limit: "1" }
-  })
+  const { data: featuredPosts, isLoading: isLoadingFeatured } =
+    useSupabaseFetch<any>({
+      endpoint: '/api/blog',
+      resourceName: 'Featured Posts',
+      dataKey: 'posts',
+      queryParams: { featured: 'true', limit: '1' },
+    });
 
   // Fetch regular posts
-  const {
-    data: regularPosts,
-    isLoading: isLoadingPosts,
-  } = useSupabaseFetch<any>({
-    endpoint: "/api/blog",
-    resourceName: "Blog Posts",
-    dataKey: "posts",
-    queryParams: { limit: "10" }
-  })
+  const { data: regularPosts, isLoading: isLoadingPosts } =
+    useSupabaseFetch<any>({
+      endpoint: '/api/blog',
+      resourceName: 'Blog Posts',
+      dataKey: 'posts',
+      queryParams: { limit: '10' },
+    });
 
   // Format posts when data is loaded
   useEffect(() => {
     if (featuredPosts && featuredPosts.length > 0) {
-      setFeaturedPost(formatPost(featuredPosts[0]))
+      setFeaturedPost(formatPost(featuredPosts[0]));
     }
-  }, [featuredPosts])
+  }, [featuredPosts]);
 
   // Determine if we're still loading
-  const isLoading = isLoadingFeatured || isLoadingPosts
+  const isLoading = isLoadingFeatured || isLoadingPosts;
 
   // Helper function to format post data
   function formatPost(post: any): BlogPost {
@@ -74,17 +70,17 @@ export default function BlogPage() {
       publishedAt: post.published_at,
       createdAt: post.created_at,
       updatedAt: post.updated_at,
-    }
+    };
   }
 
   // Format and filter posts based on search query
-  const formattedPosts = regularPosts ? regularPosts.map(formatPost) : []
+  const formattedPosts = regularPosts ? regularPosts.map(formatPost) : [];
   const filteredPosts = formattedPosts.filter(
     (post) =>
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.tags.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      post.tags.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="container py-6 space-y-8">
@@ -95,7 +91,9 @@ export default function BlogPage() {
         className="flex flex-col gap-2"
       >
         <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
-        <p className="text-muted-foreground">Latest news, updates, and insights</p>
+        <p className="text-muted-foreground">
+          Latest news, updates, and insights
+        </p>
       </motion.div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -119,7 +117,10 @@ export default function BlogPage() {
           <div className="h-[300px] rounded-lg bg-muted animate-pulse" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-[350px] rounded-lg bg-muted animate-pulse" />
+              <div
+                key={i}
+                className="h-[350px] rounded-lg bg-muted animate-pulse"
+              />
             ))}
           </div>
         </div>
@@ -136,11 +137,13 @@ export default function BlogPage() {
           ) : (
             <div className="text-center py-12">
               <h3 className="text-lg font-medium">No posts found</h3>
-              <p className="text-muted-foreground mt-1">Try adjusting your search or filter criteria</p>
+              <p className="text-muted-foreground mt-1">
+                Try adjusting your search or filter criteria
+              </p>
             </div>
           )}
         </>
       )}
     </div>
-  )
+  );
 }

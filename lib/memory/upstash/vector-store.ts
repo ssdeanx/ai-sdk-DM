@@ -1,9 +1,21 @@
 import { generateId } from 'ai';
-import { getVectorClient, isUpstashVectorAvailable, runRediSearchHybridQuery, enqueueQStashTask, trackWorkflowNode } from './upstashClients';
+import {
+  getVectorClient,
+  isUpstashVectorAvailable,
+  runRediSearchHybridQuery,
+  enqueueQStashTask,
+  trackWorkflowNode,
+} from './upstashClients';
 import type { Index, Vector, QueryResult, FetchResult } from '@upstash/vector';
 import { generateEmbedding } from '../../ai-integration';
 import { z } from 'zod';
-import { RediSearchHybridQuery, RediSearchHybridResult, QStashTaskPayload, WorkflowNode, UpstashEntityBase } from './upstashTypes';
+import {
+  RediSearchHybridQuery,
+  RediSearchHybridResult,
+  QStashTaskPayload,
+  WorkflowNode,
+  UpstashEntityBase,
+} from './upstashTypes';
 import { upstashLogger } from './upstash-logger';
 
 // --- Zod Schemas ---
@@ -12,14 +24,16 @@ import { upstashLogger } from './upstash-logger';
  * Zod schema for embedding metadata
  */
 export const EmbeddingMetadataSchema = z.record(z.any()).and(
-  z.object({
-    text: z.string().optional(),
-    source_url: z.string().optional(),
-    document_id: z.string().optional(),
-    chunk_id: z.string().optional(),
-    user_id: z.string().optional(),
-    created_at: z.string().optional(),
-  }).partial()
+  z
+    .object({
+      text: z.string().optional(),
+      source_url: z.string().optional(),
+      document_id: z.string().optional(),
+      chunk_id: z.string().optional(),
+      user_id: z.string().optional(),
+      created_at: z.string().optional(),
+    })
+    .partial()
 );
 
 /**
@@ -29,10 +43,12 @@ export const EmbeddingVectorSchema = z.object({
   id: z.string(),
   vector: z.array(z.number()),
   metadata: EmbeddingMetadataSchema.optional(),
-  sparseVector: z.object({
-    indices: z.array(z.number()),
-    values: z.array(z.number())
-  }).optional(),
+  sparseVector: z
+    .object({
+      indices: z.array(z.number()),
+      values: z.array(z.number()),
+    })
+    .optional(),
 });
 
 /**
@@ -102,9 +118,12 @@ export interface EmbeddingSearchResult extends QueryResult {
 
 // --- Error Handling ---
 export class VectorStoreError extends Error {
-  constructor(message: string, public cause?: unknown) {
+  constructor(
+    message: string,
+    public cause?: unknown
+  ) {
     super(message);
-    this.name = "VectorStoreError";
+    this.name = 'VectorStoreError';
     Object.setPrototypeOf(this, VectorStoreError.prototype);
   }
 }
@@ -125,8 +144,12 @@ export async function upsertEmbeddings(
     const result = await vectorDb.upsert(embeddings);
     return result as string;
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error upserting embeddings to Upstash Vector', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError("Failed to upsert embeddings", error);
+    upstashLogger.error(
+      'vector-store',
+      'Error upserting embeddings to Upstash Vector',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new VectorStoreError('Failed to upsert embeddings', error);
   }
 }
 
@@ -142,7 +165,12 @@ export async function searchSimilarEmbeddings(
   options?: SearchEmbeddingsOptions
 ): Promise<EmbeddingSearchResult[]> {
   const vectorDb: Index = getVectorClient();
-  const { topK = 10, includeVectors = false, includeMetadata = true, filter } = options || {};
+  const {
+    topK = 10,
+    includeVectors = false,
+    includeMetadata = true,
+    filter,
+  } = options || {};
 
   try {
     const results = await vectorDb.query({
@@ -154,8 +182,12 @@ export async function searchSimilarEmbeddings(
     });
     return results as EmbeddingSearchResult[];
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error searching embeddings in Upstash Vector', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError("Failed to search embeddings", error);
+    upstashLogger.error(
+      'vector-store',
+      'Error searching embeddings in Upstash Vector',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new VectorStoreError('Failed to search embeddings', error);
   }
 }
 
@@ -171,15 +203,29 @@ export async function getEmbeddingsByIds(
   ids: string | string[],
   includeVectors: boolean = false,
   includeMetadata: boolean = true
-): Promise<Array<FetchResult<EmbeddingMetadata> | null> | FetchResult<EmbeddingMetadata> | null> {
+): Promise<
+  | Array<FetchResult<EmbeddingMetadata> | null>
+  | FetchResult<EmbeddingMetadata>
+  | null
+> {
   const vectorDb: Index = getVectorClient();
   try {
     const normalizedIds = Array.isArray(ids) ? ids : [ids];
-    const results = await vectorDb.fetch(normalizedIds, { includeVectors, includeMetadata });
-    return results as Array<FetchResult<EmbeddingMetadata> | null> | FetchResult<EmbeddingMetadata> | null;
+    const results = await vectorDb.fetch(normalizedIds, {
+      includeVectors,
+      includeMetadata,
+    });
+    return results as
+      | Array<FetchResult<EmbeddingMetadata> | null>
+      | FetchResult<EmbeddingMetadata>
+      | null;
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error fetching embeddings by ID from Upstash Vector', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError("Failed to fetch embeddings by ID", error);
+    upstashLogger.error(
+      'vector-store',
+      'Error fetching embeddings by ID from Upstash Vector',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new VectorStoreError('Failed to fetch embeddings by ID', error);
   }
 }
 
@@ -189,7 +235,9 @@ export async function getEmbeddingsByIds(
  * @returns A promise that resolves with the result of the delete operation from Upstash.
  * @throws VectorStoreError if deletion fails.
  */
-export async function deleteEmbeddingsByIds(ids: string | string[]): Promise<number> {
+export async function deleteEmbeddingsByIds(
+  ids: string | string[]
+): Promise<number> {
   const vectorDb: Index = getVectorClient();
   try {
     const result = await vectorDb.delete(ids);
@@ -197,10 +245,17 @@ export async function deleteEmbeddingsByIds(ids: string | string[]): Promise<num
     if (typeof result === 'object' && result !== null && 'deleted' in result) {
       return (result as { deleted: number }).deleted;
     }
-    throw new VectorStoreError('Unexpected response from Upstash Vector delete', result);
+    throw new VectorStoreError(
+      'Unexpected response from Upstash Vector delete',
+      result
+    );
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error deleting embeddings by ID from Upstash Vector', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError("Failed to delete embeddings by ID", error);
+    upstashLogger.error(
+      'vector-store',
+      'Error deleting embeddings by ID from Upstash Vector',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new VectorStoreError('Failed to delete embeddings by ID', error);
   }
 }
 
@@ -214,8 +269,12 @@ export async function resetVectorIndex(): Promise<void> {
   try {
     await vectorDb.reset();
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error resetting Upstash Vector index', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError("Failed to reset vector index", error);
+    upstashLogger.error(
+      'vector-store',
+      'Error resetting Upstash Vector index',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new VectorStoreError('Failed to reset vector index', error);
   }
 }
 
@@ -230,8 +289,12 @@ export async function getVectorIndexInfo(): Promise<unknown> {
     const info = await vectorDb.info();
     return info;
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error fetching Upstash Vector index info', error instanceof Error ? error : { message: String(error) });
-    throw new VectorStoreError("Failed to fetch vector index info", error);
+    upstashLogger.error(
+      'vector-store',
+      'Error fetching Upstash Vector index info',
+      error instanceof Error ? error : { message: String(error) }
+    );
+    throw new VectorStoreError('Failed to fetch vector index info', error);
   }
 }
 
@@ -253,7 +316,9 @@ export async function storeTextEmbedding(
   try {
     // Check if Upstash Vector is available
     if (!isUpstashVectorAvailable()) {
-      throw new VectorStoreError('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+      throw new VectorStoreError(
+        'Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+      );
     }
 
     // Validate text input
@@ -274,14 +339,14 @@ export async function storeTextEmbedding(
     const fullMetadata: EmbeddingMetadata = {
       text,
       created_at: new Date().toISOString(),
-      ...metadata
+      ...metadata,
     };
 
     // Validate with Zod schema
     const vectorData = EmbeddingVectorSchema.parse({
       id,
       vector: embeddingArray,
-      metadata: fullMetadata
+      metadata: fullMetadata,
     });
 
     // Store the embedding in Upstash Vector
@@ -289,7 +354,11 @@ export async function storeTextEmbedding(
 
     return id;
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error storing text embedding', error instanceof Error ? error : { message: String(error) });
+    upstashLogger.error(
+      'vector-store',
+      'Error storing text embedding',
+      error instanceof Error ? error : { message: String(error) }
+    );
     if (error instanceof VectorStoreError) {
       throw error;
     }
@@ -315,7 +384,9 @@ export async function searchTextStore(
   try {
     // Check if Upstash Vector is available
     if (!isUpstashVectorAvailable()) {
-      throw new VectorStoreError('Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.');
+      throw new VectorStoreError(
+        'Upstash Vector is not available. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+      );
     }
 
     // Validate query input
@@ -333,15 +404,22 @@ export async function searchTextStore(
     const searchOptions = SearchEmbeddingsOptionsSchema.parse({
       topK: limit,
       includeMetadata: true,
-      filter
+      filter,
     });
 
     // Search for similar embeddings
-    const results = await searchSimilarEmbeddings(embeddingArray, searchOptions);
+    const results = await searchSimilarEmbeddings(
+      embeddingArray,
+      searchOptions
+    );
 
     return results;
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error searching text store', error instanceof Error ? error : { message: String(error) });
+    upstashLogger.error(
+      'vector-store',
+      'Error searching text store',
+      error instanceof Error ? error : { message: String(error) }
+    );
     if (error instanceof VectorStoreError) {
       throw error;
     }
@@ -363,7 +441,7 @@ export async function hybridSearch(
     limit?: number;
     filter?: string;
     keywordWeight?: number; // Weight for keyword matching (0-1)
-    vectorWeight?: number;  // Weight for vector similarity (0-1)
+    vectorWeight?: number; // Weight for vector similarity (0-1)
   }
 ): Promise<EmbeddingSearchResult[]> {
   try {
@@ -374,7 +452,12 @@ export async function hybridSearch(
     const vectorWeight = options?.vectorWeight || 0.7;
 
     // Validate weights
-    if (keywordWeight < 0 || keywordWeight > 1 || vectorWeight < 0 || vectorWeight > 1) {
+    if (
+      keywordWeight < 0 ||
+      keywordWeight > 1 ||
+      vectorWeight < 0 ||
+      vectorWeight > 1
+    ) {
       throw new VectorStoreError('Weights must be between 0 and 1');
     }
 
@@ -382,29 +465,33 @@ export async function hybridSearch(
     const vectorResults = await searchTextStore(query, limit * 2, filter);
 
     // Extract keywords from query (simple implementation)
-    const keywords = query.toLowerCase()
+    const keywords = query
+      .toLowerCase()
       .split(/\s+/)
-      .filter(word => word.length > 3) // Filter out short words
-      .map(word => word.replace(/[^\w]/g, '')); // Remove non-word characters
+      .filter((word) => word.length > 3) // Filter out short words
+      .map((word) => word.replace(/[^\w]/g, '')); // Remove non-word characters
 
     // Re-rank results based on keyword matching
-    const rerankedResults = vectorResults.map(result => {
+    const rerankedResults = vectorResults.map((result) => {
       const text = result.metadata?.text || '';
 
       // Calculate keyword score
       let keywordScore = 0;
       if (text && keywords.length > 0) {
         const textLower = text.toLowerCase();
-        const matchedKeywords = keywords.filter(keyword => textLower.includes(keyword));
+        const matchedKeywords = keywords.filter((keyword) =>
+          textLower.includes(keyword)
+        );
         keywordScore = matchedKeywords.length / keywords.length;
       }
 
       // Calculate combined score
-      const combinedScore = (result.score * vectorWeight) + (keywordScore * keywordWeight);
+      const combinedScore =
+        result.score * vectorWeight + keywordScore * keywordWeight;
 
       return {
         ...result,
-        score: combinedScore
+        score: combinedScore,
       };
     });
 
@@ -412,7 +499,11 @@ export async function hybridSearch(
     rerankedResults.sort((a, b) => b.score - a.score);
     return rerankedResults.slice(0, limit);
   } catch (error: unknown) {
-    upstashLogger.error('vector-store', 'Error performing hybrid search', error instanceof Error ? error : { message: String(error) });
+    upstashLogger.error(
+      'vector-store',
+      'Error performing hybrid search',
+      error instanceof Error ? error : { message: String(error) }
+    );
     if (error instanceof VectorStoreError) {
       throw error;
     }
@@ -421,18 +512,27 @@ export async function hybridSearch(
 }
 
 // --- Advanced RediSearch/Hybrid Search ---
-export async function advancedVectorHybridSearch(query: RediSearchHybridQuery): Promise<RediSearchHybridResult[]> {
+export async function advancedVectorHybridSearch(
+  query: RediSearchHybridQuery
+): Promise<RediSearchHybridResult[]> {
   try {
     const results = await runRediSearchHybridQuery(query);
     return results as RediSearchHybridResult[];
   } catch (err) {
-    upstashLogger.error('vector-store', 'Failed advanced hybrid search', err instanceof Error ? err : { message: String(err) });
+    upstashLogger.error(
+      'vector-store',
+      'Failed advanced hybrid search',
+      err instanceof Error ? err : { message: String(err) }
+    );
     throw new VectorStoreError('Failed advanced hybrid search', err);
   }
 }
 
 // --- QStash/Workflow Integration Example ---
-export async function enqueueVectorWorkflow(type: string, data: Record<string, unknown>) {
+export async function enqueueVectorWorkflow(
+  type: string,
+  data: Record<string, unknown>
+) {
   const payload: QStashTaskPayload = {
     id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
     type,

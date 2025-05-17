@@ -11,7 +11,7 @@ import {
   getData,
   TableRow,
   TableInsert,
-  TableUpdate
+  TableUpdate,
 } from '@/lib/memory/upstash/supabase-adapter';
 
 const table = 'apps';
@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
     if (provider === 'upstash') {
       if (id) {
         const item = await getItemById<'apps'>(table, id);
-        if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        if (!item)
+          return NextResponse.json({ error: 'Not found' }, { status: 404 });
         return NextResponse.json(item);
       }
       const items = await getData<'apps'>(table);
@@ -33,8 +34,12 @@ export async function GET(req: NextRequest) {
     if (provider === 'libsql') {
       const db = getLibSQLClient();
       if (id) {
-        const result = await db.execute({ sql: 'SELECT * FROM apps WHERE id = ?', args: [id] });
-        if (!result.rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        const result = await db.execute({
+          sql: 'SELECT * FROM apps WHERE id = ?',
+          args: [id],
+        });
+        if (!result.rows.length)
+          return NextResponse.json({ error: 'Not found' }, { status: 404 });
         return NextResponse.json(result.rows[0]);
       }
       const result = await db.execute({ sql: 'SELECT * FROM apps', args: [] });
@@ -48,14 +53,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const data = await req.json() as TableInsert<'apps'>;
+    const data = (await req.json()) as TableInsert<'apps'>;
     const now = new Date().toISOString();
     const provider = getMemoryProvider();
     if (provider === 'upstash') {
       const created = await createItem<'apps'>(table, {
         ...data,
         created_at: now,
-        updated_at: now
+        updated_at: now,
       });
       return NextResponse.json(created, { status: 201 });
     }
@@ -63,7 +68,16 @@ export async function POST(req: NextRequest) {
     const db = getLibSQLClient();
     const result = await db.execute({
       sql: 'INSERT INTO apps (id, name, description, type, code, parameters_schema, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [data.id ?? null, data.name, data.description ?? null, data.type, data.code, data.parameters_schema ?? null, now, now]
+      args: [
+        data.id ?? null,
+        data.name,
+        data.description ?? null,
+        data.type,
+        data.code,
+        data.parameters_schema ?? null,
+        now,
+        now,
+      ],
     });
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error) {
@@ -73,20 +87,32 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const data = await req.json() as TableUpdate<'apps'> & { id: string };
-    if (!data.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const data = (await req.json()) as TableUpdate<'apps'> & { id: string };
+    if (!data.id)
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     const now = new Date().toISOString();
     const provider = getMemoryProvider();
     if (provider === 'upstash') {
       const { id, ...updateData } = data;
-      const updated = await updateItem<'apps'>(table, id, { ...updateData, updated_at: now });
+      const updated = await updateItem<'apps'>(table, id, {
+        ...updateData,
+        updated_at: now,
+      });
       return NextResponse.json(updated);
     }
     // LibSQL fallback
     const db = getLibSQLClient();
     const result = await db.execute({
       sql: 'UPDATE apps SET name=?, description=?, type=?, code=?, parameters_schema=?, updated_at=? WHERE id=?',
-      args: [data.name ?? null, data.description ?? null, data.type ?? null, data.code ?? null, data.parameters_schema ?? null, now, data.id]
+      args: [
+        data.name ?? null,
+        data.description ?? null,
+        data.type ?? null,
+        data.code ?? null,
+        data.parameters_schema ?? null,
+        now,
+        data.id,
+      ],
     });
     return NextResponse.json(result.rows[0]);
   } catch (error) {

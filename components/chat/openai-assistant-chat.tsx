@@ -3,17 +3,38 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAssistant, Message } from '@ai-sdk/react';
 import {
-  Bot, User, Send, Loader2, RefreshCw, XCircle, Paperclip,
-  FileText, Code, Mic, Copy, Check, Eraser,
-  Maximize2, Minimize2, ThumbsUp, ThumbsDown,
-  Zap, Settings, MessageSquare
+  Bot,
+  User,
+  Send,
+  Loader2,
+  RefreshCw,
+  XCircle,
+  Paperclip,
+  FileText,
+  Code,
+  Mic,
+  Copy,
+  Check,
+  Eraser,
+  Maximize2,
+  Minimize2,
+  ThumbsUp,
+  ThumbsDown,
+  Zap,
+  Settings,
+  MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { CodeBlock } from './code-block';
 import { MermaidDiagram } from './mermaid-diagram';
@@ -49,13 +70,13 @@ export function OpenAIAssistantChat({
     submitMessage,
     error,
     // reload, (removed as it does not exist on UseAssistantHelpers)
-    stop
+    stop,
   } = useAssistant({
     api: apiEndpoint,
     threadId: initialThreadId,
     onError: (error) => {
       console.error('Assistant error:', error);
-    }
+    },
   });
 
   // Derived state
@@ -78,7 +99,9 @@ export function OpenAIAssistantChat({
 
   // Copy conversation to clipboard
   const copyConversation = () => {
-    const text = messages.map(m => `${m.role === 'user' ? 'You' : 'AI'}: ${m.content}`).join('\n\n');
+    const text = messages
+      .map((m) => `${m.role === 'user' ? 'You' : 'AI'}: ${m.content}`)
+      .join('\n\n');
     navigator.clipboard.writeText(text).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
@@ -87,7 +110,7 @@ export function OpenAIAssistantChat({
 
   // Toggle fullscreen
   const toggleFullScreen = () => {
-    setIsFullScreen(prev => !prev);
+    setIsFullScreen((prev) => !prev);
     // In a real app, you would implement actual fullscreen functionality
   };
 
@@ -109,7 +132,7 @@ export function OpenAIAssistantChat({
   // Render content with code blocks
   const renderContent = (content: string) => {
     const parts = [];
-    
+
     // Check for code blocks
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let lastIndex = 0;
@@ -130,10 +153,16 @@ export function OpenAIAssistantChat({
 
       // Handle special code blocks
       if (language === 'mermaid') {
-        parts.push(<MermaidDiagram key={`mermaid-${match.index}`} code={code} />);
+        parts.push(
+          <MermaidDiagram key={`mermaid-${match.index}`} code={code} />
+        );
       } else {
         parts.push(
-          <CodeBlock key={`code-${match.index}`} language={language} code={code} />
+          <CodeBlock
+            key={`code-${match.index}`}
+            language={language}
+            code={code}
+          />
         );
       }
 
@@ -149,15 +178,21 @@ export function OpenAIAssistantChat({
       );
     }
 
-    return parts.length > 0 ? parts : <p className="whitespace-pre-wrap">{content}</p>;
+    return parts.length > 0 ? (
+      parts
+    ) : (
+      <p className="whitespace-pre-wrap">{content}</p>
+    );
   };
 
   return (
-    <div className={cn(
-      "flex flex-col h-full bg-background border rounded-lg overflow-hidden",
-      isFullScreen ? "fixed inset-0 z-50" : "relative",
-      className
-    )}>
+    <div
+      className={cn(
+        'flex flex-col h-full bg-background border rounded-lg overflow-hidden',
+        isFullScreen ? 'fixed inset-0 z-50' : 'relative',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
@@ -169,7 +204,11 @@ export function OpenAIAssistantChat({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={copyConversation}>
-                  {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {isCopied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -181,7 +220,11 @@ export function OpenAIAssistantChat({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={toggleFullScreen}>
-                  {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                  {isFullScreen ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -203,22 +246,32 @@ export function OpenAIAssistantChat({
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                "flex items-start gap-3 p-3 rounded-lg",
-                message.role === 'user' ? "bg-muted/50 ml-6" : "bg-primary/5 mr-6"
+                'flex items-start gap-3 p-3 rounded-lg',
+                message.role === 'user'
+                  ? 'bg-muted/50 ml-6'
+                  : 'bg-primary/5 mr-6'
               )}
             >
-              <Avatar className={cn(
-                "h-8 w-8",
-                message.role === 'user' ? "bg-primary" : "bg-primary/20"
-              )}>
+              <Avatar
+                className={cn(
+                  'h-8 w-8',
+                  message.role === 'user' ? 'bg-primary' : 'bg-primary/20'
+                )}
+              >
                 <AvatarFallback>
-                  {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                  {message.role === 'user' ? (
+                    <User className="h-4 w-4" />
+                  ) : (
+                    <Bot className="h-4 w-4" />
+                  )}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
                 {message.role === 'data' ? (
                   <div>
-                    <p className="font-medium">{(message.data as any)?.description || 'Data'}</p>
+                    <p className="font-medium">
+                      {(message.data as any)?.description || 'Data'}
+                    </p>
                     <pre className="bg-muted p-2 rounded mt-2 overflow-x-auto">
                       {JSON.stringify(message.data, null, 2)}
                     </pre>
@@ -247,7 +300,12 @@ export function OpenAIAssistantChat({
           />
           <div className="absolute right-2 bottom-2 flex items-center gap-2">
             {isLoading ? (
-              <Button type="button" size="icon" variant="ghost" onClick={() => stop()}>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => stop()}
+              >
                 <XCircle className="h-5 w-5 text-muted-foreground" />
               </Button>
             ) : (
@@ -260,12 +318,16 @@ export function OpenAIAssistantChat({
         {isLoading && (
           <div className="flex items-center justify-center mt-2">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            <span className="text-sm text-muted-foreground">Assistant is thinking...</span>
+            <span className="text-sm text-muted-foreground">
+              Assistant is thinking...
+            </span>
           </div>
         )}
         {error && (
           <div className="flex items-center justify-between mt-2 p-2 bg-destructive/10 text-destructive rounded">
-            <span className="text-sm">Error: {error.message || 'Something went wrong'}</span>
+            <span className="text-sm">
+              Error: {error.message || 'Something went wrong'}
+            </span>
             {/* <Button size="sm" variant="ghost" onClick={reload}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button> */}

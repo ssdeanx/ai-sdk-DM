@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { createMemory } from "@/lib/memory/factory";
-import { handleApiError } from "@/lib/api-error-handler";
-import { z } from "zod";
+import { NextResponse } from 'next/server';
+import { createMemory } from '@/lib/memory/factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import { z } from 'zod';
 
 // Define schemas for validation
 const ThreadQuerySchema = z.object({
   limit: z.coerce.number().int().positive().default(50),
-  offset: z.coerce.number().int().min(0).default(0)
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 const CreateThreadSchema = z.object({
-  name: z.string().optional().default('New Chat')
+  name: z.string().optional().default('New Chat'),
 });
 
 // Create memory instance using the factory
@@ -38,13 +38,16 @@ export async function GET(request: Request) {
 
     // Validate and parse query parameters using Zod
     const queryResult = ThreadQuerySchema.safeParse({
-      limit: url.searchParams.get("limit"),
-      offset: url.searchParams.get("offset")
+      limit: url.searchParams.get('limit'),
+      offset: url.searchParams.get('offset'),
     });
 
     if (!queryResult.success) {
       return NextResponse.json(
-        { error: "Invalid query parameters", details: queryResult.error.format() },
+        {
+          error: 'Invalid query parameters',
+          details: queryResult.error.format(),
+        },
         { status: 400 }
       );
     }
@@ -54,7 +57,7 @@ export async function GET(request: Request) {
     // Get threads with AI SDK UI metadata using memory factory
     const threads = await memory.listMemoryThreads({
       limit,
-      offset
+      offset,
     });
 
     // Use the imported MemoryThread type
@@ -76,8 +79,9 @@ export async function GET(request: Request) {
 
         return parsedMetadata.source === 'ai-sdk-ui';
       })
-      .sort((a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      .sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
 
     // Format threads for the client
@@ -102,20 +106,23 @@ export async function GET(request: Request) {
         name: thread.name || 'Untitled Chat',
         createdAt: thread.created_at,
         updatedAt: thread.updated_at,
-        metadata: parsedMetadata
+        metadata: parsedMetadata,
       };
     });
 
     return NextResponse.json({
       threads: formattedThreads,
       count: formattedThreads.length,
-      hasMore: formattedThreads.length === limit
+      hasMore: formattedThreads.length === limit,
     });
   } catch (error: unknown) {
     // Handle Upstash-specific errors
     if (error && typeof error === 'object' && 'name' in error) {
       const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+      if (
+        errorObj.name === 'RedisStoreError' ||
+        errorObj.name === 'UpstashClientError'
+      ) {
         return NextResponse.json(
           { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
           { status: 500 }
@@ -142,7 +149,7 @@ export async function POST(request: Request) {
 
     if (!bodyResult.success) {
       return NextResponse.json(
-        { error: "Invalid request body", details: bodyResult.error.format() },
+        { error: 'Invalid request body', details: bodyResult.error.format() },
         { status: 400 }
       );
     }
@@ -153,21 +160,24 @@ export async function POST(request: Request) {
     const threadId = await memory.createMemoryThread(name, {
       metadata: {
         source: 'ai-sdk-ui',
-        created_at: new Date().toISOString()
-      }
+        created_at: new Date().toISOString(),
+      },
     });
 
     return NextResponse.json({
       id: threadId,
       name,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
   } catch (error: unknown) {
     // Handle Upstash-specific errors
     if (error && typeof error === 'object' && 'name' in error) {
       const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+      if (
+        errorObj.name === 'RedisStoreError' ||
+        errorObj.name === 'UpstashClientError'
+      ) {
         return NextResponse.json(
           { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
           { status: 500 }

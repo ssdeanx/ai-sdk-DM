@@ -1,106 +1,128 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Maximize, Minimize, Download, Copy, Check, Sparkles, RefreshCw, Image as ImageIcon, Wand2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Slider } from "@/components/ui/slider"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Maximize,
+  Minimize,
+  Download,
+  Copy,
+  Check,
+  Sparkles,
+  RefreshCw,
+  Image as ImageIcon,
+  Wand2,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export interface AIImageGeneratorProps {
-  title?: string
-  initialPrompt?: string
-  generatedImage?: string
-  className?: string
-  onGenerate?: (prompt: string, settings: ImageGenerationSettings) => Promise<string>
+  title?: string;
+  initialPrompt?: string;
+  generatedImage?: string;
+  className?: string;
+  onGenerate?: (
+    prompt: string,
+    settings: ImageGenerationSettings
+  ) => Promise<string>;
 }
 
 interface ImageGenerationSettings {
-  model: string
-  style: string
-  size: string
-  quality: number
-  seed?: number
+  model: string;
+  style: string;
+  size: string;
+  quality: number;
+  seed?: number;
 }
 
 export function AIImageGenerator({
-  title = "AI Image Generator",
-  initialPrompt = "",
-  generatedImage = "",
+  title = 'AI Image Generator',
+  initialPrompt = '',
+  generatedImage = '',
   className,
-  onGenerate
+  onGenerate,
 }: AIImageGeneratorProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [prompt, setPrompt] = useState(initialPrompt)
-  const [image, setImage] = useState(generatedImage)
-  const [generating, setGenerating] = useState(false)
+  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const [image, setImage] = useState(generatedImage);
+  const [generating, setGenerating] = useState(false);
   const [settings, setSettings] = useState<ImageGenerationSettings>({
-    model: "dall-e-3",
-    style: "vivid",
-    size: "1024x1024",
+    model: 'dall-e-3',
+    style: 'vivid',
+    size: '1024x1024',
     quality: 75,
-    seed: undefined
-  })
+    seed: undefined,
+  });
 
   // Handle copy prompt
   const handleCopyPrompt = async () => {
-    await navigator.clipboard.writeText(prompt)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Handle download image
   const handleDownload = () => {
-    if (!image) return
+    if (!image) return;
 
-    const link = document.createElement("a")
-    link.href = image
-    link.download = `ai-image-${Date.now()}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = `ai-image-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Handle generate image
   const handleGenerate = async () => {
-    if (!prompt.trim() || !onGenerate) return
+    if (!prompt.trim() || !onGenerate) return;
 
-    setGenerating(true)
+    setGenerating(true);
     try {
-      const newImage = await onGenerate(prompt, settings)
-      setImage(newImage)
+      const newImage = await onGenerate(prompt, settings);
+      setImage(newImage);
     } catch (error) {
-      console.error("Failed to generate image:", error)
+      console.error('Failed to generate image:', error);
       // Show error message
     } finally {
-      setGenerating(false)
+      setGenerating(false);
     }
-  }
+  };
 
   // Handle setting change
-  const handleSettingChange = (key: keyof ImageGenerationSettings, value: any) => {
-    setSettings(prev => ({
+  const handleSettingChange = (
+    key: keyof ImageGenerationSettings,
+    value: any
+  ) => {
+    setSettings((prev) => ({
       ...prev,
-      [key]: value
-    }))
-  }
+      [key]: value,
+    }));
+  };
 
   // Handle random seed
   const handleRandomSeed = () => {
-    const randomSeed = Math.floor(Math.random() * 1000000)
-    handleSettingChange('seed', randomSeed)
-  }
+    const randomSeed = Math.floor(Math.random() * 1000000);
+    handleSettingChange('seed', randomSeed);
+  };
 
   return (
     <div
       className={cn(
-        "relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background",
-        expanded && "fixed inset-4 z-50 bg-background flex flex-col",
+        'relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background',
+        expanded && 'fixed inset-4 z-50 bg-background flex flex-col',
         className
       )}
       onMouseEnter={() => setHovered(true)}
@@ -125,7 +147,11 @@ export function AIImageGenerator({
                 className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
                 onClick={handleCopyPrompt}
               >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
                 <span className="sr-only">Copy prompt</span>
               </Button>
               <Button
@@ -145,16 +171,21 @@ export function AIImageGenerator({
             className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-            <span className="sr-only">{expanded ? "Minimize" : "Maximize"}</span>
+            {expanded ? (
+              <Minimize className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize className="h-3.5 w-3.5" />
+            )}
+            <span className="sr-only">
+              {expanded ? 'Minimize' : 'Maximize'}
+            </span>
           </Button>
         </motion.div>
       </div>
 
-      <div className={cn(
-        "flex flex-col",
-        expanded ? "flex-1" : "max-h-[600px]"
-      )}>
+      <div
+        className={cn('flex flex-col', expanded ? 'flex-1' : 'max-h-[600px]')}
+      >
         <div className="p-4 border-b">
           <Textarea
             placeholder="Describe the image you want to generate..."
@@ -176,7 +207,9 @@ export function AIImageGenerator({
                 <SelectContent>
                   <SelectItem value="dall-e-3">DALL-E 3</SelectItem>
                   <SelectItem value="dall-e-2">DALL-E 2</SelectItem>
-                  <SelectItem value="stable-diffusion">Stable Diffusion</SelectItem>
+                  <SelectItem value="stable-diffusion">
+                    Stable Diffusion
+                  </SelectItem>
                   <SelectItem value="midjourney">Midjourney</SelectItem>
                 </SelectContent>
               </Select>
@@ -212,14 +245,21 @@ export function AIImageGenerator({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1024x1024">1024x1024 (Square)</SelectItem>
-                  <SelectItem value="1792x1024">1792x1024 (Landscape)</SelectItem>
-                  <SelectItem value="1024x1792">1024x1792 (Portrait)</SelectItem>
+                  <SelectItem value="1792x1024">
+                    1792x1024 (Landscape)
+                  </SelectItem>
+                  <SelectItem value="1024x1792">
+                    1024x1792 (Portrait)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="seed" className="flex items-center justify-between">
+              <Label
+                htmlFor="seed"
+                className="flex items-center justify-between"
+              >
                 <span>Seed</span>
                 <Button
                   variant="ghost"
@@ -235,7 +275,12 @@ export function AIImageGenerator({
                   id="seed"
                   type="number"
                   value={settings.seed || ''}
-                  onChange={(e) => handleSettingChange('seed', e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    handleSettingChange(
+                      'seed',
+                      e.target.value ? Number(e.target.value) : undefined
+                    )
+                  }
                   placeholder="Random"
                   className="flex-1"
                 />
@@ -244,7 +289,10 @@ export function AIImageGenerator({
           </div>
 
           <div className="mt-4">
-            <Label htmlFor="quality" className="flex items-center justify-between">
+            <Label
+              htmlFor="quality"
+              className="flex items-center justify-between"
+            >
               <span>Quality: {settings.quality}%</span>
             </Label>
             <Slider
@@ -253,7 +301,9 @@ export function AIImageGenerator({
               max={100}
               step={25}
               value={[settings.quality]}
-              onValueChange={(value) => handleSettingChange('quality', value[0])}
+              onValueChange={(value) =>
+                handleSettingChange('quality', value[0])
+              }
               className="mt-2"
             />
           </div>
@@ -278,10 +328,12 @@ export function AIImageGenerator({
           </Button>
         </div>
 
-        <div className={cn(
-          "flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/30",
-          !image && "min-h-[300px]"
-        )}>
+        <div
+          className={cn(
+            'flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/30',
+            !image && 'min-h-[300px]'
+          )}
+        >
           {image ? (
             <img
               src={image}
@@ -297,18 +349,21 @@ export function AIImageGenerator({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // Input component for seed
-function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+function Input({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
       {...props}
     />
-  )
+  );
 }

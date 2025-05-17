@@ -4,25 +4,25 @@ import {
   assert,
   getEnv,
   pruneNullOrUndefined,
-  throttleKy
-} from '@agentic/core'
-import defaultKy, { type KyInstance } from 'ky'
-import pThrottle from 'p-throttle'
-import { z } from 'zod'
-import { createAISDKTools } from './ai-sdk'
+  throttleKy,
+} from '@agentic/core';
+import defaultKy, { type KyInstance } from 'ky';
+import pThrottle from 'p-throttle';
+import { z } from 'zod';
+import { createAISDKTools } from './ai-sdk';
 
 export namespace tavily {
-  export const API_BASE_URL = 'https://api.tavily.com'
+  export const API_BASE_URL = 'https://api.tavily.com';
 
   // Allow up to 20 requests per minute by default.
   export const throttle = pThrottle({
     limit: 20,
-    interval: 60 * 1000
-  })
+    interval: 60 * 1000,
+  });
 
   export interface SearchOptions {
     /** Search query. (required) */
-    query: string
+    query: string;
 
     /**
      * The category of the search.
@@ -30,79 +30,79 @@ export namespace tavily {
      * Currently, only "general" and "news" are supported.
      * Default is "general".
      */
-    topic?: string
+    topic?: string;
 
     /**
      * The depth of the search. It can be basic or advanced. Default is basic
      * for quick results and advanced for indepth high quality results but
      * longer response time. Advanced calls equals 2 requests.
      */
-    search_depth?: 'basic' | 'advanced'
+    search_depth?: 'basic' | 'advanced';
 
     /** Include a synthesized answer in the search results. Default is `false`. */
-    include_answer?: boolean
+    include_answer?: boolean;
 
     /** Include a list of query related images in the response. Default is `false`. */
-    include_images?: boolean
+    include_images?: boolean;
 
     /** Include raw content in the search results. Default is `false`. */
-    include_raw_content?: boolean
+    include_raw_content?: boolean;
 
     /** The number of maximum search results to return. Default is `5`. */
-    max_results?: number
+    max_results?: number;
 
     /**
      * A list of domains to specifically include in the search results.
      * Default is `undefined`, which includes all domains.
      */
-    include_domains?: string[]
+    include_domains?: string[];
 
     /**
      * A list of domains to specifically exclude from the search results.
      * Default is `undefined`, which doesn't exclude any domains.
      */
-    exclude_domains?: string[]
+    exclude_domains?: string[];
   }
 
   export interface SearchResponse {
     /** The search query. */
-    query: string
+    query: string;
 
     /** A list of sorted search results ranked by relevancy. */
-    results: SearchResult[]
+    results: SearchResult[];
 
     /** The answer to your search query. */
-    answer?: string
+    answer?: string;
 
     /** A list of query related image urls. */
-    images?: string[]
+    images?: string[];
 
     /** A list of suggested research follow up questions related to original query. */
-    follow_up_questions?: string[]
+    follow_up_questions?: string[];
 
     /** How long it took to generate a response. */
-    response_time: string
+    response_time: string;
   }
 
   export interface SearchResult {
     /** The url of the search result. */
-    url: string
+    url: string;
 
     /** The title of the search result page. */
-    title: string
+    title: string;
 
     /**
      * The most query related content from the scraped url. We use proprietary
      * AI and algorithms to extract only the most relevant content from each
      * url, to optimize for context quality and size.
      */
-    content: string
+    content: string;
 
     /** The parsed and cleaned HTML of the site. For now includes parsed text only. */
-    raw_content?: string
+    raw_content?: string;
 
     /** The relevance score of the search result. */
-    score: string
+    score: string;
   }
 }
 
@@ -112,35 +112,35 @@ export namespace tavily {
  * @see https://tavily.com
  */
 export class TavilyClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiKey: string
-  protected readonly apiBaseUrl: string
+  protected readonly ky: KyInstance;
+  protected readonly apiKey: string;
+  protected readonly apiBaseUrl: string;
 
   constructor({
     apiKey = getEnv('TAVILY_API_KEY'),
     apiBaseUrl = tavily.API_BASE_URL,
     throttle = true,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiKey?: string
-    apiBaseUrl?: string
-    throttle?: boolean
-    ky?: KyInstance
+    apiKey?: string;
+    apiBaseUrl?: string;
+    throttle?: boolean;
+    ky?: KyInstance;
   } = {}) {
     assert(
       apiKey,
       'TavilyClient missing required "apiKey" (defaults to "TAVILY_API_KEY")'
-    )
-    super()
+    );
+    super();
 
-    this.apiKey = apiKey
-    this.apiBaseUrl = apiBaseUrl
+    this.apiKey = apiKey;
+    this.apiBaseUrl = apiBaseUrl;
 
-    const throttledKy = throttle ? throttleKy(ky, tavily.throttle) : ky
+    const throttledKy = throttle ? throttleKy(ky, tavily.throttle) : ky;
 
     this.ky = throttledKy.extend({
-      prefixUrl: this.apiBaseUrl
-    })
+      prefixUrl: this.apiBaseUrl,
+    });
   }
 
   /**
@@ -175,7 +175,7 @@ export class TavilyClient extends AIFunctionsProvider {
         .int()
         .default(5)
         .optional()
-        .describe('Max number of search results to return.')
+        .describe('Max number of search results to return.'),
       // include_domains: z
       //   .array(z.string())
       //   .optional()
@@ -188,26 +188,26 @@ export class TavilyClient extends AIFunctionsProvider {
       //   .describe(
       //     'List of domains to specifically exclude from the search results.'
       //   )
-    })
+    }),
   })
   async search(queryOrOpts: string | tavily.SearchOptions) {
     const options =
-      typeof queryOrOpts === 'string' ? { query: queryOrOpts } : queryOrOpts
+      typeof queryOrOpts === 'string' ? { query: queryOrOpts } : queryOrOpts;
 
     const res = await this.ky
       .post('search', {
         json: {
           ...options,
-          api_key: this.apiKey
-        }
+          api_key: this.apiKey,
+        },
       })
-      .json<tavily.SearchResponse>()
+      .json<tavily.SearchResponse>();
 
     return pruneNullOrUndefined({
       ...res,
-      results: res.results?.map(pruneNullOrUndefined)
-    })
+      results: res.results?.map(pruneNullOrUndefined),
+    });
   }
 }
 
-export const tavilyTools = createAISDKTools(new TavilyClient())
+export const tavilyTools = createAISDKTools(new TavilyClient());

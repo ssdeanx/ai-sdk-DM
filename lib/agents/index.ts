@@ -5,29 +5,26 @@
  */
 
 // Core agent types
-export * from './agent.types'
+export * from './agent.types';
 
 // Base agent implementation
-export { BaseAgent } from './baseAgent'
+export { BaseAgent } from './baseAgent';
 
 // Agent registry
-export { AgentRegistry, agentRegistry } from './registry'
+export { AgentRegistry, agentRegistry } from './registry';
 
 // Agent service
-export * from './agent-service'
+export * from './agent-service';
 
 // Persona management
-export { PersonaManager, personaManager } from './personas/persona-manager'
+export { PersonaManager, personaManager } from './personas/persona-manager';
 
 // Multi-agent orchestration
-export {
-  MultiAgentOrchestrator,
-  multiAgentOrchestrator,
-} from './multiAgent'
+export { MultiAgentOrchestrator, multiAgentOrchestrator } from './multiAgent';
 
 export type {
   Workflow,
   WorkflowStep,
   CreateWorkflowOptions,
-  AgentCommunicationOptions
-} from './multiAgent'
+  AgentCommunicationOptions,
+} from './multiAgent';

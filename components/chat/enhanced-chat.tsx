@@ -1,53 +1,67 @@
-"use client"
+'use client';
 
-import { SelectItem } from "@/components/ui/select"
-import { SelectContent } from "@/components/ui/select"
-import { SelectValue } from "@/components/ui/select"
-import { SelectTrigger } from "@/components/ui/select"
-import { Select } from "@/components/ui/select"
-import type React from "react"
+import { SelectItem } from '@/components/ui/select';
+import { SelectContent } from '@/components/ui/select';
+import { SelectValue } from '@/components/ui/select';
+import { SelectTrigger } from '@/components/ui/select';
+import { Select } from '@/components/ui/select';
+import type React from 'react';
 
-import { useRef, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRef, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  Bot, Send, Loader2, Code, FileText, Image, BarChart, Globe, Monitor,
-  Terminal, Music, MapPin, Table, FormInput, Wand2, Box
-} from "lucide-react"
-import { AnimatePresence } from "framer-motion"
-import { nanoid } from "nanoid"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Avatar } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChatSidebar } from "./chat-sidebar"
-import { ChatMessage } from "./chat-message"
-import { CodeBlock } from "./code-block"
-import { MermaidDiagram } from "./mermaid-diagram"
-import { ImageDisplay } from "./image-display"
-import { BrowserDisplay } from "./browser-display"
-import { ScreenShare } from "./screen-share"
-import { ComputerUse } from "./computer-use"
-import { DataVisualization } from "./data-visualization"
-import { InteractiveMap } from "./interactive-map"
-import { ModelViewer } from "./model-viewer"
-import { DataTable } from "./data-table"
-import { InteractiveForm } from "./interactive-form"
-import { AIImageGenerator } from "./ai-image-generator"
-import { AudioPlayer } from "./audio-player"
-import { FileUpload } from "./file-upload"
-import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
-import { useChat, type Message } from "@/hooks/use-chat"
-import { renderContent } from "./ai-sdk-chatHelper"
+  Bot,
+  Send,
+  Loader2,
+  Code,
+  FileText,
+  Image,
+  BarChart,
+  Globe,
+  Monitor,
+  Terminal,
+  Music,
+  MapPin,
+  Table,
+  FormInput,
+  Wand2,
+  Box,
+} from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { nanoid } from 'nanoid';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Avatar } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChatSidebar } from './chat-sidebar';
+import { ChatMessage } from './chat-message';
+import { CodeBlock } from './code-block';
+import { MermaidDiagram } from './mermaid-diagram';
+import { ImageDisplay } from './image-display';
+import { BrowserDisplay } from './browser-display';
+import { ScreenShare } from './screen-share';
+import { ComputerUse } from './computer-use';
+import { DataVisualization } from './data-visualization';
+import { InteractiveMap } from './interactive-map';
+import { ModelViewer } from './model-viewer';
+import { DataTable } from './data-table';
+import { InteractiveForm } from './interactive-form';
+import { AIImageGenerator } from './ai-image-generator';
+import { AudioPlayer } from './audio-player';
+import { FileUpload } from './file-upload';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useChat, type Message } from '@/hooks/use-chat';
+import { renderContent } from './ai-sdk-chatHelper';
 
 interface EnhancedChatProps {
-  initialThreadId?: string
-  initialModelId?: string
-  initialMessages?: Message[]
-  agentId?: string
-  className?: string
+  initialThreadId?: string;
+  initialModelId?: string;
+  initialMessages?: Message[];
+  agentId?: string;
+  className?: string;
 }
 
 export function EnhancedChat({
@@ -57,14 +71,16 @@ export function EnhancedChat({
   agentId,
   className,
 }: EnhancedChatProps) {
-  const router = useRouter()
-  const [selectedModelId, setSelectedModelId] = useState<string>(initialModelId || "")
-  const [selectedTools, setSelectedTools] = useState<string[]>([])
-  const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(1000)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [activeTab, setActiveTab] = useState<string>("chat")
+  const router = useRouter();
+  const [selectedModelId, setSelectedModelId] = useState<string>(
+    initialModelId || ''
+  );
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [temperature, setTemperature] = useState(0.7);
+  const [maxTokens, setMaxTokens] = useState(1000);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [activeTab, setActiveTab] = useState<string>('chat');
 
   // Use our custom chat hook
   const {
@@ -82,43 +98,44 @@ export function EnhancedChat({
   } = useChat({
     initialMessages,
     initialThreadId,
-    apiEndpoint: agentId ? `/api/agents/${agentId}/run` : "/api/chat",
+    apiEndpoint: agentId ? `/api/agents/${agentId}/run` : '/api/chat',
     onFinish: () => {
       // Refresh threads to update the list
-      refreshThreads()
-    }
-  })
+      refreshThreads();
+    },
+  });
 
   // Fetch models from Supabase
   const { data: modelsData, isLoading: isLoadingModels } = useSupabaseFetch({
-    endpoint: "/api/models",
-    resourceName: "Models",
-    dataKey: "models",
-  })
+    endpoint: '/api/models',
+    resourceName: 'Models',
+    dataKey: 'models',
+  });
 
   // Type the models data
   const models: { id: string; name: string }[] = Array.isArray(modelsData)
     ? modelsData.map((model: any) => ({
         id: String(model?.id || ''),
-        name: String(model?.name || '')
+        name: String(model?.name || ''),
       }))
-    : []
+    : [];
 
   // Fetch tools from Supabase
   const { data: toolsData, isLoading: isLoadingTools } = useSupabaseFetch({
-    endpoint: "/api/tools",
-    resourceName: "Tools",
-    dataKey: "tools",
-  })
+    endpoint: '/api/tools',
+    resourceName: 'Tools',
+    dataKey: 'tools',
+  });
 
   // Type the tools data
-  const tools: { id: string; name: string; description: string }[] = Array.isArray(toolsData)
-    ? toolsData.map((tool: any) => ({
-        id: String(tool?.id || ''),
-        name: String(tool?.name || ''),
-        description: String(tool?.description || '')
-      }))
-    : []
+  const tools: { id: string; name: string; description: string }[] =
+    Array.isArray(toolsData)
+      ? toolsData.map((tool: any) => ({
+          id: String(tool?.id || ''),
+          name: String(tool?.name || ''),
+          description: String(tool?.description || ''),
+        }))
+      : [];
 
   // Fetch threads from LibSQL
   const {
@@ -126,38 +143,39 @@ export function EnhancedChat({
     isLoading: isLoadingThreads,
     refetch: refreshThreads,
   } = useSupabaseFetch({
-    endpoint: "/api/memory_threads",
-    resourceName: "Threads",
-    dataKey: "threads",
-  })
+    endpoint: '/api/memory_threads',
+    resourceName: 'Threads',
+    dataKey: 'threads',
+  });
 
   // Type the threads data
-  const threads: { id: string; name: string; updated_at: string }[] = Array.isArray(threadsData)
-    ? threadsData.map((thread: any) => ({
-        id: String(thread?.id || ''),
-        name: String(thread?.name || ''),
-        updated_at: String(thread?.updated_at || new Date().toISOString())
-      }))
-    : []
+  const threads: { id: string; name: string; updated_at: string }[] =
+    Array.isArray(threadsData)
+      ? threadsData.map((thread: any) => ({
+          id: String(thread?.id || ''),
+          name: String(thread?.name || ''),
+          updated_at: String(thread?.updated_at || new Date().toISOString()),
+        }))
+      : [];
 
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages])
+  }, [messages]);
 
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "inherit"
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+      textareaRef.current.style.height = 'inherit';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [input])
+  }, [input]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     await sendMessage({
       message: input,
@@ -166,19 +184,19 @@ export function EnhancedChat({
       tools: selectedTools,
       temperature,
       maxTokens,
-      agentId
-    })
-  }
+      agentId,
+    });
+  };
 
   // Handle file upload
   const handleFileUpload = (files: File[]) => {
     // Process each file
     files.forEach((file) => {
-      const reader = new FileReader()
+      const reader = new FileReader();
 
       reader.onload = (e) => {
-        const fileType = file.type.split("/")[0]
-        const fileUrl = e.target?.result as string
+        const fileType = file.type.split('/')[0];
+        const fileUrl = e.target?.result as string;
 
         setAttachments((prev) => [
           ...prev,
@@ -187,172 +205,210 @@ export function EnhancedChat({
             url: fileUrl,
             name: file.name,
           },
-        ])
-      }
+        ]);
+      };
 
-      if (file.type.startsWith("image/")) {
-        reader.readAsDataURL(file)
+      if (file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
       } else {
-        reader.readAsText(file)
+        reader.readAsText(file);
       }
-    })
-  }
+    });
+  };
 
   // Create a new thread
   const handleCreateThread = async () => {
-    const newThreadId = nanoid()
-    setThreadId(newThreadId)
-    router.push(`/chat?thread=${newThreadId}`)
+    const newThreadId = nanoid();
+    setThreadId(newThreadId);
+    router.push(`/chat?thread=${newThreadId}`);
     // Refresh the threads list
-    await refreshThreads()
-  }
+    await refreshThreads();
+  };
 
   // Switch to a different thread
   const handleThreadChange = (id: string) => {
-    setThreadId(id)
-    router.push(`/chat?thread=${id}`)
-  }
+    setThreadId(id);
+    router.push(`/chat?thread=${id}`);
+  };
 
   // Toggle a tool
   const handleToolToggle = (toolId: string) => {
-    setSelectedTools((prev) => (prev.includes(toolId) ? prev.filter((id) => id !== toolId) : [...prev, toolId]))
-  }
+    setSelectedTools((prev) =>
+      prev.includes(toolId)
+        ? prev.filter((id) => id !== toolId)
+        : [...prev, toolId]
+    );
+  };
 
   // Render message content with support for code blocks, mermaid diagrams, browser displays, etc.
   const renderMessageContent = (content: string) => {
     // Split content by code blocks
-    const parts = content.split(/(```[\s\S]*?```)/g)
+    const parts = content.split(/(```[\s\S]*?```)/g);
 
     return parts.map((part, index) => {
       // Check if this part is a code block
-      if (part.startsWith("```") && part.endsWith("```")) {
+      if (part.startsWith('```') && part.endsWith('```')) {
         // Extract language and code
-        const match = part.match(/```(\w+)?\s*([\s\S]*?)```/)
+        const match = part.match(/```(\w+)?\s*([\s\S]*?)```/);
 
         if (match) {
-          const language = match[1] || "text"
-          const code = match[2]
+          const language = match[1] || 'text';
+          const code = match[2];
 
           // Check for special block types
-          if (language === "mermaid") {
-            return <MermaidDiagram key={index} code={code} />
-          } else if (language === "browser") {
+          if (language === 'mermaid') {
+            return <MermaidDiagram key={index} code={code} />;
+          } else if (language === 'browser') {
             try {
-              const browserData = JSON.parse(code)
-              return <BrowserDisplay key={index} url={browserData.url} title={browserData.title} />
+              const browserData = JSON.parse(code);
+              return (
+                <BrowserDisplay
+                  key={index}
+                  url={browserData.url}
+                  title={browserData.title}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "screen") {
+          } else if (language === 'screen') {
             try {
-              const screenData = JSON.parse(code)
-              return <ScreenShare key={index} src={screenData.src} title={screenData.title} isVideo={screenData.isVideo} />
+              const screenData = JSON.parse(code);
+              return (
+                <ScreenShare
+                  key={index}
+                  src={screenData.src}
+                  title={screenData.title}
+                  isVideo={screenData.isVideo}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "terminal" || language === "shell") {
-            return <ComputerUse key={index} title="Terminal Output" content={code} isTerminal={true} />
-          } else if (language === "chart" || language === "graph") {
-            try {
-              const chartData = JSON.parse(code)
-              return <DataVisualization
+          } else if (language === 'terminal' || language === 'shell') {
+            return (
+              <ComputerUse
                 key={index}
-                title={chartData.title}
-                data={chartData.data}
-                type={chartData.type || "bar"}
-                labels={chartData.labels}
-                xAxisLabel={chartData.xAxisLabel}
-                yAxisLabel={chartData.yAxisLabel}
+                title="Terminal Output"
+                content={code}
+                isTerminal={true}
               />
-            } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
-            }
-          } else if (language === "map") {
+            );
+          } else if (language === 'chart' || language === 'graph') {
             try {
-              const mapData = JSON.parse(code)
-              return <InteractiveMap
-                key={index}
-                title={mapData.title}
-                center={mapData.center}
-                zoom={mapData.zoom}
-                locations={mapData.locations}
-              />
+              const chartData = JSON.parse(code);
+              return (
+                <DataVisualization
+                  key={index}
+                  title={chartData.title}
+                  data={chartData.data}
+                  type={chartData.type || 'bar'}
+                  labels={chartData.labels}
+                  xAxisLabel={chartData.xAxisLabel}
+                  yAxisLabel={chartData.yAxisLabel}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "3d" || language === "model") {
+          } else if (language === 'map') {
             try {
-              const modelData = JSON.parse(code)
-              return <ModelViewer
-                key={index}
-                title={modelData.title}
-                modelUrl={modelData.url}
-                format={modelData.format}
-                autoRotate={modelData.autoRotate}
-              />
+              const mapData = JSON.parse(code);
+              return (
+                <InteractiveMap
+                  key={index}
+                  title={mapData.title}
+                  center={mapData.center}
+                  zoom={mapData.zoom}
+                  locations={mapData.locations}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "table") {
+          } else if (language === '3d' || language === 'model') {
             try {
-              const tableData = JSON.parse(code)
-              return <DataTable
-                key={index}
-                title={tableData.title}
-                data={tableData.data}
-                columns={tableData.columns}
-                pagination={tableData.pagination}
-              />
+              const modelData = JSON.parse(code);
+              return (
+                <ModelViewer
+                  key={index}
+                  title={modelData.title}
+                  modelUrl={modelData.url}
+                  format={modelData.format}
+                  autoRotate={modelData.autoRotate}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "form") {
+          } else if (language === 'table') {
             try {
-              const formData = JSON.parse(code)
-              return <InteractiveForm
-                key={index}
-                title={formData.title}
-                description={formData.description}
-                fields={formData.fields}
-                submitLabel={formData.submitLabel}
-                onSubmit={(data) => console.log('Form submitted:', data)}
-              />
+              const tableData = JSON.parse(code);
+              return (
+                <DataTable
+                  key={index}
+                  title={tableData.title}
+                  data={tableData.data}
+                  columns={tableData.columns}
+                  pagination={tableData.pagination}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "image-generator") {
+          } else if (language === 'form') {
             try {
-              const imageGenData = JSON.parse(code)
-              return <AIImageGenerator
-                key={index}
-                title={imageGenData.title}
-                initialPrompt={imageGenData.prompt}
-                generatedImage={imageGenData.image}
-                onGenerate={async (prompt, settings) => {
-                  console.log('Generate image with:', prompt, settings)
-                  // This would call an actual API in production
-                  return imageGenData.image || ''
-                }}
-              />
+              const formData = JSON.parse(code);
+              return (
+                <InteractiveForm
+                  key={index}
+                  title={formData.title}
+                  description={formData.description}
+                  fields={formData.fields}
+                  submitLabel={formData.submitLabel}
+                  onSubmit={(data) => console.log('Form submitted:', data)}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
             }
-          } else if (language === "audio") {
+          } else if (language === 'image-generator') {
             try {
-              const audioData = JSON.parse(code)
-              return <AudioPlayer
-                key={index}
-                title={audioData.title}
-                src={audioData.src}
-                waveform={audioData.waveform}
-              />
+              const imageGenData = JSON.parse(code);
+              return (
+                <AIImageGenerator
+                  key={index}
+                  title={imageGenData.title}
+                  initialPrompt={imageGenData.prompt}
+                  generatedImage={imageGenData.image}
+                  onGenerate={async (prompt, settings) => {
+                    console.log('Generate image with:', prompt, settings);
+                    // This would call an actual API in production
+                    return imageGenData.image || '';
+                  }}
+                />
+              );
             } catch (e) {
-              return <CodeBlock key={index} language="json" code={code} />
+              return <CodeBlock key={index} language="json" code={code} />;
+            }
+          } else if (language === 'audio') {
+            try {
+              const audioData = JSON.parse(code);
+              return (
+                <AudioPlayer
+                  key={index}
+                  title={audioData.title}
+                  src={audioData.src}
+                  waveform={audioData.waveform}
+                />
+              );
+            } catch (e) {
+              return <CodeBlock key={index} language="json" code={code} />;
             }
           }
 
           // Regular code block
-          return <CodeBlock key={index} language={language} code={code} />
+          return <CodeBlock key={index} language={language} code={code} />;
         }
       }
 
@@ -361,15 +417,19 @@ export function EnhancedChat({
         <p key={index} className="whitespace-pre-wrap">
           {part}
         </p>
-      )
-    })
-  }
+      );
+    });
+  };
 
   return (
-    <div className={cn("flex h-[calc(100vh-4rem)]", className)}>
+    <div className={cn('flex h-[calc(100vh-4rem)]', className)}>
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 flex flex-col"
+        >
           <div className="border-b px-4">
             <TabsList className="h-12 flex-wrap">
               <TabsTrigger value="chat" className="flex items-center gap-2">
@@ -384,7 +444,10 @@ export function EnhancedChat({
                 <FileText className="h-4 w-4" />
                 Files
               </TabsTrigger>
-              <TabsTrigger value="visualize" className="flex items-center gap-2">
+              <TabsTrigger
+                value="visualize"
+                className="flex items-center gap-2"
+              >
                 <BarChart className="h-4 w-4" />
                 Visualize
               </TabsTrigger>
@@ -445,15 +508,28 @@ export function EnhancedChat({
                 {attachments.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
                     {attachments.map((attachment, i) => (
-                      <div key={i} className="border rounded-md p-2 flex items-center gap-2">
-                        {attachment.type === "image" ? <Image className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        <span className="text-sm truncate max-w-[100px]">{attachment.name}</span>
+                      <div
+                        key={i}
+                        className="border rounded-md p-2 flex items-center gap-2"
+                      >
+                        {attachment.type === 'image' ? (
+                          <Image className="h-4 w-4" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        <span className="text-sm truncate max-w-[100px]">
+                          {attachment.name}
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-5 w-5 p-0"
-                          onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                          onClick={() =>
+                            setAttachments((prev) =>
+                              prev.filter((_, idx) => idx !== i)
+                            )
+                          }
                         >
                           &times;
                         </Button>
@@ -472,9 +548,9 @@ export function EnhancedChat({
                     placeholder="Type your message..."
                     className="flex-1 min-h-[60px] resize-none rounded-xl border-border/50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSubmit(e)
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit(e);
                       }
                     }}
                   />
@@ -483,7 +559,9 @@ export function EnhancedChat({
                     type="submit"
                     variant="gradient"
                     size="icon"
-                    disabled={isLoading || (!input.trim() && attachments.length === 0)}
+                    disabled={
+                      isLoading || (!input.trim() && attachments.length === 0)
+                    }
                     className="rounded-full shadow-sm"
                   >
                     {isLoading ? (
@@ -504,10 +582,14 @@ export function EnhancedChat({
                 <div className="p-4">
                   <h2 className="text-lg font-medium mb-4">Code Execution</h2>
                   <p className="text-muted-foreground mb-4">
-                    Write and execute code in various languages. Results will be displayed below.
+                    Write and execute code in various languages. Results will be
+                    displayed below.
                   </p>
 
-                  <Textarea placeholder="// Write your code here" className="font-mono h-64 mb-4" />
+                  <Textarea
+                    placeholder="// Write your code here"
+                    className="font-mono h-64 mb-4"
+                  />
 
                   <div className="flex justify-between">
                     <Select>
@@ -541,7 +623,8 @@ export function EnhancedChat({
                 <div className="p-4">
                   <h2 className="text-lg font-medium mb-4">File Management</h2>
                   <p className="text-muted-foreground mb-4">
-                    Upload, view, and manage files for your AI assistant to use as context.
+                    Upload, view, and manage files for your AI assistant to use
+                    as context.
                   </p>
 
                   <FileUpload onUpload={handleFileUpload} />
@@ -554,9 +637,12 @@ export function EnhancedChat({
                       {attachments.length > 0 ? (
                         <div className="space-y-2">
                           {attachments.map((file, i) => (
-                            <div key={i} className="flex items-center justify-between p-2 border rounded-md">
+                            <div
+                              key={i}
+                              className="flex items-center justify-between p-2 border rounded-md"
+                            >
                               <div className="flex items-center gap-2">
-                                {file.type === "image" ? (
+                                {file.type === 'image' ? (
                                   <Image className="h-4 w-4" />
                                 ) : (
                                   <FileText className="h-4 w-4" />
@@ -566,7 +652,11 @@ export function EnhancedChat({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                                onClick={() =>
+                                  setAttachments((prev) =>
+                                    prev.filter((_, idx) => idx !== i)
+                                  )
+                                }
                               >
                                 Remove
                               </Button>
@@ -574,7 +664,9 @@ export function EnhancedChat({
                           ))}
                         </div>
                       ) : (
-                        <p className="text-center text-muted-foreground py-8">No files uploaded yet</p>
+                        <p className="text-center text-muted-foreground py-8">
+                          No files uploaded yet
+                        </p>
                       )}
                     </div>
                   </div>
@@ -583,11 +675,16 @@ export function EnhancedChat({
             </div>
           </TabsContent>
 
-          <TabsContent value="visualize" className="flex-1 flex flex-col p-0 m-0">
+          <TabsContent
+            value="visualize"
+            className="flex-1 flex flex-col p-0 m-0"
+          >
             <div className="flex-1 p-4">
               <Card className="h-full">
                 <div className="p-4">
-                  <h2 className="text-lg font-medium mb-4">Data Visualization</h2>
+                  <h2 className="text-lg font-medium mb-4">
+                    Data Visualization
+                  </h2>
                   <p className="text-muted-foreground mb-4">
                     Create charts, diagrams, and visualizations from your data.
                   </p>
@@ -620,7 +717,9 @@ graph TD
                   </div>
 
                   <div className="mt-4 p-4 border rounded-md bg-white">
-                    <p className="text-center text-muted-foreground py-8">Visualization will appear here</p>
+                    <p className="text-center text-muted-foreground py-8">
+                      Visualization will appear here
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -633,7 +732,8 @@ graph TD
                 <div className="p-4">
                   <h2 className="text-lg font-medium mb-4">Web Browser</h2>
                   <p className="text-muted-foreground mb-4">
-                    Browse websites and interact with web content directly in the chat.
+                    Browse websites and interact with web content directly in
+                    the chat.
                   </p>
 
                   <div className="flex gap-2 mb-4">
@@ -670,7 +770,8 @@ graph TD
                 <div className="p-4">
                   <h2 className="text-lg font-medium mb-4">Screen Sharing</h2>
                   <p className="text-muted-foreground mb-4">
-                    Share your screen or record your screen to share with the AI assistant.
+                    Share your screen or record your screen to share with the AI
+                    assistant.
                   </p>
 
                   <div className="flex gap-2 mb-4">
@@ -700,13 +801,17 @@ graph TD
             </div>
           </TabsContent>
 
-          <TabsContent value="terminal" className="flex-1 flex flex-col p-0 m-0">
+          <TabsContent
+            value="terminal"
+            className="flex-1 flex flex-col p-0 m-0"
+          >
             <div className="flex-1 p-4">
               <Card className="h-full">
                 <div className="p-4">
                   <h2 className="text-lg font-medium mb-4">Terminal Access</h2>
                   <p className="text-muted-foreground mb-4">
-                    Execute commands and view terminal output directly in the chat.
+                    Execute commands and view terminal output directly in the
+                    chat.
                   </p>
 
                   <div className="flex gap-2 mb-4">
@@ -738,9 +843,12 @@ graph TD
             <div className="flex-1 p-4">
               <Card className="h-full">
                 <div className="p-4">
-                  <h2 className="text-lg font-medium mb-4">Data Tables & Charts</h2>
+                  <h2 className="text-lg font-medium mb-4">
+                    Data Tables & Charts
+                  </h2>
                   <p className="text-muted-foreground mb-4">
-                    Create interactive data tables and visualizations from your data.
+                    Create interactive data tables and visualizations from your
+                    data.
                   </p>
 
                   <div className="flex gap-4 mb-4">
@@ -850,7 +958,9 @@ graph TD
                     <div className="text-center text-muted-foreground">
                       <MapPin className="mx-auto h-8 w-8 mb-2" />
                       <p>Map will appear here</p>
-                      <p className="text-xs mt-1">Search for a location to get started</p>
+                      <p className="text-xs mt-1">
+                        Search for a location to get started
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -862,7 +972,9 @@ graph TD
             <div className="flex-1 p-4">
               <Card className="h-full">
                 <div className="p-4">
-                  <h2 className="text-lg font-medium mb-4">Interactive Forms</h2>
+                  <h2 className="text-lg font-medium mb-4">
+                    Interactive Forms
+                  </h2>
                   <p className="text-muted-foreground mb-4">
                     Create custom forms for gathering user input and feedback.
                   </p>
@@ -884,7 +996,9 @@ graph TD
                           <SelectValue placeholder="Select form type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="feedback">Feedback Form</SelectItem>
+                          <SelectItem value="feedback">
+                            Feedback Form
+                          </SelectItem>
                           <SelectItem value="survey">Survey</SelectItem>
                           <SelectItem value="contact">Contact Form</SelectItem>
                           <SelectItem value="custom">Custom Form</SelectItem>
@@ -901,7 +1015,9 @@ graph TD
                           <FormInput className="h-4 w-4" />
                           <span className="text-sm">Text Field</span>
                         </div>
-                        <Button variant="ghost" size="sm">Add</Button>
+                        <Button variant="ghost" size="sm">
+                          Add
+                        </Button>
                       </div>
 
                       <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
@@ -909,7 +1025,9 @@ graph TD
                           <FormInput className="h-4 w-4" />
                           <span className="text-sm">Multiple Choice</span>
                         </div>
-                        <Button variant="ghost" size="sm">Add</Button>
+                        <Button variant="ghost" size="sm">
+                          Add
+                        </Button>
                       </div>
 
                       <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
@@ -917,7 +1035,9 @@ graph TD
                           <FormInput className="h-4 w-4" />
                           <span className="text-sm">Checkbox</span>
                         </div>
-                        <Button variant="ghost" size="sm">Add</Button>
+                        <Button variant="ghost" size="sm">
+                          Add
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -928,7 +1048,9 @@ graph TD
                   </Button>
 
                   <div className="mt-4 border rounded-md overflow-hidden p-4 bg-muted/30">
-                    <p className="text-center text-muted-foreground py-8">Form preview will appear here</p>
+                    <p className="text-center text-muted-foreground py-8">
+                      Form preview will appear here
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -955,10 +1077,14 @@ graph TD
                   </div>
 
                   <div className="border rounded-md p-4 mb-4">
-                    <h3 className="text-sm font-medium mb-4">Audio Processing</h3>
+                    <h3 className="text-sm font-medium mb-4">
+                      Audio Processing
+                    </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <h4 className="text-xs font-medium mb-2">Transcription</h4>
+                        <h4 className="text-xs font-medium mb-2">
+                          Transcription
+                        </h4>
                         <Select>
                           <SelectTrigger>
                             <SelectValue placeholder="Language" />
@@ -979,9 +1105,15 @@ graph TD
                             <SelectValue placeholder="Analysis type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="sentiment">Sentiment Analysis</SelectItem>
-                            <SelectItem value="keywords">Keyword Extraction</SelectItem>
-                            <SelectItem value="summary">Summarization</SelectItem>
+                            <SelectItem value="sentiment">
+                              Sentiment Analysis
+                            </SelectItem>
+                            <SelectItem value="keywords">
+                              Keyword Extraction
+                            </SelectItem>
+                            <SelectItem value="summary">
+                              Summarization
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1047,11 +1179,16 @@ graph TD
             </div>
           </TabsContent>
 
-          <TabsContent value="ai-image" className="flex-1 flex flex-col p-0 m-0">
+          <TabsContent
+            value="ai-image"
+            className="flex-1 flex flex-col p-0 m-0"
+          >
             <div className="flex-1 p-4">
               <Card className="h-full">
                 <div className="p-4">
-                  <h2 className="text-lg font-medium mb-4">AI Image Generator</h2>
+                  <h2 className="text-lg font-medium mb-4">
+                    AI Image Generator
+                  </h2>
                   <p className="text-muted-foreground mb-4">
                     Generate images using AI based on your text descriptions.
                   </p>
@@ -1070,7 +1207,9 @@ graph TD
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="dall-e-3">DALL-E 3</SelectItem>
-                          <SelectItem value="stable-diffusion">Stable Diffusion</SelectItem>
+                          <SelectItem value="stable-diffusion">
+                            Stable Diffusion
+                          </SelectItem>
                           <SelectItem value="midjourney">Midjourney</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1133,5 +1272,5 @@ graph TD
         onCreateThread={handleCreateThread}
       />
     </div>
-  )
+  );
 }

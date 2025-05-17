@@ -21,7 +21,7 @@ export interface ModelSettings {
   default_frequency_penalty: number;
   default_presence_penalty: number;
   context_window: number;
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
   base_url?: string | null;
   api_key?: string;
   description?: string;
@@ -36,25 +36,25 @@ export interface ModelSettings {
  * Model provider enum
  */
 export type ModelProvider =
-  | "google"
-  | "openai"
-  | "anthropic"
-  | "google-vertex"
-  | "meta"
-  | "mistral"
-  | "ollama"
-  | "custom";
+  | 'google'
+  | 'openai'
+  | 'anthropic'
+  | 'google-vertex'
+  | 'meta'
+  | 'mistral'
+  | 'ollama'
+  | 'custom';
 
 /**
  * Model category enum
  */
 export type ModelCategory =
-  | "text"
-  | "vision"
-  | "embedding"
-  | "audio"
-  | "image"
-  | "multimodal";
+  | 'text'
+  | 'vision'
+  | 'embedding'
+  | 'audio'
+  | 'image'
+  | 'multimodal';
 
 /**
  * Model capability flags
@@ -97,9 +97,14 @@ export interface ExtendedModelSettings extends ModelSettings {
 /**
  * Model settings creation input
  */
-export type ModelSettingsInput = Omit<ModelSettings, "id" | "created_at" | "updated_at">;
+export type ModelSettingsInput = Omit<
+  ModelSettings,
+  'id' | 'created_at' | 'updated_at'
+>;
 
 /**
  * Model settings update input
  */
-export type ModelSettingsUpdate = Partial<Omit<ModelSettings, "id" | "created_at" | "updated_at">>;
+export type ModelSettingsUpdate = Partial<
+  Omit<ModelSettings, 'id' | 'created_at' | 'updated_at'>
+>;

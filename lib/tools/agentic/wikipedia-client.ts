@@ -3,101 +3,101 @@ import {
   AIFunctionsProvider,
   assert,
   getEnv,
-  throttleKy
-} from '@agentic/core'
-import defaultKy, { type KyInstance } from 'ky'
-import pThrottle from 'p-throttle'
-import { z } from 'zod'
-import { createAISDKTools } from './ai-sdk'
+  throttleKy,
+} from '@agentic/core';
+import defaultKy, { type KyInstance } from 'ky';
+import pThrottle from 'p-throttle';
+import { z } from 'zod';
+import { createAISDKTools } from './ai-sdk';
 
 export namespace wikipedia {
   // Allow up to 200 requests per second by default.
   export const throttle = pThrottle({
     limit: 200,
-    interval: 1000
-  })
+    interval: 1000,
+  });
 
   export interface SearchOptions {
-    query: string
-    limit?: number
+    query: string;
+    limit?: number;
   }
 
   export interface PageSearchResponse {
-    pages: Page[]
+    pages: Page[];
   }
 
   export interface Page {
-    id: number
-    key: string
-    title: string
-    matched_title: null
-    excerpt: string
-    description: null | string
-    thumbnail: Thumbnail | null
+    id: number;
+    key: string;
+    title: string;
+    matched_title: null;
+    excerpt: string;
+    description: null | string;
+    thumbnail: Thumbnail | null;
   }
 
   export interface Thumbnail {
-    url: string
-    width: number
-    height: number
-    mimetype: string
-    duration: null
+    url: string;
+    width: number;
+    height: number;
+    mimetype: string;
+    duration: null;
   }
 
   export interface PageSummaryOptions {
-    title: string
-    redirect?: boolean
-    acceptLanguage?: string
+    title: string;
+    redirect?: boolean;
+    acceptLanguage?: string;
   }
 
   export interface PageSummaryResponse {
-    ns?: number
-    index?: number
-    type: string
-    title: string
-    displaytitle: string
-    namespace: { id: number; text: string }
-    wikibase_item: string
-    titles: { canonical: string; normalized: string; display: string }
-    pageid: number
+    ns?: number;
+    index?: number;
+    type: string;
+    title: string;
+    displaytitle: string;
+    namespace: { id: number; text: string };
+    wikibase_item: string;
+    titles: { canonical: string; normalized: string; display: string };
+    pageid: number;
     thumbnail: {
-      source: string
-      width: number
-      height: number
-    }
+      source: string;
+      width: number;
+      height: number;
+    };
     originalimage: {
-      source: string
-      width: number
-      height: number
-    }
-    lang: string
-    dir: string
-    revision: string
-    tid: string
-    timestamp: string
-    description: string
-    description_source: string
+      source: string;
+      width: number;
+      height: number;
+    };
+    lang: string;
+    dir: string;
+    revision: string;
+    tid: string;
+    timestamp: string;
+    description: string;
+    description_source: string;
     content_urls: {
       desktop: {
-        page: string
-        revisions: string
-        edit: string
-        talk: string
-      }
+        page: string;
+        revisions: string;
+        edit: string;
+        talk: string;
+      };
       mobile: {
-        page: string
-        revisions: string
-        edit: string
-        talk: string
-      }
-    }
-    extract: string
-    extract_html: string
-    normalizedtitle?: string
+        page: string;
+        revisions: string;
+        edit: string;
+        talk: string;
+      };
+    };
+    extract: string;
+    extract_html: string;
+    normalizedtitle?: string;
     coordinates?: {
-      lat: number
-      lon: number
-    }
+      lat: number;
+      lon: number;
+    };
   }
 }
 
@@ -107,9 +107,9 @@ export namespace wikipedia {
  * @see https://www.mediawiki.org/wiki/API
  */
 export class WikipediaClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiBaseUrl: string
-  protected readonly apiUserAgent: string
+  protected readonly ky: KyInstance;
+  protected readonly apiBaseUrl: string;
+  protected readonly apiUserAgent: string;
 
   constructor({
     apiBaseUrl = getEnv('WIKIPEDIA_API_BASE_URL') ??
@@ -117,27 +117,27 @@ export class WikipediaClient extends AIFunctionsProvider {
     apiUserAgent = getEnv('WIKIPEDIA_API_USER_AGENT') ??
       'Agentic (https://github.com/transitive-bullshit/agentic)',
     throttle = true,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiBaseUrl?: string
-    apiUserAgent?: string
-    throttle?: boolean
-    ky?: KyInstance
+    apiBaseUrl?: string;
+    apiUserAgent?: string;
+    throttle?: boolean;
+    ky?: KyInstance;
   } = {}) {
-    assert(apiBaseUrl, 'WikipediaClient missing required "apiBaseUrl"')
-    assert(apiUserAgent, 'WikipediaClient missing required "apiUserAgent"')
-    super()
+    assert(apiBaseUrl, 'WikipediaClient missing required "apiBaseUrl"');
+    assert(apiUserAgent, 'WikipediaClient missing required "apiUserAgent"');
+    super();
 
-    this.apiBaseUrl = apiBaseUrl
-    this.apiUserAgent = apiUserAgent
+    this.apiBaseUrl = apiBaseUrl;
+    this.apiUserAgent = apiUserAgent;
 
-    const throttledKy = throttle ? throttleKy(ky, wikipedia.throttle) : ky
+    const throttledKy = throttle ? throttleKy(ky, wikipedia.throttle) : ky;
 
     this.ky = throttledKy.extend({
       headers: {
-        'api-user-agent': apiUserAgent
-      }
-    })
+        'api-user-agent': apiUserAgent,
+      },
+    });
   }
 
   /**
@@ -146,18 +146,18 @@ export class WikipediaClient extends AIFunctionsProvider {
     name: 'wikipedia_search',
     description: 'Searches Wikipedia for pages matching the given query.',
     inputSchema: z.object({
-      query: z.string().describe('Search query')
-    })
+      query: z.string().describe('Search query'),
+    }),
   })
   async search({ query, ...opts }: wikipedia.SearchOptions) {
     return (
       // https://www.mediawiki.org/wiki/API:REST_API
       this.ky
         .get('https://en.wikipedia.org/w/rest.php/v1/search/page', {
-          searchParams: { q: query, ...opts }
+          searchParams: { q: query, ...opts },
         })
         .json<wikipedia.PageSearchResponse>()
-    )
+    );
   }
 
   /**
@@ -172,8 +172,8 @@ export class WikipediaClient extends AIFunctionsProvider {
         .string()
         .optional()
         .default('en-us')
-        .describe('Locale code for the language to use.')
-    })
+        .describe('Locale code for the language to use.'),
+    }),
   })
   async getPageSummary({
     title,
@@ -181,7 +181,7 @@ export class WikipediaClient extends AIFunctionsProvider {
     redirect = true,
     ...opts
   }: wikipedia.PageSummaryOptions) {
-    title = title.trim().replaceAll(' ', '_')
+    title = title.trim().replaceAll(' ', '_');
 
     // https://en.wikipedia.org/api/rest_v1/
     return this.ky
@@ -189,11 +189,11 @@ export class WikipediaClient extends AIFunctionsProvider {
         prefixUrl: this.apiBaseUrl,
         searchParams: { redirect, ...opts },
         headers: {
-          'accept-language': acceptLanguage
-        }
+          'accept-language': acceptLanguage,
+        },
       })
-      .json<wikipedia.PageSummaryResponse>()
+      .json<wikipedia.PageSummaryResponse>();
   }
 }
 
-export const wikipediaTools = createAISDKTools(new WikipediaClient())
+export const wikipediaTools = createAISDKTools(new WikipediaClient());

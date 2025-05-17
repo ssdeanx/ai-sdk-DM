@@ -1,4 +1,8 @@
-import { ModelCapabilities, ModelCategory, ModelProvider } from "./model-settings";
+import {
+  ModelCapabilities,
+  ModelCategory,
+  ModelProvider,
+} from './model-settings';
 
 export interface Model {
   id: string;
@@ -22,7 +26,7 @@ export interface Model {
   metadata?: Record<string, any>;
   base_url?: string | null;
   api_key?: string;
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
 }

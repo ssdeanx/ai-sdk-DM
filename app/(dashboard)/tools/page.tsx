@@ -1,86 +1,111 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Edit, Plus, Trash, MoreHorizontal } from "lucide-react"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { DataTable } from "@/components/ui/data-table"
-import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
-import { useSupabaseCrud } from "@/hooks/use-supabase-crud"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { ColumnDef } from "@tanstack/react-table"
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Edit, Plus, Trash, MoreHorizontal } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { DataTable } from '@/components/ui/data-table';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { ColumnDef } from '@tanstack/react-table';
 
 // Define the Tool type
 interface Tool {
-  id: string
-  name: string
-  description: string
-  parameters_schema: string
-  category?: string
-  implementation?: string
-  is_enabled?: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  description: string;
+  parameters_schema: string;
+  category?: string;
+  implementation?: string;
+  is_enabled?: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Define the form schema
 const toolFormSchema = z.object({
   name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
+    message: 'Name must be at least 2 characters.',
   }),
   description: z.string().min(10, {
-    message: "Description must be at least 10 characters.",
+    message: 'Description must be at least 10 characters.',
   }),
   parametersSchema: z.string().refine(
     (value) => {
       try {
-        JSON.parse(value)
-        return true
+        JSON.parse(value);
+        return true;
       } catch {
-        return false
+        return false;
       }
     },
     {
-      message: "Parameters schema must be valid JSON",
-    },
+      message: 'Parameters schema must be valid JSON',
+    }
   ),
-  category: z.string().default("custom"),
+  category: z.string().default('custom'),
   implementation: z.string().optional(),
   isEnabled: z.boolean().default(true),
-})
+});
 
 const toolCategories = [
-  { value: "web", label: "Web Tools" },
-  { value: "code", label: "Code Tools" },
-  { value: "data", label: "Data Tools" },
-  { value: "ai", label: "AI Tools" },
-  { value: "custom", label: "Custom Tools" },
-]
+  { value: 'web', label: 'Web Tools' },
+  { value: 'code', label: 'Code Tools' },
+  { value: 'data', label: 'Data Tools' },
+  { value: 'ai', label: 'AI Tools' },
+  { value: 'custom', label: 'Custom Tools' },
+];
 
 export default function ToolsPage() {
-  const { toast } = useToast()
-  const [open, setOpen] = useState(false)
-  const [editingTool, setEditingTool] = useState<Tool | null>(null)
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [editingTool, setEditingTool] = useState<Tool | null>(null);
 
   const form = useForm<z.infer<typeof toolFormSchema>>({
     resolver: zodResolver(toolFormSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      parametersSchema: "{}",
-      category: "custom",
-      implementation: "",
+      name: '',
+      description: '',
+      parametersSchema: '{}',
+      category: 'custom',
+      implementation: '',
       isEnabled: true,
     },
-  })
+  });
 
   const {
     data: tools,
@@ -88,21 +113,21 @@ export default function ToolsPage() {
     refresh,
     isMockData,
   } = useSupabaseFetch<Tool>({
-    endpoint: "/api/tools",
-    resourceName: "Tools",
-    dataKey: "tools",
-  })
+    endpoint: '/api/tools',
+    resourceName: 'Tools',
+    dataKey: 'tools',
+  });
 
   const { create, update, remove } = useSupabaseCrud<Tool>({
-    resourceName: "Tool",
-    endpoint: "/api/tools",
+    resourceName: 'Tool',
+    endpoint: '/api/tools',
     onSuccess: () => {
-      setOpen(false)
-      form.reset()
-      setEditingTool(null)
-      refresh()
+      setOpen(false);
+      form.reset();
+      setEditingTool(null);
+      refresh();
     },
-  })
+  });
 
   async function onSubmit(values: z.infer<typeof toolFormSchema>) {
     if (editingTool) {
@@ -113,7 +138,7 @@ export default function ToolsPage() {
         category: values.category,
         implementation: values.implementation,
         is_enabled: values.isEnabled,
-      })
+      });
     } else {
       await create({
         name: values.name,
@@ -122,56 +147,59 @@ export default function ToolsPage() {
         category: values.category,
         implementation: values.implementation,
         is_enabled: values.isEnabled,
-      })
+      });
     }
   }
 
   function handleEdit(tool: Tool) {
-    setEditingTool(tool)
+    setEditingTool(tool);
     form.reset({
       name: tool.name,
       description: tool.description,
       parametersSchema: tool.parameters_schema,
-      category: tool.category || "custom",
-      implementation: tool.implementation || "",
+      category: tool.category || 'custom',
+      implementation: tool.implementation || '',
       isEnabled: tool.is_enabled ?? true,
-    })
-    setOpen(true)
+    });
+    setOpen(true);
   }
 
   async function handleDelete(id: string) {
-    await remove(id)
+    await remove(id);
   }
 
   const columns: ColumnDef<Tool>[] = [
     {
-      accessorKey: "name",
-      header: "Name",
+      accessorKey: 'name',
+      header: 'Name',
       cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
     },
     {
-      accessorKey: "description",
-      header: "Description",
+      accessorKey: 'description',
+      header: 'Description',
       cell: ({ row }) => (
-        <div className="max-w-[300px] truncate" title={row.original.description}>
+        <div
+          className="max-w-[300px] truncate"
+          title={row.original.description}
+        >
           {row.original.description}
         </div>
       ),
     },
     {
-      accessorKey: "category",
-      header: "Category",
-      cell: ({ row }) => <div className="capitalize">{row.original.category}</div>,
-    },
-    {
-      accessorKey: "is_enabled",
-      header: "Enabled",
+      accessorKey: 'category',
+      header: 'Category',
       cell: ({ row }) => (
-        <span>{row.original.is_enabled ? "Yes" : "No"}</span>
+        <div className="capitalize">{row.original.category}</div>
       ),
     },
     {
-      id: "actions",
+      accessorKey: 'is_enabled',
+      header: 'Enabled',
+      cell: ({ row }) => <span>{row.original.is_enabled ? 'Yes' : 'No'}</span>,
+    },
+    {
+      id: 'actions',
       cell: ({ row }) => (
         <div className="text-right">
           <DropdownMenu>
@@ -195,28 +223,30 @@ export default function ToolsPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Tools</h1>
-          <p className="text-muted-foreground">Manage and configure your AI tools</p>
+          <p className="text-muted-foreground">
+            Manage and configure your AI tools
+          </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button
               onClick={() => {
-                setEditingTool(null)
+                setEditingTool(null);
                 form.reset({
-                  name: "",
-                  description: "",
-                  parametersSchema: "{}",
-                  category: "custom",
-                  implementation: "",
+                  name: '',
+                  description: '',
+                  parametersSchema: '{}',
+                  category: 'custom',
+                  implementation: '',
                   isEnabled: true,
-                })
+                });
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -225,11 +255,18 @@ export default function ToolsPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
-              <DialogTitle>{editingTool ? "Edit Tool" : "Add New Tool"}</DialogTitle>
-              <DialogDescription>Configure a custom or built-in AI tool.</DialogDescription>
+              <DialogTitle>
+                {editingTool ? 'Edit Tool' : 'Add New Tool'}
+              </DialogTitle>
+              <DialogDescription>
+                Configure a custom or built-in AI tool.
+              </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="name"
@@ -239,7 +276,9 @@ export default function ToolsPage() {
                       <FormControl>
                         <Input placeholder="Web Search" {...field} />
                       </FormControl>
-                      <FormDescription>A descriptive name for this tool</FormDescription>
+                      <FormDescription>
+                        A descriptive name for this tool
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -251,7 +290,10 @@ export default function ToolsPage() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Describe what this tool does" {...field} />
+                        <Textarea
+                          placeholder="Describe what this tool does"
+                          {...field}
+                        />
                       </FormControl>
                       <FormDescription>What does this tool do?</FormDescription>
                       <FormMessage />
@@ -267,7 +309,9 @@ export default function ToolsPage() {
                       <FormControl>
                         <Textarea placeholder="{}" {...field} />
                       </FormControl>
-                      <FormDescription>JSON schema for tool parameters</FormDescription>
+                      <FormDescription>
+                        JSON schema for tool parameters
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -281,7 +325,9 @@ export default function ToolsPage() {
                       <FormControl>
                         <Input placeholder="custom" {...field} />
                       </FormControl>
-                      <FormDescription>Tool category (e.g., web, code, ai, custom)</FormDescription>
+                      <FormDescription>
+                        Tool category (e.g., web, code, ai, custom)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -293,9 +339,14 @@ export default function ToolsPage() {
                     <FormItem>
                       <FormLabel>Implementation (optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Implementation details or code" {...field} />
+                        <Input
+                          placeholder="Implementation details or code"
+                          {...field}
+                        />
                       </FormControl>
-                      <FormDescription>Optional implementation details or code</FormDescription>
+                      <FormDescription>
+                        Optional implementation details or code
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -307,18 +358,30 @@ export default function ToolsPage() {
                     <FormItem>
                       <FormLabel>Enabled</FormLabel>
                       <FormControl>
-                        <Input type="checkbox" checked={field.value} onChange={e => field.onChange(e.target.checked)} />
+                        <Input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                        />
                       </FormControl>
-                      <FormDescription>Enable or disable this tool</FormDescription>
+                      <FormDescription>
+                        Enable or disable this tool
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit">{editingTool ? "Update Tool" : "Add Tool"}</Button>
+                  <Button type="submit">
+                    {editingTool ? 'Update Tool' : 'Add Tool'}
+                  </Button>
                 </div>
               </form>
             </Form>
@@ -348,5 +411,5 @@ export default function ToolsPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

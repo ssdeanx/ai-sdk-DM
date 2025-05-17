@@ -15,6 +15,5 @@ export interface GqlQuerySuccess {
 }
 
 export type GqlQueryResult = GqlQuerySuccess | ToolFailure;
-export const isGqlQuerySuccess = (
-  r: GqlQueryResult,
-): r is GqlQuerySuccess => r.success;
+export const isGqlQuerySuccess = (r: GqlQueryResult): r is GqlQuerySuccess =>
+  r.success;

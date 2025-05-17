@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 /**
  * Hook for direct Supabase CRUD operations
@@ -16,16 +16,16 @@
  * @module hooks/use-supabase-direct
  */
 
-import { useState, useRef, useEffect } from 'react'
-import { useToast } from '@/hooks/use-toast'
-import { createClient, PostgrestError } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
-import { LRUCache } from 'lru-cache'
-import { getDrizzleClient } from '@/lib/memory/drizzle'
+import { useState, useRef, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { createClient, PostgrestError } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
+import { LRUCache } from 'lru-cache';
+import { getDrizzleClient } from '@/lib/memory/drizzle';
 import { DATABASE_URL } from '../lib/tools/graphql/constants';
-import { useMemoryProvider } from './use-memory-provider'
-import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory'
-import type { SupabaseClient as UpstashSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory'
+import { useMemoryProvider } from './use-memory-provider';
+import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
+import type { SupabaseClient as UpstashSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 
 /**
  * Options for the useSupabaseDirect hook
@@ -34,33 +34,36 @@ interface UseSupabaseDirectOptions<T> {
   /**
    * The table name to perform CRUD operations on
    */
-  tableName: string
+  tableName: string;
 
   /**
    * Optional Drizzle schema table reference
    * If provided, will use Drizzle ORM for database operations
    */
-  schemaTable?: any
+  schemaTable?: any;
 
   /**
    * Optional callback to transform data before saving
    */
-  transformBeforeSave?: (data: T) => any
+  transformBeforeSave?: (data: T) => any;
 
   /**
    * Optional callback to transform data after fetching
    */
-  transformAfterFetch?: (data: any) => T
+  transformAfterFetch?: (data: any) => T;
 
   /**
    * Optional error handler
    */
-  onError?: (error: PostgrestError | Error, operation?: string) => void
+  onError?: (error: PostgrestError | Error, operation?: string) => void;
 
   /**
    * Optional success handler
    */
-  onSuccess?: (operation: 'create' | 'update' | 'delete' | 'get' | 'batch' | 'query', data?: any) => void
+  onSuccess?: (
+    operation: 'create' | 'update' | 'delete' | 'get' | 'batch' | 'query',
+    data?: any
+  ) => void;
 
   /**
    * Cache options
@@ -70,50 +73,50 @@ interface UseSupabaseDirectOptions<T> {
      * Whether to enable caching
      * @default true
      */
-    enabled?: boolean
+    enabled?: boolean;
 
     /**
      * Maximum number of items to store in the cache
      * @default 100
      */
-    maxSize?: number
+    maxSize?: number;
 
     /**
      * Time to live for cache entries in milliseconds
      * @default 60000 (1 minute)
      */
-    ttl?: number
+    ttl?: number;
 
     /**
      * Whether to log cache hits and misses
      * @default false
      */
-    debug?: boolean
-  }
+    debug?: boolean;
+  };
 
   /**
    * Whether to use Drizzle ORM for database operations
    * @default true if schemaTable is provided, false otherwise
    */
-  useDrizzle?: boolean
+  useDrizzle?: boolean;
 
   /**
    * Whether to use optimistic updates for create, update, and delete operations
    * @default true
    */
-  optimisticUpdates?: boolean
+  optimisticUpdates?: boolean;
 
   /**
    * Default page size for paginated queries
    * @default 20
    */
-  defaultPageSize?: number
+  defaultPageSize?: number;
 
   /**
    * Whether to automatically refresh data after mutations
    * @default true
    */
-  autoRefresh?: boolean
+  autoRefresh?: boolean;
 
   /**
    * Upstash adapter options
@@ -123,14 +126,14 @@ interface UseSupabaseDirectOptions<T> {
      * Whether to force using Upstash adapter
      * If not specified, will use the value from environment variables
      */
-    forceUse?: boolean
+    forceUse?: boolean;
 
     /**
      * Whether to add Upstash adapter headers to the request
      * @default true
      */
-    addHeaders?: boolean
-  }
+    addHeaders?: boolean;
+  };
 }
 
 /**
@@ -140,12 +143,12 @@ export interface QueryOptions {
   /**
    * Filter conditions
    */
-  filters?: FilterCondition[]
+  filters?: FilterCondition[];
 
   /**
    * Columns to select
    */
-  select?: string | string[]
+  select?: string | string[];
 
   /**
    * Pagination options
@@ -154,18 +157,18 @@ export interface QueryOptions {
     /**
      * Page number (1-based)
      */
-    page?: number
+    page?: number;
 
     /**
      * Number of items per page
      */
-    pageSize?: number
+    pageSize?: number;
 
     /**
      * Cursor for cursor-based pagination
      */
-    cursor?: string
-  }
+    cursor?: string;
+  };
 
   /**
    * Sorting options
@@ -174,23 +177,23 @@ export interface QueryOptions {
     /**
      * Column to sort by
      */
-    column: string
+    column: string;
 
     /**
      * Sort direction
      */
-    ascending?: boolean
-  }[]
+    ascending?: boolean;
+  }[];
 
   /**
    * Relations to include
    */
-  include?: string[]
+  include?: string[];
 
   /**
    * Whether to count total rows
    */
-  count?: boolean
+  count?: boolean;
 }
 
 /**
@@ -200,31 +203,44 @@ export interface FilterCondition {
   /**
    * Column to filter on
    */
-  column: string
+  column: string;
 
   /**
    * Operator to use
    */
-  operator: FilterOperator
+  operator: FilterOperator;
 
   /**
    * Value to compare against
    */
-  value: any
+  value: any;
 }
 
 /**
  * Filter operators for advanced queries
  */
 export type FilterOperator =
-  | 'eq' | 'neq'
-  | 'gt' | 'gte' | 'lt' | 'lte'
-  | 'like' | 'ilike'
-  | 'in' | 'is'
-  | 'contains' | 'containedBy'
-  | 'overlaps' | 'textSearch'
-  | 'between' | 'notBetween'
-  | 'rangeGt' | 'rangeLt' | 'rangeGte' | 'rangeLte' | 'rangeAdjacent';
+  | 'eq'
+  | 'neq'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'like'
+  | 'ilike'
+  | 'in'
+  | 'is'
+  | 'contains'
+  | 'containedBy'
+  | 'overlaps'
+  | 'textSearch'
+  | 'between'
+  | 'notBetween'
+  | 'rangeGt'
+  | 'rangeLt'
+  | 'rangeGte'
+  | 'rangeLte'
+  | 'rangeAdjacent';
 
 /**
  * Hook for direct Supabase CRUD operations
@@ -243,43 +259,44 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     onSuccess,
     cache: cacheOptions = { enabled: true },
     useDrizzle = !!schemaTable,
-    upstash = { addHeaders: true }
-  } = options
+    upstash = { addHeaders: true },
+  } = options;
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<PostgrestError | Error | null>(null)
-  const [items, setItems] = useState<T[]>([])
-  const [item, setItem] = useState<T | null>(null)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<PostgrestError | Error | null>(null);
+  const [items, setItems] = useState<T[]>([]);
+  const [item, setItem] = useState<T | null>(null);
   const [pagination] = useState({
     totalCount: 0,
     pageCount: 0,
     currentPage: 1,
-    pageSize: 20
-  })
+    pageSize: 20,
+  });
 
   // Get memory provider configuration
-  const { useUpstashAdapter } = useMemoryProvider()
+  const { useUpstashAdapter } = useMemoryProvider();
 
   // Determine if we should use Upstash adapter
-  const shouldUseUpstash = upstash.forceUse !== undefined
-    ? upstash.forceUse
-    : useUpstashAdapter
+  const shouldUseUpstash =
+    upstash.forceUse !== undefined ? upstash.forceUse : useUpstashAdapter;
 
   // Initialize LRU cache with optimized settings
-  const cacheInstance = useRef<LRUCache<string, any>>(new LRUCache({
-    max: cacheOptions.maxSize || 500, // Increased default size for better hit rate
-    ttl: cacheOptions.ttl || 300000, // 5 minutes default TTL for better cache utilization
-    updateAgeOnGet: true, // Reset TTL when item is accessed
-    updateAgeOnHas: false, // Don't reset TTL on cache checks
-    allowStale: true, // Allow returning stale items before removing them
-    fetchMethod: async (_key, staleValue) => {
-      // This allows for background refresh of cache items
-      // Return stale value immediately while fetching fresh data
-      return staleValue;
-    },
-    noDisposeOnSet: true, // Don't dispose items that are being replaced
-    noUpdateTTL: false, // Update TTL when item is set
-  }))
+  const cacheInstance = useRef<LRUCache<string, any>>(
+    new LRUCache({
+      max: cacheOptions.maxSize || 500, // Increased default size for better hit rate
+      ttl: cacheOptions.ttl || 300000, // 5 minutes default TTL for better cache utilization
+      updateAgeOnGet: true, // Reset TTL when item is accessed
+      updateAgeOnHas: false, // Don't reset TTL on cache checks
+      allowStale: true, // Allow returning stale items before removing them
+      fetchMethod: async (_key, staleValue) => {
+        // This allows for background refresh of cache items
+        // Return stale value immediately while fetching fresh data
+        return staleValue;
+      },
+      noDisposeOnSet: true, // Don't dispose items that are being replaced
+      noUpdateTTL: false, // Update TTL when item is set
+    })
+  );
 
   // Cache statistics for debugging and optimization
   const cacheStats = useRef({
@@ -288,26 +305,26 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     sets: 0,
     evictions: 0,
     staleHits: 0,
-    refreshes: 0
-  })
+    refreshes: 0,
+  });
 
   // Initialize Drizzle client if needed
-  const drizzleRef = useRef<ReturnType<typeof getDrizzleClient> | null>(null)
+  const drizzleRef = useRef<ReturnType<typeof getDrizzleClient> | null>(null);
 
   // Create client refs to hold the Supabase or Upstash clients
-  const supabaseRef = useRef<any>(null)
-  const transactionClientRef = useRef<any>(null)
+  const supabaseRef = useRef<any>(null);
+  const transactionClientRef = useRef<any>(null);
 
   // Initialize clients if not already done
   if (!supabaseRef.current) {
     if (shouldUseUpstash) {
       try {
         // Create Upstash adapter client
-        supabaseRef.current = createSupabaseClient()
-        transactionClientRef.current = supabaseRef.current
-        console.log("Using Upstash adapter for Supabase direct operations")
+        supabaseRef.current = createSupabaseClient();
+        transactionClientRef.current = supabaseRef.current;
+        console.log('Using Upstash adapter for Supabase direct operations');
       } catch (error) {
-        console.error("Error creating Upstash adapter:", error)
+        console.error('Error creating Upstash adapter:', error);
         // Fall back to regular Supabase clients
         supabaseRef.current = createClient<Database>(
           process.env.SESSION_POOL_URL || '',
@@ -315,9 +332,11 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
           {
             db: { schema: 'public' },
             auth: { persistSession: true, autoRefreshToken: true },
-            global: { headers: { 'x-client-info': 'useSupabaseDirect-SessionPool' } },
+            global: {
+              headers: { 'x-client-info': 'useSupabaseDirect-SessionPool' },
+            },
           }
-        )
+        );
 
         transactionClientRef.current = createClient<Database>(
           process.env.DATABASE_URL || '',
@@ -325,9 +344,11 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
           {
             db: { schema: 'public' },
             auth: { persistSession: true, autoRefreshToken: true },
-            global: { headers: { 'x-client-info': 'useSupabaseDirect-TransactionPool' } },
+            global: {
+              headers: { 'x-client-info': 'useSupabaseDirect-TransactionPool' },
+            },
           }
-        )
+        );
       }
     } else {
       // Create regular Supabase clients
@@ -337,9 +358,11 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         {
           db: { schema: 'public' },
           auth: { persistSession: true, autoRefreshToken: true },
-          global: { headers: { 'x-client-info': 'useSupabaseDirect-SessionPool' } },
+          global: {
+            headers: { 'x-client-info': 'useSupabaseDirect-SessionPool' },
+          },
         }
-      )
+      );
 
       transactionClientRef.current = createClient<Database>(
         process.env.DATABASE_URL || '',
@@ -347,60 +370,70 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         {
           db: { schema: 'public' },
           auth: { persistSession: true, autoRefreshToken: true },
-          global: { headers: { 'x-client-info': 'useSupabaseDirect-TransactionPool' } },
+          global: {
+            headers: { 'x-client-info': 'useSupabaseDirect-TransactionPool' },
+          },
         }
-      )
+      );
     }
   }
 
   // Get the clients from the refs
-  const supabase = supabaseRef.current as any
-  const transactionClient = transactionClientRef.current as any
+  const supabase = supabaseRef.current as any;
+  const transactionClient = transactionClientRef.current as any;
 
   // Type guard to check if client is Upstash adapter
   const isUpstashAdapter = (client: any): client is UpstashSupabaseClient => {
-    return client && typeof client === 'object' && 'isUpstashAdapter' in client && client.isUpstashAdapter === true;
-  }
+    return (
+      client &&
+      typeof client === 'object' &&
+      'isUpstashAdapter' in client &&
+      client.isUpstashAdapter === true
+    );
+  };
 
   // Use Drizzle if enabled
   useEffect(() => {
     if (useDrizzle && !drizzleRef.current) {
       try {
-        drizzleRef.current = getDrizzleClient()
+        drizzleRef.current = getDrizzleClient();
       } catch (err) {
-        console.error('Error initializing Drizzle client:', err)
+        console.error('Error initializing Drizzle client:', err);
       }
     }
-  }, [useDrizzle])
+  }, [useDrizzle]);
 
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   /**
    * Handle errors from Supabase
    */
   const handleError = (error: PostgrestError, operation: string) => {
-    setError(error)
-    console.error(`Error in ${operation} operation on ${tableName}:`, error)
+    setError(error);
+    console.error(`Error in ${operation} operation on ${tableName}:`, error);
 
     // Call custom error handler if provided
     if (onError) {
-      onError(error)
+      onError(error);
     } else {
       // Default error handling
       toast({
         title: `Error in ${operation}`,
         description: error.message || 'An error occurred',
         variant: 'destructive',
-      })
+      });
     }
-  }
+  };
 
   /**
    * Handle success
    */
-  const handleSuccess = (operation: 'create' | 'update' | 'delete' | 'get', data?: any) => {
+  const handleSuccess = (
+    operation: 'create' | 'update' | 'delete' | 'get',
+    data?: any
+  ) => {
     if (onSuccess) {
-      onSuccess(operation, data)
+      onSuccess(operation, data);
     } else {
       // Default success handling
       const messages = {
@@ -408,14 +441,14 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         update: `Updated ${tableName} successfully`,
         delete: `Deleted ${tableName} successfully`,
         get: `Retrieved ${tableName} data successfully`,
-      }
+      };
 
       toast({
         title: 'Success',
         description: messages[operation],
-      })
+      });
     }
-  }
+  };
 
   /**
    * Cache management functions with optimized implementation
@@ -426,39 +459,40 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
      * Uses allowStale option to return stale items while refreshing in background
      */
     get: <R>(key: string): R | undefined => {
-      if (!cacheOptions.enabled) return undefined
+      if (!cacheOptions.enabled) return undefined;
 
       try {
         // Get options with allowStale to improve performance
-        const options = { allowStale: true }
-        const result = cacheInstance.current.get(key, options) as R | undefined
+        const options = { allowStale: true };
+        const result = cacheInstance.current.get(key, options) as R | undefined;
 
         if (result !== undefined) {
           // Check if the result is stale
-          const isStale = cacheInstance.current.has(key, { updateAgeOnHas: false }) === false
+          const isStale =
+            cacheInstance.current.has(key, { updateAgeOnHas: false }) === false;
 
           if (isStale) {
-            cacheStats.current.staleHits++
+            cacheStats.current.staleHits++;
             if (cacheOptions.debug) {
-              console.log(`Cache STALE HIT: ${key}`)
+              console.log(`Cache STALE HIT: ${key}`);
             }
           } else {
-            cacheStats.current.hits++
+            cacheStats.current.hits++;
             if (cacheOptions.debug) {
-              console.log(`Cache HIT: ${key}`)
+              console.log(`Cache HIT: ${key}`);
             }
           }
         } else {
-          cacheStats.current.misses++
+          cacheStats.current.misses++;
           if (cacheOptions.debug) {
-            console.log(`Cache MISS: ${key}`)
+            console.log(`Cache MISS: ${key}`);
           }
         }
 
-        return result
+        return result;
       } catch (err) {
-        console.error('Cache error:', err)
-        return undefined
+        console.error('Cache error:', err);
+        return undefined;
       }
     },
 
@@ -467,18 +501,18 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
      * Uses background refresh for frequently accessed items
      */
     set: <R>(key: string, value: R, options?: { ttl?: number }): void => {
-      if (!cacheOptions.enabled) return
+      if (!cacheOptions.enabled) return;
 
       try {
-        const ttl = options?.ttl || cacheOptions.ttl || 300000
-        cacheInstance.current.set(key, value, { ttl })
-        cacheStats.current.sets++
+        const ttl = options?.ttl || cacheOptions.ttl || 300000;
+        cacheInstance.current.set(key, value, { ttl });
+        cacheStats.current.sets++;
 
         if (cacheOptions.debug) {
-          console.log(`Cache SET: ${key} (TTL: ${ttl}ms)`)
+          console.log(`Cache SET: ${key} (TTL: ${ttl}ms)`);
         }
       } catch (err) {
-        console.error('Cache set error:', err)
+        console.error('Cache set error:', err);
       }
     },
 
@@ -486,16 +520,16 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
      * Remove an item from the cache
      */
     remove: (key: string): void => {
-      if (!cacheOptions.enabled) return
+      if (!cacheOptions.enabled) return;
 
       try {
-        cacheInstance.current.delete(key)
+        cacheInstance.current.delete(key);
 
         if (cacheOptions.debug) {
-          console.log(`Cache DELETE: ${key}`)
+          console.log(`Cache DELETE: ${key}`);
         }
       } catch (err) {
-        console.error('Cache delete error:', err)
+        console.error('Cache delete error:', err);
       }
     },
 
@@ -503,10 +537,10 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
      * Clear the entire cache
      */
     clear: (): void => {
-      if (!cacheOptions.enabled) return
+      if (!cacheOptions.enabled) return;
 
       try {
-        cacheInstance.current.clear()
+        cacheInstance.current.clear();
 
         // Reset statistics
         cacheStats.current = {
@@ -515,14 +549,14 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
           sets: 0,
           evictions: 0,
           staleHits: 0,
-          refreshes: 0
-        }
+          refreshes: 0,
+        };
 
         if (cacheOptions.debug) {
-          console.log('Cache CLEARED')
+          console.log('Cache CLEARED');
         }
       } catch (err) {
-        console.error('Cache clear error:', err)
+        console.error('Cache clear error:', err);
       }
     },
 
@@ -530,30 +564,33 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
      * Refresh a cache item if it exists
      * This is useful for background refreshing of frequently accessed items
      */
-    refresh: async <R>(key: string, fetcher: () => Promise<R>): Promise<R | undefined> => {
-      if (!cacheOptions.enabled) return undefined
+    refresh: async <R>(
+      key: string,
+      fetcher: () => Promise<R>
+    ): Promise<R | undefined> => {
+      if (!cacheOptions.enabled) return undefined;
 
       try {
         // Check if item exists in cache (for future use)
-        cacheInstance.current.has(key)
+        cacheInstance.current.has(key);
 
         // Fetch new value
-        const newValue = await fetcher()
+        const newValue = await fetcher();
 
         // Update cache with new value
         if (newValue !== undefined) {
-          cacheInstance.current.set(key, newValue)
-          cacheStats.current.refreshes++
+          cacheInstance.current.set(key, newValue);
+          cacheStats.current.refreshes++;
 
           if (cacheOptions.debug) {
-            console.log(`Cache REFRESH: ${key}`)
+            console.log(`Cache REFRESH: ${key}`);
           }
         }
 
-        return newValue
+        return newValue;
       } catch (err) {
-        console.error('Cache refresh error:', err)
-        return undefined
+        console.error('Cache refresh error:', err);
+        return undefined;
       }
     },
 
@@ -565,11 +602,15 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         ...cacheStats.current,
         size: cacheInstance.current.size,
         maxSize: cacheOptions.maxSize || 500,
-        hitRate: cacheStats.current.hits / (cacheStats.current.hits + cacheStats.current.misses) || 0,
-        staleHitRate: cacheStats.current.staleHits / (cacheStats.current.hits + cacheStats.current.staleHits) || 0
-      }
-    }
-  }
+        hitRate:
+          cacheStats.current.hits /
+            (cacheStats.current.hits + cacheStats.current.misses) || 0,
+        staleHitRate:
+          cacheStats.current.staleHits /
+            (cacheStats.current.hits + cacheStats.current.staleHits) || 0,
+      };
+    },
+  };
 
   // Helper functions for query building
 
@@ -594,8 +635,8 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     groupBy?: string[];
     having?: FilterCondition[];
   }) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       // Build select statement with fields
@@ -607,7 +648,9 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       let selectStatement = selectFields;
       if (options?.join) {
         const joinFields = options.join.fields?.length
-          ? options.join.fields.map(field => `${options.join!.table}:${field}`)
+          ? options.join.fields.map(
+              (field) => `${options.join!.table}:${field}`
+            )
           : [`${options.join.table}:*`];
 
         selectStatement = `${selectFields},${joinFields.join(',')}`;
@@ -638,26 +681,65 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       if (options?.advancedFilters?.length) {
         options.advancedFilters.forEach(({ column, operator, value }) => {
           switch (operator) {
-            case 'eq': query = query.eq(column, value); break;
-            case 'neq': query = query.neq(column, value); break;
-            case 'gt': query = query.gt(column, value); break;
-            case 'gte': query = query.gte(column, value); break;
-            case 'lt': query = query.lt(column, value); break;
-            case 'lte': query = query.lte(column, value); break;
-            case 'like': query = query.like(column, value); break;
-            case 'ilike': query = query.ilike(column, value); break;
-            case 'in': query = query.in(column, value); break;
-            case 'is': query = query.is(column, value); break;
-            case 'contains': query = query.contains(column, value); break;
-            case 'containedBy': query = query.containedBy(column, value); break;
-            case 'rangeGt': query = query.rangeGt(column, value); break;
-            case 'rangeLt': query = query.rangeLt(column, value); break;
-            case 'rangeGte': query = query.rangeGte(column, value); break;
-            case 'rangeLte': query = query.rangeLte(column, value); break;
-            case 'rangeAdjacent': query = query.rangeAdjacent(column, value); break;
-            case 'overlaps': query = query.overlaps(column, value); break;
-            case 'textSearch': query = query.textSearch(column, value); break;
-            default: console.warn(`Unsupported operator: ${operator}`);
+            case 'eq':
+              query = query.eq(column, value);
+              break;
+            case 'neq':
+              query = query.neq(column, value);
+              break;
+            case 'gt':
+              query = query.gt(column, value);
+              break;
+            case 'gte':
+              query = query.gte(column, value);
+              break;
+            case 'lt':
+              query = query.lt(column, value);
+              break;
+            case 'lte':
+              query = query.lte(column, value);
+              break;
+            case 'like':
+              query = query.like(column, value);
+              break;
+            case 'ilike':
+              query = query.ilike(column, value);
+              break;
+            case 'in':
+              query = query.in(column, value);
+              break;
+            case 'is':
+              query = query.is(column, value);
+              break;
+            case 'contains':
+              query = query.contains(column, value);
+              break;
+            case 'containedBy':
+              query = query.containedBy(column, value);
+              break;
+            case 'rangeGt':
+              query = query.rangeGt(column, value);
+              break;
+            case 'rangeLt':
+              query = query.rangeLt(column, value);
+              break;
+            case 'rangeGte':
+              query = query.rangeGte(column, value);
+              break;
+            case 'rangeLte':
+              query = query.rangeLte(column, value);
+              break;
+            case 'rangeAdjacent':
+              query = query.rangeAdjacent(column, value);
+              break;
+            case 'overlaps':
+              query = query.overlaps(column, value);
+              break;
+            case 'textSearch':
+              query = query.textSearch(column, value);
+              break;
+            default:
+              console.warn(`Unsupported operator: ${operator}`);
           }
         });
       }
@@ -667,7 +749,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         const { column, query: searchQuery } = options.search;
         query = query.textSearch(column, searchQuery, {
           type: 'websearch',
-          config: 'english'
+          config: 'english',
         });
       }
 
@@ -675,7 +757,9 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       // Note: Supabase's JS client doesn't directly support GROUP BY
       // For complex grouping, consider using raw SQL queries
       if (options?.groupBy?.length) {
-        console.log(`Group by not directly supported in JS client. Columns: ${options.groupBy.join(', ')}`);
+        console.log(
+          `Group by not directly supported in JS client. Columns: ${options.groupBy.join(', ')}`
+        );
         // For simple cases, we can use the select statement to achieve grouping
         // by selecting only the grouped columns
       }
@@ -702,7 +786,10 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         query = query.limit(options.limit);
 
         if (options?.offset !== undefined) {
-          query = query.range(options.offset, options.offset + options.limit - 1);
+          query = query.range(
+            options.offset,
+            options.offset + options.limit - 1
+          );
         }
       }
 
@@ -717,20 +804,23 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       const safeData = data as unknown as any[];
       const transformedData = transformAfterFetch
         ? safeData.map((item: any) => transformAfterFetch(item))
-        : safeData as T[];
+        : (safeData as T[]);
 
       // Cache the results with optimized settings
       // Use a more efficient cache key that's less memory-intensive
       const resultCacheKey = `${tableName}_getAll_${JSON.stringify(options || {}).slice(0, 100)}`;
 
       // Set TTL based on data size - larger datasets get shorter TTL
-      const dataSizeBasedTTL = transformedData.length > 100
-        ? 60000  // 1 minute for large datasets
-        : transformedData.length > 50
-          ? 180000  // 3 minutes for medium datasets
-          : 300000; // 5 minutes for small datasets
+      const dataSizeBasedTTL =
+        transformedData.length > 100
+          ? 60000 // 1 minute for large datasets
+          : transformedData.length > 50
+            ? 180000 // 3 minutes for medium datasets
+            : 300000; // 5 minutes for small datasets
 
-      cacheManager.set(resultCacheKey, transformedData, { ttl: dataSizeBasedTTL });
+      cacheManager.set(resultCacheKey, transformedData, {
+        ttl: dataSizeBasedTTL,
+      });
 
       setItems(transformedData);
       handleSuccess('get', transformedData);
@@ -741,327 +831,331 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   /**
    * Get a single item by ID with optimized caching
    */
   const getById = async (id: string | number) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       // Check cache first with optimized key
-      const cacheKey = `${tableName}_getById_${id}`
-      const cachedItem = cacheManager.get<T>(cacheKey)
+      const cacheKey = `${tableName}_getById_${id}`;
+      const cachedItem = cacheManager.get<T>(cacheKey);
 
       if (cachedItem) {
-        setItem(cachedItem)
-        setLoading(false)
-        return cachedItem
+        setItem(cachedItem);
+        setLoading(false);
+        return cachedItem;
       }
 
       const { data, error } = await supabase
         .from(tableName as keyof Database['public']['Tables'])
         .select('*')
         .eq('id', id as any)
-        .single()
+        .single();
 
       if (error) {
-        handleError(error, 'getById')
-        return null
+        handleError(error, 'getById');
+        return null;
       }
 
       const transformedData = transformAfterFetch
         ? transformAfterFetch(data)
-        : data as T
+        : (data as T);
 
       // Cache the result with longer TTL for single items (10 minutes)
       // Single items are accessed more frequently and change less often
-      cacheManager.set(cacheKey, transformedData, { ttl: 600000 })
+      cacheManager.set(cacheKey, transformedData, { ttl: 600000 });
 
-      setItem(transformedData)
-      handleSuccess('get', transformedData)
-      return transformedData
+      setItem(transformedData);
+      handleSuccess('get', transformedData);
+      return transformedData;
     } catch (err) {
-      console.error('Unexpected error in getById:', err)
-      return null
+      console.error('Unexpected error in getById:', err);
+      return null;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Create a new item
    */
   const create = async (data: T) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const transformedData = transformBeforeSave ? transformBeforeSave(data) : data
+      const transformedData = transformBeforeSave
+        ? transformBeforeSave(data)
+        : data;
 
       const { data: createdData, error } = await supabase
         .from(tableName as keyof Database['public']['Tables'])
         .insert(transformedData)
         .select()
-        .single()
+        .single();
 
       if (error) {
-        handleError(error, 'create')
-        return null
+        handleError(error, 'create');
+        return null;
       }
 
       const newItem = transformAfterFetch
         ? transformAfterFetch(createdData)
-        : createdData as T
+        : (createdData as T);
 
       // Invalidate any list caches since we've added a new item
-      const listCachePattern = `${tableName}_getAll_`
+      const listCachePattern = `${tableName}_getAll_`;
       Object.keys(cacheInstance.current.dump())
-        .filter(key => key.startsWith(listCachePattern))
-        .forEach(key => cacheManager.remove(key))
+        .filter((key) => key.startsWith(listCachePattern))
+        .forEach((key) => cacheManager.remove(key));
 
-      setItem(newItem)
-      handleSuccess('create', newItem)
-      return newItem
+      setItem(newItem);
+      handleSuccess('create', newItem);
+      return newItem;
     } catch (err) {
-      console.error('Unexpected error in create:', err)
-      return null
+      console.error('Unexpected error in create:', err);
+      return null;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Update an existing item
    */
   const update = async (id: string | number, data: Partial<T>) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const transformedData = transformBeforeSave
         ? transformBeforeSave({ ...data, id } as T)
-        : data
+        : data;
 
       const { data: updatedData, error } = await supabase
         .from(tableName as keyof Database['public']['Tables'])
         .update(transformedData)
         .eq('id', id as any)
         .select()
-        .single()
+        .single();
 
       if (error) {
-        handleError(error, 'update')
-        return null
+        handleError(error, 'update');
+        return null;
       }
 
       const updatedItem = transformAfterFetch
         ? transformAfterFetch(updatedData)
-        : updatedData as T
+        : (updatedData as T);
 
       // Invalidate specific item cache and any list caches
-      cacheManager.remove(`${tableName}_getById_${id}`)
+      cacheManager.remove(`${tableName}_getById_${id}`);
 
       // Invalidate list caches that might contain this item
-      const listCachePattern = `${tableName}_getAll_`
+      const listCachePattern = `${tableName}_getAll_`;
       Object.keys(cacheInstance.current.dump())
-        .filter(key => key.startsWith(listCachePattern))
-        .forEach(key => cacheManager.remove(key))
+        .filter((key) => key.startsWith(listCachePattern))
+        .forEach((key) => cacheManager.remove(key));
 
-      setItem(updatedItem)
-      handleSuccess('update', updatedItem)
-      return updatedItem
+      setItem(updatedItem);
+      handleSuccess('update', updatedItem);
+      return updatedItem;
     } catch (err) {
-      console.error('Unexpected error in update:', err)
-      return null
+      console.error('Unexpected error in update:', err);
+      return null;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Delete an item by ID
    */
   const remove = async (id: string | number) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const { error } = await supabase
         .from(tableName as keyof Database['public']['Tables'])
         .delete()
-        .eq('id', id as any)
+        .eq('id', id as any);
 
       if (error) {
-        handleError(error, 'delete')
-        return false
+        handleError(error, 'delete');
+        return false;
       }
 
       // Invalidate specific item cache and any list caches
-      cacheManager.remove(`${tableName}_getById_${id}`)
+      cacheManager.remove(`${tableName}_getById_${id}`);
 
       // Invalidate list caches that might contain this item
-      const listCachePattern = `${tableName}_getAll_`
+      const listCachePattern = `${tableName}_getAll_`;
       Object.keys(cacheInstance.current.dump())
-        .filter(key => key.startsWith(listCachePattern))
-        .forEach(key => cacheManager.remove(key))
+        .filter((key) => key.startsWith(listCachePattern))
+        .forEach((key) => cacheManager.remove(key));
 
-      handleSuccess('delete')
-      return true
+      handleSuccess('delete');
+      return true;
     } catch (err) {
-      console.error('Unexpected error in remove:', err)
-      return false
+      console.error('Unexpected error in remove:', err);
+      return false;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Batch create multiple items
    */
   const batchCreate = async (dataArray: T[]) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const transformedData = transformBeforeSave
-        ? dataArray.map(data => transformBeforeSave(data))
-        : dataArray
+        ? dataArray.map((data) => transformBeforeSave(data))
+        : dataArray;
 
       const { data: createdData, error } = await supabase
         .from(tableName as keyof Database['public']['Tables'])
         .insert(transformedData)
-        .select()
+        .select();
 
       if (error) {
-        handleError(error, 'batchCreate')
-        return []
+        handleError(error, 'batchCreate');
+        return [];
       }
 
       const newItems = transformAfterFetch
         ? createdData.map((item: any) => transformAfterFetch(item))
-        : createdData as T[]
+        : (createdData as T[]);
 
       // Invalidate all list caches after batch operation
-      const listCachePattern = `${tableName}_getAll_`
+      const listCachePattern = `${tableName}_getAll_`;
       Object.keys(cacheInstance.current.dump())
-        .filter(key => key.startsWith(listCachePattern))
-        .forEach(key => cacheManager.remove(key))
+        .filter((key) => key.startsWith(listCachePattern))
+        .forEach((key) => cacheManager.remove(key));
 
-      setItems(prevItems => [...prevItems, ...newItems])
-      handleSuccess('create', newItems)
-      return newItems
+      setItems((prevItems) => [...prevItems, ...newItems]);
+      handleSuccess('create', newItems);
+      return newItems;
     } catch (err) {
-      console.error('Unexpected error in batchCreate:', err)
-      return []
+      console.error('Unexpected error in batchCreate:', err);
+      return [];
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Batch update multiple items
    */
-  const batchUpdate = async (dataArray: Array<{ id: string | number, data: Partial<T> }>) => {
-    setLoading(true)
-    setError(null)
+  const batchUpdate = async (
+    dataArray: Array<{ id: string | number; data: Partial<T> }>
+  ) => {
+    setLoading(true);
+    setError(null);
 
     try {
-      const results: T[] = []
+      const results: T[] = [];
 
       // Process updates in batches of 10 to avoid overwhelming the database
-      const batchSize = 10
+      const batchSize = 10;
       for (let i = 0; i < dataArray.length; i += batchSize) {
-        const batch = dataArray.slice(i, i + batchSize)
+        const batch = dataArray.slice(i, i + batchSize);
 
         // Process each item in the batch
         const batchPromises = batch.map(async ({ id, data }) => {
           const transformedData = transformBeforeSave
             ? transformBeforeSave({ ...data, id } as T)
-            : data
+            : data;
 
           const { data: updatedData, error } = await supabase
             .from(tableName as keyof Database['public']['Tables'])
             .update(transformedData)
             .eq('id', id as any)
             .select()
-            .single()
+            .single();
 
           if (error) {
-            console.error(`Error updating item ${id}:`, error)
-            return null
+            console.error(`Error updating item ${id}:`, error);
+            return null;
           }
 
           return transformAfterFetch
             ? transformAfterFetch(updatedData)
-            : updatedData as T
-        })
+            : (updatedData as T);
+        });
 
-        const batchResults = await Promise.all(batchPromises)
-        results.push(...batchResults.filter(Boolean) as T[])
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...(batchResults.filter(Boolean) as T[]));
       }
 
       // Invalidate all caches after batch update
       // This is more efficient than trying to selectively invalidate
-      cacheManager.clear()
+      cacheManager.clear();
 
-      handleSuccess('update', results)
-      return results
+      handleSuccess('update', results);
+      return results;
     } catch (err) {
-      console.error('Unexpected error in batchUpdate:', err)
-      return []
+      console.error('Unexpected error in batchUpdate:', err);
+      return [];
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Batch delete multiple items
    */
   const batchRemove = async (ids: Array<string | number>) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       // Process deletes in batches of 10 to avoid overwhelming the database
-      const batchSize = 10
-      const results: boolean[] = []
+      const batchSize = 10;
+      const results: boolean[] = [];
 
       for (let i = 0; i < ids.length; i += batchSize) {
-        const batchIds = ids.slice(i, i + batchSize)
+        const batchIds = ids.slice(i, i + batchSize);
 
         const { error } = await supabase
           .from(tableName as keyof Database['public']['Tables'])
           .delete()
-          .in('id', batchIds as any)
+          .in('id', batchIds as any);
 
         if (error) {
-          console.error(`Error deleting batch ${i / batchSize + 1}:`, error)
-          results.push(false)
+          console.error(`Error deleting batch ${i / batchSize + 1}:`, error);
+          results.push(false);
         } else {
-          results.push(true)
+          results.push(true);
         }
       }
 
-      const success = results.every(Boolean)
+      const success = results.every(Boolean);
       if (success) {
         // Invalidate all caches after batch delete
         // This is more efficient than trying to selectively invalidate
-        cacheManager.clear()
+        cacheManager.clear();
 
-        handleSuccess('delete')
+        handleSuccess('delete');
       }
 
-      return success
+      return success;
     } catch (err) {
-      console.error('Unexpected error in batchRemove:', err)
-      return false
+      console.error('Unexpected error in batchRemove:', err);
+      return false;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /**
    * Execute a raw SQL query
@@ -1071,13 +1165,13 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
    * @returns Query results
    */
   const executeRawQuery = async (query: string, params?: any[]) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const { data, error } = await supabase.rpc('execute_sql', {
         query_text: query,
-        query_params: params || []
+        query_params: params || [],
       });
 
       if (error) {
@@ -1107,7 +1201,9 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
     setError(null);
 
     try {
-      let query = supabase.from(tableName as keyof Database['public']['Tables']).select('*', { count: 'exact', head: true });
+      let query = supabase
+        .from(tableName as keyof Database['public']['Tables'])
+        .select('*', { count: 'exact', head: true });
 
       // Apply simple filters
       if (options?.filters) {
@@ -1122,19 +1218,44 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       if (options?.advancedFilters?.length) {
         options.advancedFilters.forEach(({ column, operator, value }) => {
           switch (operator) {
-            case 'eq': query = query.eq(column, value); break;
-            case 'neq': query = query.neq(column, value); break;
-            case 'gt': query = query.gt(column, value); break;
-            case 'gte': query = query.gte(column, value); break;
-            case 'lt': query = query.lt(column, value); break;
-            case 'lte': query = query.lte(column, value); break;
-            case 'like': query = query.like(column, value); break;
-            case 'ilike': query = query.ilike(column, value); break;
-            case 'in': query = query.in(column, value); break;
-            case 'is': query = query.is(column, value); break;
-            case 'contains': query = query.contains(column, value); break;
-            case 'containedBy': query = query.containedBy(column, value); break;
-            default: console.warn(`Unsupported operator: ${operator}`);
+            case 'eq':
+              query = query.eq(column, value);
+              break;
+            case 'neq':
+              query = query.neq(column, value);
+              break;
+            case 'gt':
+              query = query.gt(column, value);
+              break;
+            case 'gte':
+              query = query.gte(column, value);
+              break;
+            case 'lt':
+              query = query.lt(column, value);
+              break;
+            case 'lte':
+              query = query.lte(column, value);
+              break;
+            case 'like':
+              query = query.like(column, value);
+              break;
+            case 'ilike':
+              query = query.ilike(column, value);
+              break;
+            case 'in':
+              query = query.in(column, value);
+              break;
+            case 'is':
+              query = query.is(column, value);
+              break;
+            case 'contains':
+              query = query.contains(column, value);
+              break;
+            case 'containedBy':
+              query = query.containedBy(column, value);
+              break;
+            default:
+              console.warn(`Unsupported operator: ${operator}`);
           }
         });
       }
@@ -1185,7 +1306,8 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       } catch (err) {
         // Rollback transaction on error
         try {
-          const { error: rollbackError } = await transactionClient.rpc('rollback');
+          const { error: rollbackError } =
+            await transactionClient.rpc('rollback');
           if (rollbackError) {
             console.error('Error rolling back transaction:', rollbackError);
           }
@@ -1203,7 +1325,7 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
         message: err instanceof Error ? err.message : 'Transaction failed',
         details: 'Transaction failed',
         hint: 'Check server logs for details',
-        code: 'TRANSACTION_ERROR'
+        code: 'TRANSACTION_ERROR',
       } as PostgrestError;
 
       setError(pgError);
@@ -1213,7 +1335,8 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
       } else {
         toast({
           title: 'Transaction Error',
-          description: err instanceof Error ? err.message : 'Transaction failed',
+          description:
+            err instanceof Error ? err.message : 'Transaction failed',
           variant: 'destructive',
         });
       }
@@ -1254,6 +1377,6 @@ export function useSupabaseDirect<T extends { id?: string | number }>(
 
     // Direct access to Supabase client
     supabase,
-    transactionClient
-  }
+    transactionClient,
+  };
 }

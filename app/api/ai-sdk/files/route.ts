@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     if (stat.isDirectory()) {
       const files = await fs.readdir(absPath, { withFileTypes: true });
       return NextResponse.json({
-        files: files.map(f => ({
+        files: files.map((f) => ({
           name: f.name,
           isDir: f.isDirectory(),
           path: path.join(relPath, f.name),
@@ -34,7 +34,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ content });
     }
   } catch (err) {
-    await upstashLogger.error('file-get', 'GET error', err instanceof Error ? err : { error: String(err) });
+    await upstashLogger.error(
+      'file-get',
+      'GET error',
+      err instanceof Error ? err : { error: String(err) }
+    );
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
@@ -50,7 +54,11 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ ok: true });
   } catch (err) {
-    await upstashLogger.error('file-post', 'POST error', err instanceof Error ? err : { error: String(err) });
+    await upstashLogger.error(
+      'file-post',
+      'POST error',
+      err instanceof Error ? err : { error: String(err) }
+    );
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
@@ -69,7 +77,11 @@ export async function PUT(req: NextRequest) {
     }
     throw new Error('No operation specified');
   } catch (err) {
-    await upstashLogger.error('file-put', 'PUT error', err instanceof Error ? err : { error: String(err) });
+    await upstashLogger.error(
+      'file-put',
+      'PUT error',
+      err instanceof Error ? err : { error: String(err) }
+    );
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
@@ -81,7 +93,11 @@ export async function DELETE(req: NextRequest) {
     await fs.rm(absPath, { recursive: true, force: true });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    await upstashLogger.error('file-delete', 'DELETE error', err instanceof Error ? err : { error: String(err) });
+    await upstashLogger.error(
+      'file-delete',
+      'DELETE error',
+      err instanceof Error ? err : { error: String(err) }
+    );
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

@@ -25,7 +25,9 @@ export interface ApiRequestSuccess {
   responseTime?: number;
 }
 export type ApiRequestResult = ApiRequestSuccess | ToolFailure;
-export const isApiRequestSuccess = (r: ApiRequestResult): r is ApiRequestSuccess => r.success;
+export const isApiRequestSuccess = (
+  r: ApiRequestResult
+): r is ApiRequestSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                         API AUTHENTICATION                         */
@@ -61,7 +63,8 @@ export type ApiAuthSuccess =
   | ApiAuthApiKeyQuerySuccess;
 
 export type ApiAuthResult = ApiAuthSuccess | ToolFailure;
-export const isApiAuthSuccess = (r: ApiAuthResult): r is ApiAuthSuccess => r.success;
+export const isApiAuthSuccess = (r: ApiAuthResult): r is ApiAuthSuccess =>
+  r.success;
 
 /* ------------------------------------------------------------------ */
 /*                           API GRAPHQL                              */
@@ -75,7 +78,9 @@ export interface ApiGraphQLSuccess {
   responseTime?: number;
 }
 export type ApiGraphQLResult = ApiGraphQLSuccess | ToolFailure;
-export const isApiGraphQLSuccess = (r: ApiGraphQLResult): r is ApiGraphQLSuccess => r.success;
+export const isApiGraphQLSuccess = (
+  r: ApiGraphQLResult
+): r is ApiGraphQLSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                           API WEBHOOK                              */
@@ -90,7 +95,9 @@ export interface ApiWebhookSuccess {
   payload?: any;
 }
 export type ApiWebhookResult = ApiWebhookSuccess | ToolFailure;
-export const isApiWebhookSuccess = (r: ApiWebhookResult): r is ApiWebhookSuccess => r.success;
+export const isApiWebhookSuccess = (
+  r: ApiWebhookResult
+): r is ApiWebhookSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                           API OAUTH                                */
@@ -105,4 +112,5 @@ export interface ApiOAuthSuccess {
   createdAt: string;
 }
 export type ApiOAuthResult = ApiOAuthSuccess | ToolFailure;
-export const isApiOAuthSuccess = (r: ApiOAuthResult): r is ApiOAuthSuccess => r.success;
+export const isApiOAuthSuccess = (r: ApiOAuthResult): r is ApiOAuthSuccess =>
+  r.success;

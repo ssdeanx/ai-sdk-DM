@@ -12,13 +12,16 @@ export async function GET(req: NextRequest) {
   const id = searchParams.get('id');
   if (id) {
     const item = await adapter.from(table).getById(INTEGRATION_PREFIX + id);
-    if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!item)
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(item);
   }
   // List all integrations (filter by key prefix)
   const items = await adapter.from(table).getAll();
   type SettingsRow = { key: string; value: string; [k: string]: unknown };
-  const integrations = (items as SettingsRow[]).filter((i) => i.key && i.key.startsWith(INTEGRATION_PREFIX));
+  const integrations = (items as SettingsRow[]).filter(
+    (i) => i.key && i.key.startsWith(INTEGRATION_PREFIX)
+  );
   return NextResponse.json(integrations);
 }
 
@@ -32,13 +35,22 @@ export async function POST(req: NextRequest) {
       ...data,
       key: INTEGRATION_PREFIX + id,
       created_at: now,
-      updated_at: now
+      updated_at: now,
     });
-    await upstashLogger.info('integrations', 'Integration created', { integrationId: id });
+    await upstashLogger.info('integrations', 'Integration created', {
+      integrationId: id,
+    });
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    await upstashLogger.error('integrations', 'Integration creation error', error instanceof Error ? error : new Error(String(error)));
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    await upstashLogger.error(
+      'integrations',
+      'Integration creation error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -46,16 +58,28 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const data = await req.json();
-    if (!data.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const updated = await adapter.from(table).update(INTEGRATION_PREFIX + data.id, {
-      ...data,
-      updated_at: new Date().toISOString()
+    if (!data.id)
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const updated = await adapter
+      .from(table)
+      .update(INTEGRATION_PREFIX + data.id, {
+        ...data,
+        updated_at: new Date().toISOString(),
+      });
+    await upstashLogger.info('integrations', 'Integration updated', {
+      integrationId: data.id,
     });
-    await upstashLogger.info('integrations', 'Integration updated', { integrationId: data.id });
     return NextResponse.json(updated);
   } catch (error) {
-    await upstashLogger.error('integrations', 'Integration update error', error instanceof Error ? error : new Error(String(error)));
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    await upstashLogger.error(
+      'integrations',
+      'Integration update error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -66,10 +90,19 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     const deleted = await adapter.from(table).delete(INTEGRATION_PREFIX + id);
-    await upstashLogger.info('integrations', 'Integration deleted', { integrationId: id });
+    await upstashLogger.info('integrations', 'Integration deleted', {
+      integrationId: id,
+    });
     return NextResponse.json({ success: deleted });
   } catch (error) {
-    await upstashLogger.error('integrations', 'Integration delete error', error instanceof Error ? error : new Error(String(error)));
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    await upstashLogger.error(
+      'integrations',
+      'Integration delete error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }

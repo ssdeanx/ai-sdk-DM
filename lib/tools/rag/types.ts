@@ -2,7 +2,11 @@
  * @file Discriminated-union result shapes + handy type-guards for the RAG tools.
  */
 
-import { VECTOR_PROVIDERS, CHUNKING_STRATEGIES, SIMILARITY_METRICS } from './constants';
+import {
+  VECTOR_PROVIDERS,
+  CHUNKING_STRATEGIES,
+  SIMILARITY_METRICS,
+} from './constants';
 
 /* ------------------------------------------------------------------ */
 /*                             Failure                                */
@@ -32,8 +36,9 @@ export interface DocumentSearchSuccess {
 }
 
 export type DocumentSearchResult = DocumentSearchSuccess | ToolFailure;
-export const isDocumentSearchSuccess = (r: DocumentSearchResult): r is DocumentSearchSuccess =>
-  r.success;
+export const isDocumentSearchSuccess = (
+  r: DocumentSearchResult
+): r is DocumentSearchSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                          DocumentAdd                               */
@@ -46,8 +51,9 @@ export interface DocumentAddSuccess {
 }
 
 export type DocumentAddResult = DocumentAddSuccess | ToolFailure;
-export const isDocumentAddSuccess = (r: DocumentAddResult): r is DocumentAddSuccess =>
-  r.success;
+export const isDocumentAddSuccess = (
+  r: DocumentAddResult
+): r is DocumentAddSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                          ChunkDocument                             */
@@ -66,8 +72,9 @@ export interface ChunkDocumentSuccess {
 }
 
 export type ChunkDocumentResult = ChunkDocumentSuccess | ToolFailure;
-export const isChunkDocumentSuccess = (r: ChunkDocumentResult): r is ChunkDocumentSuccess =>
-  r.success;
+export const isChunkDocumentSuccess = (
+  r: ChunkDocumentResult
+): r is ChunkDocumentSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                       VectorStoreUpsert                            */
@@ -76,12 +83,13 @@ export const isChunkDocumentSuccess = (r: ChunkDocumentResult): r is ChunkDocume
 export interface VectorStoreUpsertSuccess {
   success: true;
   ids: string[];
-  provider: typeof VECTOR_PROVIDERS[number];
+  provider: (typeof VECTOR_PROVIDERS)[number];
 }
 
 export type VectorStoreUpsertResult = VectorStoreUpsertSuccess | ToolFailure;
-export const isVectorStoreUpsertSuccess = (r: VectorStoreUpsertResult): r is VectorStoreUpsertSuccess =>
-  r.success;
+export const isVectorStoreUpsertSuccess = (
+  r: VectorStoreUpsertResult
+): r is VectorStoreUpsertSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                       VectorStoreQuery                             */
@@ -97,9 +105,10 @@ export interface VectorStoreQuerySuccess {
   success: true;
   query: string;
   results: VectorStoreQueryItem[];
-  provider: typeof VECTOR_PROVIDERS[number];
+  provider: (typeof VECTOR_PROVIDERS)[number];
 }
 
 export type VectorStoreQueryResult = VectorStoreQuerySuccess | ToolFailure;
-export const isVectorStoreQuerySuccess = (r: VectorStoreQueryResult): r is VectorStoreQuerySuccess =>
-  r.success;
+export const isVectorStoreQuerySuccess = (
+  r: VectorStoreQueryResult
+): r is VectorStoreQuerySuccess => r.success;

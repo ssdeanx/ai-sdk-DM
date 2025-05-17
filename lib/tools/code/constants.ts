@@ -20,7 +20,12 @@ export const LANG_ANALYZE = [
   'php',
 ] as const;
 
-export const ANALYSES = ['complexity', 'security', 'style', 'performance'] as const;
+export const ANALYSES = [
+  'complexity',
+  'security',
+  'style',
+  'performance',
+] as const;
 
 /**
  * Pre-compiled dangerous-pattern matchers (compile-once on module load).
@@ -32,11 +37,13 @@ export const DANGEROUS_PATTERNS: ReadonlyMap<
   [
     'javascript',
     ['eval\\(', 'new Function\\(', 'setTimeout\\(', 'setInterval\\('].map(
-      (p) => new RegExp(p, 'g'),
+      (p) => new RegExp(p, 'g')
     ),
   ],
   [
     'python',
-    ['eval\\(', 'exec\\(', 'os\\.system\\(', 'subprocess'].map((p) => new RegExp(p, 'g')),
+    ['eval\\(', 'exec\\(', 'os\\.system\\(', 'subprocess'].map(
+      (p) => new RegExp(p, 'g')
+    ),
   ],
 ]);

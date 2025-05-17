@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { useCallback, useState, useEffect, memo } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import * as React from 'react';
+import { useCallback, useState, useEffect, memo } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   motion,
   AnimatePresence,
@@ -12,8 +12,8 @@ import {
   useSpring,
   useReducedMotion,
   useScroll,
-  useInView
-} from "framer-motion"
+  useInView,
+} from 'framer-motion';
 import {
   Menu,
   X,
@@ -38,22 +38,22 @@ import {
   Settings,
   MessageSquare,
   Sun,
-  Moon
-} from "lucide-react"
+  Moon,
+} from 'lucide-react';
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { ModeToggle } from "@/components/layout/mode-toggle"
-import { SignInDialog } from "@/components/auth/sign-in-dialog"
-import { SignUpDialog } from "@/components/auth/sign-up-dialog"
-import { Input } from "@/components/ui/input"
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ModeToggle } from '@/components/layout/mode-toggle';
+import { SignInDialog } from '@/components/auth/sign-in-dialog';
+import { SignUpDialog } from '@/components/auth/sign-up-dialog';
+import { Input } from '@/components/ui/input';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
-} from "@/components/ui/tooltip"
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,11 +62,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup,
-  DropdownMenuShortcut
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/components/ui/use-toast"
-import { useMediaQuery } from "@/hooks/use-media-query"
+  DropdownMenuShortcut,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import {
   CommandDialog,
   CommandEmpty,
@@ -74,8 +74,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator
-} from "@/components/ui/command"
+  CommandSeparator,
+} from '@/components/ui/command';
 
 /**
  * MainNav Component
@@ -84,186 +84,200 @@ import {
  * command palette, and responsive design.
  */
 export const MainNav = memo(function MainNav() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { toast } = useToast()
-  const prefersReducedMotion = useReducedMotion()
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
+  const prefersReducedMotion = useReducedMotion();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // State management
-  const [isOpen, setIsOpen] = useState(false)
-  const [showSignIn, setShowSignIn] = useState(false)
-  const [showSignUp, setShowSignUp] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [notifications, setNotifications] = useState(3)
-  const [commandOpen, setCommandOpen] = useState(false)
-  const [lastActivity, setLastActivity] = useState<number>(Date.now())
+  const [isOpen, setIsOpen] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [notifications, setNotifications] = useState(3);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
   // Refs for animations and interactions
-  const navRef = React.useRef<HTMLDivElement>(null)
-  const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const navRef = React.useRef<HTMLDivElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   // Check if nav is in view
-  const navInView = useInView(navRef, { once: true })
+  const navInView = useInView(navRef, { once: true });
 
   // Motion values for animations
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
   // Spring animations for smoother motion
-  const springConfig = { stiffness: 300, damping: 30 }
-  const mouseXSpring = useSpring(mouseX, springConfig)
-  const mouseYSpring = useSpring(mouseY, springConfig)
+  const springConfig = { stiffness: 300, damping: 30 };
+  const mouseXSpring = useSpring(mouseX, springConfig);
+  const mouseYSpring = useSpring(mouseY, springConfig);
 
   // Transform values for hover effects
-  const rotateX = useTransform(mouseYSpring, [0, 100], prefersReducedMotion ? [0, 0] : [2, -2])
-  const rotateY = useTransform(mouseXSpring, [0, 200], prefersReducedMotion ? [0, 0] : [-2, 2])
+  const rotateX = useTransform(
+    mouseYSpring,
+    [0, 100],
+    prefersReducedMotion ? [0, 0] : [2, -2]
+  );
+  const rotateY = useTransform(
+    mouseXSpring,
+    [0, 200],
+    prefersReducedMotion ? [0, 0] : [-2, 2]
+  );
 
   // Scroll progress for animations
-  const { scrollYProgress } = useScroll()
-  const navOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0.95])
-  const navScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.98])
+  const { scrollYProgress } = useScroll();
+  const navOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
+  const navScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.98]);
 
   // Handle mouse movement for hover effects
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const { left, top } = e.currentTarget.getBoundingClientRect()
-    mouseX.set(e.clientX - left)
-    mouseY.set(e.clientY - top)
-    setLastActivity(Date.now())
-  }, [mouseX, mouseY])
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const { left, top } = e.currentTarget.getBoundingClientRect();
+      mouseX.set(e.clientX - left);
+      mouseY.set(e.clientY - top);
+      setLastActivity(Date.now());
+    },
+    [mouseX, mouseY]
+  );
 
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Command+K or Ctrl+K to open command palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setCommandOpen(true)
+        e.preventDefault();
+        setCommandOpen(true);
       }
 
       // Escape to close search
       if (e.key === 'Escape' && showSearch) {
-        setShowSearch(false)
+        setShowSearch(false);
       }
 
-      setLastActivity(Date.now())
-    }
+      setLastActivity(Date.now());
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showSearch])
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSearch]);
 
   // Focus search input when search is shown
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
-      searchInputRef.current.focus()
+      searchInputRef.current.focus();
     }
-  }, [showSearch])
+  }, [showSearch]);
 
   // Handle search submission
-  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      toast({
-        title: "Search submitted",
-        description: `Searching for "${searchQuery}"`,
-        duration: 2000,
-      })
-      // In a real app, you would navigate to search results
-      // router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
-      setShowSearch(false)
-    }
-  }, [searchQuery, toast])
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (searchQuery.trim()) {
+        toast({
+          title: 'Search submitted',
+          description: `Searching for "${searchQuery}"`,
+          duration: 2000,
+        });
+        // In a real app, you would navigate to search results
+        // router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+        setShowSearch(false);
+      }
+    },
+    [searchQuery, toast]
+  );
 
   // Enhanced routes with additional metadata
   const routes = [
     {
-      href: "/",
-      label: "Home",
-      active: pathname === "/",
+      href: '/',
+      label: 'Home',
+      active: pathname === '/',
       icon: <Home className="h-4 w-4" />,
-      description: "Return to the homepage",
-      shortcut: "h",
+      description: 'Return to the homepage',
+      shortcut: 'h',
       isNew: false,
-      badge: null
+      badge: null,
     },
     {
-      href: "/dashboard",
-      label: "Dashboard",
-      active: pathname === "/dashboard" || pathname?.startsWith("/dashboard/"),
+      href: '/dashboard',
+      label: 'Dashboard',
+      active: pathname === '/dashboard' || pathname?.startsWith('/dashboard/'),
       icon: <LayoutDashboard className="h-4 w-4" />,
-      description: "View your AI dashboard",
-      shortcut: "d",
+      description: 'View your AI dashboard',
+      shortcut: 'd',
       isNew: false,
-      badge: null
+      badge: null,
     },
     {
-      href: "/features",
-      label: "Features",
-      active: pathname === "/features",
+      href: '/features',
+      label: 'Features',
+      active: pathname === '/features',
       icon: <Zap className="h-4 w-4" />,
-      description: "Explore platform features",
-      shortcut: "f",
+      description: 'Explore platform features',
+      shortcut: 'f',
       isNew: true,
-      badge: "New"
+      badge: 'New',
     },
     {
-      href: "/pricing",
-      label: "Pricing",
-      active: pathname === "/pricing",
+      href: '/pricing',
+      label: 'Pricing',
+      active: pathname === '/pricing',
       icon: <CreditCard className="h-4 w-4" />,
-      description: "View pricing plans",
-      shortcut: "p",
+      description: 'View pricing plans',
+      shortcut: 'p',
       isNew: false,
-      badge: null
+      badge: null,
     },
     {
-      href: "/blog",
-      label: "Blog",
-      active: pathname === "/blog" || pathname?.startsWith("/blog/"),
+      href: '/blog',
+      label: 'Blog',
+      active: pathname === '/blog' || pathname?.startsWith('/blog/'),
       icon: <FileText className="h-4 w-4" />,
-      description: "Read our latest articles",
-      shortcut: "b",
+      description: 'Read our latest articles',
+      shortcut: 'b',
       isNew: false,
-      badge: null
+      badge: null,
     },
     {
-      href: "/about",
-      label: "About",
-      active: pathname === "/about",
+      href: '/about',
+      label: 'About',
+      active: pathname === '/about',
       icon: <Info className="h-4 w-4" />,
-      description: "Learn more about us",
-      shortcut: "a",
+      description: 'Learn more about us',
+      shortcut: 'a',
       isNew: false,
-      badge: null
+      badge: null,
     },
-  ]
+  ];
 
   // Command palette items for quick navigation
   const commandItems = [
     ...routes,
     {
-      href: "/settings",
-      label: "Settings",
-      active: pathname === "/settings",
+      href: '/settings',
+      label: 'Settings',
+      active: pathname === '/settings',
       icon: <Settings className="h-4 w-4" />,
-      description: "Manage your account settings",
-      shortcut: "s",
+      description: 'Manage your account settings',
+      shortcut: 's',
       isNew: false,
-      badge: null
+      badge: null,
     },
     {
-      href: "/chat",
-      label: "Chat",
-      active: pathname === "/chat",
+      href: '/chat',
+      label: 'Chat',
+      active: pathname === '/chat',
       icon: <MessageSquare className="h-4 w-4" />,
-      description: "Open AI chat interface",
-      shortcut: "c",
+      description: 'Open AI chat interface',
+      shortcut: 'c',
       isNew: false,
-      badge: null
-    }
-  ]
+      badge: null,
+    },
+  ];
 
   return (
     <>
@@ -273,7 +287,7 @@ export const MainNav = memo(function MainNav() {
         onMouseMove={handleMouseMove}
         style={{
           opacity: navOpacity,
-          scale: navScale
+          scale: navScale,
         }}
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -285,40 +299,48 @@ export const MainNav = memo(function MainNav() {
               initial={{ rotate: 0, scale: 1 }}
               animate={{
                 rotate: prefersReducedMotion ? 0 : 360,
-                scale: prefersReducedMotion ? 1 : [1, 1.05, 1]
+                scale: prefersReducedMotion ? 1 : [1, 1.05, 1],
               }}
               transition={{
-                rotate: { duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
-                scale: { duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
+                rotate: {
+                  duration: 10,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: 'linear',
+                },
+                scale: {
+                  duration: 3,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: 'easeInOut',
+                },
               }}
               className="relative"
               style={{
                 rotateX,
                 rotateY,
-                transformPerspective: 1000
+                transformPerspective: 1000,
               }}
             >
               <motion.div
                 className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500 via-teal-500 to-blue-600 opacity-70 blur-sm"
                 animate={{
                   rotate: prefersReducedMotion ? 0 : [0, 360],
-                  scale: prefersReducedMotion ? 1 : [1, 1.05, 1]
+                  scale: prefersReducedMotion ? 1 : [1, 1.05, 1],
                 }}
                 transition={{
                   duration: 10,
                   repeat: Infinity,
-                  repeatType: "reverse"
+                  repeatType: 'reverse',
                 }}
               />
               <motion.div
                 className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 opacity-70 blur-[2px]"
                 animate={{
-                  rotate: prefersReducedMotion ? 0 : [0, -360]
+                  rotate: prefersReducedMotion ? 0 : [0, -360],
                 }}
                 transition={{
                   duration: 15,
                   repeat: Infinity,
-                  ease: "linear"
+                  ease: 'linear',
                 }}
               />
               <div className="relative h-7 w-7 rounded-full bg-background flex items-center justify-center">
@@ -351,8 +373,10 @@ export const MainNav = memo(function MainNav() {
                         <Link
                           href={route.href}
                           className={cn(
-                            "text-sm font-medium transition-colors hover:text-primary flex items-center gap-1.5",
-                            route.active ? "text-primary" : "text-muted-foreground",
+                            'text-sm font-medium transition-colors hover:text-primary flex items-center gap-1.5',
+                            route.active
+                              ? 'text-primary'
+                              : 'text-muted-foreground'
                           )}
                         >
                           {route.icon}
@@ -365,10 +389,14 @@ export const MainNav = memo(function MainNav() {
                         </Link>
                       </motion.div>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="flex items-center gap-2">
+                    <TooltipContent
+                      side="bottom"
+                      className="flex items-center gap-2"
+                    >
                       <p>{route.description}</p>
                       <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                        <span className="text-xs">⌘</span>{route.shortcut}
+                        <span className="text-xs">⌘</span>
+                        {route.shortcut}
                       </kbd>
                     </TooltipContent>
                   </Tooltip>
@@ -384,19 +412,19 @@ export const MainNav = memo(function MainNav() {
             {showSearch ? (
               <motion.form
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: "250px", opacity: 1 }}
+                animate={{ width: '250px', opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="relative hidden md:flex"
                 onSubmit={(e) => {
-                  e.preventDefault()
+                  e.preventDefault();
                   if (searchQuery.trim()) {
                     toast({
-                      title: "Search submitted",
+                      title: 'Search submitted',
                       description: `Searching for "${searchQuery}"`,
                       duration: 2000,
-                    })
-                    setShowSearch(false)
+                    });
+                    setShowSearch(false);
                   }
                 }}
               >
@@ -441,7 +469,10 @@ export const MainNav = memo(function MainNav() {
                         <span className="sr-only">Search</span>
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="flex items-center gap-2">
+                    <TooltipContent
+                      side="bottom"
+                      className="flex items-center gap-2"
+                    >
                       <p>Search</p>
                       <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
                         <span className="text-xs">⌘</span>K
@@ -472,13 +503,15 @@ export const MainNav = memo(function MainNav() {
                           scale: [1, 1.2, 1],
                           transition: {
                             repeat: 3,
-                            repeatType: "reverse",
-                            duration: 0.3
-                          }
+                            repeatType: 'reverse',
+                            duration: 0.3,
+                          },
                         }}
                         className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-to-r from-green-500 to-blue-600 flex items-center justify-center"
                       >
-                        <span className="text-[10px] font-medium text-white">{notifications}</span>
+                        <span className="text-[10px] font-medium text-white">
+                          {notifications}
+                        </span>
                       </motion.div>
                     )}
                   </Button>
@@ -501,8 +534,8 @@ export const MainNav = memo(function MainNav() {
                 >
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-600/10 opacity-0 group-hover:opacity-100"
-                    initial={{ x: "-100%" }}
-                    whileHover={{ x: "100%" }}
+                    initial={{ x: '-100%' }}
+                    whileHover={{ x: '100%' }}
                     transition={{ duration: 0.6 }}
                   />
                   <User className="h-4 w-4" />
@@ -540,8 +573,8 @@ export const MainNav = memo(function MainNav() {
             >
               <motion.div
                 className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100"
-                initial={{ x: "-100%" }}
-                whileHover={{ x: "100%" }}
+                initial={{ x: '-100%' }}
+                whileHover={{ x: '100%' }}
                 transition={{ duration: 0.4 }}
               />
               <span className="relative z-10">Get Started</span>
@@ -565,8 +598,10 @@ export const MainNav = memo(function MainNav() {
                     key={route.href}
                     href={route.href}
                     className={cn(
-                      "text-sm font-medium transition-colors hover:text-primary flex items-center gap-2 p-2 rounded-md",
-                      route.active ? "text-primary bg-primary/10" : "text-muted-foreground",
+                      'text-sm font-medium transition-colors hover:text-primary flex items-center gap-2 p-2 rounded-md',
+                      route.active
+                        ? 'text-primary bg-primary/10'
+                        : 'text-muted-foreground'
                     )}
                     onClick={() => setIsOpen(false)}
                   >
@@ -577,7 +612,9 @@ export const MainNav = memo(function MainNav() {
                         {route.badge}
                       </Badge>
                     )}
-                    <span className="ml-auto opacity-60 text-xs">{route.shortcut.toUpperCase()}</span>
+                    <span className="ml-auto opacity-60 text-xs">
+                      {route.shortcut.toUpperCase()}
+                    </span>
                   </Link>
                 ))}
 
@@ -600,8 +637,8 @@ export const MainNav = memo(function MainNav() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setShowSignIn(true)
-                      setIsOpen(false)
+                      setShowSignIn(true);
+                      setIsOpen(false);
                     }}
                   >
                     Sign In
@@ -609,8 +646,8 @@ export const MainNav = memo(function MainNav() {
                   <Button
                     className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 border-none"
                     onClick={() => {
-                      setShowSignUp(true)
-                      setIsOpen(false)
+                      setShowSignUp(true);
+                      setIsOpen(false);
                     }}
                   >
                     Sign Up
@@ -632,8 +669,8 @@ export const MainNav = memo(function MainNav() {
               <CommandItem
                 key={item.href}
                 onSelect={() => {
-                  router.push(item.href)
-                  setCommandOpen(false)
+                  router.push(item.href);
+                  setCommandOpen(false);
                 }}
               >
                 <div className="mr-2 flex h-4 w-4 items-center justify-center">
@@ -642,7 +679,8 @@ export const MainNav = memo(function MainNav() {
                 <span>{item.label}</span>
                 {item.shortcut && (
                   <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                    <span className="text-xs">⌘</span>{item.shortcut}
+                    <span className="text-xs">⌘</span>
+                    {item.shortcut}
                   </kbd>
                 )}
               </CommandItem>
@@ -650,15 +688,18 @@ export const MainNav = memo(function MainNav() {
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Theme">
-            <CommandItem onSelect={() => {
-              document.documentElement.classList.toggle('dark')
-              setCommandOpen(false)
-            }}>
+            <CommandItem
+              onSelect={() => {
+                document.documentElement.classList.toggle('dark');
+                setCommandOpen(false);
+              }}
+            >
               <div className="mr-2 flex h-4 w-4 items-center justify-center">
-                {document.documentElement.classList.contains('dark') ?
-                  <Sun className="h-4 w-4" /> :
+                {document.documentElement.classList.contains('dark') ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
                   <Moon className="h-4 w-4" />
-                }
+                )}
               </div>
               <span>Toggle Theme</span>
               <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
@@ -673,5 +714,5 @@ export const MainNav = memo(function MainNav() {
       <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} />
       <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} />
     </>
-  )
-})
+  );
+});

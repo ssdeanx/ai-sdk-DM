@@ -1,24 +1,31 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { type ReactNode, useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Loader2, Save } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { type ReactNode, useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, Save } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FormContainerProps {
-  title: string
-  description?: string
-  children: ReactNode
-  onSubmit: () => Promise<void>
-  onCancel?: () => void
-  isSubmitting?: boolean
-  className?: string
-  submitLabel?: string
-  cancelLabel?: string
-  footerContent?: ReactNode
+  title: string;
+  description?: string;
+  children: ReactNode;
+  onSubmit: () => Promise<void>;
+  onCancel?: () => void;
+  isSubmitting?: boolean;
+  className?: string;
+  submitLabel?: string;
+  cancelLabel?: string;
+  footerContent?: ReactNode;
 }
 
 export function FormContainer({
@@ -29,26 +36,26 @@ export function FormContainer({
   onCancel,
   isSubmitting = false,
   className,
-  submitLabel = "Save",
-  cancelLabel = "Cancel",
+  submitLabel = 'Save',
+  cancelLabel = 'Cancel',
   footerContent,
 }: FormContainerProps) {
-  const [isSubmittingInternal, setIsSubmittingInternal] = useState(false)
+  const [isSubmittingInternal, setIsSubmittingInternal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmittingInternal(true)
+    e.preventDefault();
+    setIsSubmittingInternal(true);
     try {
-      await onSubmit()
+      await onSubmit();
     } finally {
-      setIsSubmittingInternal(false)
+      setIsSubmittingInternal(false);
     }
-  }
+  };
 
-  const submitting = isSubmitting || isSubmittingInternal
+  const submitting = isSubmitting || isSubmittingInternal;
 
   return (
-    <Card className={cn("w-full", className)}>
+    <Card className={cn('w-full', className)}>
       <form onSubmit={handleSubmit}>
         <CardHeader>
           <CardTitle>{title}</CardTitle>
@@ -59,7 +66,12 @@ export function FormContainer({
           <div>{footerContent}</div>
           <div className="flex gap-2">
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={submitting}
+              >
                 {cancelLabel}
               </Button>
             )}
@@ -80,5 +92,5 @@ export function FormContainer({
         </CardFooter>
       </form>
     </Card>
-  )
+  );
 }

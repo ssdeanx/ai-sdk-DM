@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useState, useEffect, useRef, memo } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { useState, useEffect, useRef, memo } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   motion,
   AnimatePresence,
@@ -10,8 +10,8 @@ import {
   useTransform,
   useMotionValue,
   useSpring,
-  useInView
-} from "framer-motion"
+  useInView,
+} from 'framer-motion';
 import {
   Menu,
   ChevronDown,
@@ -26,13 +26,13 @@ import {
   Code,
   Zap,
   MessageSquare,
-  Activity
-} from "lucide-react"
+  Activity,
+} from 'lucide-react';
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ModeToggle } from "@/components/layout/mode-toggle"
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ModeToggle } from '@/components/layout/mode-toggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,53 +40,58 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { SignInDialog } from "@/components/auth/sign-in-dialog"
-import { SignUpDialog } from "@/components/auth/sign-up-dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { SignInDialog } from '@/components/auth/sign-in-dialog';
+import { SignUpDialog } from '@/components/auth/sign-up-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export const TopNavbar = memo(function TopNavbar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
   // Router is used for programmatic navigation in production
-  const router = useRouter()
-  const [showSignIn, setShowSignIn] = useState(false)
-  const [showSignUp, setShowSignUp] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [notifications, setNotifications] = useState(3)
+  const router = useRouter();
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [notifications, setNotifications] = useState(3);
 
   // Function to navigate programmatically (for future use)
   const navigateTo = (path: string) => {
-    router.push(path)
-  }
+    router.push(path);
+  };
 
   // Scroll animation
-  const { scrollY } = useScroll()
-  const navbarOpacity = useTransform(scrollY, [0, 50], [0.5, 0.95])
-  const navbarHeight = useTransform(scrollY, [0, 50], ["4rem", "3.5rem"])
-  const logoScale = useTransform(scrollY, [0, 50], [1, 0.9])
+  const { scrollY } = useScroll();
+  const navbarOpacity = useTransform(scrollY, [0, 50], [0.5, 0.95]);
+  const navbarHeight = useTransform(scrollY, [0, 50], ['4rem', '3.5rem']);
+  const logoScale = useTransform(scrollY, [0, 50], [1, 0.9]);
 
   // Update scrolled state for mobile and handle navigation
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
+      setScrolled(window.scrollY > 20);
+    };
 
     // Apply scrolled state to header styling
-    const header = document.querySelector('header')
+    const header = document.querySelector('header');
     if (header) {
       if (scrolled) {
-        header.classList.add('scrolled')
+        header.classList.add('scrolled');
         // Example of using navigateTo in a real application
         // if (someCondition) navigateTo('/dashboard')
       } else {
-        header.classList.remove('scrolled')
+        header.classList.remove('scrolled');
       }
     }
 
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [scrolled])
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [scrolled]);
 
   // Set up route change handler for analytics
   useEffect(() => {
@@ -94,61 +99,61 @@ export const TopNavbar = memo(function TopNavbar() {
     function handleRouteChange() {
       // Update notifications based on current path
       if (pathname.includes('/dashboard')) {
-        setNotifications(3)
+        setNotifications(3);
       } else if (pathname.includes('/chat')) {
-        setNotifications(1)
+        setNotifications(1);
       } else {
-        setNotifications(0)
+        setNotifications(0);
       }
 
       // Analytics tracking would go here in production
     }
 
     // Call the function once on mount
-    handleRouteChange()
+    handleRouteChange();
 
     // This would be used in production with Next.js router events
     // router.events.on('routeChangeComplete', handleRouteChange)
     // return () => router.events.off('routeChangeComplete', handleRouteChange)
-  }, [pathname])
+  }, [pathname]);
 
   // Mouse position for hover effects
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
   // Spring animations for smoother motion
-  const springConfig = { stiffness: 300, damping: 30 }
-  const mouseXSpring = useSpring(mouseX, springConfig)
-  const mouseYSpring = useSpring(mouseY, springConfig)
+  const springConfig = { stiffness: 300, damping: 30 };
+  const mouseXSpring = useSpring(mouseX, springConfig);
+  const mouseYSpring = useSpring(mouseY, springConfig);
 
   // Transform values for hover effects
-  const rotateX = useTransform(mouseYSpring, [0, 100], [1, -1])
-  const rotateY = useTransform(mouseXSpring, [0, 200], [-1, 1])
+  const rotateX = useTransform(mouseYSpring, [0, 100], [1, -1]);
+  const rotateY = useTransform(mouseXSpring, [0, 200], [-1, 1]);
 
   // Handle mouse movement for hover effects
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const { left, top } = e.currentTarget.getBoundingClientRect()
-    mouseX.set(e.clientX - left)
-    mouseY.set(e.clientY - top)
-  }
+    const { left, top } = e.currentTarget.getBoundingClientRect();
+    mouseX.set(e.clientX - left);
+    mouseY.set(e.clientY - top);
+  };
 
   // References for animations
-  const headerRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null);
 
   // Use header in-view state for animations
-  const isHeaderInView = useInView(headerRef, { once: true })
+  const isHeaderInView = useInView(headerRef, { once: true });
 
   // Apply header animations based on in-view state
   useEffect(() => {
     if (isHeaderInView) {
       // Add animation classes or styles when header comes into view
-      const header = headerRef.current
+      const header = headerRef.current;
       if (header) {
-        header.style.opacity = "1"
-        header.style.transform = "translateY(0)"
+        header.style.opacity = '1';
+        header.style.transform = 'translateY(0)';
       }
     }
-  }, [isHeaderInView])
+  }, [isHeaderInView]);
 
   return (
     <TooltipProvider>
@@ -170,13 +175,16 @@ export const TopNavbar = memo(function TopNavbar() {
       >
         <div className="flex h-full items-center w-full px-4 md:px-8">
           <div className="mr-4 hidden md:flex">
-            <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
+            <Link
+              href="/dashboard"
+              className="mr-6 flex items-center space-x-2"
+            >
               <motion.div
                 style={{
                   scale: logoScale,
                   rotateX,
                   rotateY,
-                  transformPerspective: 1000
+                  transformPerspective: 1000,
                 }}
                 className="relative flex items-center justify-center"
                 whileHover={{ scale: 1.05 }}
@@ -186,15 +194,27 @@ export const TopNavbar = memo(function TopNavbar() {
                   initial={{ rotate: 0, scale: 1 }}
                   animate={{ rotate: 360, scale: [1, 1.05, 1] }}
                   transition={{
-                    rotate: { duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
-                    scale: { duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
+                    rotate: {
+                      duration: 10,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: 'linear',
+                    },
+                    scale: {
+                      duration: 3,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: 'easeInOut',
+                    },
                   }}
                   className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500 via-emerald-500 to-blue-600 opacity-70 blur-sm"
                 />
                 <motion.div
                   initial={{ rotate: 0 }}
                   animate={{ rotate: -360 }}
-                  transition={{ duration: 15, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                  transition={{
+                    duration: 15,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: 'linear',
+                  }}
                   className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 opacity-70 blur-[2px]"
                 />
                 <div className="relative h-7 w-7 rounded-full bg-background flex items-center justify-center">
@@ -215,13 +235,20 @@ export const TopNavbar = memo(function TopNavbar() {
           {/* Mobile menu trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="mr-2 h-8 w-8 md:hidden">
+              <Button
+                variant="outline"
+                size="icon"
+                className="mr-2 h-8 w-8 md:hidden"
+              >
                 <Menu className="h-4 w-4" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="pr-0">
-              <MobileNav setShowSignIn={setShowSignIn} setShowSignUp={setShowSignUp} />
+              <MobileNav
+                setShowSignIn={setShowSignIn}
+                setShowSignUp={setShowSignUp}
+              />
             </SheetContent>
           </Sheet>
 
@@ -234,7 +261,7 @@ export const TopNavbar = memo(function TopNavbar() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                whileHover={{ boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)" }}
+                whileHover={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}
               >
                 {/* Animated background */}
                 <motion.div
@@ -252,11 +279,36 @@ export const TopNavbar = memo(function TopNavbar() {
 
                 <AnimatePresence>
                   {[
-                    { id: "dashboard", label: "Dashboard", icon: <Home className="h-3.5 w-3.5" />, href: "/dashboard" },
-                    { id: "chat", label: "Chat", icon: <MessageSquare className="h-3.5 w-3.5" />, href: "/chat" },
-                    { id: "features", label: "Features", icon: <Rocket className="h-3.5 w-3.5" />, href: "/features" },
-                    { id: "observability", label: "Observability", icon: <Activity className="h-3.5 w-3.5" />, href: "/observability" },
-                    { id: "settings", label: "Settings", icon: <Settings className="h-3.5 w-3.5" />, href: "/settings" }
+                    {
+                      id: 'dashboard',
+                      label: 'Dashboard',
+                      icon: <Home className="h-3.5 w-3.5" />,
+                      href: '/dashboard',
+                    },
+                    {
+                      id: 'chat',
+                      label: 'Chat',
+                      icon: <MessageSquare className="h-3.5 w-3.5" />,
+                      href: '/chat',
+                    },
+                    {
+                      id: 'features',
+                      label: 'Features',
+                      icon: <Rocket className="h-3.5 w-3.5" />,
+                      href: '/features',
+                    },
+                    {
+                      id: 'observability',
+                      label: 'Observability',
+                      icon: <Activity className="h-3.5 w-3.5" />,
+                      href: '/observability',
+                    },
+                    {
+                      id: 'settings',
+                      label: 'Settings',
+                      icon: <Settings className="h-3.5 w-3.5" />,
+                      href: '/settings',
+                    },
                   ].map((item) => (
                     <Tooltip key={item.id} delayDuration={100}>
                       <TooltipTrigger asChild>
@@ -289,9 +341,9 @@ export const TopNavbar = memo(function TopNavbar() {
                     transition={{
                       duration: 0.3,
                       delay: 0.2,
-                      type: "spring",
+                      type: 'spring',
                       stiffness: 300,
-                      damping: 20
+                      damping: 20,
                     }}
                   >
                     <Button
@@ -319,7 +371,11 @@ export const TopNavbar = memo(function TopNavbar() {
                       <motion.div
                         initial={{ rotate: 0 }}
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 20, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                        transition={{
+                          duration: 20,
+                          repeat: Number.POSITIVE_INFINITY,
+                          ease: 'linear',
+                        }}
                         className="absolute inset-0 rounded-md bg-gradient-to-r from-green-500/5 via-teal-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100"
                       />
 
@@ -330,7 +386,7 @@ export const TopNavbar = memo(function TopNavbar() {
                           duration: 2,
                           repeat: Infinity,
                           repeatType: 'reverse',
-                          ease: 'easeInOut'
+                          ease: 'easeInOut',
                         }}
                         className="relative z-10"
                       >
@@ -349,7 +405,10 @@ export const TopNavbar = memo(function TopNavbar() {
                     </Button>
                   </motion.div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60 p-1 bg-background/80 backdrop-blur-xl border border-border/20">
+                <DropdownMenuContent
+                  align="end"
+                  className="w-60 p-1 bg-background/80 backdrop-blur-xl border border-border/20"
+                >
                   <DropdownMenuLabel className="px-3 py-2 text-xs font-medium text-muted-foreground">
                     Connect Services
                   </DropdownMenuLabel>
@@ -369,7 +428,9 @@ export const TopNavbar = memo(function TopNavbar() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">GitHub</span>
-                          <span className="text-xs text-muted-foreground">Connect repositories</span>
+                          <span className="text-xs text-muted-foreground">
+                            Connect repositories
+                          </span>
                         </div>
                       </div>
                     </DropdownMenuItem>
@@ -389,7 +450,9 @@ export const TopNavbar = memo(function TopNavbar() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">Supabase</span>
-                          <span className="text-xs text-muted-foreground">Database integration</span>
+                          <span className="text-xs text-muted-foreground">
+                            Database integration
+                          </span>
                         </div>
                       </div>
                     </DropdownMenuItem>
@@ -409,7 +472,9 @@ export const TopNavbar = memo(function TopNavbar() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">Vercel</span>
-                          <span className="text-xs text-muted-foreground">Deployment platform</span>
+                          <span className="text-xs text-muted-foreground">
+                            Deployment platform
+                          </span>
                         </div>
                       </div>
                     </DropdownMenuItem>
@@ -459,7 +524,8 @@ export const TopNavbar = memo(function TopNavbar() {
                     <motion.span
                       className="absolute inset-0 rounded-md opacity-0 group-hover:opacity-100"
                       style={{
-                        background: "linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.2), transparent)",
+                        background:
+                          'linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.2), transparent)',
                       }}
                       animate={{
                         x: ['-100%', '100%'],
@@ -467,7 +533,7 @@ export const TopNavbar = memo(function TopNavbar() {
                       transition={{
                         duration: 1.5,
                         repeat: Infinity,
-                        ease: "linear",
+                        ease: 'linear',
                       }}
                     />
 
@@ -504,9 +570,9 @@ export const TopNavbar = memo(function TopNavbar() {
                     transition={{
                       duration: 1.5,
                       repeat: Infinity,
-                      repeatType: "loop",
-                      ease: "linear",
-                      repeatDelay: 0.5
+                      repeatType: 'loop',
+                      ease: 'linear',
+                      repeatDelay: 0.5,
                     }}
                   />
 
@@ -520,17 +586,17 @@ export const TopNavbar = memo(function TopNavbar() {
                           x: `${Math.random() * 100}%`,
                           y: `${Math.random() * 100}%`,
                           scale: 0,
-                          opacity: 0
+                          opacity: 0,
                         }}
                         animate={{
                           y: [null, '-100%'],
                           scale: [0, 1, 0],
-                          opacity: [0, 1, 0]
+                          opacity: [0, 1, 0],
                         }}
                         transition={{
                           duration: 1 + Math.random() * 2,
                           repeat: Infinity,
-                          delay: Math.random() * 2
+                          delay: Math.random() * 2,
                         }}
                       />
                     ))}
@@ -540,7 +606,7 @@ export const TopNavbar = memo(function TopNavbar() {
                   <motion.span
                     className="relative z-10 text-white font-medium"
                     whileHover={{
-                      textShadow: "0 0 8px rgba(255, 255, 255, 0.5)"
+                      textShadow: '0 0 8px rgba(255, 255, 255, 0.5)',
                     }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -566,7 +632,8 @@ export const TopNavbar = memo(function TopNavbar() {
                     whileHover={{
                       scale: 1.2,
                       opacity: 1,
-                      background: "radial-gradient(circle, rgba(124, 58, 237, 0.1) 0%, transparent 70%)"
+                      background:
+                        'radial-gradient(circle, rgba(124, 58, 237, 0.1) 0%, transparent 70%)',
                     }}
                     transition={{ duration: 0.3 }}
                   />
@@ -580,15 +647,15 @@ export const TopNavbar = memo(function TopNavbar() {
                         scale: [1, 1.2, 1],
                         opacity: 1,
                         boxShadow: [
-                          "0 0 0 0 rgba(16, 185, 129, 0.7)",
-                          "0 0 0 4px rgba(16, 185, 129, 0)",
-                          "0 0 0 0 rgba(16, 185, 129, 0.7)"
-                        ]
+                          '0 0 0 0 rgba(16, 185, 129, 0.7)',
+                          '0 0 0 4px rgba(16, 185, 129, 0)',
+                          '0 0 0 0 rgba(16, 185, 129, 0.7)',
+                        ],
                       }}
                       transition={{
                         duration: 2,
                         repeat: Infinity,
-                        repeatType: "loop"
+                        repeatType: 'loop',
                       }}
                     >
                       {notifications}
@@ -617,21 +684,24 @@ export const TopNavbar = memo(function TopNavbar() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <Button variant="ghost" className="relative h-7 w-7 rounded-full p-0 overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      className="relative h-7 w-7 rounded-full p-0 overflow-hidden"
+                    >
                       {/* Animated glow effect */}
                       <motion.div
                         className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100"
                         animate={{
                           boxShadow: [
-                            "0 0 0 0 rgba(16, 185, 129, 0)",
-                            "0 0 0 3px rgba(16, 185, 129, 0.3)",
-                            "0 0 0 0 rgba(16, 185, 129, 0)"
-                          ]
+                            '0 0 0 0 rgba(16, 185, 129, 0)',
+                            '0 0 0 3px rgba(16, 185, 129, 0.3)',
+                            '0 0 0 0 rgba(16, 185, 129, 0)',
+                          ],
                         }}
                         transition={{
                           duration: 2,
                           repeat: Infinity,
-                          repeatType: "loop"
+                          repeatType: 'loop',
                         }}
                       />
 
@@ -639,32 +709,36 @@ export const TopNavbar = memo(function TopNavbar() {
                       <motion.div
                         className="absolute inset-[-1px] rounded-full z-0"
                         style={{
-                          background: "conic-gradient(from 0deg, rgba(16, 185, 129, 0.7), rgba(59, 130, 246, 0.7), rgba(16, 185, 129, 0.7))"
+                          background:
+                            'conic-gradient(from 0deg, rgba(16, 185, 129, 0.7), rgba(59, 130, 246, 0.7), rgba(16, 185, 129, 0.7))',
                         }}
                         animate={{ rotate: 360 }}
                         transition={{
                           duration: 5,
                           repeat: Infinity,
-                          ease: "linear"
+                          ease: 'linear',
                         }}
                       />
 
                       {/* Avatar with subtle hover effect */}
                       <Avatar className="h-7 w-7 relative z-10 border-2 border-background">
-                        <AvatarImage src="/placeholder.svg?height=28&width=28" alt="User" />
+                        <AvatarImage
+                          src="/placeholder.svg?height=28&width=28"
+                          alt="User"
+                        />
                         <AvatarFallback>
                           <motion.div
                             animate={{
                               background: [
-                                "linear-gradient(45deg, #10b981, #3b82f6)",
-                                "linear-gradient(225deg, #10b981, #3b82f6)",
-                                "linear-gradient(45deg, #10b981, #3b82f6)"
-                              ]
+                                'linear-gradient(45deg, #10b981, #3b82f6)',
+                                'linear-gradient(225deg, #10b981, #3b82f6)',
+                                'linear-gradient(45deg, #10b981, #3b82f6)',
+                              ],
                             }}
                             transition={{
                               duration: 3,
                               repeat: Infinity,
-                              repeatType: "mirror"
+                              repeatType: 'mirror',
                             }}
                             className="h-full w-full flex items-center justify-center text-white text-xs font-medium"
                           >
@@ -676,7 +750,11 @@ export const TopNavbar = memo(function TopNavbar() {
                   </motion.div>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent className="w-56 p-1 bg-background/80 backdrop-blur-xl border border-border/20" align="end" forceMount>
+                <DropdownMenuContent
+                  className="w-56 p-1 bg-background/80 backdrop-blur-xl border border-border/20"
+                  align="end"
+                  forceMount
+                >
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -767,62 +845,66 @@ export const TopNavbar = memo(function TopNavbar() {
         <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} />
       </motion.header>
     </TooltipProvider>
-  )
-})
+  );
+});
 
 const MobileNav = memo(function MobileNav({
-  setShowSignUp
+  setShowSignUp,
 }: {
-  setShowSignIn: (show: boolean) => void
-  setShowSignUp: (show: boolean) => void
+  setShowSignIn: (show: boolean) => void;
+  setShowSignUp: (show: boolean) => void;
 }) {
-  const pathname = usePathname()
-  const [openItems, setOpenItems] = useState<string[]>([])
+  const pathname = usePathname();
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
   // Mobile notifications state
-  const [mobileNotifications, setMobileNotifications] = useState(3)
+  const [mobileNotifications, setMobileNotifications] = useState(3);
 
   // Update notifications based on path
   useEffect(() => {
     if (pathname.includes('/dashboard')) {
-      setMobileNotifications(3)
+      setMobileNotifications(3);
     } else if (pathname.includes('/chat')) {
-      setMobileNotifications(1)
+      setMobileNotifications(1);
     } else {
-      setMobileNotifications(0)
+      setMobileNotifications(0);
     }
-  }, [pathname])
+  }, [pathname]);
 
   const toggleItem = (item: string) => {
-    setOpenItems((current) => (current.includes(item) ? current.filter((i) => i !== item) : [...current, item]))
-  }
+    setOpenItems((current) =>
+      current.includes(item)
+        ? current.filter((i) => i !== item)
+        : [...current, item]
+    );
+  };
 
   const navItems = [
     {
-      title: "Dashboard",
-      href: "/",
+      title: 'Dashboard',
+      href: '/',
     },
     {
-      title: "Chat",
-      href: "/chat",
+      title: 'Chat',
+      href: '/chat',
     },
     {
-      title: "Demo Chat",
-      href: "/demo-chat",
+      title: 'Demo Chat',
+      href: '/demo-chat',
     },
     {
-      title: "AI Configuration",
+      title: 'AI Configuration',
       items: [
-        { title: "Models", href: "/models" },
-        { title: "Tools", href: "/tools" },
-        { title: "Agents", href: "/agents" },
+        { title: 'Models', href: '/models' },
+        { title: 'Tools', href: '/tools' },
+        { title: 'Agents', href: '/agents' },
       ],
     },
     {
-      title: "Settings",
-      href: "/settings",
+      title: 'Settings',
+      href: '/settings',
     },
-  ]
+  ];
 
   return (
     <div className="flex flex-col space-y-6 p-4">
@@ -832,15 +914,27 @@ const MobileNav = memo(function MobileNav({
             initial={{ rotate: 0, scale: 1 }}
             animate={{ rotate: 360, scale: [1, 1.05, 1] }}
             transition={{
-              rotate: { duration: 10, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
-              scale: { duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
+              rotate: {
+                duration: 10,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: 'linear',
+              },
+              scale: {
+                duration: 3,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: 'easeInOut',
+              },
             }}
             className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500 via-teal-500 to-blue-600 opacity-70 blur-sm"
           />
           <motion.div
             initial={{ rotate: 0 }}
             animate={{ rotate: -360 }}
-            transition={{ duration: 15, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+            transition={{
+              duration: 15,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: 'linear',
+            }}
             className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-cyan-600 to-teal-500 opacity-70 blur-[2px]"
           />
           <div className="relative h-7 w-7 rounded-full bg-background flex items-center justify-center">
@@ -854,19 +948,19 @@ const MobileNav = memo(function MobileNav({
 
       {/* Quick Navigation */}
       <div className="grid grid-cols-4 gap-2 p-1">
-        {["dashboard", "chat", "features", "settings"].map((item) => {
+        {['dashboard', 'chat', 'features', 'settings'].map((item) => {
           const isActive = pathname.includes(`/${item}`);
           const icons = {
             dashboard: <Home className="h-4 w-4" />,
             chat: <Zap className="h-4 w-4" />,
             features: <Rocket className="h-4 w-4" />,
-            settings: <Settings className="h-4 w-4" />
+            settings: <Settings className="h-4 w-4" />,
           };
           const labels = {
-            dashboard: "Home",
-            chat: "Chat",
-            features: "Features",
-            settings: "Settings"
+            dashboard: 'Home',
+            chat: 'Chat',
+            features: 'Features',
+            settings: 'Settings',
           };
 
           return (
@@ -881,20 +975,29 @@ const MobileNav = memo(function MobileNav({
               <Link
                 href={`/${item}`}
                 className={cn(
-                  "flex flex-col items-center justify-center p-2 rounded-xl bg-background/30 backdrop-blur-md border border-border/20",
-                  isActive && "bg-background/50 border-cyan-500/20 shadow-sm shadow-cyan-500/10"
+                  'flex flex-col items-center justify-center p-2 rounded-xl bg-background/30 backdrop-blur-md border border-border/20',
+                  isActive &&
+                    'bg-background/50 border-cyan-500/20 shadow-sm shadow-cyan-500/10'
                 )}
               >
-                <div className={cn(
-                  "flex items-center justify-center h-8 w-8 rounded-lg mb-1",
-                  isActive ? "bg-gradient-to-br from-green-500/20 to-blue-600/20 text-foreground" : "text-muted-foreground"
-                )}>
+                <div
+                  className={cn(
+                    'flex items-center justify-center h-8 w-8 rounded-lg mb-1',
+                    isActive
+                      ? 'bg-gradient-to-br from-green-500/20 to-blue-600/20 text-foreground'
+                      : 'text-muted-foreground'
+                  )}
+                >
                   {icons[item as keyof typeof icons]}
                 </div>
-                <span className={cn(
-                  "text-xs font-medium",
-                  isActive ? "bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-600" : "text-muted-foreground"
-                )}>
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    isActive
+                      ? 'bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-600'
+                      : 'text-muted-foreground'
+                  )}
+                >
                   {labels[item as keyof typeof labels]}
                 </span>
               </Link>
@@ -950,10 +1053,10 @@ const MobileNav = memo(function MobileNav({
               <Link
                 href={item.href}
                 className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                  'flex items-center rounded-md px-3 py-2 text-sm font-medium',
                   pathname === item.href
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent hover:text-accent-foreground",
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
                 )}
               >
                 {item.title}
@@ -966,7 +1069,10 @@ const MobileNav = memo(function MobileNav({
                 >
                   {item.title}
                   <ChevronDown
-                    className={cn("h-4 w-4 transition-transform", openItems.includes(item.title) && "rotate-180")}
+                    className={cn(
+                      'h-4 w-4 transition-transform',
+                      openItems.includes(item.title) && 'rotate-180'
+                    )}
                   />
                 </button>
                 {openItems.includes(item.title) && item.items && (
@@ -976,10 +1082,10 @@ const MobileNav = memo(function MobileNav({
                         key={subItem.title}
                         href={subItem.href}
                         className={cn(
-                          "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                          'flex items-center rounded-md px-3 py-2 text-sm font-medium',
                           pathname === subItem.href
-                            ? "bg-accent text-accent-foreground"
-                            : "hover:bg-accent hover:text-accent-foreground",
+                            ? 'bg-accent text-accent-foreground'
+                            : 'hover:bg-accent hover:text-accent-foreground'
                         )}
                       >
                         {subItem.title}
@@ -993,11 +1099,7 @@ const MobileNav = memo(function MobileNav({
         ))}
       </div>
       <div className="flex flex-col space-y-3 mt-4">
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-        >
+        <Button variant="outline" size="sm" asChild>
           <Link href="/auth/signin">Sign In</Link>
         </Button>
         <Button
@@ -1067,15 +1169,15 @@ const MobileNav = memo(function MobileNav({
                 scale: [1, 1.2, 1],
                 opacity: 1,
                 boxShadow: [
-                  "0 0 0 0 rgba(16, 185, 129, 0.7)",
-                  "0 0 0 4px rgba(16, 185, 129, 0)",
-                  "0 0 0 0 rgba(16, 185, 129, 0.7)"
-                ]
+                  '0 0 0 0 rgba(16, 185, 129, 0.7)',
+                  '0 0 0 4px rgba(16, 185, 129, 0)',
+                  '0 0 0 0 rgba(16, 185, 129, 0.7)',
+                ],
               }}
               transition={{
                 duration: 2,
                 repeat: Infinity,
-                repeatType: "loop"
+                repeatType: 'loop',
               }}
             >
               {mobileNotifications}
@@ -1086,5 +1188,5 @@ const MobileNav = memo(function MobileNav({
         </Button>
       </div>
     </div>
-  )
-})
+  );
+});

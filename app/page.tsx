@@ -1,10 +1,10 @@
-import HeroSection from "@/components/landing/hero-section"
-import FeaturesSection from "@/components/landing/features-section"
-import ArchitectureSection from "@/components/landing/architecture-section"
-import UseCasesSection from "@/components/landing/use-cases-section"
-import CTASection from "@/components/landing/cta-section"
-import FooterSection from "@/components/landing/footer-section"
-import { Suspense } from "react"
+import HeroSection from '@/components/landing/hero-section';
+import FeaturesSection from '@/components/landing/features-section';
+import ArchitectureSection from '@/components/landing/architecture-section';
+import UseCasesSection from '@/components/landing/use-cases-section';
+import CTASection from '@/components/landing/cta-section';
+import FooterSection from '@/components/landing/footer-section';
+import { Suspense } from 'react';
 
 export default function LandingPage() {
   return (
@@ -69,5 +69,5 @@ export default function LandingPage() {
         <FooterSection />
       </Suspense>
     </div>
-  )
+  );
 }

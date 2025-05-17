@@ -5,28 +5,36 @@
  * observability, and model evaluation in AI applications.
  */
 
-import { Langfuse } from "langfuse"
+import { Langfuse } from 'langfuse';
 
 // Initialize Langfuse client with configuration
 const langfuse = new Langfuse({
   publicKey: process.env.LANGFUSE_PUBLIC_KEY as string,
   secretKey: process.env.LANGFUSE_SECRET_KEY as string,
-  baseUrl: process.env.LANGFUSE_HOST || "https://cloud.langfuse.com"
-})
+  baseUrl: process.env.LANGFUSE_HOST || 'https://cloud.langfuse.com',
+});
 
 // Create a trace
-export async function createTrace({ name, userId, metadata }: { name: string; userId?: string; metadata?: any }) {
+export async function createTrace({
+  name,
+  userId,
+  metadata,
+}: {
+  name: string;
+  userId?: string;
+  metadata?: any;
+}) {
   try {
     const trace = langfuse.trace({
       name,
       userId,
       metadata,
-    })
-    return trace
+    });
+    return trace;
   } catch (error) {
-    console.error("Langfuse trace creation error:", error)
+    console.error('Langfuse trace creation error:', error);
     // Don't throw - we don't want to break the application if tracing fails
-    return null
+    return null;
   }
 }
 
@@ -42,15 +50,15 @@ export async function createGeneration({
   endTime,
   metadata,
 }: {
-  traceId: string
-  name: string
-  model: string
-  modelParameters?: any
-  input: any // Use 'any' or a more specific type like CoreMessage[] | string
-  output: any // Use 'any' or a more specific type like string
-  startTime: Date
-  endTime: Date
-  metadata?: any
+  traceId: string;
+  name: string;
+  model: string;
+  modelParameters?: any;
+  input: any; // Use 'any' or a more specific type like CoreMessage[] | string
+  output: any; // Use 'any' or a more specific type like string
+  startTime: Date;
+  endTime: Date;
+  metadata?: any;
 }) {
   try {
     const generation = langfuse.generation({
@@ -63,12 +71,12 @@ export async function createGeneration({
       startTime,
       endTime,
       metadata,
-    })
-    return generation
+    });
+    return generation;
   } catch (error) {
-    console.error("Langfuse generation creation error:", error)
+    console.error('Langfuse generation creation error:', error);
     // Don't throw - we don't want to break the application if tracing fails
-    return null
+    return null;
   }
 }
 
@@ -92,12 +100,12 @@ export async function createSpan({
   metadata,
   parentObservationId,
 }: {
-  traceId: string
-  name: string
-  startTime: Date
-  endTime: Date
-  metadata?: any
-  parentObservationId?: string
+  traceId: string;
+  name: string;
+  startTime: Date;
+  endTime: Date;
+  metadata?: any;
+  parentObservationId?: string;
 }) {
   try {
     // Create span parameters
@@ -106,20 +114,20 @@ export async function createSpan({
       name,
       startTime,
       endTime,
-      metadata
-    }
+      metadata,
+    };
 
     // Add parent observation ID if provided
     if (parentObservationId) {
-      spanParams.parentObservationId = parentObservationId
+      spanParams.parentObservationId = parentObservationId;
     }
 
-    const span = langfuse.span(spanParams)
-    return span
+    const span = langfuse.span(spanParams);
+    return span;
   } catch (error) {
-    console.error("Langfuse span creation error:", error)
+    console.error('Langfuse span creation error:', error);
     // Don't throw - we don't want to break the application if tracing fails
-    return null
+    return null;
   }
 }
 
@@ -139,24 +147,24 @@ export function startSpan({
   metadata,
   parentObservationId,
 }: {
-  traceId: string
-  name: string
-  metadata?: any
-  parentObservationId?: string
+  traceId: string;
+  name: string;
+  metadata?: any;
+  parentObservationId?: string;
 }) {
-  const startTime = new Date()
+  const startTime = new Date();
 
   return {
     spanId: `span-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     end: async (endMetadata?: any) => {
-      const endTime = new Date()
+      const endTime = new Date();
 
       // Merge initial metadata with end metadata
       const mergedMetadata = {
         ...metadata,
         ...endMetadata,
-        durationMs: endTime.getTime() - startTime.getTime()
-      }
+        durationMs: endTime.getTime() - startTime.getTime(),
+      };
 
       return await createSpan({
         traceId,
@@ -164,10 +172,10 @@ export function startSpan({
         startTime,
         endTime,
         metadata: mergedMetadata,
-        parentObservationId
-      })
-    }
-  }
+        parentObservationId,
+      });
+    },
+  };
 }
 
 // Log an event
@@ -176,21 +184,21 @@ export async function logEvent({
   name,
   metadata,
 }: {
-  traceId: string
-  name: string
-  metadata?: any
+  traceId: string;
+  name: string;
+  metadata?: any;
 }) {
   try {
     const event = langfuse.event({
       traceId,
       name,
       metadata,
-    })
-    return event
+    });
+    return event;
   } catch (error) {
-    console.error("Langfuse event creation error:", error)
+    console.error('Langfuse event creation error:', error);
     // Don't throw - we don't want to break the application if tracing fails
-    return null
+    return null;
   }
 }
 
@@ -212,34 +220,34 @@ export async function scoreGeneration({
   generationId,
   comment,
 }: {
-  traceId: string
-  name: string
-  value: number
-  generationId?: string
-  comment?: string
+  traceId: string;
+  name: string;
+  value: number;
+  generationId?: string;
+  comment?: string;
 }) {
   try {
     // Create the score with the available parameters
-    let scoreParams: any = {
+    const scoreParams: any = {
       traceId,
       name,
-      value
-    }
+      value,
+    };
 
     // Add comment if provided
     if (comment) {
-      scoreParams.comment = comment
+      scoreParams.comment = comment;
     } else if (generationId) {
       // If no comment but we have a generationId, create a comment that references it
-      scoreParams.comment = `Score for generation ${generationId}`
+      scoreParams.comment = `Score for generation ${generationId}`;
     }
 
-    const score = langfuse.score(scoreParams)
-    return score
+    const score = langfuse.score(scoreParams);
+    return score;
   } catch (error) {
-    console.error("Langfuse score creation error:", error)
+    console.error('Langfuse score creation error:', error);
     // Don't throw - we don't want to break the application if scoring fails
-    return null
+    return null;
   }
 }
 
@@ -260,44 +268,45 @@ export async function logPrompt({
   tags,
   traceId,
 }: {
-  name: string
-  prompt: string | object
-  version?: string
-  tags?: string[]
-  traceId?: string
+  name: string;
+  prompt: string | object;
+  version?: string;
+  tags?: string[];
+  traceId?: string;
 }) {
   try {
-    const promptContent = typeof prompt === 'string' ? prompt : JSON.stringify(prompt)
+    const promptContent =
+      typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
     const promptMetadata = {
       promptName: name,
       promptContent,
       ...(version ? { version } : {}),
-      ...(tags ? { tags } : {})
-    }
+      ...(tags ? { tags } : {}),
+    };
 
     // If we have a traceId, create an event linked to the trace
     if (traceId) {
       langfuse.event({
         traceId,
         name: `prompt_template_${name}`,
-        metadata: promptMetadata
-      })
+        metadata: promptMetadata,
+      });
     } else {
       // Otherwise create a standalone trace for this prompt
       const trace = langfuse.trace({
         name: `prompt_template_${name}`,
-        metadata: promptMetadata
-      })
+        metadata: promptMetadata,
+      });
 
       // Add an event to the trace
       if (trace?.id) {
         langfuse.event({
           traceId: trace.id,
-          name: "prompt_created",
+          name: 'prompt_created',
           metadata: {
-            timestamp: new Date().toISOString()
-          }
-        })
+            timestamp: new Date().toISOString(),
+          },
+        });
       }
     }
 
@@ -307,12 +316,12 @@ export async function logPrompt({
       name,
       prompt: promptContent,
       version,
-      tags
-    }
+      tags,
+    };
   } catch (error) {
-    console.error("Langfuse prompt creation error:", error)
+    console.error('Langfuse prompt creation error:', error);
     // Don't throw - we don't want to break the application if prompt logging fails
-    return null
+    return null;
   }
 }
 
@@ -330,68 +339,68 @@ export async function createDataset({
   description,
   items = [],
 }: {
-  name: string
-  description?: string
+  name: string;
+  description?: string;
   items?: Array<{
-    input: any
-    expectedOutput?: any
-    metadata?: any
-  }>
+    input: any;
+    expectedOutput?: any;
+    metadata?: any;
+  }>;
 }) {
   try {
     // Create a trace to represent the dataset
     const trace = langfuse.trace({
       name: `dataset_${name}`,
       metadata: {
-        type: "dataset",
+        type: 'dataset',
         description,
         itemCount: items.length,
-        createdAt: new Date().toISOString()
-      }
-    })
+        createdAt: new Date().toISOString(),
+      },
+    });
 
     if (!trace?.id) {
-      throw new Error("Failed to create dataset trace")
+      throw new Error('Failed to create dataset trace');
     }
 
     // Log each dataset item as a generation
     for (let i = 0; i < items.length; i++) {
-      const item = items[i]
+      const item = items[i];
 
       langfuse.generation({
         traceId: trace.id,
         name: `dataset_item_${i}`,
-        model: "dataset_item",
+        model: 'dataset_item',
         input: item.input,
-        output: item.expectedOutput || "",
+        output: item.expectedOutput || '',
         metadata: {
           ...item.metadata,
           isDatasetItem: true,
-          itemIndex: i
-        }
-      })
+          itemIndex: i,
+        },
+      });
     }
 
     // Log dataset creation event
     langfuse.event({
       traceId: trace.id,
-      name: "dataset_created",
+      name: 'dataset_created',
       metadata: {
         timestamp: new Date().toISOString(),
-        itemCount: items.length
-      }
-    })
+        itemCount: items.length,
+      },
+    });
 
     return {
       id: trace.id,
       name,
       description,
       itemCount: items.length,
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    };
   } catch (error) {
-    console.error("Langfuse dataset creation error:", error)
-    return null
+    console.error('Langfuse dataset creation error:', error);
+    return null;
   }
 }
 
@@ -424,43 +433,44 @@ export async function logUserFeedback({
   comment,
   userId,
 }: {
-  traceId: string
-  rating: number | boolean
-  generationId?: string
-  comment?: string
-  userId?: string
+  traceId: string;
+  rating: number | boolean;
+  generationId?: string;
+  comment?: string;
+  userId?: string;
 }) {
   try {
     // Convert boolean ratings to numbers (true = 1, false = 0)
-    const numericRating = typeof rating === 'boolean' ? (rating ? 1 : 0) : rating
+    const numericRating =
+      typeof rating === 'boolean' ? (rating ? 1 : 0) : rating;
 
     // Create the score with the available parameters
-    let scoreParams: any = {
+    const scoreParams: any = {
       traceId,
-      name: "user_feedback",
-      value: numericRating
-    }
+      name: 'user_feedback',
+      value: numericRating,
+    };
 
     // Add comment if provided
     if (comment) {
-      scoreParams.comment = comment
+      scoreParams.comment = comment;
     }
 
     // Create the score
-    langfuse.score(scoreParams)
+    langfuse.score(scoreParams);
 
     // Log additional event with more context
     langfuse.event({
       traceId,
-      name: "user_feedback_received",
+      name: 'user_feedback_received',
       metadata: {
         rating: numericRating,
         generationId,
         comment,
         userId,
-        timestamp: new Date().toISOString()
-      }
-    })
+        timestamp: new Date().toISOString(),
+      },
+    });
 
     // Return a structured response
     return {
@@ -469,11 +479,11 @@ export async function logUserFeedback({
       generationId,
       comment,
       userId,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    };
   } catch (error) {
-    console.error("Langfuse user feedback error:", error)
-    return null
+    console.error('Langfuse user feedback error:', error);
+    return null;
   }
 }
 
@@ -484,34 +494,34 @@ export async function logEvaluationRun({
   metrics,
   results = [],
 }: {
-  name: string
-  modelId: string
-  datasetId: string
-  metrics: Record<string, number>
+  name: string;
+  modelId: string;
+  datasetId: string;
+  metrics: Record<string, number>;
   results?: Array<{
-    input: any
-    output: any
-    expectedOutput?: any
-    scores: Record<string, number>
-    metadata?: any
-  }>
+    input: any;
+    output: any;
+    expectedOutput?: any;
+    scores: Record<string, number>;
+    metadata?: any;
+  }>;
 }) {
   try {
     // Create a trace to represent the evaluation run
     const trace = langfuse.trace({
       name: `eval_run_${name}`,
       metadata: {
-        type: "evaluation_run",
+        type: 'evaluation_run',
         modelId,
         datasetId,
         metrics,
         resultCount: results.length,
-        createdAt: new Date().toISOString()
-      }
-    })
+        createdAt: new Date().toISOString(),
+      },
+    });
 
     if (!trace?.id) {
-      throw new Error("Failed to create evaluation run trace")
+      throw new Error('Failed to create evaluation run trace');
     }
 
     // Log overall metrics as scores
@@ -520,13 +530,13 @@ export async function logEvaluationRun({
         traceId: trace.id,
         name: metricName,
         value: metricValue,
-        comment: `Overall ${metricName} for model ${modelId} on dataset ${datasetId}`
-      })
+        comment: `Overall ${metricName} for model ${modelId} on dataset ${datasetId}`,
+      });
     }
 
     // Log each evaluation result
     for (let i = 0; i < results.length; i++) {
-      const result = results[i]
+      const result = results[i];
 
       // Create a generation for this evaluation result
       const generation = langfuse.generation({
@@ -539,9 +549,9 @@ export async function logEvaluationRun({
           ...result.metadata,
           expectedOutput: result.expectedOutput,
           isEvaluationResult: true,
-          resultIndex: i
-        }
-      })
+          resultIndex: i,
+        },
+      });
 
       // Log scores for this generation
       if (generation?.id) {
@@ -550,8 +560,8 @@ export async function logEvaluationRun({
             traceId: trace.id,
             name: scoreName,
             value: scoreValue,
-            comment: `Score for generation ${generation.id}, result ${i}`
-          })
+            comment: `Score for generation ${generation.id}, result ${i}`,
+          });
         }
       }
     }
@@ -559,13 +569,13 @@ export async function logEvaluationRun({
     // Log evaluation run completion event
     langfuse.event({
       traceId: trace.id,
-      name: "evaluation_run_completed",
+      name: 'evaluation_run_completed',
       metadata: {
         timestamp: new Date().toISOString(),
         resultCount: results.length,
-        metrics
-      }
-    })
+        metrics,
+      },
+    });
 
     return {
       id: trace.id,
@@ -574,10 +584,10 @@ export async function logEvaluationRun({
       datasetId,
       metrics,
       resultCount: results.length,
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    };
   } catch (error) {
-    console.error("Langfuse evaluation run creation error:", error)
-    return null
+    console.error('Langfuse evaluation run creation error:', error);
+    return null;
   }
 }

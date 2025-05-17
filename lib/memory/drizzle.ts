@@ -21,7 +21,7 @@ export const getDrizzleClient = () => {
 
   if (!connectionString) {
     throw new Error(
-      "Database connection string not found. Please set DATABASE_URL environment variable."
+      'Database connection string not found. Please set DATABASE_URL environment variable.'
     );
   }
 
@@ -44,7 +44,7 @@ export const isDrizzleAvailable = async () => {
     await db.select().from(schema.models).limit(1);
     return true;
   } catch (error) {
-    console.error("Error checking Drizzle availability:", error);
+    console.error('Error checking Drizzle availability:', error);
     return false;
   }
 };
@@ -79,9 +79,12 @@ export async function getDataWithDrizzle<T>(
         if (key === 'search') {
           // Handle search filter specially - this would need to be customized
           // This is a simplified example that searches in name or title columns
-          result = result.filter((item: any) =>
-            (item.name && item.name.toLowerCase().includes(value.toLowerCase())) ||
-            (item.title && item.title.toLowerCase().includes(value.toLowerCase()))
+          result = result.filter(
+            (item: any) =>
+              (item.name &&
+                item.name.toLowerCase().includes(value.toLowerCase())) ||
+              (item.title &&
+                item.title.toLowerCase().includes(value.toLowerCase()))
           );
         } else {
           result = result.filter((item: any) => item[key] === value);
@@ -123,7 +126,7 @@ export async function getModelConfigWithDrizzle(modelId: string) {
   try {
     // Get all models and find the one with matching ID
     const allModels = await db.select().from(schema.models);
-    const model = allModels.find(m => m.id === modelId);
+    const model = allModels.find((m) => m.id === modelId);
 
     if (!model) {
       return null;
@@ -131,7 +134,7 @@ export async function getModelConfigWithDrizzle(modelId: string) {
 
     return model;
   } catch (error) {
-    console.error("Error fetching model config with Drizzle:", error);
+    console.error('Error fetching model config with Drizzle:', error);
     throw error;
   }
 }

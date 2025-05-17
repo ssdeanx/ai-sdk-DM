@@ -12,7 +12,7 @@ import {
   Workflow,
   WorkflowStep,
   CreateWorkflowOptions,
-  AddWorkflowStepOptions
+  AddWorkflowStepOptions,
 } from './index';
 
 export class UpstashWorkflowProvider implements WorkflowProvider {
@@ -35,33 +35,42 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
 
     // Initialize steps if provided
     if (options.steps && options.steps.length > 0) {
-      workflow.steps = await Promise.all(options.steps.map(async (step) => {
-        const stepId = uuidv4();
-        const threadId = step.threadId || await memory.createMemoryThread(`Workflow ${workflow.name} - Step`);
+      workflow.steps = await Promise.all(
+        options.steps.map(async (step) => {
+          const stepId = uuidv4();
+          const threadId =
+            step.threadId ||
+            (await memory.createMemoryThread(
+              `Workflow ${workflow.name} - Step`
+            ));
 
-        const workflowStep: WorkflowStep = {
-          id: stepId,
-          workflowId,
-          agentId: step.agentId,
-          input: step.input,
-          threadId,
-          status: 'pending',
-          metadata: step.metadata,
-          createdAt: now,
-          updatedAt: now,
-        };
+          const workflowStep: WorkflowStep = {
+            id: stepId,
+            workflowId,
+            agentId: step.agentId,
+            input: step.input,
+            threadId,
+            status: 'pending',
+            metadata: step.metadata,
+            createdAt: now,
+            updatedAt: now,
+          };
 
-        // Save step to Redis
-        await redis.hset(`workflow:step:${stepId}`, workflowStep as unknown as Record<string, unknown>);
+          // Save step to Redis
+          await redis.hset(
+            `workflow:step:${stepId}`,
+            workflowStep as unknown as Record<string, unknown>
+          );
 
-        return workflowStep;
-      }));
+          return workflowStep;
+        })
+      );
     }
 
     // Save workflow to Redis
     await redis.hset(`workflow:${workflowId}`, {
       ...workflow,
-      steps: workflow.steps.map(step => step.id), // Store only step IDs in the workflow
+      steps: workflow.steps.map((step) => step.id), // Store only step IDs in the workflow
     });
 
     // Add to workflows sorted set
@@ -81,7 +90,7 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     }
 
     // Parse steps array
-    const stepIds = JSON.parse(workflowData.steps as string || '[]');
+    const stepIds = JSON.parse((workflowData.steps as string) || '[]');
 
     // Get all steps
     const steps: WorkflowStep[] = [];
@@ -114,9 +123,10 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
 
     // Reconstruct the workflow
     const workflow: Workflow = {
-      ...workflowData as unknown as Workflow,
+      ...(workflowData as unknown as Workflow),
       steps,
-      currentStepIndex: parseInt(workflowData.currentStepIndex as string, 10) || 0,
+      currentStepIndex:
+        parseInt(workflowData.currentStepIndex as string, 10) || 0,
     };
 
     return workflow;
@@ -126,7 +136,12 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     const redis = getRedisClient();
 
     // Get workflow IDs from sorted set
-    const workflowIds = await redis.zrange('workflows', offset, offset + limit - 1, { rev: true });
+    const workflowIds = await redis.zrange(
+      'workflows',
+      offset,
+      offset + limit - 1,
+      { rev: true }
+    );
 
     // Get all workflows
     const workflows: Workflow[] = [];
@@ -163,7 +178,10 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     return true;
   }
 
-  async addWorkflowStep(id: string, options: AddWorkflowStepOptions): Promise<Workflow> {
+  async addWorkflowStep(
+    id: string,
+    options: AddWorkflowStepOptions
+  ): Promise<Workflow> {
     const redis = getRedisClient();
 
     // Get workflow
@@ -174,7 +192,11 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
 
     const now = new Date().toISOString();
     const stepId = uuidv4();
-    const threadId = options.threadId || await memory.createMemoryThread(`Workflow ${workflow.name} - Step ${workflow.steps.length + 1}`);
+    const threadId =
+      options.threadId ||
+      (await memory.createMemoryThread(
+        `Workflow ${workflow.name} - Step ${workflow.steps.length + 1}`
+      ));
 
     // Create step
     const step: WorkflowStep = {
@@ -190,7 +212,10 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     };
 
     // Save step to Redis
-    await redis.hset(`workflow:step:${stepId}`, step as unknown as Record<string, unknown>);
+    await redis.hset(
+      `workflow:step:${stepId}`,
+      step as unknown as Record<string, unknown>
+    );
 
     // Update workflow
     workflow.steps.push(step);
@@ -199,7 +224,7 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     // Save workflow to Redis
     await redis.hset(`workflow:${id}`, {
       ...workflow,
-      steps: JSON.stringify(workflow.steps.map(s => s.id)),
+      steps: JSON.stringify(workflow.steps.map((s) => s.id)),
       updatedAt: now,
     });
 
@@ -238,7 +263,7 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     // Save workflow to Redis
     await redis.hset(`workflow:${id}`, {
       ...workflow,
-      steps: JSON.stringify(workflow.steps.map(s => s.id)),
+      steps: JSON.stringify(workflow.steps.map((s) => s.id)),
       status: workflow.status,
       updatedAt: workflow.updatedAt,
     });
@@ -266,7 +291,7 @@ export class UpstashWorkflowProvider implements WorkflowProvider {
     // Save workflow to Redis
     await redis.hset(`workflow:${id}`, {
       ...workflow,
-      steps: JSON.stringify(workflow.steps.map(s => s.id)),
+      steps: JSON.stringify(workflow.steps.map((s) => s.id)),
       status: workflow.status,
       updatedAt: workflow.updatedAt,
     });

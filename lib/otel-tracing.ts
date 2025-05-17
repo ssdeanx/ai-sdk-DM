@@ -7,10 +7,20 @@
 
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from '@opentelemetry/semantic-conventions';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { trace, context, SpanStatusCode, Span, SpanKind, Tracer } from '@opentelemetry/api';
+import {
+  trace,
+  context,
+  SpanStatusCode,
+  Span,
+  SpanKind,
+  Tracer,
+} from '@opentelemetry/api';
 import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { shouldUseUpstash } from './memory/supabase';
@@ -46,7 +56,7 @@ export async function storeTraceDataInUpstash(
     await redis.hset(key, {
       ...data,
       timestamp,
-      stored_at: new Date().toISOString()
+      stored_at: new Date().toISOString(),
     });
 
     // Set expiration (30 days)
@@ -83,7 +93,11 @@ export async function getTraceDataFromUpstash(
       const data = await redis.hgetall(key);
 
       // Handle null or empty object
-      if (!data || typeof data !== 'object' || Object.keys(data || {}).length === 0) {
+      if (
+        !data ||
+        typeof data !== 'object' ||
+        Object.keys(data || {}).length === 0
+      ) {
         return null;
       }
 
@@ -98,7 +112,7 @@ export async function getTraceDataFromUpstash(
 
       const result: Record<string, any> = {
         traceId,
-        spans: []
+        spans: [],
       };
 
       // Get data for each span
@@ -106,7 +120,11 @@ export async function getTraceDataFromUpstash(
         const spanData = await redis.hgetall(key);
 
         // Handle null or empty object
-        if (spanData && typeof spanData === 'object' && Object.keys(spanData || {}).length > 0) {
+        if (
+          spanData &&
+          typeof spanData === 'object' &&
+          Object.keys(spanData || {}).length > 0
+        ) {
           result.spans.push(spanData);
         }
       }
@@ -129,7 +147,8 @@ export async function getTraceDataFromUpstash(
 export function initializeOTel({
   serviceName = 'ai-sdk-chat',
   serviceVersion = '1.0.0',
-  endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+  endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+    'http://localhost:4318/v1/traces',
 }: {
   serviceName?: string;
   serviceVersion?: string;
@@ -175,15 +194,15 @@ export function initializeOTel({
   } catch (error) {
     console.error('Failed to initialize OpenTelemetry SDK:', error);
   }
-
-}/** * Create a span to measure the duration of an operation *
+}
+/** * Create a span to measure the duration of an operation *
  * @param name - The name of the span
  * @param options - Configuration options for the span
  * @param options.kind - The kind of span (default: SpanKind.INTERNAL)
  * @param options.attributes - Optional attributes for the span
  * @param options.parentSpan - Optional parent span
  * @returns The created span
- */export function createOTelSpan(
+ */ export function createOTelSpan(
   name: string,
   options: {
     kind?: SpanKind;
@@ -233,7 +252,13 @@ export function startOTelSpan(
 
   return {
     span,
-    end: (endOptions: { status?: SpanStatusCode; attributes?: Record<string, string | number | boolean | string[]>; error?: Error } = {}) => {
+    end: (
+      endOptions: {
+        status?: SpanStatusCode;
+        attributes?: Record<string, string | number | boolean | string[]>;
+        error?: Error;
+      } = {}
+    ) => {
       const { status, attributes, error } = endOptions;
 
       // Add any additional attributes
@@ -257,13 +282,21 @@ export function startOTelSpan(
       // End the span
       span.end();
     },
-    addEvent: (name: string, attributes?: Record<string, string | number | boolean | string[]>) => {
+    addEvent: (
+      name: string,
+      attributes?: Record<string, string | number | boolean | string[]>
+    ) => {
       span.addEvent(name, attributes);
     },
-    setAttribute: (key: string, value: string | number | boolean | string[]) => {
+    setAttribute: (
+      key: string,
+      value: string | number | boolean | string[]
+    ) => {
       span.setAttribute(key, value);
     },
-    setAttributes: (attributes: Record<string, string | number | boolean | string[]>) => {
+    setAttributes: (
+      attributes: Record<string, string | number | boolean | string[]>
+    ) => {
       Object.entries(attributes).forEach(([key, value]) => {
         span.setAttribute(key, value);
       });
@@ -271,7 +304,7 @@ export function startOTelSpan(
     recordError: (error: Error) => {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-    }
+    },
   };
 }
 
@@ -280,13 +313,14 @@ export function startOTelSpan(
  */
 export function shutdownOTel() {
   if (sdk) {
-    sdk.shutdown()
+    sdk
+      .shutdown()
       .then(() => console.log('OpenTelemetry SDK shut down'))
-      .catch(error => console.error('Error shutting down OpenTelemetry SDK:', error));
+      .catch((error) =>
+        console.error('Error shutting down OpenTelemetry SDK:', error)
+      );
   }
 }
 
 // Export SpanKind and SpanStatusCode for convenience
 export { SpanKind, SpanStatusCode };
-
-

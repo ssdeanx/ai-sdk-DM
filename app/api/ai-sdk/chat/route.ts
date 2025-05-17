@@ -1,25 +1,25 @@
 /**
  * AI SDK Chat API Route
- * 
+ *
  * This route handles chat requests using the AI SDK integration.
  * It supports multiple providers (Google, OpenAI, Anthropic) and
  * includes features like tool execution, middleware, and tracing.
  */
 
-import { NextResponse } from "next/server";
-import { streamWithAISDK, getAllAISDKTools } from "@/lib/ai-sdk-integration";
-import { createMemory } from "@/lib/memory/factory";
-import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace } from "@/lib/langfuse-integration";
-import { personaManager } from "@/lib/agents/personas/persona-manager";
-import { ModelSettings } from "@/lib/models/model-registry";
-import { getModelById, getModelByModelId } from "@/lib/models/model-service";
+import { NextResponse } from 'next/server';
+import { streamWithAISDK, getAllAISDKTools } from '@/lib/ai-sdk-integration';
+import { createMemory } from '@/lib/memory/factory';
+import { handleApiError } from '@/lib/api-error-handler';
+import { createTrace } from '@/lib/langfuse-integration';
+import { personaManager } from '@/lib/agents/personas/persona-manager';
+import { ModelSettings } from '@/lib/models/model-registry';
+import { getModelById, getModelByModelId } from '@/lib/models/model-service';
 
 const memory = createMemory();
 
 /**
  * POST /api/ai-sdk/chat
- * 
+ *
  * Process a chat request using the AI SDK
  */
 export async function POST(request: Request) {
@@ -28,33 +28,33 @@ export async function POST(request: Request) {
     const {
       messages,
       threadId,
-      model = "gemini-2.0-flash",
+      model = 'gemini-2.0-flash',
       temperature = 0.7,
       maxTokens = 8192,
       tools = [],
       attachments = [],
       images = [],
-      provider = "google",
+      provider = 'google',
       systemPrompt,
-      streamProtocol = "data",
-      toolChoice = "auto",
-      middleware = {}
+      streamProtocol = 'data',
+      toolChoice = 'auto',
+      middleware = {},
     } = body;
 
     // Validate request
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
-        { error: "Invalid request: messages array is required" },
+        { error: 'Invalid request: messages array is required' },
         { status: 400 }
       );
     }
 
     // Generate thread ID if not provided
-    const chatThreadId = threadId || (await import("ai")).generateId();
+    const chatThreadId = threadId || (await import('ai')).generateId();
 
     // Create trace for observability
     const trace = await createTrace({
-      name: "ai_sdk_chat",
+      name: 'ai_sdk_chat',
       userId: chatThreadId,
       metadata: {
         threadId: chatThreadId,
@@ -64,32 +64,47 @@ export async function POST(request: Request) {
         toolCount: tools.length,
         messageCount: messages.length,
         hasAttachments: attachments.length > 0,
-        hasImages: images.length > 0
-      }
+        hasImages: images.length > 0,
+      },
     });
 
     // Inline getModelConfiguration logic (Upstash/Supabase aware)
     let modelConfig: ModelSettings | undefined;
     try {
-      const found = await getModelById(model) || await getModelByModelId(model);
+      const found =
+        (await getModelById(model)) || (await getModelByModelId(model));
       modelConfig = found === null ? undefined : found;
     } catch {
       modelConfig = undefined;
     }
 
     // Determine provider from model config or model name
-    const modelProvider = modelConfig?.provider || provider || (model.startsWith("gpt") ? "openai" : model.startsWith("claude") ? "anthropic" : "google");
+    const modelProvider =
+      modelConfig?.provider ||
+      provider ||
+      (model.startsWith('gpt')
+        ? 'openai'
+        : model.startsWith('claude')
+          ? 'anthropic'
+          : 'google');
 
     // Get model settings
     const modelSettings: ModelSettings = modelConfig || {
       id: model,
       name: model,
-      provider: modelProvider as "google" | "openai" | "anthropic" | "custom" | "vertex",
+      provider: modelProvider as
+        | 'google'
+        | 'openai'
+        | 'anthropic'
+        | 'custom'
+        | 'vertex',
       model_id: model,
       max_tokens: 8192,
       input_cost_per_token: 0,
       output_cost_per_token: 0,
-      supports_vision: modelProvider === "google" || (modelProvider === "openai" && model.includes("vision")),
+      supports_vision:
+        modelProvider === 'google' ||
+        (modelProvider === 'openai' && model.includes('vision')),
       supports_functions: true,
       supports_streaming: true,
       default_temperature: 0.7,
@@ -98,14 +113,14 @@ export async function POST(request: Request) {
       default_presence_penalty: 0,
       context_window: 1000000,
       description: undefined,
-      category: "chat",
+      category: 'chat',
       capabilities: {},
       metadata: {},
       base_url: undefined,
       api_key: process.env[`${modelProvider.toUpperCase()}_API_KEY`],
-      status: "active",
+      status: 'active',
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     // Process messages and handle attachments/images
@@ -118,8 +133,8 @@ export async function POST(request: Request) {
     if (systemPrompt) {
       // Add system prompt to the beginning of messages
       processedMessages.unshift({
-        role: "system",
-        content: systemPrompt
+        role: 'system',
+        content: systemPrompt,
       });
     } else {
       // Try to get persona from the first message metadata
@@ -131,8 +146,8 @@ export async function POST(request: Request) {
           if (persona?.systemPromptTemplate) {
             personaSystemPrompt = persona.systemPromptTemplate;
             processedMessages.unshift({
-              role: "system",
-              content: personaSystemPrompt
+              role: 'system',
+              content: personaSystemPrompt,
             });
           }
         } catch {}
@@ -142,26 +157,29 @@ export async function POST(request: Request) {
     // Process images if supported
     if (images && images.length > 0 && modelSettings.supports_vision) {
       // Add images to the last user message
-      const lastUserMessageIndex = processedMessages.findIndex(m => m.role === "user");
+      const lastUserMessageIndex = processedMessages.findIndex(
+        (m) => m.role === 'user'
+      );
       if (lastUserMessageIndex !== -1) {
         const lastUserMessage = processedMessages[lastUserMessageIndex];
         processedMessages[lastUserMessageIndex] = {
           ...lastUserMessage,
           content: [
-            { type: "text", text: lastUserMessage.content },
+            { type: 'text', text: lastUserMessage.content },
             ...images.map((image: string) => ({
-              type: "image",
-              image: Buffer.from(image.split(",")[1], "base64")
-            }))
-          ]
+              type: 'image',
+              image: Buffer.from(image.split(',')[1], 'base64'),
+            })),
+          ],
         };
       }
     }
 
     // Get effective max tokens
-    const effectiveMaxTokens = maxTokens && maxTokens > 0
-      ? Math.min(maxTokens, modelSettings.max_tokens)
-      : modelSettings.max_tokens;
+    const effectiveMaxTokens =
+      maxTokens && maxTokens > 0
+        ? Math.min(maxTokens, modelSettings.max_tokens)
+        : modelSettings.max_tokens;
 
     // Process tools
     let toolConfigs: Record<string, unknown> = {};
@@ -169,17 +187,26 @@ export async function POST(request: Request) {
       try {
         // Get all available tools
         const allTools = await getAllAISDKTools();
-        
+
         // Filter tools based on provided tool IDs or names
-        toolConfigs = tools.reduce((acc: Record<string, unknown>, tool: string) => {
-          if (Object.prototype.hasOwnProperty.call(allTools as Record<string, unknown>, tool)) acc[tool] = (allTools as Record<string, unknown>)[tool];
-          return acc;
-        }, {});
+        toolConfigs = tools.reduce(
+          (acc: Record<string, unknown>, tool: string) => {
+            if (
+              Object.prototype.hasOwnProperty.call(
+                allTools as Record<string, unknown>,
+                tool
+              )
+            )
+              acc[tool] = (allTools as Record<string, unknown>)[tool];
+            return acc;
+          },
+          {}
+        );
       } catch {}
     }
 
     // Create middleware
-    const { createCompleteMiddleware } = await import("@/lib/middleware");
+    const { createCompleteMiddleware } = await import('@/lib/middleware');
     const middlewareConfig = createCompleteMiddleware({
       ...middleware,
       languageModel: {
@@ -187,12 +214,12 @@ export async function POST(request: Request) {
         caching: {
           enabled: true,
           ttl: 1000 * 60 * 60, // 1 hour
-          ...middleware.languageModel?.caching
+          ...middleware.languageModel?.caching,
         },
         logging: {
           enabled: true,
-          ...middleware.languageModel?.logging
-        }
+          ...middleware.languageModel?.logging,
+        },
       },
       requestResponse: {
         ...middleware.requestResponse,
@@ -200,14 +227,14 @@ export async function POST(request: Request) {
           enabled: true,
           retryOnRateLimit: true,
           maxRetries: 3,
-          ...middleware.requestResponse?.errorHandling
-        }
-      }
+          ...middleware.requestResponse?.errorHandling,
+        },
+      },
     });
 
     // Use the AI SDK integration for enhanced capabilities
     const streamOptions = {
-      provider: modelProvider as "google" | "openai" | "anthropic",
+      provider: modelProvider as 'google' | 'openai' | 'anthropic',
       modelId: modelSettings.model_id,
       messages: processedMessages,
       temperature: temperature || modelSettings.default_temperature,
@@ -216,12 +243,12 @@ export async function POST(request: Request) {
       tools: Object.keys(toolConfigs).length > 0 ? toolConfigs : undefined,
       apiKey: modelSettings.api_key,
       baseURL: modelSettings.base_url || undefined,
-      traceName: "ai_sdk_chat_stream",
+      traceName: 'ai_sdk_chat_stream',
       userId: chatThreadId,
       metadata: {
         parentTraceId: trace?.id,
         threadId: chatThreadId,
-        source: "ai-sdk-ui",
+        source: 'ai-sdk-ui',
         modelSettings,
         personaId: personaId || undefined,
         hasSystemPrompt: !!systemPrompt || !!personaSystemPrompt,
@@ -229,24 +256,26 @@ export async function POST(request: Request) {
         messageCount: processedMessages.length,
         hasImages: images && images.length > 0,
         hasAttachments: attachments && attachments.length > 0,
-        toolChoice
+        toolChoice,
       },
-      middleware: middlewareConfig.languageModel // Pass only the language model middleware
+      middleware: middlewareConfig.languageModel, // Pass only the language model middleware
     };
 
     // Save user message to memory
     const userMessage = messages[messages.length - 1];
-    if (userMessage && userMessage.role === "user") {
+    if (userMessage && userMessage.role === 'user') {
       await memory.saveMessage(
         chatThreadId,
-        "user",
-        typeof userMessage.content === "string" ? userMessage.content : JSON.stringify(userMessage.content),
+        'user',
+        typeof userMessage.content === 'string'
+          ? userMessage.content
+          : JSON.stringify(userMessage.content),
         {
           count_tokens: true,
           metadata: {
             ...userMessage.metadata,
-            source: "ai-sdk-ui"
-          }
+            source: 'ai-sdk-ui',
+          },
         }
       );
     }
@@ -255,7 +284,7 @@ export async function POST(request: Request) {
     const result = await streamWithAISDK(streamOptions);
 
     // Return the appropriate response based on the stream protocol
-    if (streamProtocol === "text") {
+    if (streamProtocol === 'text') {
       return result.toTextStreamResponse();
     } else {
       return result.toDataStreamResponse();

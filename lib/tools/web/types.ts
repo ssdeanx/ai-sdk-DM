@@ -7,30 +7,30 @@
 /* ------------------------------------------------------------------ */
 
 export interface ToolFailure {
-    success: false;
-    error: string;
-  }
+  success: false;
+  error: string;
+}
 
-  /* ------------------------------------------------------------------ */
-  /*                            WebSearch                               */
-  /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
+/*                            WebSearch                               */
+/* ------------------------------------------------------------------ */
 
-  export interface WebSearchItem {
-    title: string;
-    snippet: string;
-    url: string;
-  }
+export interface WebSearchItem {
+  title: string;
+  snippet: string;
+  url: string;
+}
 
-  export interface WebSearchSuccess {
-    success: true;
-    query: string;
-    totalResults: number;
-    results: WebSearchItem[];
-  }
+export interface WebSearchSuccess {
+  success: true;
+  query: string;
+  totalResults: number;
+  results: WebSearchItem[];
+}
 
-  export type WebSearchResult = WebSearchSuccess | ToolFailure;
-  export const isWebSearchSuccess = (r: WebSearchResult): r is WebSearchSuccess =>
-    r.success;
+export type WebSearchResult = WebSearchSuccess | ToolFailure;
+export const isWebSearchSuccess = (r: WebSearchResult): r is WebSearchSuccess =>
+  r.success;
 
 /* ------------------------------------------------------------------ */
 /*                            WebExtract                              */
@@ -44,8 +44,9 @@ export interface WebExtractSuccess {
 }
 
 export type WebExtractResult = WebExtractSuccess | ToolFailure;
-export const isWebExtractSuccess = (r: WebExtractResult): r is WebExtractSuccess =>
-  r.success;
+export const isWebExtractSuccess = (
+  r: WebExtractResult
+): r is WebExtractSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
 /*                             WebScrape                              */

@@ -1,36 +1,37 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Download, Maximize, Minimize, ZoomIn, ZoomOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Download, Maximize, Minimize, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface ImageDisplayProps {
-  src: string
-  alt: string
-  className?: string
+  src: string;
+  alt: string;
+  className?: string;
 }
 
 export function ImageDisplay({ src, alt, className }: ImageDisplayProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [zoomed, setZoomed] = useState(false)
-  const [hovered, setHovered] = useState(false)
+  const [expanded, setExpanded] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const handleDownload = () => {
-    const link = document.createElement("a")
-    link.href = src
-    link.download = alt || "image"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+    const link = document.createElement('a');
+    link.href = src;
+    link.download = alt || 'image';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div
       className={cn(
-        "relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background/50",
-        expanded && "fixed inset-4 z-50 bg-background/95 backdrop-blur-sm flex flex-col",
+        'relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background/50',
+        expanded &&
+          'fixed inset-4 z-50 bg-background/95 backdrop-blur-sm flex flex-col',
         className
       )}
       onMouseEnter={() => setHovered(true)}
@@ -50,8 +51,12 @@ export function ImageDisplay({ src, alt, className }: ImageDisplayProps) {
             className="h-6 w-6 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={() => setZoomed(!zoomed)}
           >
-            {zoomed ? <ZoomOut className="h-3 w-3" /> : <ZoomIn className="h-3 w-3" />}
-            <span className="sr-only">{zoomed ? "Zoom out" : "Zoom in"}</span>
+            {zoomed ? (
+              <ZoomOut className="h-3 w-3" />
+            ) : (
+              <ZoomIn className="h-3 w-3" />
+            )}
+            <span className="sr-only">{zoomed ? 'Zoom out' : 'Zoom in'}</span>
           </Button>
           <Button
             variant="ghost"
@@ -68,29 +73,39 @@ export function ImageDisplay({ src, alt, className }: ImageDisplayProps) {
             className="h-6 w-6 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? <Minimize className="h-3 w-3" /> : <Maximize className="h-3 w-3" />}
-            <span className="sr-only">{expanded ? "Minimize" : "Maximize"}</span>
+            {expanded ? (
+              <Minimize className="h-3 w-3" />
+            ) : (
+              <Maximize className="h-3 w-3" />
+            )}
+            <span className="sr-only">
+              {expanded ? 'Minimize' : 'Maximize'}
+            </span>
           </Button>
         </motion.div>
       </div>
 
-      <div className={cn(
-        "relative overflow-hidden bg-background/50 backdrop-blur-sm",
-        expanded && "flex-1 flex items-center justify-center"
-      )}>
-        {src.startsWith("data:") || src.startsWith("http") ? (
-          <div className={cn(
-            "relative transition-all duration-300 ease-in-out",
-            zoomed && "scale-150",
-            expanded && "max-h-full max-w-full"
-          )}>
+      <div
+        className={cn(
+          'relative overflow-hidden bg-background/50 backdrop-blur-sm',
+          expanded && 'flex-1 flex items-center justify-center'
+        )}
+      >
+        {src.startsWith('data:') || src.startsWith('http') ? (
+          <div
+            className={cn(
+              'relative transition-all duration-300 ease-in-out',
+              zoomed && 'scale-150',
+              expanded && 'max-h-full max-w-full'
+            )}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
               alt={alt}
               className={cn(
-                "max-w-full object-contain",
-                expanded ? "max-h-[calc(100vh-8rem)]" : "max-h-[300px]"
+                'max-w-full object-contain',
+                expanded ? 'max-h-[calc(100vh-8rem)]' : 'max-h-[300px]'
               )}
             />
           </div>
@@ -101,5 +116,5 @@ export function ImageDisplay({ src, alt, className }: ImageDisplayProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

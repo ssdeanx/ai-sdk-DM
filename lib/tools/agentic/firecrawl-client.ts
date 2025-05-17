@@ -4,68 +4,68 @@ import {
   assert,
   getEnv,
   throttleKy,
-  zodToJsonSchema
-} from '@agentic/core'
-import defaultKy, { type KyInstance } from 'ky'
-import pThrottle from 'p-throttle'
-import { z } from 'zod'
-import { createAISDKTools } from './ai-sdk'
+  zodToJsonSchema,
+} from '@agentic/core';
+import defaultKy, { type KyInstance } from 'ky';
+import pThrottle from 'p-throttle';
+import { z } from 'zod';
+import { createAISDKTools } from './ai-sdk';
 
 export namespace firecrawl {
-  export const BASE_URL = 'https://api.firecrawl.dev'
+  export const BASE_URL = 'https://api.firecrawl.dev';
 
   // Allow up to 50 request per minute by default.
   export const throttle = pThrottle({
     limit: 1,
     interval: 1200,
-    strict: true
-  })
+    strict: true,
+  });
 
   /**
    * Configuration interface for FirecrawlClient.
    */
   export interface ClientConfig {
-    apiKey?: string
-    apiBaseUrl?: string
+    apiKey?: string;
+    apiBaseUrl?: string;
   }
 
   /**
    * Metadata for a Firecrawl document.
    */
   export interface DocumentMetadata {
-    title?: string
-    description?: string
-    language?: string
-    keywords?: string
-    robots?: string
-    ogTitle?: string
-    ogDescription?: string
-    ogUrl?: string
-    ogImage?: string
-    ogAudio?: string
-    ogDeterminer?: string
-    ogLocale?: string
-    ogLocaleAlternate?: string[]
-    ogSiteName?: string
-    ogVideo?: string
-    dctermsCreated?: string
-    dcDateCreated?: string
-    dcDate?: string
-    dctermsType?: string
-    dcType?: string
-    dctermsAudience?: string
-    dctermsSubject?: string
-    dcSubject?: string
-    dcDescription?: string
-    dctermsKeywords?: string
-    modifiedTime?: string
-    publishedTime?: string
-    articleTag?: string
-    articleSection?: string
-    sourceURL?: string
-    statusCode?: number
-    error?: string
-    [key: string]: any
+    title?: string;
+    description?: string;
+    language?: string;
+    keywords?: string;
+    robots?: string;
+    ogTitle?: string;
+    ogDescription?: string;
+    ogUrl?: string;
+    ogImage?: string;
+    ogAudio?: string;
+    ogDeterminer?: string;
+    ogLocale?: string;
+    ogLocaleAlternate?: string[];
+    ogSiteName?: string;
+    ogVideo?: string;
+    dctermsCreated?: string;
+    dcDateCreated?: string;
+    dcDate?: string;
+    dctermsType?: string;
+    dcType?: string;
+    dctermsAudience?: string;
+    dctermsSubject?: string;
+    dcSubject?: string;
+    dcDescription?: string;
+    dctermsKeywords?: string;
+    modifiedTime?: string;
+    publishedTime?: string;
+    articleTag?: string;
+    articleSection?: string;
+    sourceURL?: string;
+    statusCode?: number;
+    error?: string;
+    [key: string]: any;
   }
 
   /**
@@ -73,20 +73,20 @@ export namespace firecrawl {
    */
   export interface Document<
     T = any,
-    ActionsSchema extends ActionsResult | never = never
+    ActionsSchema extends ActionsResult | never = never,
   > {
-    url?: string
-    markdown?: string
-    html?: string
-    rawHtml?: string
-    links?: string[]
-    extract?: T
-    json?: T
-    screenshot?: string
-    metadata?: DocumentMetadata
-    actions: ActionsSchema
-    title?: string
-    description?: string
+    url?: string;
+    markdown?: string;
+    html?: string;
+    rawHtml?: string;
+    links?: string[];
+    extract?: T;
+    json?: T;
+    screenshot?: string;
+    metadata?: DocumentMetadata;
+    actions: ActionsSchema;
+    title?: string;
+    description?: string;
   }
 
   /**
@@ -104,22 +104,22 @@ export namespace firecrawl {
       | 'screenshot@fullPage'
       | 'extract'
       | 'json'
-    )[]
-    headers?: Record<string, string>
-    includeTags?: string[]
-    excludeTags?: string[]
-    onlyMainContent?: boolean
-    waitFor?: number
-    timeout?: number
+    )[];
+    headers?: Record<string, string>;
+    includeTags?: string[];
+    excludeTags?: string[];
+    onlyMainContent?: boolean;
+    waitFor?: number;
+    timeout?: number;
     location?: {
-      country?: string
-      languages?: string[]
-    }
-    mobile?: boolean
-    skipTlsVerification?: boolean
-    removeBase64Images?: boolean
-    blockAds?: boolean
-    proxy?: 'basic' | 'stealth'
+      country?: string;
+      languages?: string[];
+    };
+    mobile?: boolean;
+    skipTlsVerification?: boolean;
+    removeBase64Images?: boolean;
+    blockAds?: boolean;
+    proxy?: 'basic' | 'stealth';
   }
 
   /**
@@ -127,7 +127,7 @@ export namespace firecrawl {
    */
   export interface ScrapeParams<
     LLMSchema extends z.ZodSchema = any,
-    ActionsSchema extends Action[] | undefined = undefined
+    ActionsSchema extends Action[] | undefined = undefined,
   > {
     formats?: (
       | 'markdown'
@@ -139,72 +139,72 @@ export namespace firecrawl {
       | 'screenshot@fullPage'
       | 'extract'
       | 'json'
-    )[]
-    headers?: Record<string, string>
-    includeTags?: string[]
-    excludeTags?: string[]
-    onlyMainContent?: boolean
-    waitFor?: number
-    timeout?: number
+    )[];
+    headers?: Record<string, string>;
+    includeTags?: string[];
+    excludeTags?: string[];
+    onlyMainContent?: boolean;
+    waitFor?: number;
+    timeout?: number;
     location?: {
-      country?: string
-      languages?: string[]
-    }
-    mobile?: boolean
-    skipTlsVerification?: boolean
-    removeBase64Images?: boolean
-    blockAds?: boolean
-    proxy?: 'basic' | 'stealth'
+      country?: string;
+      languages?: string[];
+    };
+    mobile?: boolean;
+    skipTlsVerification?: boolean;
+    removeBase64Images?: boolean;
+    blockAds?: boolean;
+    proxy?: 'basic' | 'stealth';
     extract?: {
-      prompt?: string
-      schema?: LLMSchema
-      systemPrompt?: string
-    }
+      prompt?: string;
+      schema?: LLMSchema;
+      systemPrompt?: string;
+    };
     jsonOptions?: {
-      prompt?: string
-      schema?: LLMSchema
-      systemPrompt?: string
-    }
-    actions?: ActionsSchema
+      prompt?: string;
+      schema?: LLMSchema;
+      systemPrompt?: string;
+    };
+    actions?: ActionsSchema;
   }
 
   export type Action =
     | {
-        type: 'wait'
-        milliseconds?: number
-        selector?: string
+        type: 'wait';
+        milliseconds?: number;
+        selector?: string;
       }
     | {
-        type: 'click'
-        selector: string
+        type: 'click';
+        selector: string;
       }
     | {
-        type: 'screenshot'
-        fullPage?: boolean
+        type: 'screenshot';
+        fullPage?: boolean;
       }
     | {
-        type: 'write'
-        text: string
+        type: 'write';
+        text: string;
       }
     | {
-        type: 'press'
-        key: string
+        type: 'press';
+        key: string;
       }
     | {
-        type: 'scroll'
-        direction?: 'up' | 'down'
-        selector?: string
+        type: 'scroll';
+        direction?: 'up' | 'down';
+        selector?: string;
       }
     | {
-        type: 'scrape'
+        type: 'scrape';
       }
     | {
-        type: 'executeJavascript'
-        script: string
-      }
+        type: 'executeJavascript';
+        script: string;
+      };
 
   export interface ActionsResult {
-    screenshots: string[]
+    screenshots: string[];
   }
 
   /**
@@ -212,86 +212,86 @@ export namespace firecrawl {
    */
   export interface ScrapeResponse<
     LLMResult = any,
-    ActionsSchema extends ActionsResult | never = never
+    ActionsSchema extends ActionsResult | never = never,
   > extends Document<LLMResult, ActionsSchema> {
-    success: true
-    warning?: string
-    error?: string
+    success: true;
+    warning?: string;
+    error?: string;
   }
 
   /**
    * Parameters for search operations.
    */
   export interface SearchParams {
-    limit?: number
-    tbs?: string
-    filter?: string
-    lang?: string
-    country?: string
-    location?: string
-    origin?: string
-    timeout?: number
-    scrapeOptions?: ScrapeParams
+    limit?: number;
+    tbs?: string;
+    filter?: string;
+    lang?: string;
+    country?: string;
+    location?: string;
+    origin?: string;
+    timeout?: number;
+    scrapeOptions?: ScrapeParams;
   }
 
   /**
    * Response interface for search operations.
    */
   export interface SearchResponse {
-    success: boolean
-    data: Document[]
-    warning?: string
-    error?: string
+    success: boolean;
+    data: Document[];
+    warning?: string;
+    error?: string;
   }
 
   /**
    * Parameters for crawling operations.
    */
   export interface CrawlParams {
-    includePaths?: string[]
-    excludePaths?: string[]
-    maxDepth?: number
-    maxDiscoveryDepth?: number
-    limit?: number
-    allowBackwardLinks?: boolean
-    allowExternalLinks?: boolean
-    ignoreSitemap?: boolean
-    scrapeOptions?: ScrapeParams
+    includePaths?: string[];
+    excludePaths?: string[];
+    maxDepth?: number;
+    maxDiscoveryDepth?: number;
+    limit?: number;
+    allowBackwardLinks?: boolean;
+    allowExternalLinks?: boolean;
+    ignoreSitemap?: boolean;
+    scrapeOptions?: ScrapeParams;
     webhook?:
       | string
       | {
-          url: string
-          headers?: Record<string, string>
-          metadata?: Record<string, string>
-          events?: ['completed', 'failed', 'page', 'started'][number][]
-        }
-    deduplicateSimilarURLs?: boolean
-    ignoreQueryParameters?: boolean
-    regexOnFullURL?: boolean
+          url: string;
+          headers?: Record<string, string>;
+          metadata?: Record<string, string>;
+          events?: ['completed', 'failed', 'page', 'started'][number][];
+        };
+    deduplicateSimilarURLs?: boolean;
+    ignoreQueryParameters?: boolean;
+    regexOnFullURL?: boolean;
   }
 
   /**
    * Response interface for crawling operations.
    */
   export interface CrawlResponse {
-    id?: string
-    url?: string
-    success: true
-    error?: string
+    id?: string;
+    url?: string;
+    success: true;
+    error?: string;
   }
 
   /**
    * Response interface for job status checks.
    */
   export interface CrawlStatusResponse {
-    success: true
-    status: 'scraping' | 'completed' | 'failed' | 'cancelled'
-    completed: number
-    total: number
-    creditsUsed: number
-    expiresAt: Date
-    next?: string
-    data: Document[]
+    success: true;
+    status: 'scraping' | 'completed' | 'failed' | 'cancelled';
+    completed: number;
+    total: number;
+    creditsUsed: number;
+    expiresAt: Date;
+    next?: string;
+    data: Document[];
   }
 
   /**
@@ -299,33 +299,33 @@ export namespace firecrawl {
    */
   export interface CrawlErrorsResponse {
     errors: {
-      id: string
-      timestamp?: string
-      url: string
-      error: string
-    }[]
-    robotsBlocked: string[]
+      id: string;
+      timestamp?: string;
+      url: string;
+      error: string;
+    }[];
+    robotsBlocked: string[];
   }
 
   /**
    * Error response interface.
    */
   export interface ErrorResponse {
-    success: false
-    error: string
+    success: false;
+    error: string;
   }
 
   /**
    * Custom error class for Firecrawl.
    */
   export class FirecrawlError extends Error {
-    statusCode: number
-    details?: any
+    statusCode: number;
+    details?: any;
 
     constructor(message: string, statusCode: number, details?: any) {
-      super(message)
-      this.statusCode = statusCode
-      this.details = details
+      super(message);
+      this.statusCode = statusCode;
+      this.details = details;
     }
   }
 
@@ -333,13 +333,13 @@ export namespace firecrawl {
    * Parameters for extracting information from URLs.
    */
   export interface ExtractParams<T extends z.ZodSchema = any> {
-    prompt: string
-    schema?: T
-    enableWebSearch?: boolean
-    ignoreSitemap?: boolean
-    includeSubdomains?: boolean
-    showSources?: boolean
-    scrapeOptions?: ScrapeOptions
+    prompt: string;
+    schema?: T;
+    enableWebSearch?: boolean;
+    ignoreSitemap?: boolean;
+    includeSubdomains?: boolean;
+    showSources?: boolean;
+    scrapeOptions?: ScrapeOptions;
   }
 
   /**
@@ -347,23 +347,23 @@ export namespace firecrawl {
    * Defines the structure of the response received after extracting information from URLs.
    */
   export interface ExtractResponse<T = any> {
-    success: boolean
-    id?: string
-    data: T
-    error?: string
-    warning?: string
-    sources?: string[]
+    success: boolean;
+    id?: string;
+    data: T;
+    error?: string;
+    warning?: string;
+    sources?: string[];
   }
 
   /**
    * Response interface for extract status operations.
    */
   export interface ExtractStatusResponse<T = any> {
-    success: boolean
-    status: 'processing' | 'completed' | 'failed'
-    data?: T
-    error?: string
-    expiresAt?: string
+    success: boolean;
+    status: 'processing' | 'completed' | 'failed';
+    data?: T;
+    error?: string;
+    expiresAt?: string;
   }
 
   /**
@@ -374,34 +374,34 @@ export namespace firecrawl {
      * Maximum number of URLs to process (1-100)
      * @default 10
      */
-    maxUrls?: number
+    maxUrls?: number;
     /**
      * Whether to show the full LLMs-full.txt in the response
      * @default false
      */
-    showFullText?: boolean
+    showFullText?: boolean;
   }
 
   /**
    * Response interface for LLMs.txt generation operations.
    */
   export interface GenerateLLMsTextResponse {
-    success: boolean
-    id: string
+    success: boolean;
+    id: string;
   }
 
   /**
    * Status response interface for LLMs.txt generation operations.
    */
   export interface GenerateLLMsTextStatusResponse {
-    success: boolean
+    success: boolean;
     data: {
-      llmstxt: string
-      llmsfulltxt?: string
-    }
-    status: 'processing' | 'completed' | 'failed'
-    error?: string
-    expiresAt: string
+      llmstxt: string;
+      llmsfulltxt?: string;
+    };
+    status: 'processing' | 'completed' | 'failed';
+    error?: string;
+    expiresAt: string;
   }
 }
 
@@ -413,37 +413,37 @@ export namespace firecrawl {
  * @see https://github.com/mendableai/firecrawl
  */
 export class FirecrawlClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiKey: string
-  protected readonly apiBaseUrl: string
+  protected readonly ky: KyInstance;
+  protected readonly apiKey: string;
+  protected readonly apiBaseUrl: string;
 
   constructor({
     apiKey = getEnv('FIRECRAWL_API_KEY'),
     apiBaseUrl = getEnv('FIRECRAWL_API_BASE_URL') ?? firecrawl.BASE_URL,
     throttle = true,
     timeoutMs = 60_000,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiKey?: string
-    apiBaseUrl?: string
-    throttle?: boolean
-    timeoutMs?: number
-    ky?: KyInstance
+    apiKey?: string;
+    apiBaseUrl?: string;
+    throttle?: boolean;
+    timeoutMs?: number;
+    ky?: KyInstance;
   } = {}) {
     assert(
       apiKey,
       'FirecrawlClient missing required "apiKey" (defaults to "FIRECRAWL_API_KEY")'
-    )
+    );
     assert(
       apiBaseUrl,
       'FirecrawlClient missing required "apiBaseUrl" (defaults to "FIRECRAWL_API_BASE_URL")'
-    )
-    super()
+    );
+    super();
 
-    this.apiKey = apiKey
-    this.apiBaseUrl = apiBaseUrl
+    this.apiKey = apiKey;
+    this.apiBaseUrl = apiBaseUrl;
 
-    const throttledKy = throttle ? throttleKy(ky, firecrawl.throttle) : ky
+    const throttledKy = throttle ? throttleKy(ky, firecrawl.throttle) : ky;
 
     this.ky = throttledKy.extend({
       prefixUrl: apiBaseUrl,
@@ -451,9 +451,9 @@ export class FirecrawlClient extends AIFunctionsProvider {
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         'X-Origin': 'agentic',
-        'X-Origin-Type': 'integration'
-      }
-    })
+        'X-Origin-Type': 'integration',
+      },
+    });
   }
 
   /**
@@ -463,12 +463,12 @@ export class FirecrawlClient extends AIFunctionsProvider {
     name: 'firecrawl_scrape_url',
     description: 'Scrape the contents of a URL.',
     inputSchema: z.object({
-      url: z.string().url().describe('The URL to scrape.')
-    })
+      url: z.string().url().describe('The URL to scrape.'),
+    }),
   })
   async scrapeUrl<
     T extends z.ZodSchema,
-    ActionsSchema extends firecrawl.Action[] | undefined = undefined
+    ActionsSchema extends firecrawl.Action[] | undefined = undefined,
   >(
     orlOrOpts:
       | string
@@ -483,48 +483,48 @@ export class FirecrawlClient extends AIFunctionsProvider {
     | firecrawl.ErrorResponse
   > {
     const { url, ...params } =
-      typeof orlOrOpts === 'string' ? { url: orlOrOpts } : orlOrOpts
-    let jsonData: any = { url, ...params }
+      typeof orlOrOpts === 'string' ? { url: orlOrOpts } : orlOrOpts;
+    let jsonData: any = { url, ...params };
 
     if (jsonData?.extract?.schema) {
-      let schema = jsonData.extract.schema
+      let schema = jsonData.extract.schema;
       try {
-        schema = zodToJsonSchema(schema)
+        schema = zodToJsonSchema(schema);
       } catch {}
       jsonData = {
         ...jsonData,
         extract: {
           ...jsonData.extract,
-          schema
-        }
-      }
+          schema,
+        },
+      };
     }
 
     if (jsonData?.jsonOptions?.schema) {
-      let schema = jsonData.jsonOptions.schema
+      let schema = jsonData.jsonOptions.schema;
       try {
-        schema = zodToJsonSchema(schema)
+        schema = zodToJsonSchema(schema);
       } catch {}
       jsonData = {
         ...jsonData,
         jsonOptions: {
           ...jsonData.jsonOptions,
-          schema
-        }
-      }
+          schema,
+        },
+      };
     }
 
     try {
-      const response = await this.postRequest('v1/scrape', jsonData)
-      return response
+      const response = await this.postRequest('v1/scrape', jsonData);
+      return response;
     } catch (err) {
       if (err instanceof firecrawl.FirecrawlError) {
-        throw err
+        throw err;
       }
       throw new firecrawl.FirecrawlError(
         err instanceof Error ? err.message : 'Unknown error',
         500
-      )
+      );
     }
   }
 
@@ -535,14 +535,14 @@ export class FirecrawlClient extends AIFunctionsProvider {
     name: 'firecrawl_search',
     description: 'Searches the internet for the given query.',
     inputSchema: z.object({
-      query: z.string().describe('Search query.')
-    })
+      query: z.string().describe('Search query.'),
+    }),
   })
   async search(
     queryOrOpts: string | ({ query: string } & firecrawl.SearchParams)
   ): Promise<firecrawl.SearchResponse> {
     const { query, ...params } =
-      typeof queryOrOpts === 'string' ? { query: queryOrOpts } : queryOrOpts
+      typeof queryOrOpts === 'string' ? { query: queryOrOpts } : queryOrOpts;
 
     const jsonData = {
       query,
@@ -554,31 +554,31 @@ export class FirecrawlClient extends AIFunctionsProvider {
       location: params?.location,
       origin: params?.origin ?? 'api',
       timeout: params?.timeout ?? 60_000,
-      scrapeOptions: params?.scrapeOptions ?? { formats: [] }
-    }
+      scrapeOptions: params?.scrapeOptions ?? { formats: [] },
+    };
 
     try {
-      const response = await this.postRequest('v1/search', jsonData)
+      const response = await this.postRequest('v1/search', jsonData);
       if (response.success) {
         return {
           success: true,
           data: response.data as firecrawl.Document[],
-          warning: response.warning
-        }
+          warning: response.warning,
+        };
       } else {
         throw new firecrawl.FirecrawlError(
           `Failed to search. Error: ${response.error}`,
           500
-        )
+        );
       }
     } catch (err: any) {
       if (err.response?.data?.error) {
         throw new firecrawl.FirecrawlError(
           `Request failed with status code ${err.response.status}. Error: ${err.response.data.error} ${err.response.data.details ? ` - ${JSON.stringify(err.response.data.details)}` : ''}`,
           err.response.status
-        )
+        );
       } else {
-        throw new firecrawl.FirecrawlError(err.message, 500)
+        throw new firecrawl.FirecrawlError(err.message, 500);
       }
     }
   }
@@ -590,34 +590,34 @@ export class FirecrawlClient extends AIFunctionsProvider {
     name: 'firecrawl_crawl_url',
     description: 'Initiates a crawl job for a URL.',
     inputSchema: z.object({
-      url: z.string().url().describe('The URL to crawl.')
-    })
+      url: z.string().url().describe('The URL to crawl.'),
+    }),
   })
   async crawlUrl(
     urlOrOpts: string | ({ url: string } & firecrawl.CrawlParams)
   ): Promise<firecrawl.CrawlResponse | firecrawl.ErrorResponse> {
     const { url, ...params } =
-      typeof urlOrOpts === 'string' ? { url: urlOrOpts } : urlOrOpts
-    const jsonData = { url, ...params }
+      typeof urlOrOpts === 'string' ? { url: urlOrOpts } : urlOrOpts;
+    const jsonData = { url, ...params };
 
     try {
-      const response = await this.postRequest('v1/crawl', jsonData)
+      const response = await this.postRequest('v1/crawl', jsonData);
       if (response.success) {
-        return response
+        return response;
       } else {
         throw new firecrawl.FirecrawlError(
           `Failed to start crawl job. Error: ${response.error}`,
           500
-        )
+        );
       }
     } catch (err: any) {
       if (err.response?.data?.error) {
         throw new firecrawl.FirecrawlError(
           `Request failed with status code ${err.response.status}. Error: ${err.response.data.error} ${err.response.data.details ? ` - ${JSON.stringify(err.response.data.details)}` : ''}`,
           err.response.status
-        )
+        );
       } else {
-        throw new firecrawl.FirecrawlError(err.message, 500)
+        throw new firecrawl.FirecrawlError(err.message, 500);
       }
     }
   }
@@ -629,21 +629,21 @@ export class FirecrawlClient extends AIFunctionsProvider {
     id: string
   ): Promise<firecrawl.CrawlStatusResponse | firecrawl.ErrorResponse> {
     if (!id) {
-      throw new firecrawl.FirecrawlError('No crawl ID provided', 400)
+      throw new firecrawl.FirecrawlError('No crawl ID provided', 400);
     }
 
     try {
-      const response = await this.getRequest(`v1/crawl/${id}`)
+      const response = await this.getRequest(`v1/crawl/${id}`);
       if (response.success) {
-        return response
+        return response;
       } else {
         throw new firecrawl.FirecrawlError(
           `Failed to check crawl status. Error: ${response.error}`,
           500
-        )
+        );
       }
     } catch (err: any) {
-      throw new firecrawl.FirecrawlError(err.message, 500)
+      throw new firecrawl.FirecrawlError(err.message, 500);
     }
   }
 
@@ -654,17 +654,17 @@ export class FirecrawlClient extends AIFunctionsProvider {
     id: string
   ): Promise<firecrawl.CrawlErrorsResponse | firecrawl.ErrorResponse> {
     try {
-      const response = await this.getRequest(`v1/crawl/${id}/errors`)
+      const response = await this.getRequest(`v1/crawl/${id}/errors`);
       if (response.errors) {
-        return response
+        return response;
       } else {
         throw new firecrawl.FirecrawlError(
           `Failed to check crawl errors. Error: ${response.error}`,
           500
-        )
+        );
       }
     } catch (err: any) {
-      throw new firecrawl.FirecrawlError(err.message, 500)
+      throw new firecrawl.FirecrawlError(err.message, 500);
     }
   }
 
@@ -673,17 +673,17 @@ export class FirecrawlClient extends AIFunctionsProvider {
    */
   async cancelCrawl(id: string): Promise<firecrawl.ErrorResponse> {
     try {
-      const response = await this.deleteRequest(`v1/crawl/${id}`)
+      const response = await this.deleteRequest(`v1/crawl/${id}`);
       if (response.status) {
-        return response
+        return response;
       } else {
         throw new firecrawl.FirecrawlError(
           `Failed to cancel crawl job. Error: ${response.error}`,
           500
-        )
+        );
       }
     } catch (err: any) {
-      throw new firecrawl.FirecrawlError(err.message, 500)
+      throw new firecrawl.FirecrawlError(err.message, 500);
     }
   }
 
@@ -701,26 +701,26 @@ export class FirecrawlClient extends AIFunctionsProvider {
     const jsonData = {
       urls,
       ...params,
-      schema: params.schema ? zodToJsonSchema(params.schema) : undefined
-    }
+      schema: params.schema ? zodToJsonSchema(params.schema) : undefined,
+    };
 
     try {
-      const response = await this.postRequest('v1/extract', jsonData)
+      const response = await this.postRequest('v1/extract', jsonData);
       if (!response.success) {
         throw new firecrawl.FirecrawlError(
           response.error || 'Extract operation failed',
           500
-        )
+        );
       }
-      return response
+      return response;
     } catch (err) {
       if (err instanceof firecrawl.FirecrawlError) {
-        throw err
+        throw err;
       }
       throw new firecrawl.FirecrawlError(
         err instanceof Error ? err.message : 'Unknown error',
         500
-      )
+      );
     }
   }
 
@@ -731,20 +731,20 @@ export class FirecrawlClient extends AIFunctionsProvider {
     id: string
   ): Promise<firecrawl.ExtractStatusResponse<T>> {
     if (!id) {
-      throw new firecrawl.FirecrawlError('No extract ID provided', 400)
+      throw new firecrawl.FirecrawlError('No extract ID provided', 400);
     }
 
     try {
-      const response = await this.getRequest(`v1/extract/${id}`)
-      return response
+      const response = await this.getRequest(`v1/extract/${id}`);
+      return response;
     } catch (err) {
       if (err instanceof firecrawl.FirecrawlError) {
-        throw err
+        throw err;
       }
       throw new firecrawl.FirecrawlError(
         err instanceof Error ? err.message : 'Unknown error',
         500
-      )
+      );
     }
   }
 
@@ -759,20 +759,20 @@ export class FirecrawlClient extends AIFunctionsProvider {
   > {
     const jsonData = {
       url,
-      ...params
-    }
+      ...params,
+    };
 
     try {
-      const response = await this.postRequest('v1/llmstxt', jsonData)
-      return response
+      const response = await this.postRequest('v1/llmstxt', jsonData);
+      return response;
     } catch (err) {
       if (err instanceof firecrawl.FirecrawlError) {
-        throw err
+        throw err;
       }
       throw new firecrawl.FirecrawlError(
         err instanceof Error ? err.message : 'Unknown error',
         500
-      )
+      );
     }
   }
 
@@ -781,20 +781,20 @@ export class FirecrawlClient extends AIFunctionsProvider {
    */
   protected async postRequest(path: string, data: any): Promise<any> {
     try {
-      const response = await this.ky.post(path, { json: data })
-      return await response.json()
+      const response = await this.ky.post(path, { json: data });
+      return await response.json();
     } catch (err) {
       if (err instanceof Error) {
-        const response = await (err as any).response?.json()
+        const response = await (err as any).response?.json();
         if (response?.error) {
           throw new firecrawl.FirecrawlError(
             `Request failed. Error: ${response.error}`,
             (err as any).response?.status ?? 500,
             response?.details
-          )
+          );
         }
       }
-      throw err
+      throw err;
     }
   }
 
@@ -803,20 +803,20 @@ export class FirecrawlClient extends AIFunctionsProvider {
    */
   protected async getRequest(path: string): Promise<any> {
     try {
-      const response = await this.ky.get(path)
-      return await response.json()
+      const response = await this.ky.get(path);
+      return await response.json();
     } catch (err) {
       if (err instanceof Error) {
-        const response = await (err as any).response?.json()
+        const response = await (err as any).response?.json();
         if (response?.error) {
           throw new firecrawl.FirecrawlError(
             `Request failed. Error: ${response.error}`,
             (err as any).response?.status ?? 500,
             response?.details
-          )
+          );
         }
       }
-      throw err
+      throw err;
     }
   }
 
@@ -825,22 +825,22 @@ export class FirecrawlClient extends AIFunctionsProvider {
    */
   protected async deleteRequest(path: string): Promise<any> {
     try {
-      const response = await this.ky.delete(path)
-      return await response.json()
+      const response = await this.ky.delete(path);
+      return await response.json();
     } catch (err) {
       if (err instanceof Error) {
-        const response = await (err as any).response?.json()
+        const response = await (err as any).response?.json();
         if (response?.error) {
           throw new firecrawl.FirecrawlError(
             `Request failed. Error: ${response.error}`,
             (err as any).response?.status ?? 500,
             response?.details
-          )
+          );
         }
       }
-      throw err
+      throw err;
     }
   }
 }
 
-export const firecrawlTools = createAISDKTools(new FirecrawlClient())
+export const firecrawlTools = createAISDKTools(new FirecrawlClient());

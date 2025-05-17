@@ -2,8 +2,20 @@
 
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -17,10 +29,18 @@ export default function AiSdkChatPage() {
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(8192);
   const [streamingEnabled, setStreamingEnabled] = useState(true);
-  const [enabledTools, setEnabledTools] = useState<string[]>(['web-search', 'weather', 'image-generation', 'data-visualization', 'browser-display']);
+  const [enabledTools, setEnabledTools] = useState<string[]>([
+    'web-search',
+    'weather',
+    'image-generation',
+    'data-visualization',
+    'browser-display',
+  ]);
   const [thinkingEnabled, setThinkingEnabled] = useState(true);
   const [structuredOutputEnabled, setStructuredOutputEnabled] = useState(true);
-  const [toolChoice, setToolChoice] = useState<'auto' | 'none' | 'required'>('auto');
+  const [toolChoice, setToolChoice] = useState<'auto' | 'none' | 'required'>(
+    'auto'
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   // Handle provider change
@@ -52,9 +72,9 @@ export default function AiSdkChatPage() {
   // Handle tool toggle
   const handleToolToggle = (toolId: string) => {
     setIsLoading(true);
-    setEnabledTools(prev =>
+    setEnabledTools((prev) =>
       prev.includes(toolId)
-        ? prev.filter(id => id !== toolId)
+        ? prev.filter((id) => id !== toolId)
         : [...prev, toolId]
     );
 
@@ -98,7 +118,9 @@ export default function AiSdkChatPage() {
                     <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50">
                       <div className="flex flex-col items-center gap-2">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-sm text-muted-foreground">Loading model...</p>
+                        <p className="text-sm text-muted-foreground">
+                          Loading model...
+                        </p>
                       </div>
                     </div>
                   )}
@@ -112,13 +134,15 @@ export default function AiSdkChatPage() {
                     streamProtocol={streamingEnabled ? 'data' : 'text'}
                     toolChoice={toolChoice}
                     className="h-full"
-                    systemPrompt={
-                      `You are an AI assistant powered by ${model}. ${
-                        thinkingEnabled ? 'Use thinking to work through complex problems step by step.' : ''
-                      } ${
-                        structuredOutputEnabled ? 'Provide structured, well-formatted responses.' : ''
-                      }`
-                    }
+                    systemPrompt={`You are an AI assistant powered by ${model}. ${
+                      thinkingEnabled
+                        ? 'Use thinking to work through complex problems step by step.'
+                        : ''
+                    } ${
+                      structuredOutputEnabled
+                        ? 'Provide structured, well-formatted responses.'
+                        : ''
+                    }`}
                   />
                 </CardContent>
               </Card>
@@ -142,26 +166,48 @@ export default function AiSdkChatPage() {
                       <SelectContent>
                         {provider === 'google' && (
                           <>
-                            <SelectItem value="models/gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro</SelectItem>
-                            <SelectItem value="models/gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash</SelectItem>
-                            <SelectItem value="models/gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                            <SelectItem value="models/gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+                            <SelectItem value="models/gemini-2.5-pro-preview-05-06">
+                              Gemini 2.5 Pro
+                            </SelectItem>
+                            <SelectItem value="models/gemini-2.5-flash-preview-04-17">
+                              Gemini 2.5 Flash
+                            </SelectItem>
+                            <SelectItem value="models/gemini-1.5-pro">
+                              Gemini 1.5 Pro
+                            </SelectItem>
+                            <SelectItem value="models/gemini-1.5-flash">
+                              Gemini 1.5 Flash
+                            </SelectItem>
                           </>
                         )}
                         {provider === 'openai' && (
                           <>
-                            <SelectItem value="gpt-4o-2024-05-13">GPT-4o (May 2024)</SelectItem>
+                            <SelectItem value="gpt-4o-2024-05-13">
+                              GPT-4o (May 2024)
+                            </SelectItem>
                             <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                            <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                            <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                            <SelectItem value="gpt-4-turbo">
+                              GPT-4 Turbo
+                            </SelectItem>
+                            <SelectItem value="gpt-3.5-turbo">
+                              GPT-3.5 Turbo
+                            </SelectItem>
                           </>
                         )}
                         {provider === 'anthropic' && (
                           <>
-                            <SelectItem value="claude-3-5-sonnet">Claude 3.5 Sonnet</SelectItem>
-                            <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                            <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
-                            <SelectItem value="claude-3-haiku">Claude 3 Haiku</SelectItem>
+                            <SelectItem value="claude-3-5-sonnet">
+                              Claude 3.5 Sonnet
+                            </SelectItem>
+                            <SelectItem value="claude-3-opus">
+                              Claude 3 Opus
+                            </SelectItem>
+                            <SelectItem value="claude-3-sonnet">
+                              Claude 3 Sonnet
+                            </SelectItem>
+                            <SelectItem value="claude-3-haiku">
+                              Claude 3 Haiku
+                            </SelectItem>
                           </>
                         )}
                       </SelectContent>
@@ -170,7 +216,9 @@ export default function AiSdkChatPage() {
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="temperature">Temperature: {temperature.toFixed(1)}</Label>
+                      <Label htmlFor="temperature">
+                        Temperature: {temperature.toFixed(1)}
+                      </Label>
                     </div>
                     <Slider
                       id="temperature"
@@ -181,13 +229,16 @@ export default function AiSdkChatPage() {
                       onValueChange={(value) => setTemperature(value[0])}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Lower values produce more focused and deterministic responses.
+                      Lower values produce more focused and deterministic
+                      responses.
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="max-tokens">Max Tokens: {maxTokens}</Label>
+                      <Label htmlFor="max-tokens">
+                        Max Tokens: {maxTokens}
+                      </Label>
                     </div>
                     <Slider
                       id="max-tokens"
@@ -216,9 +267,7 @@ export default function AiSdkChatPage() {
               <Card className="mb-4">
                 <CardHeader>
                   <CardTitle>Tools</CardTitle>
-                  <CardDescription>
-                    Enable or disable AI tools
-                  </CardDescription>
+                  <CardDescription>Enable or disable AI tools</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -242,15 +291,21 @@ export default function AiSdkChatPage() {
                     <Switch
                       id="image-generation"
                       checked={enabledTools.includes('image-generation')}
-                      onCheckedChange={() => handleToolToggle('image-generation')}
+                      onCheckedChange={() =>
+                        handleToolToggle('image-generation')
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="data-visualization">Data Visualization</Label>
+                    <Label htmlFor="data-visualization">
+                      Data Visualization
+                    </Label>
                     <Switch
                       id="data-visualization"
                       checked={enabledTools.includes('data-visualization')}
-                      onCheckedChange={() => handleToolToggle('data-visualization')}
+                      onCheckedChange={() =>
+                        handleToolToggle('data-visualization')
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -258,7 +313,9 @@ export default function AiSdkChatPage() {
                     <Switch
                       id="browser-display"
                       checked={enabledTools.includes('browser-display')}
-                      onCheckedChange={() => handleToolToggle('browser-display')}
+                      onCheckedChange={() =>
+                        handleToolToggle('browser-display')
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -274,7 +331,9 @@ export default function AiSdkChatPage() {
                     <Switch
                       id="code-interpreter"
                       checked={enabledTools.includes('code-interpreter')}
-                      onCheckedChange={() => handleToolToggle('code-interpreter')}
+                      onCheckedChange={() =>
+                        handleToolToggle('code-interpreter')
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -314,7 +373,12 @@ export default function AiSdkChatPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="tool-choice">Tool Choice</Label>
-                    <Select value={toolChoice} onValueChange={(value) => setToolChoice(value as 'auto' | 'none' | 'required')}>
+                    <Select
+                      value={toolChoice}
+                      onValueChange={(value) =>
+                        setToolChoice(value as 'auto' | 'none' | 'required')
+                      }
+                    >
                       <SelectTrigger id="tool-choice" className="w-[120px]">
                         <SelectValue placeholder="Tool Choice" />
                       </SelectTrigger>

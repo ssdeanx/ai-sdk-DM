@@ -1,10 +1,10 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Settings,
@@ -16,124 +16,126 @@ import {
   Blocks,
   ChevronDown,
   ChevronRight,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { DatabaseStatus } from "@/components/ui/database-status"
-import { TopNavbar } from "@/components/layout/top-navbar"
-import { MainSidebar } from "@/components/layout/main-sidebar"
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { DatabaseStatus } from '@/components/ui/database-status';
+import { TopNavbar } from '@/components/layout/top-navbar';
+import { MainSidebar } from '@/components/layout/main-sidebar';
 
 interface SidebarProps {
-  className?: string
+  className?: string;
 }
 
 interface SidebarItem {
-  title: string
-  href: string
-  icon: React.ElementType
-  submenu?: SidebarItem[]
+  title: string;
+  href: string;
+  icon: React.ElementType;
+  submenu?: SidebarItem[];
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const pathname = usePathname()
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
+  const pathname = usePathname();
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
   // Automatically open submenu based on current path
   useEffect(() => {
-    const items = sidebarItems.flatMap((item) => (item.submenu ? [item] : []))
+    const items = sidebarItems.flatMap((item) => (item.submenu ? [item] : []));
     for (const item of items) {
       if (item.submenu?.some((subitem) => pathname === subitem.href)) {
-        setOpenSubmenu(item.title)
-        break
+        setOpenSubmenu(item.title);
+        break;
       }
     }
-  }, [pathname])
+  }, [pathname]);
 
   const sidebarItems: SidebarItem[] = [
     {
-      title: "Dashboard",
-      href: "/dashboard",
+      title: 'Dashboard',
+      href: '/dashboard',
       icon: LayoutDashboard,
     },
     {
-      title: "Chat",
-      href: "/chat",
+      title: 'Chat',
+      href: '/chat',
       icon: MessageSquare,
     },
     {
-      title: "AI Configuration",
-      href: "#",
+      title: 'AI Configuration',
+      href: '#',
       icon: Blocks,
       submenu: [
         {
-          title: "Models",
-          href: "/models",
+          title: 'Models',
+          href: '/models',
           icon: Blocks,
         },
         {
-          title: "Tools",
-          href: "/tools",
+          title: 'Tools',
+          href: '/tools',
           icon: Wrench,
         },
         {
-          title: "Agents",
-          href: "/agents",
+          title: 'Agents',
+          href: '/agents',
           icon: Bot,
         },
       ],
     },
     {
-      title: "Content",
-      href: "#",
+      title: 'Content',
+      href: '#',
       icon: FileText,
       submenu: [
         {
-          title: "Blog",
-          href: "/blog",
+          title: 'Blog',
+          href: '/blog',
           icon: FileText,
         },
         {
-          title: "MDX Builder",
-          href: "/mdx-builder",
+          title: 'MDX Builder',
+          href: '/mdx-builder',
           icon: FileText,
         },
       ],
     },
     {
-      title: "Advanced",
-      href: "#",
+      title: 'Advanced',
+      href: '#',
       icon: Network,
       submenu: [
         {
-          title: "Networks",
-          href: "/networks",
+          title: 'Networks',
+          href: '/networks',
           icon: Network,
         },
         {
-          title: "App Builder",
-          href: "/app-builder",
+          title: 'App Builder',
+          href: '/app-builder',
           icon: Blocks,
         },
       ],
     },
     {
-      title: "Settings",
-      href: "/settings",
+      title: 'Settings',
+      href: '/settings',
       icon: Settings,
     },
-  ]
+  ];
 
   const toggleSubmenu = (title: string) => {
-    setOpenSubmenu((prev) => (prev === title ? null : title))
-  }
+    setOpenSubmenu((prev) => (prev === title ? null : title));
+  };
 
   return (
-    <div className={cn("pb-12 h-full flex flex-col", className)}>
+    <div className={cn('pb-12 h-full flex flex-col', className)}>
       <div className="space-y-4 py-4 flex-1">
         <div className="px-3 py-2">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">AI SDK Framework</h2>
+            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+              AI SDK Framework
+            </h2>
           </div>
           <div className="px-4 mb-2">
             <DatabaseStatus />
@@ -146,7 +148,7 @@ export function Sidebar({ className }: SidebarProps) {
                 <Button
                   key={item.title}
                   asChild
-                  variant={pathname === item.href ? "secondary" : "ghost"}
+                  variant={pathname === item.href ? 'secondary' : 'ghost'}
                   className="w-full justify-start"
                 >
                   <Link href={item.href}>
@@ -156,7 +158,11 @@ export function Sidebar({ className }: SidebarProps) {
                 </Button>
               ) : (
                 <div key={item.title} className="space-y-1">
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => toggleSubmenu(item.title)}>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => toggleSubmenu(item.title)}
+                  >
                     <item.icon className="mr-2 h-4 w-4" />
                     {item.title}
                     {openSubmenu === item.title ? (
@@ -171,7 +177,9 @@ export function Sidebar({ className }: SidebarProps) {
                         <Button
                           key={subitem.title}
                           asChild
-                          variant={pathname === subitem.href ? "secondary" : "ghost"}
+                          variant={
+                            pathname === subitem.href ? 'secondary' : 'ghost'
+                          }
                           className="w-full justify-start"
                         >
                           <Link href={subitem.href}>
@@ -183,13 +191,13 @@ export function Sidebar({ className }: SidebarProps) {
                     </div>
                   )}
                 </div>
-              ),
+              )
             )}
           </div>
         </ScrollArea>
       </div>
     </div>
-  )
+  );
 }
 
 // Export the DashboardLayout component
@@ -204,5 +212,5 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
-  )
+  );
 }

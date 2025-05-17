@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 /**
  * Checks if a thread exists, and creates a new thread if not.
  *
@@ -9,19 +9,27 @@ import { NextResponse } from "next/server";
  * @remarks
  * Used in the AI SDK chat route to manage conversation state and persistence.
  */
-import { createDataStreamResponse, generateId, type LanguageModelV1Middleware, type Tool } from 'ai';
-import { streamWithAISDK } from "@/lib/ai-sdk-integration";
-import { createMemory } from "@/lib/memory/factory";
-import { v4 as uuidv4 } from "uuid";
-import { handleApiError } from "@/lib/api-error-handler";
-import { createTrace, logEvent } from "@/lib/langfuse-integration";
+import {
+  createDataStreamResponse,
+  generateId,
+  type LanguageModelV1Middleware,
+  type Tool,
+} from 'ai';
+import { streamWithAISDK } from '@/lib/ai-sdk-integration';
+import { createMemory } from '@/lib/memory/factory';
+import { v4 as uuidv4 } from 'uuid';
+import { handleApiError } from '@/lib/api-error-handler';
+import { createTrace, logEvent } from '@/lib/langfuse-integration';
 // Import model config utilities
-import { getSupabaseClient } from "@/lib/memory/supabase";
-import { createMiddlewareFromOptions, createCompleteMiddleware } from "@/lib/middleware";
-import { personaManager } from "@/lib/agents/personas/persona-manager";
-import { toolRegistry } from "@/lib/tools/toolRegistry";
-import { RequestMiddleware, ResponseMiddleware } from "@/lib/middleware";
-import { DataStreamWriter } from "ai";
+import { getSupabaseClient } from '@/lib/memory/supabase';
+import {
+  createMiddlewareFromOptions,
+  createCompleteMiddleware,
+} from '@/lib/middleware';
+import { personaManager } from '@/lib/agents/personas/persona-manager';
+import { toolRegistry } from '@/lib/tools/toolRegistry';
+import { RequestMiddleware, ResponseMiddleware } from '@/lib/middleware';
+import { DataStreamWriter } from 'ai';
 
 // Create memory instance
 const memory = createMemory();
@@ -43,11 +51,13 @@ export async function POST(request: Request) {
       streamProtocol = 'data',
       toolChoice = 'auto',
       maxSteps = 5,
-      middleware = {}
+      middleware = {},
     } = body;
 
     // Build language model middleware from options
-    const { languageModel } = createCompleteMiddleware({ languageModel: middleware });
+    const { languageModel } = createCompleteMiddleware({
+      languageModel: middleware,
+    });
 
     // Validate request
     if (!messages || !Array.isArray(messages)) {
@@ -77,20 +87,27 @@ export async function POST(request: Request) {
           metadata: {
             id: chatThreadId, // Pass the generated ID to ensure consistency
             source: 'ai-sdk-ui',
-            created_at: new Date().toISOString()
-          }
+            created_at: new Date().toISOString(),
+          },
         });
       } catch (error: unknown) {
         console.error('Error creating memory thread:', error);
         // Handle Upstash-specific errors
         if (error && typeof error === 'object' && 'name' in error) {
           const errorObj = error as { name: string; message?: string };
-          if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
-            throw new Error(`Failed to create memory thread in Upstash: ${errorObj.message || 'Unknown error'}`);
+          if (
+            errorObj.name === 'RedisStoreError' ||
+            errorObj.name === 'UpstashClientError'
+          ) {
+            throw new Error(
+              `Failed to create memory thread in Upstash: ${errorObj.message || 'Unknown error'}`
+            );
           }
         }
         // Default error handling
-        throw new Error(`Failed to create memory thread: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Failed to create memory thread: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
 
@@ -109,8 +126,8 @@ export async function POST(request: Request) {
             count_tokens: true,
             metadata: {
               source: 'ai-sdk-ui',
-              timestamp: new Date().toISOString()
-            }
+              timestamp: new Date().toISOString(),
+            },
           }
         );
       } catch (error: unknown) {
@@ -118,12 +135,19 @@ export async function POST(request: Request) {
         // Handle Upstash-specific errors
         if (error && typeof error === 'object' && 'name' in error) {
           const errorObj = error as { name: string; message?: string };
-          if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
-            throw new Error(`Failed to save user message in Upstash: ${errorObj.message || 'Unknown error'}`);
+          if (
+            errorObj.name === 'RedisStoreError' ||
+            errorObj.name === 'UpstashClientError'
+          ) {
+            throw new Error(
+              `Failed to save user message in Upstash: ${errorObj.message || 'Unknown error'}`
+            );
           }
         }
         // Default error handling
-        throw new Error(`Failed to save user message: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Failed to save user message: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
 
@@ -164,14 +188,18 @@ export async function POST(request: Request) {
         temperature: temperature || 0.7,
         max_tokens: maxTokens || 8192,
         context_window: 8192,
-        supports_vision: model.includes('vision') || model.includes('gemini') || model.includes('claude-3') || model.includes('gpt-4'),
+        supports_vision:
+          model.includes('vision') ||
+          model.includes('gemini') ||
+          model.includes('claude-3') ||
+          model.includes('gpt-4'),
         supports_functions: true,
         supports_streaming: true,
         default_temperature: 0.7,
         default_top_p: 1.0,
         default_frequency_penalty: 0,
         default_presence_penalty: 0,
-        base_url: undefined
+        base_url: undefined,
       };
       const error = null;
 
@@ -179,29 +207,38 @@ export async function POST(request: Request) {
 
       modelConfig = data;
     } catch (error) {
-      console.warn('Could not fetch model config from Supabase, using default:', error);
+      console.warn(
+        'Could not fetch model config from Supabase, using default:',
+        error
+      );
       // Use default model configuration
       modelConfig = {
         model_id: model,
         provider: provider || 'google',
-        api_key: provider === 'openai'
-          ? process.env.OPENAI_API_KEY
-          : provider === 'anthropic'
-            ? process.env.ANTHROPIC_API_KEY
-            : process.env.GOOGLE_API_KEY,
+        api_key:
+          provider === 'openai'
+            ? process.env.OPENAI_API_KEY
+            : provider === 'anthropic'
+              ? process.env.ANTHROPIC_API_KEY
+              : process.env.GOOGLE_API_KEY,
         temperature: temperature || 0.7,
         max_tokens: maxTokens || 8192,
       };
     }
 
     // Determine provider from model config or model name
-    const modelProvider = modelConfig.provider || provider ||
-      (model.startsWith('gpt') ? 'openai' :
-       model.startsWith('claude') ? 'anthropic' : 'google');
+    const modelProvider =
+      modelConfig.provider ||
+      provider ||
+      (model.startsWith('gpt')
+        ? 'openai'
+        : model.startsWith('claude')
+          ? 'anthropic'
+          : 'google');
 
     // Create a trace for this chat interaction
     const trace = await createTrace({
-      name: "ai_sdk_chat_interaction",
+      name: 'ai_sdk_chat_interaction',
       userId: chatThreadId,
       metadata: {
         model: modelConfig.model_id,
@@ -215,20 +252,20 @@ export async function POST(request: Request) {
         threadId: chatThreadId,
         systemPrompt: systemPrompt ? true : false,
         toolChoice,
-        maxSteps
-      }
+        maxSteps,
+      },
     });
 
     // Log the user message event
     if (trace?.id) {
       await logEvent({
         traceId: trace.id,
-        name: "user_message",
+        name: 'user_message',
         metadata: {
-          role: "user",
+          role: 'user',
           content: lastMessage.role === 'user' ? lastMessage.content : '',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -248,7 +285,9 @@ export async function POST(request: Request) {
           if (toolInstance) {
             toolConfigs[toolRequest] = toolInstance;
           } else {
-            console.warn(`[Chat API] Tool "${toolRequest}" requested by client but not found in registry.`);
+            console.warn(
+              `[Chat API] Tool "${toolRequest}" requested by client but not found in registry.`
+            );
             // Optionally, handle this case more strictly, e.g., by returning an error
             // or by not proceeding if a critical tool is missing.
           }
@@ -260,9 +299,14 @@ export async function POST(request: Request) {
           // but that's a separate concern from backend execution.
           const toolName = toolRequest.function?.name || toolRequest.name;
           if (toolName) {
-            console.warn(`[Chat API] Received ad-hoc tool definition for "${toolName}". These are not automatically made executable by the backend. Only named, registered tools are used for server-side execution.`);
+            console.warn(
+              `[Chat API] Received ad-hoc tool definition for "${toolName}". These are not automatically made executable by the backend. Only named, registered tools are used for server-side execution.`
+            );
           } else {
-            console.warn('[Chat API] Received an invalid or unnamed ad-hoc tool definition in the request body.', toolRequest);
+            console.warn(
+              '[Chat API] Received an invalid or unnamed ad-hoc tool definition in the request body.',
+              toolRequest
+            );
           }
         }
       }
@@ -272,7 +316,8 @@ export async function POST(request: Request) {
     const modelSettings = {
       max_tokens: modelConfig.max_tokens || 4096,
       context_window: modelConfig.context_window || 8192,
-      supports_vision: modelConfig.supports_vision ||
+      supports_vision:
+        modelConfig.supports_vision ||
         model.includes('vision') ||
         model.includes('gemini') ||
         model.includes('claude-3') ||
@@ -287,15 +332,16 @@ export async function POST(request: Request) {
     };
 
     // Validate and adjust maxTokens if needed
-    const effectiveMaxTokens = maxTokens && maxTokens > 0
-      ? Math.min(maxTokens, modelSettings.max_tokens)
-      : modelSettings.max_tokens;
+    const effectiveMaxTokens =
+      maxTokens && maxTokens > 0
+        ? Math.min(maxTokens, modelSettings.max_tokens)
+        : modelSettings.max_tokens;
 
     // Process multimodal content
     const processedMessages = [...messages];
 
     // Add system prompt if provided and not already in messages
-    if (systemPrompt && !messages.some(msg => msg.role === 'system')) {
+    if (systemPrompt && !messages.some((msg) => msg.role === 'system')) {
       processedMessages.unshift({ role: 'system', content: systemPrompt });
     }
 
@@ -303,7 +349,7 @@ export async function POST(request: Request) {
     if (images && images.length > 0 && modelSettings.supports_vision) {
       // Find the last user message to attach images to
       const lastUserMessageIndex = processedMessages.findIndex(
-        msg => msg.role === 'user'
+        (msg) => msg.role === 'user'
       );
 
       if (lastUserMessageIndex !== -1) {
@@ -314,11 +360,14 @@ export async function POST(request: Request) {
             role: 'user',
             content: [
               { type: 'text', text: lastUserMessage.content },
-              ...images.map((img: { url?: string; data?: string } | string) => ({
-                type: 'image',
-                image: typeof img === 'object' ? (img.url || img.data || '') : img
-              }))
-            ]
+              ...images.map(
+                (img: { url?: string; data?: string } | string) => ({
+                  type: 'image',
+                  image:
+                    typeof img === 'object' ? img.url || img.data || '' : img,
+                })
+              ),
+            ],
           };
         }
       }
@@ -326,55 +375,79 @@ export async function POST(request: Request) {
 
     // Configure middleware
     let languageModelMiddleware: LanguageModelV1Middleware[] = [];
-    let requestResponseMiddleware: (RequestMiddleware | ResponseMiddleware)[] = [];
+    let requestResponseMiddleware: (RequestMiddleware | ResponseMiddleware)[] =
+      [];
 
     if (middleware) {
       // Handle language model middleware
       if (typeof middleware === 'object') {
         // Check if it's a middleware options object
-        if ('caching' in middleware || 'reasoning' in middleware ||
-            'simulation' in middleware || 'logging' in middleware ||
-            'defaultSettings' in middleware) {
+        if (
+          'caching' in middleware ||
+          'reasoning' in middleware ||
+          'simulation' in middleware ||
+          'logging' in middleware ||
+          'defaultSettings' in middleware
+        ) {
           // It's middleware options
           const middlewareOptions = {
             caching: middleware.caching || { enabled: false },
             reasoning: middleware.reasoning || { enabled: false },
             simulation: middleware.simulation || { enabled: false },
             logging: middleware.logging || { enabled: false },
-            defaultSettings: middleware.defaultSettings
+            defaultSettings: middleware.defaultSettings,
           };
 
           // Create middleware array using our middleware module
-          languageModelMiddleware = createMiddlewareFromOptions(middlewareOptions);
+          languageModelMiddleware =
+            createMiddlewareFromOptions(middlewareOptions);
 
           // Log middleware creation
-          console.log(`Created ${languageModelMiddleware.length} language model middleware from options`);
-        } else if (middleware.languageModel || middleware.request || middleware.response) {
+          console.log(
+            `Created ${languageModelMiddleware.length} language model middleware from options`
+          );
+        } else if (
+          middleware.languageModel ||
+          middleware.request ||
+          middleware.response
+        ) {
           // It's a structured middleware object with separate types
           if (middleware.languageModel) {
             languageModelMiddleware = Array.isArray(middleware.languageModel)
               ? middleware.languageModel
               : [middleware.languageModel];
 
-            console.log(`Using ${languageModelMiddleware.length} provided language model middleware`);
+            console.log(
+              `Using ${languageModelMiddleware.length} provided language model middleware`
+            );
           }
 
           // Store request/response middleware for future use
           if (middleware.request || middleware.response) {
             requestResponseMiddleware = [
-              ...(Array.isArray(middleware.request) ? middleware.request :
-                middleware.request ? [middleware.request] : []),
-              ...(Array.isArray(middleware.response) ? middleware.response :
-                middleware.response ? [middleware.response] : [])
+              ...(Array.isArray(middleware.request)
+                ? middleware.request
+                : middleware.request
+                  ? [middleware.request]
+                  : []),
+              ...(Array.isArray(middleware.response)
+                ? middleware.response
+                : middleware.response
+                  ? [middleware.response]
+                  : []),
             ];
 
-            console.log(`Using ${requestResponseMiddleware.length} provided request/response middleware`);
+            console.log(
+              `Using ${requestResponseMiddleware.length} provided request/response middleware`
+            );
           }
         }
       } else if (Array.isArray(middleware)) {
         // It's an array of middleware
         languageModelMiddleware = middleware;
-        console.log(`Using ${languageModelMiddleware.length} middleware from array`);
+        console.log(
+          `Using ${languageModelMiddleware.length} middleware from array`
+        );
       }
     }
 
@@ -392,23 +465,28 @@ export async function POST(request: Request) {
         const persona = {
           id: personaId,
           name: 'Default Persona',
-          systemPromptTemplate: 'You are a helpful AI assistant.'
+          systemPromptTemplate: 'You are a helpful AI assistant.',
         };
 
         if (persona && persona.systemPromptTemplate) {
           // Extract system prompt from persona
           personaSystemPrompt = persona.systemPromptTemplate;
-          console.log(`Using persona ${persona.name} with system prompt template`);
+          console.log(
+            `Using persona ${persona.name} with system prompt template`
+          );
 
           // In a real implementation, you would generate the system prompt dynamically
           // For now, we'll just use the template
         }
 
-          // If no system prompt was provided but we have a persona, use it
-          if (!systemPrompt && personaSystemPrompt) {
-            // Add persona system prompt to the beginning of messages
-            processedMessages.unshift({ role: 'system', content: personaSystemPrompt });
-          }
+        // If no system prompt was provided but we have a persona, use it
+        if (!systemPrompt && personaSystemPrompt) {
+          // Add persona system prompt to the beginning of messages
+          processedMessages.unshift({
+            role: 'system',
+            content: personaSystemPrompt,
+          });
+        }
       } catch (error) {
         console.warn(`Error loading persona ${personaId}:`, error);
       }
@@ -425,7 +503,7 @@ export async function POST(request: Request) {
           dataStream.writeData({
             status: 'initialized',
             threadId: chatThreadId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
 
           try {
@@ -435,7 +513,7 @@ export async function POST(request: Request) {
               dataStream.writeData({
                 status: 'tools_configured_for_stream', // Renamed for clarity
                 toolCount: Object.keys(toolConfigs).length,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               });
             }
 
@@ -455,8 +533,8 @@ export async function POST(request: Request) {
               userId: chatThreadId,
               metadata: {
                 threadId: chatThreadId,
-                messageId: assistantMessageId
-              }
+                messageId: assistantMessageId,
+              },
             });
 
             // Merge the stream into the data stream
@@ -468,22 +546,25 @@ export async function POST(request: Request) {
             dataStream.writeData({
               status: 'error',
               error: error instanceof Error ? error.message : String(error),
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             });
 
             // Handle Upstash-specific errors
             if (error && typeof error === 'object' && 'name' in error) {
               const errorObj = error as { name: string; message?: string };
-              if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+              if (
+                errorObj.name === 'RedisStoreError' ||
+                errorObj.name === 'UpstashClientError'
+              ) {
                 dataStream.writeData({
                   status: 'upstash_error',
                   error: errorObj.message || 'Unknown Upstash error',
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
                 });
               }
             }
           }
-        }
+        },
       });
     }
 
@@ -504,8 +585,8 @@ export async function POST(request: Request) {
       userId: chatThreadId,
       metadata: {
         threadId: chatThreadId,
-        messageId: assistantMessageId
-      }
+        messageId: assistantMessageId,
+      },
     });
 
     return result;
@@ -516,7 +597,10 @@ export async function POST(request: Request) {
     // Handle Upstash-specific errors
     if (error && typeof error === 'object' && 'name' in error) {
       const errorObj = error as { name: string; message?: string };
-      if (errorObj.name === 'RedisStoreError' || errorObj.name === 'UpstashClientError') {
+      if (
+        errorObj.name === 'RedisStoreError' ||
+        errorObj.name === 'UpstashClientError'
+      ) {
         return NextResponse.json(
           { error: `Upstash error: ${errorObj.message || 'Unknown error'}` },
           { status: 500 }

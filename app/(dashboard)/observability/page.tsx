@@ -1,7 +1,7 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   Activity,
   BarChart,
@@ -14,94 +14,130 @@ import {
   RefreshCw,
   Search,
   Star,
-  Zap
-} from "lucide-react"
+  Zap,
+} from 'lucide-react';
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useSupabaseFetch } from "@/hooks/use-supabase-fetch"
+import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
 
-import { TracingOverview } from "@/components/observability/tracing-overview"
-import { TracingTimeline } from "@/components/observability/tracing-timeline"
-import { TracingDetails } from "@/components/observability/tracing-details"
-import { ModelPerformance } from "@/components/observability/model-performance"
-import { SystemHealth } from "@/components/observability/system-health"
-import { CostEstimation } from "@/components/observability/cost-estimation"
-import { ModelEvaluation } from "@/components/observability/model-evaluation"
+import { TracingOverview } from '@/components/observability/tracing-overview';
+import { TracingTimeline } from '@/components/observability/tracing-timeline';
+import { TracingDetails } from '@/components/observability/tracing-details';
+import { ModelPerformance } from '@/components/observability/model-performance';
+import { SystemHealth } from '@/components/observability/system-health';
+import { CostEstimation } from '@/components/observability/cost-estimation';
+import { ModelEvaluation } from '@/components/observability/model-evaluation';
 
 export default function ObservabilityPage() {
-  const [activeTab, setActiveTab] = useState("overview")
-  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [timeRange, setTimeRange] = useState("24h")
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [timeRange, setTimeRange] = useState('24h');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch recent traces
-  const { data: recentTraces, isLoading: tracesLoading, refetch: refetchTraces } = useSupabaseFetch({
-    endpoint: "/api/observability/traces",
-    resourceName: "Recent Traces",
-    dataKey: "traces",
-    queryParams: { limit: "50", timeRange }
-  })
+  const {
+    data: recentTraces,
+    isLoading: tracesLoading,
+    refetch: refetchTraces,
+  } = useSupabaseFetch({
+    endpoint: '/api/observability/traces',
+    resourceName: 'Recent Traces',
+    dataKey: 'traces',
+    queryParams: { limit: '50', timeRange },
+  });
 
   // Fetch system metrics
-  const { data: systemMetrics, isLoading: metricsLoading, refetch: refetchMetrics } = useSupabaseFetch({
-    endpoint: "/api/observability/metrics",
-    resourceName: "System Metrics",
-    dataKey: "metrics",
-    queryParams: { timeRange }
-  })
+  const {
+    data: systemMetrics,
+    isLoading: metricsLoading,
+    refetch: refetchMetrics,
+  } = useSupabaseFetch({
+    endpoint: '/api/observability/metrics',
+    resourceName: 'System Metrics',
+    dataKey: 'metrics',
+    queryParams: { timeRange },
+  });
 
   // Fetch model performance data
-  const { data: modelPerformance, isLoading: performanceLoading, refetch: refetchPerformance } = useSupabaseFetch({
-    endpoint: "/api/observability/performance",
-    resourceName: "Model Performance",
-    dataKey: "performance",
-    queryParams: { timeRange }
-  })
+  const {
+    data: modelPerformance,
+    isLoading: performanceLoading,
+    refetch: refetchPerformance,
+  } = useSupabaseFetch({
+    endpoint: '/api/observability/performance',
+    resourceName: 'Model Performance',
+    dataKey: 'performance',
+    queryParams: { timeRange },
+  });
 
   // Fetch cost data
-  const { data: costData, isLoading: costLoading, refetch: refetchCost } = useSupabaseFetch({
-    endpoint: "/api/observability/costs",
-    resourceName: "Cost Data",
-    dataKey: "costData",
-    queryParams: { timeRange }
-  })
+  const {
+    data: costData,
+    isLoading: costLoading,
+    refetch: refetchCost,
+  } = useSupabaseFetch({
+    endpoint: '/api/observability/costs',
+    resourceName: 'Cost Data',
+    dataKey: 'costData',
+    queryParams: { timeRange },
+  });
 
   // Fetch evaluation data
-  const { data: evaluationData, isLoading: evaluationLoading, refetch: refetchEvaluation } = useSupabaseFetch({
-    endpoint: "/api/observability/evaluations",
-    resourceName: "Evaluation Data",
-    dataKey: "evaluations",
-    queryParams: { timeRange }
-  })
+  const {
+    data: evaluationData,
+    isLoading: evaluationLoading,
+    refetch: refetchEvaluation,
+  } = useSupabaseFetch({
+    endpoint: '/api/observability/evaluations',
+    resourceName: 'Evaluation Data',
+    dataKey: 'evaluations',
+    queryParams: { timeRange },
+  });
 
   // Handle refresh
   const handleRefresh = async () => {
-    setIsRefreshing(true)
+    setIsRefreshing(true);
     await Promise.all([
       refetchTraces(),
       refetchMetrics(),
       refetchPerformance(),
       refetchCost(),
-      refetchEvaluation()
-    ])
-    setIsRefreshing(false)
-  }
+      refetchEvaluation(),
+    ]);
+    setIsRefreshing(false);
+  };
 
   // Filter traces based on search query
   const filteredTraces = searchQuery
-    ? recentTraces?.filter(trace =>
-        trace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        trace.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (trace.metadata && JSON.stringify(trace.metadata).toLowerCase().includes(searchQuery.toLowerCase()))
+    ? recentTraces?.filter(
+        (trace) =>
+          trace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          trace.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (trace.metadata &&
+            JSON.stringify(trace.metadata)
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()))
       )
-    : recentTraces
+    : recentTraces;
 
   return (
     <div className="space-y-6">
@@ -138,12 +174,18 @@ export default function ObservabilityPage() {
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
           </Button>
         </div>
       </DashboardHeader>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList className="grid grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -233,5 +275,5 @@ export default function ObservabilityPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

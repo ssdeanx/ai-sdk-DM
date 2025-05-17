@@ -1,33 +1,35 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Calendar, User, ArrowRight } from "lucide-react"
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Calendar, User, ArrowRight } from 'lucide-react';
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface BlogPost {
-  id: string
-  title: string
-  excerpt: string
-  author: string
-  imageUrl: string
-  tags: string
-  publishedAt: string
+  id: string;
+  title: string;
+  excerpt: string;
+  author: string;
+  imageUrl: string;
+  tags: string;
+  publishedAt: string;
 }
 
 interface BlogFeaturedProps {
-  post: BlogPost
+  post: BlogPost;
 }
 
 export function BlogFeatured({ post }: BlogFeaturedProps) {
-  const tagArray = post.tags ? post.tags.split(",").map((tag) => tag.trim()) : []
-  const publishedDate = new Date(post.publishedAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const tagArray = post.tags
+    ? post.tags.split(',').map((tag) => tag.trim())
+    : [];
+  const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
     <motion.div
@@ -38,12 +40,14 @@ export function BlogFeatured({ post }: BlogFeaturedProps) {
     >
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30 z-10" />
       <img
-        src={post.imageUrl || "/placeholder.svg?height=600&width=1200"}
+        src={post.imageUrl || '/placeholder.svg?height=600&width=1200'}
         alt={post.title}
         className="w-full h-[400px] object-cover"
       />
       <div className="absolute inset-0 z-20 flex flex-col justify-end p-6 text-white">
-        <Badge className="w-fit mb-4 bg-primary hover:bg-primary/90">Featured</Badge>
+        <Badge className="w-fit mb-4 bg-primary hover:bg-primary/90">
+          Featured
+        </Badge>
         <h2 className="text-3xl font-bold mb-2">{post.title}</h2>
         <p className="text-white/80 mb-4 max-w-2xl">{post.excerpt}</p>
         <div className="flex flex-wrap gap-2 mb-4">
@@ -73,5 +77,5 @@ export function BlogFeatured({ post }: BlogFeaturedProps) {
         </div>
       </div>
     </motion.div>
-  )
+  );
 }

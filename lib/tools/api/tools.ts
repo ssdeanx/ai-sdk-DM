@@ -21,7 +21,7 @@ import {
   OAUTH_GRANT_TYPES,
   WEBHOOK_METHODS,
   MAX_WEBHOOK_RETRIES,
-  DEFAULT_WEBHOOK_RETRIES
+  DEFAULT_WEBHOOK_RETRIES,
 } from './constants';
 import {
   ApiRequestResult,
@@ -37,10 +37,22 @@ import {
 export const apiRequestSchema = z.object({
   url: z.string().url().describe('The URL to send the request to'),
   method: z.enum(HTTP_METHODS).default('GET').describe('HTTP method'),
-  headers: z.record(z.string()).optional().describe('HTTP headers to include in the request'),
+  headers: z
+    .record(z.string())
+    .optional()
+    .describe('HTTP headers to include in the request'),
   body: z.string().optional().describe('Request body (for POST, PUT, PATCH)'),
-  timeout: z.number().int().min(MIN_TIMEOUT).max(MAX_TIMEOUT).default(DEFAULT_TIMEOUT).describe('Request timeout in milliseconds'),
-  queryParams: z.record(z.string()).optional().describe('Query parameters to append to the URL'),
+  timeout: z
+    .number()
+    .int()
+    .min(MIN_TIMEOUT)
+    .max(MAX_TIMEOUT)
+    .default(DEFAULT_TIMEOUT)
+    .describe('Request timeout in milliseconds'),
+  queryParams: z
+    .record(z.string())
+    .optional()
+    .describe('Query parameters to append to the URL'),
 });
 
 export const apiAuthSchema = z.object({
@@ -49,27 +61,68 @@ export const apiAuthSchema = z.object({
   password: z.string().optional().describe('Password for Basic auth'),
   token: z.string().optional().describe('Token for Bearer auth'),
   apiKey: z.string().optional().describe('API key value'),
-  apiKeyName: z.string().optional().describe('API key header or query parameter name'),
-  apiKeyIn: z.enum(API_KEY_LOCATIONS).optional().describe('Where to include the API key'),
+  apiKeyName: z
+    .string()
+    .optional()
+    .describe('API key header or query parameter name'),
+  apiKeyIn: z
+    .enum(API_KEY_LOCATIONS)
+    .optional()
+    .describe('Where to include the API key'),
 });
 
 export const apiGraphQLSchema = z.object({
   url: z.string().url().describe('GraphQL endpoint URL'),
   query: z.string().describe('GraphQL query or mutation string'),
-  variables: z.record(z.any()).optional().describe('Variables for the GraphQL query'),
-  operationName: z.string().optional().describe('Name of the operation if the query contains multiple operations'),
-  headers: z.record(z.string()).optional().describe('HTTP headers to include in the request'),
-  timeout: z.number().int().min(MIN_TIMEOUT).max(MAX_TIMEOUT).default(DEFAULT_TIMEOUT).describe('Request timeout in milliseconds'),
+  variables: z
+    .record(z.any())
+    .optional()
+    .describe('Variables for the GraphQL query'),
+  operationName: z
+    .string()
+    .optional()
+    .describe(
+      'Name of the operation if the query contains multiple operations'
+    ),
+  headers: z
+    .record(z.string())
+    .optional()
+    .describe('HTTP headers to include in the request'),
+  timeout: z
+    .number()
+    .int()
+    .min(MIN_TIMEOUT)
+    .max(MAX_TIMEOUT)
+    .default(DEFAULT_TIMEOUT)
+    .describe('Request timeout in milliseconds'),
 });
 
 export const apiWebhookSchema = z.object({
   url: z.string().url().describe('Webhook endpoint URL to send data to'),
   event: z.string().describe('Event name or type that triggered this webhook'),
   payload: z.any().optional().describe('Data payload to send with the webhook'),
-  headers: z.record(z.string()).optional().describe('HTTP headers to include in the request'),
-  method: z.enum(WEBHOOK_METHODS).default('POST').describe('HTTP method for the webhook'),
-  timeout: z.number().int().min(MIN_TIMEOUT).max(MAX_TIMEOUT).default(DEFAULT_TIMEOUT).describe('Request timeout in milliseconds'),
-  retries: z.number().int().min(0).max(MAX_WEBHOOK_RETRIES).default(DEFAULT_WEBHOOK_RETRIES).describe('Number of retry attempts if the webhook fails'),
+  headers: z
+    .record(z.string())
+    .optional()
+    .describe('HTTP headers to include in the request'),
+  method: z
+    .enum(WEBHOOK_METHODS)
+    .default('POST')
+    .describe('HTTP method for the webhook'),
+  timeout: z
+    .number()
+    .int()
+    .min(MIN_TIMEOUT)
+    .max(MAX_TIMEOUT)
+    .default(DEFAULT_TIMEOUT)
+    .describe('Request timeout in milliseconds'),
+  retries: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_WEBHOOK_RETRIES)
+    .default(DEFAULT_WEBHOOK_RETRIES)
+    .describe('Number of retry attempts if the webhook fails'),
 });
 
 export const apiOAuthSchema = z.object({
@@ -77,13 +130,32 @@ export const apiOAuthSchema = z.object({
   grantType: z.enum(OAUTH_GRANT_TYPES).describe('OAuth grant type'),
   clientId: z.string().describe('OAuth client ID'),
   clientSecret: z.string().describe('OAuth client secret'),
-  scope: z.string().optional().describe('Space-separated list of requested scopes'),
+  scope: z
+    .string()
+    .optional()
+    .describe('Space-separated list of requested scopes'),
   username: z.string().optional().describe('Username for password grant type'),
   password: z.string().optional().describe('Password for password grant type'),
-  code: z.string().optional().describe('Authorization code for authorization_code grant type'),
-  redirectUri: z.string().url().optional().describe('Redirect URI for authorization_code grant type'),
-  refreshToken: z.string().optional().describe('Refresh token for refresh_token grant type'),
-  timeout: z.number().int().min(MIN_TIMEOUT).max(MAX_TIMEOUT).default(DEFAULT_TIMEOUT).describe('Request timeout in milliseconds'),
+  code: z
+    .string()
+    .optional()
+    .describe('Authorization code for authorization_code grant type'),
+  redirectUri: z
+    .string()
+    .url()
+    .optional()
+    .describe('Redirect URI for authorization_code grant type'),
+  refreshToken: z
+    .string()
+    .optional()
+    .describe('Refresh token for refresh_token grant type'),
+  timeout: z
+    .number()
+    .int()
+    .min(MIN_TIMEOUT)
+    .max(MAX_TIMEOUT)
+    .default(DEFAULT_TIMEOUT)
+    .describe('Request timeout in milliseconds'),
 });
 
 /* ─────────────────────────  implementations  ────────────────────────── */
@@ -91,7 +163,9 @@ export const apiOAuthSchema = z.object({
 /**
  * Make an HTTP request to an API endpoint
  */
-async function apiRequest(params: z.infer<typeof apiRequestSchema>): Promise<ApiRequestResult> {
+async function apiRequest(
+  params: z.infer<typeof apiRequestSchema>
+): Promise<ApiRequestResult> {
   const { url, method, headers = {}, body, timeout, queryParams } = params;
 
   try {
@@ -134,7 +208,9 @@ async function apiRequest(params: z.infer<typeof apiRequestSchema>): Promise<Api
     // Check response size
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_SIZE) {
-      throw new Error(`Response size exceeds maximum allowed size (${MAX_RESPONSE_SIZE} bytes)`);
+      throw new Error(
+        `Response size exceeds maximum allowed size (${MAX_RESPONSE_SIZE} bytes)`
+      );
     }
 
     // Get response data
@@ -160,7 +236,7 @@ async function apiRequest(params: z.infer<typeof apiRequestSchema>): Promise<Api
     console.error('Error making API request:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     } satisfies ToolFailure;
   }
 }
@@ -168,14 +244,19 @@ async function apiRequest(params: z.infer<typeof apiRequestSchema>): Promise<Api
 /**
  * Generate authentication headers for API requests
  */
-async function apiAuth(params: z.infer<typeof apiAuthSchema>): Promise<ApiAuthResult> {
-  const { type, username, password, token, apiKey, apiKeyName, apiKeyIn } = params;
+async function apiAuth(
+  params: z.infer<typeof apiAuthSchema>
+): Promise<ApiAuthResult> {
+  const { type, username, password, token, apiKey, apiKeyName, apiKeyIn } =
+    params;
 
   try {
     switch (type) {
       case 'basic':
         if (!username || !password) {
-          throw new Error('Username and password are required for Basic authentication');
+          throw new Error(
+            'Username and password are required for Basic authentication'
+          );
         }
         return {
           success: true,
@@ -199,7 +280,9 @@ async function apiAuth(params: z.infer<typeof apiAuthSchema>): Promise<ApiAuthRe
 
       case 'api-key':
         if (!apiKey || !apiKeyName) {
-          throw new Error('API key and key name are required for API key authentication');
+          throw new Error(
+            'API key and key name are required for API key authentication'
+          );
         }
 
         if (apiKeyIn === 'header') {
@@ -219,7 +302,9 @@ async function apiAuth(params: z.infer<typeof apiAuthSchema>): Promise<ApiAuthRe
             },
           };
         } else {
-          throw new Error("API key location (apiKeyIn) must be 'header' or 'query'");
+          throw new Error(
+            "API key location (apiKeyIn) must be 'header' or 'query'"
+          );
         }
 
       default:
@@ -229,7 +314,7 @@ async function apiAuth(params: z.infer<typeof apiAuthSchema>): Promise<ApiAuthRe
     console.error('Error creating API authentication:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     } satisfies ToolFailure;
   }
 }
@@ -237,8 +322,17 @@ async function apiAuth(params: z.infer<typeof apiAuthSchema>): Promise<ApiAuthRe
 /**
  * Execute a GraphQL query or mutation
  */
-async function apiGraphQL(params: z.infer<typeof apiGraphQLSchema>): Promise<ApiGraphQLResult> {
-  const { url, query, variables, operationName, headers = {}, timeout } = params;
+async function apiGraphQL(
+  params: z.infer<typeof apiGraphQLSchema>
+): Promise<ApiGraphQLResult> {
+  const {
+    url,
+    query,
+    variables,
+    operationName,
+    headers = {},
+    timeout,
+  } = params;
 
   try {
     // Create AbortController for timeout
@@ -275,7 +369,9 @@ async function apiGraphQL(params: z.infer<typeof apiGraphQLSchema>): Promise<Api
 
     // Check if response is OK
     if (!response.ok) {
-      throw new Error(`GraphQL request failed with status ${response.status}: ${response.statusText}`);
+      throw new Error(
+        `GraphQL request failed with status ${response.status}: ${response.statusText}`
+      );
     }
 
     // Parse response
@@ -293,7 +389,7 @@ async function apiGraphQL(params: z.infer<typeof apiGraphQLSchema>): Promise<Api
     console.error('Error executing GraphQL query:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     } satisfies ToolFailure;
   }
 }
@@ -301,8 +397,18 @@ async function apiGraphQL(params: z.infer<typeof apiGraphQLSchema>): Promise<Api
 /**
  * Send a webhook to a specified endpoint
  */
-async function apiWebhook(params: z.infer<typeof apiWebhookSchema>): Promise<ApiWebhookResult> {
-  const { url, event, payload, headers = {}, method, timeout, retries } = params;
+async function apiWebhook(
+  params: z.infer<typeof apiWebhookSchema>
+): Promise<ApiWebhookResult> {
+  const {
+    url,
+    event,
+    payload,
+    headers = {},
+    method,
+    timeout,
+    retries,
+  } = params;
 
   try {
     // Create AbortController for timeout
@@ -335,7 +441,7 @@ async function apiWebhook(params: z.infer<typeof apiWebhookSchema>): Promise<Api
         if (!response.ok && attempt < retries) {
           // Exponential backoff: 2^attempt * 100ms
           const backoffTime = Math.min(Math.pow(2, attempt) * 100, 5000);
-          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          await new Promise((resolve) => setTimeout(resolve, backoffTime));
           return makeRequest(attempt + 1);
         }
         return response;
@@ -343,7 +449,7 @@ async function apiWebhook(params: z.infer<typeof apiWebhookSchema>): Promise<Api
         if (attempt < retries) {
           // Exponential backoff for network errors
           const backoffTime = Math.min(Math.pow(2, attempt) * 100, 5000);
-          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          await new Promise((resolve) => setTimeout(resolve, backoffTime));
           return makeRequest(attempt + 1);
         }
         throw error;
@@ -355,7 +461,9 @@ async function apiWebhook(params: z.infer<typeof apiWebhookSchema>): Promise<Api
     clearTimeout(timeoutId);
 
     // Generate a unique ID for this webhook
-    const webhookId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const webhookId = crypto.randomUUID
+      ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).substring(2);
 
     return {
       success: true,
@@ -370,7 +478,7 @@ async function apiWebhook(params: z.infer<typeof apiWebhookSchema>): Promise<Api
     console.error('Error sending webhook:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     } satisfies ToolFailure;
   }
 }
@@ -378,7 +486,9 @@ async function apiWebhook(params: z.infer<typeof apiWebhookSchema>): Promise<Api
 /**
  * Obtain an OAuth access token
  */
-async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAuthResult> {
+async function apiOAuth(
+  params: z.infer<typeof apiOAuthSchema>
+): Promise<ApiOAuthResult> {
   const {
     tokenUrl,
     grantType,
@@ -390,7 +500,7 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
     code,
     redirectUri,
     refreshToken,
-    timeout
+    timeout,
   } = params;
 
   try {
@@ -412,7 +522,9 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
     switch (grantType) {
       case 'password':
         if (!username || !password) {
-          throw new Error('Username and password are required for password grant type');
+          throw new Error(
+            'Username and password are required for password grant type'
+          );
         }
         formData.append('username', username);
         formData.append('password', password);
@@ -420,7 +532,9 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
 
       case 'authorization_code':
         if (!code || !redirectUri) {
-          throw new Error('Code and redirect URI are required for authorization_code grant type');
+          throw new Error(
+            'Code and redirect URI are required for authorization_code grant type'
+          );
         }
         formData.append('code', code);
         formData.append('redirect_uri', redirectUri);
@@ -428,7 +542,9 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
 
       case 'refresh_token':
         if (!refreshToken) {
-          throw new Error('Refresh token is required for refresh_token grant type');
+          throw new Error(
+            'Refresh token is required for refresh_token grant type'
+          );
         }
         formData.append('refresh_token', refreshToken);
         break;
@@ -446,7 +562,7 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
       body: formData.toString(),
       signal: controller.signal,
@@ -456,7 +572,9 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OAuth token request failed with status ${response.status}: ${errorText}`);
+      throw new Error(
+        `OAuth token request failed with status ${response.status}: ${errorText}`
+      );
     }
 
     const tokenData = await response.json();
@@ -474,7 +592,7 @@ async function apiOAuth(params: z.infer<typeof apiOAuthSchema>): Promise<ApiOAut
     console.error('Error obtaining OAuth token:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     } satisfies ToolFailure;
   }
 }

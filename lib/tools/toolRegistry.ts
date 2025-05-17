@@ -7,10 +7,10 @@
  * @module toolRegistry
  */
 
-import { tool, type Tool } from "ai";
-import { z } from "zod";
-import { initializeTools } from "./toolInitializer";
-import { createTrace, logEvent } from "../langfuse-integration";
+import { tool, type Tool } from 'ai';
+import { z } from 'zod';
+import { initializeTools } from './toolInitializer';
+import { createTrace, logEvent } from '../langfuse-integration';
 
 /**
  * Represents a tool along with its category.
@@ -25,11 +25,15 @@ interface CategorizedTool {
  */
 interface LoadedTools {
   builtIn?: Record<string, Record<string, Tool<any, any> | undefined>>; // moduleName -> toolName -> toolInstance
-  custom?: Record<string, { // Changed from Array to Record
-    instance: Tool<any, any>;
-    category: string;
-    // is_enabled can be handled by initializeCustomTools by not returning disabled tools
-  }>;
+  custom?: Record<
+    string,
+    {
+      // Changed from Array to Record
+      instance: Tool<any, any>;
+      category: string;
+      // is_enabled can be handled by initializeCustomTools by not returning disabled tools
+    }
+  >;
   agentic?: Record<string, Tool<any, any> | undefined>; // toolName -> toolInstance
 }
 
@@ -82,7 +86,7 @@ export class ToolRegistry {
    * @throws Error if the tool is not found or execution fails.
    */
   static async executeTool(toolName: string, params: any): Promise<any> {
-    const tool = await ToolRegistry.instance.getTool(toolName) as any;
+    const tool = (await ToolRegistry.instance.getTool(toolName)) as any;
     if (!tool) {
       throw new Error(`Tool '${toolName}' not found in registry.`);
     }
@@ -93,8 +97,8 @@ export class ToolRegistry {
         name: `tool_execution_${toolName}`,
         metadata: {
           toolName,
-          params: JSON.stringify(params)
-        }
+          params: JSON.stringify(params),
+        },
       });
 
       // Execute the tool - AI SDK tools have an execute method that takes params
@@ -109,12 +113,18 @@ export class ToolRegistry {
         // AI SDK tool format
         const executeFn = (tool as any).execute;
         // AI SDK tools might expect (params, runId) signature
-        result = await executeFn.call(tool, params, `tool_execution_${Date.now()}`);
+        result = await executeFn.call(
+          tool,
+          params,
+          `tool_execution_${Date.now()}`
+        );
       } else if (tool && typeof (tool as any).call === 'function') {
         // For compatibility with other tool formats
         result = await (tool as any).call(params);
       } else {
-        throw new Error(`Tool '${toolName}' does not have a valid execute method.`);
+        throw new Error(
+          `Tool '${toolName}' does not have a valid execute method.`
+        );
       }
 
       // Log successful execution
@@ -123,8 +133,11 @@ export class ToolRegistry {
         name: 'ToolExecutionSuccess',
         metadata: {
           toolName,
-          result: typeof result === 'object' ? JSON.stringify(result) : String(result)
-        }
+          result:
+            typeof result === 'object'
+              ? JSON.stringify(result)
+              : String(result),
+        },
       });
 
       return result;
@@ -137,8 +150,8 @@ export class ToolRegistry {
         name: 'ToolExecutionError',
         metadata: {
           toolName,
-          error: error instanceof Error ? error.message : String(error)
-        }
+          error: error instanceof Error ? error.message : String(error),
+        },
       });
 
       throw error;
@@ -164,14 +177,14 @@ export class ToolRegistry {
     const toolInstance = tool({
       description,
       parameters: zodSchema,
-      execute
+      execute,
     });
 
     // Add the tool to the registry
     await ToolRegistry.instance.ensureInitialized();
     ToolRegistry.instance.categorizedTools.set(toolName, {
       instance: toolInstance,
-      category: 'custom'
+      category: 'custom',
     });
 
     // Log tool registration
@@ -180,8 +193,8 @@ export class ToolRegistry {
       name: 'ToolRegistered',
       metadata: {
         toolName,
-        category: 'custom'
-      }
+        category: 'custom',
+      },
     });
   }
   private categorizedTools: Map<string, CategorizedTool> = new Map();
@@ -207,8 +220,11 @@ export class ToolRegistry {
       // Assign to a local variable to avoid unhandled promise rejection in constructor if initialize throws sync
       const initPromise = this.initialize();
       if (initPromise.catch) {
-        initPromise.catch(error => {
-          console.error("Failed to auto-initialize ToolRegistry in constructor:", error);
+        initPromise.catch((error) => {
+          console.error(
+            'Failed to auto-initialize ToolRegistry in constructor:',
+            error
+          );
           // If initialization fails, it's important that this.initializationPromise is cleared
           // so that subsequent calls to initialize() or ensureInitialized() can retry.
           // The initialize() method itself handles setting this.initializationPromise to null on failure.
@@ -241,24 +257,41 @@ export class ToolRegistry {
     try {
       const { includeBuiltIn, includeCustom, includeAgentic } = this.options;
       // Cast the result of initializeTools to LoadedTools
-      const loadedTools = await initializeTools({
+      const loadedTools = (await initializeTools({
         includeBuiltIn,
         includeCustom,
         includeAgentic,
         traceId,
         userId,
-      }) as LoadedTools;
+      })) as LoadedTools;
 
       this.categorizedTools.clear();
 
       // Process built-in tools
-      if (loadedTools.builtIn && typeof loadedTools.builtIn === 'object' && loadedTools.builtIn !== null) {
-        for (const [moduleName, toolsInModule] of Object.entries(loadedTools.builtIn)) {
-          const category = moduleName.replace(/-tools$|Tools$/i, '').toLowerCase();
-          if (toolsInModule && typeof toolsInModule === 'object' && toolsInModule !== null) {
-            for (const [toolName, toolInstance] of Object.entries(toolsInModule)) {
+      if (
+        loadedTools.builtIn &&
+        typeof loadedTools.builtIn === 'object' &&
+        loadedTools.builtIn !== null
+      ) {
+        for (const [moduleName, toolsInModule] of Object.entries(
+          loadedTools.builtIn
+        )) {
+          const category = moduleName
+            .replace(/-tools$|Tools$/i, '')
+            .toLowerCase();
+          if (
+            toolsInModule &&
+            typeof toolsInModule === 'object' &&
+            toolsInModule !== null
+          ) {
+            for (const [toolName, toolInstance] of Object.entries(
+              toolsInModule
+            )) {
               if (toolInstance) {
-                this.categorizedTools.set(toolName, { instance: toolInstance, category });
+                this.categorizedTools.set(toolName, {
+                  instance: toolInstance,
+                  category,
+                });
               }
             }
           }
@@ -266,8 +299,14 @@ export class ToolRegistry {
       }
 
       // Process custom tools (loaded from Supabase)
-      if (loadedTools.custom && typeof loadedTools.custom === 'object' && loadedTools.custom !== null) {
-        for (const [toolName, customToolData] of Object.entries(loadedTools.custom)) {
+      if (
+        loadedTools.custom &&
+        typeof loadedTools.custom === 'object' &&
+        loadedTools.custom !== null
+      ) {
+        for (const [toolName, customToolData] of Object.entries(
+          loadedTools.custom
+        )) {
           // Assuming initializeCustomTools now only returns enabled tools
           // and provides the instance and category directly.
           if (toolName && customToolData && customToolData.instance) {
@@ -280,10 +319,19 @@ export class ToolRegistry {
       }
 
       // Process agentic tools
-      if (loadedTools.agentic && typeof loadedTools.agentic === 'object' && loadedTools.agentic !== null) {
-        for (const [toolName, toolInstance] of Object.entries(loadedTools.agentic)) {
+      if (
+        loadedTools.agentic &&
+        typeof loadedTools.agentic === 'object' &&
+        loadedTools.agentic !== null
+      ) {
+        for (const [toolName, toolInstance] of Object.entries(
+          loadedTools.agentic
+        )) {
           if (toolInstance) {
-            this.categorizedTools.set(toolName, { instance: toolInstance, category: 'agentic' });
+            this.categorizedTools.set(toolName, {
+              instance: toolInstance,
+              category: 'agentic',
+            });
           }
         }
       }
@@ -294,20 +342,26 @@ export class ToolRegistry {
         name: 'Initialized',
         metadata: {
           toolCount: this.categorizedTools.size,
-          categories: Array.from(new Set(Array.from(this.categorizedTools.values()).map(ct => ct.category)))
-        }
+          categories: Array.from(
+            new Set(
+              Array.from(this.categorizedTools.values()).map(
+                (ct) => ct.category
+              )
+            )
+          ),
+        },
       });
       resolveInit!();
     } catch (error) {
-      console.error("Error initializing tool registry:", error);
+      console.error('Error initializing tool registry:', error);
       this.initialized = false;
       rejectInit!(error);
       // No need to set this.initializationPromise to null here, finally block handles it.
       throw error;
     } finally {
-        // Whether success or failure, the current attempt is done. Clear the promise
-        // to allow future calls to re-attempt if it failed, or to bypass if succeeded.
-        this.initializationPromise = null;
+      // Whether success or failure, the current attempt is done. Clear the promise
+      // to allow future calls to re-attempt if it failed, or to bypass if succeeded.
+      this.initializationPromise = null;
     }
   }
 
@@ -329,7 +383,9 @@ export class ToolRegistry {
     // After attempting to initialize (either by awaiting an existing promise or calling initialize()),
     // check `initialized` flag again. If it's still false, initialization failed.
     if (!this.initialized) {
-      throw new Error("ToolRegistry failed to initialize or is still initializing.");
+      throw new Error(
+        'ToolRegistry failed to initialize or is still initializing.'
+      );
     }
   }
 
@@ -364,7 +420,9 @@ export class ToolRegistry {
    * @param category - The category of tools to retrieve (e.g., "web", "custom", "rag"). Case-insensitive.
    * @returns A record containing tool instances for the specified category.
    */
-  async getToolsByCategory(category: string): Promise<Record<string, Tool<any, any>>> {
+  async getToolsByCategory(
+    category: string
+  ): Promise<Record<string, Tool<any, any>>> {
     await this.ensureInitialized();
     const normalizedCategory = category.toLowerCase();
     const filteredTools: Record<string, Tool<any, any>> = {};
@@ -382,7 +440,9 @@ export class ToolRegistry {
    *
    * @returns A Map of categorized tools.
    */
-  async getAllToolsCategorized(): Promise<Map<string, Record<string, Tool<any, any>>>> {
+  async getAllToolsCategorized(): Promise<
+    Map<string, Record<string, Tool<any, any>>>
+  > {
     await this.ensureInitialized();
     const result: Map<string, Record<string, Tool<any, any>>> = new Map();
     for (const [toolName, categorizedTool] of this.categorizedTools.entries()) {

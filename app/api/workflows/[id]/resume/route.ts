@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id } = params;
-    
+
     // Check if workflow exists
     const existingWorkflow = await workflow.getWorkflow(id);
     if (!existingWorkflow) {
@@ -17,7 +17,7 @@ export async function POST(
         { status: 404 }
       );
     }
-    
+
     // Check if workflow is paused
     if (existingWorkflow.status !== 'paused') {
       return NextResponse.json(
@@ -25,18 +25,23 @@ export async function POST(
         { status: 400 }
       );
     }
-    
+
     // Resume workflow
-    const updatedWorkflow = await workflow.updateWorkflow(id, { status: 'running' });
-    
+    const updatedWorkflow = await workflow.updateWorkflow(id, {
+      status: 'running',
+    });
+
     // Execute workflow
     const executedWorkflow = await workflow.executeWorkflow(id);
-    
+
     return NextResponse.json({ workflow: executedWorkflow });
   } catch (error) {
     console.error(`Error resuming workflow ${params.id}:`, error);
     return NextResponse.json(
-      { error: 'Failed to resume workflow', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to resume workflow',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

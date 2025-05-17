@@ -17,7 +17,12 @@ let SupabaseWorkflowProvider: any;
 export type WorkflowStepStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 // Workflow status
-export type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'paused';
+export type WorkflowStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'paused';
 
 // Workflow step interface
 export interface WorkflowStep {
@@ -74,7 +79,10 @@ export interface WorkflowProvider {
   getWorkflow(id: string): Promise<Workflow | null>;
   listWorkflows(limit?: number, offset?: number): Promise<Workflow[]>;
   deleteWorkflow(id: string): Promise<boolean>;
-  addWorkflowStep(id: string, options: AddWorkflowStepOptions): Promise<Workflow>;
+  addWorkflowStep(
+    id: string,
+    options: AddWorkflowStepOptions
+  ): Promise<Workflow>;
   executeWorkflow(id: string): Promise<Workflow>;
   pauseWorkflow(id: string): Promise<Workflow>;
   resumeWorkflow(id: string): Promise<Workflow>;
@@ -123,7 +131,10 @@ class InMemoryWorkflowProvider implements WorkflowProvider {
 
   async listWorkflows(limit = 10, offset = 0): Promise<Workflow[]> {
     return Array.from(this.workflows.values())
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      )
       .slice(offset, offset + limit);
   }
 
@@ -131,7 +142,10 @@ class InMemoryWorkflowProvider implements WorkflowProvider {
     return this.workflows.delete(id);
   }
 
-  async addWorkflowStep(id: string, options: AddWorkflowStepOptions): Promise<Workflow> {
+  async addWorkflowStep(
+    id: string,
+    options: AddWorkflowStepOptions
+  ): Promise<Workflow> {
     const workflow = this.workflows.get(id);
     if (!workflow) {
       throw new Error(`Workflow with ID ${id} not found`);
@@ -186,7 +200,9 @@ class InMemoryWorkflowProvider implements WorkflowProvider {
           // Create a memory thread for this step if not provided
           let threadId = step.threadId;
           if (!threadId) {
-            threadId = await memory.createMemoryThread(`Workflow ${workflow.name} - Step ${i + 1}`);
+            threadId = await memory.createMemoryThread(
+              `Workflow ${workflow.name} - Step ${i + 1}`
+            );
             step.threadId = threadId;
           }
 
@@ -292,14 +308,20 @@ export function createWorkflowProvider(): WorkflowProvider {
       try {
         return new UpstashWorkflowProvider();
       } catch (error) {
-        console.warn('Error initializing Upstash workflow provider, falling back to in-memory:', error);
+        console.warn(
+          'Error initializing Upstash workflow provider, falling back to in-memory:',
+          error
+        );
         return new InMemoryWorkflowProvider();
       }
     case 'libsql':
       try {
         return new LibSQLWorkflowProvider();
       } catch (error) {
-        console.warn('Error initializing LibSQL workflow provider, falling back to in-memory:', error);
+        console.warn(
+          'Error initializing LibSQL workflow provider, falling back to in-memory:',
+          error
+        );
         return new InMemoryWorkflowProvider();
       }
     default:

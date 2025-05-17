@@ -1,10 +1,10 @@
-import 'dotenv/config'
+import 'dotenv/config';
 
-import { createAISDKTools } from '@agentic/ai-sdk'
-import { createMcpTools } from '@agentic/mcp'
-import { google } from '@ai-sdk/google'
-import { generateText } from 'ai'
-import { gracefulExit } from 'exit-hook'
+import { createAISDKTools } from '@agentic/ai-sdk';
+import { createMcpTools } from '@agentic/mcp';
+import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
+import { gracefulExit } from 'exit-hook';
 
 async function main() {
   // Create an MCP tools provider, which will start a local MCP server process
@@ -17,11 +17,11 @@ async function main() {
         '-y',
         '@modelcontextprotocol/server-filesystem',
         // Allow the MCP server to access the current working directory.
-        process.cwd()
+        process.cwd(),
         // Feel free to add additional directories the tool should have access to.
-      ]
-    }
-  })
+      ],
+    },
+  });
 
   const result = await generateText({
     model: google('gemini-2.0-flash-exp'),
@@ -29,16 +29,16 @@ async function main() {
     toolChoice: 'required',
     temperature: 0,
     system: 'You are a helpful assistant. Be as concise as possible.',
-    prompt: 'What files are in the current directory?'
-  })
+    prompt: 'What files are in the current directory?',
+  });
 
-  console.log(result.toolResults[0]?.result || JSON.stringify(result, null, 2))
+  console.log(result.toolResults[0]?.result || JSON.stringify(result, null, 2));
 }
 
 try {
-  main()
-  gracefulExit(0)
+  main();
+  gracefulExit(0);
 } catch (err) {
-  console.error(err)
-  gracefulExit(1)
+  console.error(err);
+  gracefulExit(1);
 }

@@ -12,7 +12,7 @@ import {
   Workflow,
   WorkflowStep,
   CreateWorkflowOptions,
-  AddWorkflowStepOptions
+  AddWorkflowStepOptions,
 } from './index';
 
 export class SupabaseWorkflowProvider implements WorkflowProvider {
@@ -22,18 +22,16 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
     const workflowId = uuidv4();
 
     // Create workflow
-    const { error: workflowError } = await supabase
-      .from('workflows')
-      .insert({
-        id: workflowId,
-        name: options.name,
-        description: options.description,
-        current_step_index: 0,
-        status: 'pending',
-        metadata: options.metadata,
-        created_at: now,
-        updated_at: now
-      });
+    const { error: workflowError } = await supabase.from('workflows').insert({
+      id: workflowId,
+      name: options.name,
+      description: options.description,
+      current_step_index: 0,
+      status: 'pending',
+      metadata: options.metadata,
+      created_at: now,
+      updated_at: now,
+    });
 
     if (workflowError) {
       console.error('Error creating workflow:', workflowError);
@@ -56,7 +54,9 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
     if (options.steps && options.steps.length > 0) {
       for (const stepOption of options.steps) {
         const stepId = uuidv4();
-        const threadId = stepOption.threadId || await memory.createMemoryThread(`Workflow ${options.name} - Step`);
+        const threadId =
+          stepOption.threadId ||
+          (await memory.createMemoryThread(`Workflow ${options.name} - Step`));
 
         const { error: stepError } = await supabase
           .from('workflow_steps')
@@ -69,7 +69,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
             status: 'pending',
             metadata: stepOption.metadata,
             created_at: now,
-            updated_at: now
+            updated_at: now,
           });
 
         if (stepError) {
@@ -126,7 +126,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
     }
 
     // Convert steps
-    const steps: WorkflowStep[] = stepsData.map(step => ({
+    const steps: WorkflowStep[] = stepsData.map((step) => ({
       id: step.id,
       workflowId: step.workflow_id,
       agentId: step.agent_id,
@@ -211,7 +211,10 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
     return true;
   }
 
-  async addWorkflowStep(id: string, options: AddWorkflowStepOptions): Promise<Workflow> {
+  async addWorkflowStep(
+    id: string,
+    options: AddWorkflowStepOptions
+  ): Promise<Workflow> {
     const supabase = getSupabaseClient();
 
     // Get workflow
@@ -222,22 +225,24 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
 
     const now = new Date().toISOString();
     const stepId = uuidv4();
-    const threadId = options.threadId || await memory.createMemoryThread(`Workflow ${workflow.name} - Step ${workflow.steps.length + 1}`);
+    const threadId =
+      options.threadId ||
+      (await memory.createMemoryThread(
+        `Workflow ${workflow.name} - Step ${workflow.steps.length + 1}`
+      ));
 
     // Create step
-    const { error: stepError } = await supabase
-      .from('workflow_steps')
-      .insert({
-        id: stepId,
-        workflow_id: id,
-        agent_id: options.agentId,
-        input: options.input,
-        thread_id: threadId,
-        status: 'pending',
-        metadata: options.metadata,
-        created_at: now,
-        updated_at: now
-      });
+    const { error: stepError } = await supabase.from('workflow_steps').insert({
+      id: stepId,
+      workflow_id: id,
+      agent_id: options.agentId,
+      input: options.input,
+      thread_id: threadId,
+      status: 'pending',
+      metadata: options.metadata,
+      created_at: now,
+      updated_at: now,
+    });
 
     if (stepError) {
       console.error('Error adding workflow step:', stepError);
@@ -248,7 +253,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
     const { error: workflowError } = await supabase
       .from('workflows')
       .update({
-        updated_at: now
+        updated_at: now,
       })
       .eq('id', id);
 
@@ -281,7 +286,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
       .from('workflows')
       .update({
         status: 'running',
-        updated_at: now
+        updated_at: now,
       })
       .eq('id', id);
 
@@ -300,7 +305,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
           .from('workflows')
           .update({
             current_step_index: i,
-            updated_at: now
+            updated_at: now,
           })
           .eq('id', id);
 
@@ -314,7 +319,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
           .from('workflow_steps')
           .update({
             status: 'running',
-            updated_at: now
+            updated_at: now,
           })
           .eq('id', step.id);
 
@@ -327,14 +332,16 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
           // Create a memory thread for this step if not provided
           let threadId = step.threadId;
           if (!threadId) {
-            threadId = await memory.createMemoryThread(`Workflow ${workflow.name} - Step ${i + 1}`);
+            threadId = await memory.createMemoryThread(
+              `Workflow ${workflow.name} - Step ${i + 1}`
+            );
 
             // Update step with thread ID
             const { error: threadError } = await supabase
               .from('workflow_steps')
               .update({
                 thread_id: threadId,
-                updated_at: now
+                updated_at: now,
               })
               .eq('id', step.id);
 
@@ -362,7 +369,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
             .update({
               status: 'completed',
               result,
-              updated_at: now
+              updated_at: now,
             })
             .eq('id', step.id);
 
@@ -372,7 +379,8 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
           }
         } catch (error) {
           // Handle step execution error
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
 
           // Update step with error
           const { error: errorUpdateError } = await supabase
@@ -380,7 +388,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
             .update({
               status: 'failed',
               error: errorMessage,
-              updated_at: now
+              updated_at: now,
             })
             .eq('id', step.id);
 
@@ -393,7 +401,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
             .from('workflows')
             .update({
               status: 'failed',
-              updated_at: now
+              updated_at: now,
             })
             .eq('id', id);
 
@@ -410,7 +418,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
         .from('workflows')
         .update({
           status: 'completed',
-          updated_at: now
+          updated_at: now,
         })
         .eq('id', id);
 
@@ -447,7 +455,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
       .from('workflows')
       .update({
         status: 'paused',
-        updated_at: now
+        updated_at: now,
       })
       .eq('id', id);
 
@@ -480,7 +488,7 @@ export class SupabaseWorkflowProvider implements WorkflowProvider {
       .from('workflows')
       .update({
         status: 'running',
-        updated_at: now
+        updated_at: now,
       })
       .eq('id', id);
 

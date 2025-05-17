@@ -11,7 +11,7 @@ import {
   type LanguageModelV1StreamPart,
   extractReasoningMiddleware as aiSdkExtractReasoningMiddleware,
   simulateStreamingMiddleware as aiSdkSimulateStreamingMiddleware,
-  defaultSettingsMiddleware as aiSdkDefaultSettingsMiddleware
+  defaultSettingsMiddleware as aiSdkDefaultSettingsMiddleware,
 } from 'ai';
 import { LRUCache } from 'lru-cache';
 
@@ -32,7 +32,9 @@ export interface ResponseMiddleware {
 }
 
 // Helper function to create middleware
-export function createMiddleware(middleware: RequestMiddleware | ResponseMiddleware): RequestMiddleware | ResponseMiddleware {
+export function createMiddleware(
+  middleware: RequestMiddleware | ResponseMiddleware
+): RequestMiddleware | ResponseMiddleware {
   return middleware;
 }
 
@@ -57,7 +59,7 @@ const responseCache = getResponseCache();
 function simulateReadableStream({
   initialDelayInMs = 0,
   chunkDelayInMs = 10,
-  chunks = []
+  chunks = [],
 }: {
   initialDelayInMs?: number;
   chunkDelayInMs?: number;
@@ -66,13 +68,13 @@ function simulateReadableStream({
   return new ReadableStream({
     async start(controller) {
       if (initialDelayInMs > 0) {
-        await new Promise(resolve => setTimeout(resolve, initialDelayInMs));
+        await new Promise((resolve) => setTimeout(resolve, initialDelayInMs));
       }
 
       for (const chunk of chunks) {
         controller.enqueue(chunk);
         if (chunkDelayInMs > 0) {
-          await new Promise(resolve => setTimeout(resolve, chunkDelayInMs));
+          await new Promise((resolve) => setTimeout(resolve, chunkDelayInMs));
         }
       }
 
@@ -102,12 +104,13 @@ export function createCachingMiddleware(options: {
   if (!options.enabled) return null;
 
   // Create a new cache with the updated settings if needed
-  const cache = options.ttl || options.maxSize
-    ? getResponseCache({
-        maxSize: options.maxSize,
-        ttl: options.ttl
-      })
-    : responseCache;
+  const cache =
+    options.ttl || options.maxSize
+      ? getResponseCache({
+          maxSize: options.maxSize,
+          ttl: options.ttl,
+        })
+      : responseCache;
 
   return {
     wrapGenerate: async ({ doGenerate, params }) => {
@@ -239,7 +242,7 @@ export function createReasoningMiddleware(options: {
 
   return aiSdkExtractReasoningMiddleware({
     tagName: options.tagName || 'think',
-    startWithReasoning: options.startWithReasoning || false
+    startWithReasoning: options.startWithReasoning || false,
   });
 }
 
@@ -275,7 +278,7 @@ export function createDefaultSettingsMiddleware(options?: {
   if (!options?.settings) return null;
 
   return aiSdkDefaultSettingsMiddleware({
-    settings: options.settings
+    settings: options.settings,
   });
 }
 
@@ -313,25 +316,33 @@ export function createMiddlewareFromOptions(options: {
   const middlewares: LanguageModelV1Middleware[] = [];
 
   // Add caching middleware if enabled
-  const cachingMiddleware = createCachingMiddleware(options.caching || { enabled: false });
+  const cachingMiddleware = createCachingMiddleware(
+    options.caching || { enabled: false }
+  );
   if (cachingMiddleware) middlewares.push(cachingMiddleware);
 
   // Add reasoning extraction middleware if enabled
-  const reasoningMiddleware = createReasoningMiddleware(options.reasoning || { enabled: false });
+  const reasoningMiddleware = createReasoningMiddleware(
+    options.reasoning || { enabled: false }
+  );
   if (reasoningMiddleware) middlewares.push(reasoningMiddleware);
 
   // Add simulation middleware if enabled
-  const simulationMiddleware = createSimulationMiddleware(options.simulation || { enabled: false });
+  const simulationMiddleware = createSimulationMiddleware(
+    options.simulation || { enabled: false }
+  );
   if (simulationMiddleware) middlewares.push(simulationMiddleware);
 
   // Add default settings middleware if provided
   const defaultSettingsMiddleware = createDefaultSettingsMiddleware({
-    settings: options.defaultSettings
+    settings: options.defaultSettings,
   });
   if (defaultSettingsMiddleware) middlewares.push(defaultSettingsMiddleware);
 
   // Add logging middleware if enabled (add last to log the final result)
-  const loggingMiddleware = createLoggingMiddleware(options.logging || { enabled: false });
+  const loggingMiddleware = createLoggingMiddleware(
+    options.logging || { enabled: false }
+  );
   if (loggingMiddleware) middlewares.push(loggingMiddleware);
 
   return middlewares;
@@ -365,20 +376,20 @@ export function createContextInjectionMiddleware(options: {
           messages: [
             {
               role: 'system',
-              content: `${messages[0].content}\n\nAdditional context: ${options.context}`
+              content: `${messages[0].content}\n\nAdditional context: ${options.context}`,
             },
-            ...messages.slice(1)
-          ]
+            ...messages.slice(1),
+          ],
         };
       } else {
         return {
           messages: [
             { role: 'system', content: `Context: ${options.context}` },
-            ...messages
-          ]
+            ...messages,
+          ],
         };
       }
-    }
+    },
   });
 }
 
@@ -396,7 +407,8 @@ export function createContentFilteringMiddleware(options: {
   patterns: string[];
   replacements: string[];
 }): ResponseMiddleware | null {
-  if (!options.enabled || !options.patterns || options.patterns.length === 0) return null;
+  if (!options.enabled || !options.patterns || options.patterns.length === 0)
+    return null;
 
   return createMiddleware({
     name: 'content-filtering',
@@ -406,17 +418,20 @@ export function createContentFilteringMiddleware(options: {
       // Apply each pattern and replacement
       options.patterns.forEach((pattern, index) => {
         const replacement = options.replacements[index] || '[FILTERED]';
-        filteredText = filteredText.replace(new RegExp(pattern, 'g'), replacement);
+        filteredText = filteredText.replace(
+          new RegExp(pattern, 'g'),
+          replacement
+        );
       });
 
       // Return modified response
       return {
         response: {
           ...response,
-          text: () => filteredText
-        }
+          text: () => filteredText,
+        },
       };
-    }
+    },
   });
 }
 
@@ -450,26 +465,30 @@ export function createErrorHandlingMiddleware(options: {
       const retryCount = (metadata?.retryCount as number) || 0;
 
       // Check if we should retry
-      if (options.retryOnRateLimit &&
-          error.message.includes('rate limit') &&
-          retryCount < maxRetries) {
+      if (
+        options.retryOnRateLimit &&
+        error.message.includes('rate limit') &&
+        retryCount < maxRetries
+      ) {
         // Wait and retry with exponential backoff
         const delay = retryDelay * Math.pow(2, retryCount);
-        console.log(`Rate limit hit. Retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(
+          `Rate limit hit. Retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
 
         // Run again with updated metadata
         return runAgain({
           metadata: {
             ...metadata,
-            retryCount: retryCount + 1
-          }
+            retryCount: retryCount + 1,
+          },
         });
       }
 
       // Let the error propagate
       return { error };
-    }
+    },
   });
 }
 
@@ -506,7 +525,11 @@ export function createRequestResponseMiddlewareFromOptions(options: {
 
   // Add content filtering middleware if enabled
   const contentFilteringMiddleware = createContentFilteringMiddleware(
-    options.contentFiltering || { enabled: false, patterns: [], replacements: [] }
+    options.contentFiltering || {
+      enabled: false,
+      patterns: [],
+      replacements: [],
+    }
   );
   if (contentFilteringMiddleware) middlewares.push(contentFilteringMiddleware);
 
@@ -575,6 +598,6 @@ export function createCompleteMiddleware(options: {
       : [],
     requestResponse: options.requestResponse
       ? createRequestResponseMiddlewareFromOptions(options.requestResponse)
-      : []
+      : [],
   };
 }

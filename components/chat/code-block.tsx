@@ -1,27 +1,27 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Check, Copy, Terminal } from "lucide-react"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useState } from 'react';
+import { Check, Copy, Terminal } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface CodeBlockProps {
-  language: string
-  code: string
+  language: string;
+  code: string;
 }
 
 export function CodeBlock({ language, code }: CodeBlockProps) {
-  const [copied, setCopied] = useState(false)
-  const [hovered, setHovered] = useState(false)
+  const [copied, setCopied] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div
@@ -43,8 +43,9 @@ export function CodeBlock({ language, code }: CodeBlockProps) {
             variant="ghost"
             size="icon-sm"
             className={cn(
-              "h-7 w-7 rounded-full bg-zinc-800/80 text-zinc-100 hover:text-white hover:bg-zinc-700",
-              copied && "bg-green-600/20 text-green-400 hover:bg-green-600/30 hover:text-green-400"
+              'h-7 w-7 rounded-full bg-zinc-800/80 text-zinc-100 hover:text-white hover:bg-zinc-700',
+              copied &&
+                'bg-green-600/20 text-green-400 hover:bg-green-600/30 hover:text-green-400'
             )}
             onClick={handleCopy}
           >
@@ -52,7 +53,7 @@ export function CodeBlock({ language, code }: CodeBlockProps) {
               <motion.div
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 15 }}
               >
                 <Check className="h-3.5 w-3.5" />
               </motion.div>
@@ -71,7 +72,7 @@ export function CodeBlock({ language, code }: CodeBlockProps) {
             margin: 0,
             borderRadius: 0,
             fontSize: '0.9rem',
-            backgroundColor: 'rgb(30, 30, 30)'
+            backgroundColor: 'rgb(30, 30, 30)',
           }}
           showLineNumbers={true}
         >
@@ -79,5 +80,5 @@ export function CodeBlock({ language, code }: CodeBlockProps) {
         </SyntaxHighlighter>
       </div>
     </div>
-  )
+  );
 }

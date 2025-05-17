@@ -1,52 +1,61 @@
-"use client"
+'use client';
 
-import { useState, useRef } from "react"
-import { motion } from "framer-motion"
-import { Maximize, Minimize, Terminal, Copy, Check, Play, Pause, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Maximize,
+  Minimize,
+  Terminal,
+  Copy,
+  Check,
+  Play,
+  Pause,
+  RefreshCw,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface ComputerUseProps {
-  title: string
-  content: string
-  isTerminal?: boolean
-  isRunnable?: boolean
-  className?: string
-  onRun?: () => void
+  title: string;
+  content: string;
+  isTerminal?: boolean;
+  isRunnable?: boolean;
+  className?: string;
+  onRun?: () => void;
 }
 
-export function ComputerUse({ 
-  title, 
-  content, 
-  isTerminal = false, 
+export function ComputerUse({
+  title,
+  content,
+  isTerminal = false,
   isRunnable = false,
   className,
-  onRun
+  onRun,
 }: ComputerUseProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [running, setRunning] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [running, setRunning] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleRunToggle = () => {
     if (onRun) {
-      onRun()
+      onRun();
     }
-    setRunning(!running)
-  }
+    setRunning(!running);
+  };
 
   return (
-    <div 
+    <div
       className={cn(
-        "relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background",
-        expanded && "fixed inset-4 z-50 bg-background flex flex-col",
+        'relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background',
+        expanded && 'fixed inset-4 z-50 bg-background flex flex-col',
         className
       )}
       onMouseEnter={() => setHovered(true)}
@@ -70,7 +79,11 @@ export function ComputerUse({
             className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={handleCopy}
           >
-            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? (
+              <Check className="h-3.5 w-3.5" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
             <span className="sr-only">Copy content</span>
           </Button>
           {isRunnable && (
@@ -78,13 +91,18 @@ export function ComputerUse({
               variant="ghost"
               size="icon-sm"
               className={cn(
-                "h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20",
-                running && "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                'h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20',
+                running &&
+                  'bg-green-500/20 text-green-400 hover:bg-green-500/30'
               )}
               onClick={handleRunToggle}
             >
-              {running ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-              <span className="sr-only">{running ? "Stop" : "Run"}</span>
+              {running ? (
+                <Pause className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              <span className="sr-only">{running ? 'Stop' : 'Run'}</span>
             </Button>
           )}
           <Button
@@ -93,19 +111,25 @@ export function ComputerUse({
             className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-            <span className="sr-only">{expanded ? "Minimize" : "Maximize"}</span>
+            {expanded ? (
+              <Minimize className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize className="h-3.5 w-3.5" />
+            )}
+            <span className="sr-only">
+              {expanded ? 'Minimize' : 'Maximize'}
+            </span>
           </Button>
         </motion.div>
       </div>
-      
+
       {/* Content */}
-      <div 
+      <div
         ref={contentRef}
         className={cn(
-          "p-4 overflow-auto font-mono text-sm",
-          isTerminal ? "bg-black text-green-400" : "bg-zinc-950 text-zinc-200",
-          expanded ? "flex-1" : "max-h-[400px]"
+          'p-4 overflow-auto font-mono text-sm',
+          isTerminal ? 'bg-black text-green-400' : 'bg-zinc-950 text-zinc-200',
+          expanded ? 'flex-1' : 'max-h-[400px]'
         )}
       >
         {isTerminal ? (
@@ -113,7 +137,7 @@ export function ComputerUse({
         ) : (
           <pre className="whitespace-pre">{content}</pre>
         )}
-        
+
         {running && isRunnable && (
           <div className="mt-4 border-t border-zinc-800 pt-4">
             <div className="flex items-center gap-2 text-yellow-400 animate-pulse">
@@ -129,5 +153,5 @@ export function ComputerUse({
         )}
       </div>
     </div>
-  )
+  );
 }

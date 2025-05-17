@@ -1,5 +1,11 @@
-import { sqliteTable, text, integer, blob, primaryKey } from 'drizzle-orm/sqlite-core'
-import { sql } from 'drizzle-orm'
+import {
+  sqliteTable,
+  text,
+  integer,
+  blob,
+  primaryKey,
+} from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const memory_threads = sqliteTable('memory_threads', {
   id: text('id').primaryKey(),
@@ -10,7 +16,7 @@ export const memory_threads = sqliteTable('memory_threads', {
   metadata: text('metadata'), // JSON string
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
-})
+});
 
 export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
@@ -23,7 +29,7 @@ export const messages = sqliteTable('messages', {
   embedding_id: text('embedding_id'),
   metadata: text('metadata'), // JSON string
   created_at: text('created_at').notNull(),
-})
+});
 
 export const embeddings = sqliteTable('embeddings', {
   id: text('id').primaryKey(),
@@ -31,17 +37,19 @@ export const embeddings = sqliteTable('embeddings', {
   model: text('model'),
   dimensions: integer('dimensions'),
   created_at: text('created_at').notNull(),
-})
+});
 
-export const agent_states = sqliteTable('agent_states', {
-  memory_thread_id: text('memory_thread_id').notNull(),
-  agent_id: text('agent_id').notNull(),
-  state_data: text('state_data').notNull(), // JSON string
-  created_at: text('created_at').notNull(),
-  updated_at: text('updated_at').notNull(),
-}, (table) => [
-  primaryKey({ columns: [table.memory_thread_id, table.agent_id] })
-])
+export const agent_states = sqliteTable(
+  'agent_states',
+  {
+    memory_thread_id: text('memory_thread_id').notNull(),
+    agent_id: text('agent_id').notNull(),
+    state_data: text('state_data').notNull(), // JSON string
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.memory_thread_id, table.agent_id] })]
+);
 
 // HNSW index for embeddings (run as raw SQL migration):
 // CREATE INDEX IF NOT EXISTS embeddings_hnsw ON embeddings USING HNSW (vector) WITH (dims = 384, m = 16, efConstruction = 200);
@@ -56,7 +64,7 @@ export const workflows = sqliteTable('workflows', {
   metadata: text('metadata'), // JSON string
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
-})
+});
 
 // Workflow steps table for storing workflow steps
 export const workflow_steps = sqliteTable('workflow_steps', {
@@ -71,14 +79,16 @@ export const workflow_steps = sqliteTable('workflow_steps', {
   metadata: text('metadata'), // JSON string
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
-})
+});
 
 export const gqlCache = sqliteTable('gql_cache', {
-  id: text('id').primaryKey(),           // key = query + variables JSON
+  id: text('id').primaryKey(), // key = query + variables JSON
   query: text('query').notNull(),
-  variables: text('variables'),          // JSON string
-  response: text('response').notNull(),  // JSON string
-  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  variables: text('variables'), // JSON string
+  response: text('response').notNull(), // JSON string
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Apps table (cross-backend compatible with Supabase)
@@ -113,7 +123,7 @@ export const integrations = sqliteTable('integrations', {
   user_id: text('user_id').notNull(),
   provider: text('provider').notNull(), // e.g. 'github', 'google', 'vercel', 'notion', 'neon'
   name: text('name'),
-  config: text('config'),        // Store JSON as string for LibSQL (API keys, etc.)
+  config: text('config'), // Store JSON as string for LibSQL (API keys, etc.)
   credentials: text('credentials'), // Store JSON as string for LibSQL (API keys, etc.)
   status: text('status').notNull(), // 'active', 'inactive', 'error'
   last_synced_at: text('last_synced_at'),

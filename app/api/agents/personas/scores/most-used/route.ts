@@ -14,17 +14,17 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limitParam = url.searchParams.get('limit');
     const limit = limitParam ? parseInt(limitParam, 10) : 5;
-    
+
     const mostUsedPersonas = await personaManager.getMostUsedPersonas(limit);
-    
+
     return NextResponse.json(
       mostUsedPersonas.map(({ persona, score }) => ({
         persona: {
           id: persona.id,
           name: persona.name,
-          description: persona.description
+          description: persona.description,
         },
-        score
+        score,
       }))
     );
   } catch (error) {

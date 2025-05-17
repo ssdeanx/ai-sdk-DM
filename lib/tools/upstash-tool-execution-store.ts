@@ -5,12 +5,12 @@ import { shouldUseUpstash } from '../memory/supabase';
 import { trace, span, event } from '../tracing';
 
 // --- Constants for Redis Keys ---
-const TOOL_EXECUTION_PREFIX = "tool:execution:";
-const TOOL_EXECUTIONS_INDEX = "tool:executions"; // Sorted set for all tool executions, scored by timestamp
-const TOOL_EXECUTIONS_BY_TOOL_PREFIX = "tool:executions:tool:"; // Sorted set of executions for a specific tool
-const TOOL_EXECUTIONS_BY_THREAD_PREFIX = "tool:executions:thread:"; // Sorted set of executions for a specific thread
-const TOOL_EXECUTIONS_BY_AGENT_PREFIX = "tool:executions:agent:"; // Sorted set of executions for a specific agent
-const TOOL_STATS_PREFIX = "tool:stats:"; // Hash of statistics for a specific tool
+const TOOL_EXECUTION_PREFIX = 'tool:execution:';
+const TOOL_EXECUTIONS_INDEX = 'tool:executions'; // Sorted set for all tool executions, scored by timestamp
+const TOOL_EXECUTIONS_BY_TOOL_PREFIX = 'tool:executions:tool:'; // Sorted set of executions for a specific tool
+const TOOL_EXECUTIONS_BY_THREAD_PREFIX = 'tool:executions:thread:'; // Sorted set of executions for a specific thread
+const TOOL_EXECUTIONS_BY_AGENT_PREFIX = 'tool:executions:agent:'; // Sorted set of executions for a specific agent
+const TOOL_STATS_PREFIX = 'tool:stats:'; // Hash of statistics for a specific tool
 
 // --- Zod Schemas ---
 
@@ -29,7 +29,7 @@ export const ToolExecutionDataSchema = z.object({
   thread_id: z.string().optional(),
   agent_id: z.string().optional(),
   created_at: z.string().datetime(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.any()).optional(),
 });
 
 /**
@@ -37,7 +37,7 @@ export const ToolExecutionDataSchema = z.object({
  */
 export const ToolExecutionInputSchema = ToolExecutionDataSchema.omit({
   id: true,
-  created_at: true
+  created_at: true,
 });
 
 /**
@@ -49,7 +49,7 @@ export const ToolStatsSchema = z.object({
   failed_executions: z.number().int().nonnegative().optional(),
   avg_execution_time: z.number().nonnegative().optional(),
   execution_time_count: z.number().int().nonnegative().optional(),
-  last_execution: z.string().datetime().optional()
+  last_execution: z.string().datetime().optional(),
 });
 
 // --- Types ---
@@ -59,9 +59,12 @@ export type ToolStats = z.infer<typeof ToolStatsSchema>;
 
 // --- Error Handling ---
 export class ToolExecutionStoreError extends Error {
-  constructor(message: string, public cause?: any) {
+  constructor(
+    message: string,
+    public cause?: any
+  ) {
     super(message);
-    this.name = "ToolExecutionStoreError";
+    this.name = 'ToolExecutionStoreError';
     Object.setPrototypeOf(this, ToolExecutionStoreError.prototype);
   }
 }
@@ -88,8 +91,8 @@ export async function traceToolExecution(
         thread_id: executionData.thread_id,
         agent_id: executionData.agent_id,
         status: executionData.status,
-        timestamp: executionData.created_at
-      }
+        timestamp: executionData.created_at,
+      },
     });
 
     const traceId = traceObj?.id;
@@ -103,8 +106,8 @@ export async function traceToolExecution(
         tool_id: executionData.tool_id,
         parameters: JSON.stringify(executionData.parameters),
         execution_time: executionData.execution_time,
-        span_kind: 'internal' // Use string instead of enum
-      }
+        span_kind: 'internal', // Use string instead of enum
+      },
     });
 
     // Log the result or error
@@ -114,15 +117,15 @@ export async function traceToolExecution(
         name: 'tool_execution_success',
         metadata: {
           result: JSON.stringify(executionData.result),
-          execution_time: executionData.execution_time
-        }
+          execution_time: executionData.execution_time,
+        },
       });
 
       // End the span with success
       executionSpan.end({
         success: true,
         result: JSON.stringify(executionData.result),
-        durationMs: executionData.execution_time
+        durationMs: executionData.execution_time,
       });
     } else if (executionData.status === 'error') {
       await event({
@@ -130,15 +133,15 @@ export async function traceToolExecution(
         name: 'tool_execution_error',
         metadata: {
           error_message: executionData.error_message,
-          execution_time: executionData.execution_time
-        }
+          execution_time: executionData.execution_time,
+        },
       });
 
       // End the span with error
       executionSpan.end({
         success: false,
         error: executionData.error_message,
-        durationMs: executionData.execution_time
+        durationMs: executionData.execution_time,
       });
     }
 
@@ -167,14 +170,19 @@ export async function logToolExecution(
 ): Promise<string> {
   // Check if Upstash is available
   if (!shouldUseUpstash()) {
-    throw new ToolExecutionStoreError('Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.');
+    throw new ToolExecutionStoreError(
+      'Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.'
+    );
   }
 
   // Validate input with Zod
   try {
     ToolExecutionInputSchema.parse(executionData);
   } catch (error) {
-    throw new ToolExecutionStoreError(`Invalid tool execution data: ${error instanceof Error ? error.message : String(error)}`, error);
+    throw new ToolExecutionStoreError(
+      `Invalid tool execution data: ${error instanceof Error ? error.message : String(error)}`,
+      error
+    );
   }
 
   const redis = getRedisClient();
@@ -186,14 +194,17 @@ export async function logToolExecution(
   const completeExecutionData: ToolExecutionData = {
     ...executionData,
     id: executionId,
-    created_at: now.toISOString()
+    created_at: now.toISOString(),
   };
 
   // Validate complete data with Zod
   try {
     ToolExecutionDataSchema.parse(completeExecutionData);
   } catch (error) {
-    throw new ToolExecutionStoreError(`Invalid complete tool execution data: ${error instanceof Error ? error.message : String(error)}`, error);
+    throw new ToolExecutionStoreError(
+      `Invalid complete tool execution data: ${error instanceof Error ? error.message : String(error)}`,
+      error
+    );
   }
 
   // Create trace if tracing is enabled
@@ -220,19 +231,31 @@ export async function logToolExecution(
     pipeline.set(`${TOOL_EXECUTION_PREFIX}${executionId}`, executionJson);
 
     // Add to global index with timestamp
-    pipeline.zadd(TOOL_EXECUTIONS_INDEX, { score: timestamp, member: executionId });
+    pipeline.zadd(TOOL_EXECUTIONS_INDEX, {
+      score: timestamp,
+      member: executionId,
+    });
 
     // Add to tool-specific index
-    pipeline.zadd(`${TOOL_EXECUTIONS_BY_TOOL_PREFIX}${executionData.tool_name}`, { score: timestamp, member: executionId });
+    pipeline.zadd(
+      `${TOOL_EXECUTIONS_BY_TOOL_PREFIX}${executionData.tool_name}`,
+      { score: timestamp, member: executionId }
+    );
 
     // Add to thread-specific index if thread_id is provided
     if (executionData.thread_id) {
-      pipeline.zadd(`${TOOL_EXECUTIONS_BY_THREAD_PREFIX}${executionData.thread_id}`, { score: timestamp, member: executionId });
+      pipeline.zadd(
+        `${TOOL_EXECUTIONS_BY_THREAD_PREFIX}${executionData.thread_id}`,
+        { score: timestamp, member: executionId }
+      );
     }
 
     // Add to agent-specific index if agent_id is provided
     if (executionData.agent_id) {
-      pipeline.zadd(`${TOOL_EXECUTIONS_BY_AGENT_PREFIX}${executionData.agent_id}`, { score: timestamp, member: executionId });
+      pipeline.zadd(
+        `${TOOL_EXECUTIONS_BY_AGENT_PREFIX}${executionData.agent_id}`,
+        { score: timestamp, member: executionId }
+      );
     }
 
     // Update tool statistics
@@ -254,36 +277,48 @@ export async function logToolExecution(
       const currentAvg = await redis.hget(statsKey, 'avg_execution_time');
       const currentCount = await redis.hget(statsKey, 'execution_time_count');
 
-      if (currentAvg !== null && currentCount !== null && typeof currentAvg === 'string' && typeof currentCount === 'string') {
+      if (
+        currentAvg !== null &&
+        currentCount !== null &&
+        typeof currentAvg === 'string' &&
+        typeof currentCount === 'string'
+      ) {
         const avg = parseFloat(currentAvg);
         const count = parseInt(currentCount, 10);
 
         // Calculate new average
-        const newAvg = (avg * count + executionData.execution_time) / (count + 1);
+        const newAvg =
+          (avg * count + executionData.execution_time) / (count + 1);
 
         pipeline.hset(statsKey, {
-          'avg_execution_time': newAvg.toString(),
-          'execution_time_count': (count + 1).toString()
+          avg_execution_time: newAvg.toString(),
+          execution_time_count: (count + 1).toString(),
         });
       } else {
         // First execution with time
         pipeline.hset(statsKey, {
-          'avg_execution_time': executionData.execution_time.toString(),
-          'execution_time_count': '1'
+          avg_execution_time: executionData.execution_time.toString(),
+          execution_time_count: '1',
         });
       }
     }
 
     // Update last execution timestamp
-    pipeline.hset(statsKey, { 'last_execution': now.toISOString() });
+    pipeline.hset(statsKey, { last_execution: now.toISOString() });
 
     // Execute pipeline
     await pipeline.exec();
 
     return executionId;
   } catch (error) {
-    console.error(`Error logging tool execution for ${executionData.tool_name}:`, error);
-    throw new ToolExecutionStoreError(`Failed to log tool execution for ${executionData.tool_name}`, error);
+    console.error(
+      `Error logging tool execution for ${executionData.tool_name}:`,
+      error
+    );
+    throw new ToolExecutionStoreError(
+      `Failed to log tool execution for ${executionData.tool_name}`,
+      error
+    );
   }
 }
 
@@ -305,7 +340,9 @@ export async function getToolExecution(
 ): Promise<ToolExecutionData | null> {
   // Check if Upstash is available
   if (!shouldUseUpstash()) {
-    throw new ToolExecutionStoreError('Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.');
+    throw new ToolExecutionStoreError(
+      'Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.'
+    );
   }
 
   // Validate executionId
@@ -316,7 +353,9 @@ export async function getToolExecution(
   const redis = getRedisClient();
 
   try {
-    const executionJson = await redis.get(`${TOOL_EXECUTION_PREFIX}${executionId}`);
+    const executionJson = await redis.get(
+      `${TOOL_EXECUTION_PREFIX}${executionId}`
+    );
 
     if (!executionJson) {
       return null;
@@ -327,7 +366,10 @@ export async function getToolExecution(
     try {
       executionData = JSON.parse(executionJson as string);
     } catch (parseError) {
-      throw new ToolExecutionStoreError(`Failed to parse execution data for ${executionId}`, parseError);
+      throw new ToolExecutionStoreError(
+        `Failed to parse execution data for ${executionId}`,
+        parseError
+      );
     }
 
     // Validate with Zod
@@ -344,8 +386,8 @@ export async function getToolExecution(
             execution_id: validatedData.id,
             tool_name: validatedData.tool_name,
             tool_id: validatedData.tool_id,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
 
         if (retrieveTraceId?.id) {
@@ -356,22 +398,28 @@ export async function getToolExecution(
               execution_id: validatedData.id,
               status: validatedData.status,
               has_result: !!validatedData.result,
-              has_error: !!validatedData.error_message
-            }
+              has_error: !!validatedData.error_message,
+            },
           });
         }
       }
 
       return validatedData;
     } catch (validationError) {
-      throw new ToolExecutionStoreError(`Invalid execution data format for ${executionId}`, validationError);
+      throw new ToolExecutionStoreError(
+        `Invalid execution data format for ${executionId}`,
+        validationError
+      );
     }
   } catch (error) {
     if (error instanceof ToolExecutionStoreError) {
       throw error;
     }
     console.error(`Error getting tool execution ${executionId}:`, error);
-    throw new ToolExecutionStoreError(`Failed to get tool execution ${executionId}`, error);
+    throw new ToolExecutionStoreError(
+      `Failed to get tool execution ${executionId}`,
+      error
+    );
   }
 }
 
@@ -397,7 +445,9 @@ export async function listToolExecutions(
 ): Promise<ToolExecutionData[]> {
   // Check if Upstash is available
   if (!shouldUseUpstash()) {
-    throw new ToolExecutionStoreError('Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.');
+    throw new ToolExecutionStoreError(
+      'Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.'
+    );
   }
 
   // Validate parameters
@@ -407,7 +457,12 @@ export async function listToolExecutions(
 
   // Validate limit and offset
   const validatedLimit = z.number().int().positive().default(10).parse(limit);
-  const validatedOffset = z.number().int().nonnegative().default(0).parse(offset);
+  const validatedOffset = z
+    .number()
+    .int()
+    .nonnegative()
+    .default(0)
+    .parse(offset);
 
   const redis = getRedisClient();
 
@@ -446,7 +501,9 @@ export async function listToolExecutions(
         const validated = ToolExecutionDataSchema.parse(parsed);
         validatedResults.push(validated);
       } catch (parseError) {
-        console.warn(`Skipping invalid tool execution data: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+        console.warn(
+          `Skipping invalid tool execution data: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+        );
         // Skip invalid entries but continue processing
       }
     }
@@ -454,7 +511,10 @@ export async function listToolExecutions(
     return validatedResults;
   } catch (error) {
     console.error(`Error listing tool executions for ${toolName}:`, error);
-    throw new ToolExecutionStoreError(`Failed to list tool executions for ${toolName}`, error);
+    throw new ToolExecutionStoreError(
+      `Failed to list tool executions for ${toolName}`,
+      error
+    );
   }
 }
 
@@ -467,7 +527,9 @@ export async function listToolExecutions(
 export async function getToolStats(toolName: string): Promise<ToolStats> {
   // Check if Upstash is available
   if (!shouldUseUpstash()) {
-    throw new ToolExecutionStoreError('Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.');
+    throw new ToolExecutionStoreError(
+      'Upstash is not available. Set USE_UPSTASH_ADAPTER=true to use this feature.'
+    );
   }
 
   // Validate parameters
@@ -486,7 +548,7 @@ export async function getToolStats(toolName: string): Promise<ToolStats> {
       return {
         total_executions: 0,
         successful_executions: 0,
-        failed_executions: 0
+        failed_executions: 0,
       };
     }
 
@@ -506,17 +568,23 @@ export async function getToolStats(toolName: string): Promise<ToolStats> {
     try {
       return ToolStatsSchema.parse(processedStats);
     } catch (validationError) {
-      console.warn(`Invalid tool stats format for ${toolName}: ${validationError instanceof Error ? validationError.message : String(validationError)}`);
+      console.warn(
+        `Invalid tool stats format for ${toolName}: ${validationError instanceof Error ? validationError.message : String(validationError)}`
+      );
 
       // Return default stats if validation fails
       return {
-        total_executions: processedStats.total_executions as number || 0,
-        successful_executions: processedStats.successful_executions as number || 0,
-        failed_executions: processedStats.failed_executions as number || 0
+        total_executions: (processedStats.total_executions as number) || 0,
+        successful_executions:
+          (processedStats.successful_executions as number) || 0,
+        failed_executions: (processedStats.failed_executions as number) || 0,
       };
     }
   } catch (error) {
     console.error(`Error getting tool stats for ${toolName}:`, error);
-    throw new ToolExecutionStoreError(`Failed to get tool stats for ${toolName}`, error);
+    throw new ToolExecutionStoreError(
+      `Failed to get tool stats for ${toolName}`,
+      error
+    );
   }
 }

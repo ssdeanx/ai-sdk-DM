@@ -15,7 +15,7 @@ export {
   RedisConfigSchema,
   VectorConfigSchema,
   EnvVarsSchema,
-  type IndexConfig
+  type IndexConfig,
 } from './upstashClients';
 
 // From redis-store.ts
@@ -77,7 +77,7 @@ export {
   getRedisDashboardConfigById,
   updateRedisDashboardConfig,
   deleteRedisDashboardConfig,
-  listRedisDashboardConfigs
+  listRedisDashboardConfigs,
 } from './redis-store';
 
 // From vector-store.ts
@@ -92,7 +92,7 @@ export {
   type EmbeddingMetadata,
   type EmbeddingVector,
   type SearchEmbeddingsOptions,
-  type EmbeddingSearchResult
+  type EmbeddingSearchResult,
 } from './vector-store';
 
 // From upstash-logger.ts
@@ -108,7 +108,7 @@ export {
   LogLevelSchema,
   LogEntrySchema,
   type LogLevel,
-  type LogEntry
+  type LogEntry,
 } from './upstash-logger';
 
 // From agent-state-store.ts
@@ -122,14 +122,11 @@ export {
   getAllAgentStates,
   AgentStateStoreError,
   AgentStateSchema,
-  StoredAgentStateSchema
+  StoredAgentStateSchema,
 } from './agent-state-store';
 
 // From memory-processor.ts
-export {
-  MemoryProcessor,
-  MemoryProcessorError
-} from './memory-processor';
+export { MemoryProcessor, MemoryProcessorError } from './memory-processor';
 
 // From upstashTypes.ts
 export {
@@ -149,7 +146,7 @@ export {
   type RedisType,
   type IndexType,
   type VectorType,
-  type ZodType
+  type ZodType,
 } from './upstashTypes';
 
 // From stream-processor.ts
@@ -159,7 +156,7 @@ export {
   StreamProcessorError,
   type StreamProcessorOptions,
   type RedisStreamOptions,
-  type VectorStreamOptions
+  type VectorStreamOptions,
 } from './stream-processor';
 
 // From supabase-adapter.ts
@@ -174,7 +171,7 @@ export {
   type TableRow,
   type FilterOptions,
   type OrderOptions,
-  type QueryOptions
+  type QueryOptions,
 } from './supabase-adapter';
 
 // From supabase-adapter-factory.ts
@@ -182,5 +179,5 @@ export {
   createSupabaseClient,
   type SupabaseClient,
   type TableClient,
-  type VectorClient
+  type VectorClient,
 } from './supabase-adapter-factory';

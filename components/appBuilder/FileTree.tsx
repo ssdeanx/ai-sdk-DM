@@ -1,6 +1,15 @@
 'use client';
 import React, { useEffect, useState, useRef, useCallback, use } from 'react';
-import { ChevronDown, ChevronRight, FileText, Folder, Plus, Trash2, Edit2, RefreshCw } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Folder,
+  Plus,
+  Trash2,
+  Edit2,
+  RefreshCw,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -20,7 +29,9 @@ interface FileTreeProps {
 // Helper to fetch file tree from API
 async function fetchFileTree(path = ''): Promise<FileNode[]> {
   try {
-    const res = await fetch(`/api/ai-sdk/files?path=${encodeURIComponent(path)}`);
+    const res = await fetch(
+      `/api/ai-sdk/files?path=${encodeURIComponent(path)}`
+    );
     if (!res.ok) throw new Error('Failed to fetch file tree');
     const data = await res.json();
     // API returns { files: [...] }
@@ -77,7 +88,10 @@ const FileTreeNode: React.FC<{
     const currentRef = nodeRef.current;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && renaming) {
-        renameFileOrFolder(node.path, `${node.path.substring(0, node.path.lastIndexOf('/'))}/${newName}`).then(() => {
+        renameFileOrFolder(
+          node.path,
+          `${node.path.substring(0, node.path.lastIndexOf('/'))}/${newName}`
+        ).then(() => {
           setRenaming(false);
           if (onRefresh) onRefresh();
         });
@@ -116,31 +130,40 @@ const FileTreeNode: React.FC<{
           if (node.isDir) setExpanded((e) => !e);
           else if (onFileSelect) onFileSelect(node);
         }}
-        onContextMenu={e => {
+        onContextMenu={(e) => {
           e.preventDefault();
           setShowMenu(true);
         }}
       >
         {node.isDir ? (
-          expanded ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />
+          expanded ? (
+            <ChevronDown className="w-4 h-4 mr-1" />
+          ) : (
+            <ChevronRight className="w-4 h-4 mr-1" />
+          )
         ) : (
           <FileText className="w-4 h-4 mr-1 opacity-60" />
         )}
         {node.isDir ? <Folder className="w-4 h-4 mr-1 text-blue-500" /> : null}
         {renaming ? (
           <>
-            <label className="sr-only" htmlFor={`rename-input-${node.path}`}>Rename file or folder</label>
+            <label className="sr-only" htmlFor={`rename-input-${node.path}`}>
+              Rename file or folder
+            </label>
             <input
               id={`rename-input-${node.path}`}
               className="bg-transparent border-b border-border text-xs font-mono px-1 w-24 outline-none"
               value={newName}
               autoFocus
               placeholder="Rename..."
-              onChange={e => setNewName(e.target.value)}
+              onChange={(e) => setNewName(e.target.value)}
               onBlur={() => setRenaming(false)}
-              onKeyDown={e => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  renameFileOrFolder(node.path, `${node.path.substring(0, node.path.lastIndexOf('/'))}/${newName}`).then(() => {
+                  renameFileOrFolder(
+                    node.path,
+                    `${node.path.substring(0, node.path.lastIndexOf('/'))}/${newName}`
+                  ).then(() => {
                     setRenaming(false);
                     if (onRefresh) onRefresh();
                   });
@@ -156,18 +179,98 @@ const FileTreeNode: React.FC<{
           <span className={node.isDir ? 'font-semibold' : ''}>{node.name}</span>
         )}
         <span className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="icon-sm" onClick={e => { e.stopPropagation(); setRenaming(true); }}><Edit2 className="w-3 h-3" /></Button>
-          <Button variant="ghost" size="icon-sm" onClick={e => { e.stopPropagation(); setCreating('file'); }}><Plus className="w-3 h-3" /></Button>
-          {node.isDir && <Button variant="ghost" size="icon-sm" onClick={e => { e.stopPropagation(); setCreating('folder'); }}><Folder className="w-3 h-3" /></Button>}
-          <Button variant="ghost" size="icon-sm" onClick={e => { e.stopPropagation(); deleteFileOrFolder(node.path).then(() => { if (onRefresh) onRefresh(); }); }}><Trash2 className="w-3 h-3 text-red-500" /></Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRenaming(true);
+            }}
+          >
+            <Edit2 className="w-3 h-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCreating('file');
+            }}
+          >
+            <Plus className="w-3 h-3" />
+          </Button>
+          {node.isDir && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCreating('folder');
+              }}
+            >
+              <Folder className="w-3 h-3" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteFileOrFolder(node.path).then(() => {
+                if (onRefresh) onRefresh();
+              });
+            }}
+          >
+            <Trash2 className="w-3 h-3 text-red-500" />
+          </Button>
         </span>
       </div>
       {showMenu && (
         <div className="absolute z-10 bg-popover border border-border rounded shadow p-1 mt-1 right-0">
-          <Button variant="ghost" size="sm" onClick={() => { setRenaming(true); setShowMenu(false); }}>Rename</Button>
-          <Button variant="ghost" size="sm" onClick={() => { setCreating('file'); setShowMenu(false); }}>New File</Button>
-          {node.isDir && <Button variant="ghost" size="sm" onClick={() => { setCreating('folder'); setShowMenu(false); }}>New Folder</Button>}
-          <Button variant="ghost" size="sm" onClick={() => { deleteFileOrFolder(node.path).then(() => { if (onRefresh) onRefresh(); }); setShowMenu(false); }}>Delete</Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setRenaming(true);
+              setShowMenu(false);
+            }}
+          >
+            Rename
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setCreating('file');
+              setShowMenu(false);
+            }}
+          >
+            New File
+          </Button>
+          {node.isDir && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCreating('folder');
+                setShowMenu(false);
+              }}
+            >
+              New Folder
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              deleteFileOrFolder(node.path).then(() => {
+                if (onRefresh) onRefresh();
+              });
+              setShowMenu(false);
+            }}
+          >
+            Delete
+          </Button>
         </div>
       )}
       {creating && (
@@ -177,11 +280,14 @@ const FileTreeNode: React.FC<{
             value={newChildName}
             autoFocus
             placeholder={creating === 'file' ? 'New file...' : 'New folder...'}
-            onChange={e => setNewChildName(e.target.value)}
+            onChange={(e) => setNewChildName(e.target.value)}
             onBlur={() => setCreating(null)}
-            onKeyDown={e => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                createFileOrFolder(`${node.path}/${newChildName}`, creating === 'folder').then(() => {
+                createFileOrFolder(
+                  `${node.path}/${newChildName}`,
+                  creating === 'folder'
+                ).then(() => {
                   setCreating(null);
                   setNewChildName('');
                   if (onRefresh) onRefresh();
@@ -195,26 +301,39 @@ const FileTreeNode: React.FC<{
           />
         </div>
       )}
-      {hasChildren && expanded && node.children && node.children.map(child => (
-        <FileTreeNode key={child.path} node={child} level={level + 1} onFileSelect={onFileSelect} onRefresh={onRefresh} />
-      ))}
+      {hasChildren &&
+        expanded &&
+        node.children &&
+        node.children.map((child) => (
+          <FileTreeNode
+            key={child.path}
+            node={child}
+            level={level + 1}
+            onFileSelect={onFileSelect}
+            onRefresh={onRefresh}
+          />
+        ))}
     </div>
   );
 };
 
-export const FileTree: React.FC<FileTreeProps> = ({ rootPath = '', onFileSelect, className }) => {
+export const FileTree: React.FC<FileTreeProps> = ({
+  rootPath = '',
+  onFileSelect,
+  className,
+}) => {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
     setLoading(true);
     fetchFileTree(rootPath)
       .then(setTree)
-      .catch(e => setError(e.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [rootPath, refreshKey]);
 
@@ -222,13 +341,23 @@ export const FileTree: React.FC<FileTreeProps> = ({ rootPath = '', onFileSelect,
     <div className={cn('overflow-auto h-full', className)}>
       <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted">
         <span className="font-bold text-xs">Files</span>
-        <Button variant="ghost" size="icon-sm" onClick={refresh}><RefreshCw className="w-4 h-4" /></Button>
+        <Button variant="ghost" size="icon-sm" onClick={refresh}>
+          <RefreshCw className="w-4 h-4" />
+        </Button>
       </div>
-      {loading && <div className="text-xs text-muted-foreground p-2">Loading...</div>}
+      {loading && (
+        <div className="text-xs text-muted-foreground p-2">Loading...</div>
+      )}
       {error && <div className="text-xs text-red-500 p-2">{error}</div>}
       <div className="py-1">
-        {tree.map(node => (
-          <FileTreeNode key={node.path} node={node} level={0} onFileSelect={onFileSelect} onRefresh={refresh} />
+        {tree.map((node) => (
+          <FileTreeNode
+            key={node.path}
+            node={node}
+            level={0}
+            onFileSelect={onFileSelect}
+            onRefresh={refresh}
+          />
         ))}
       </div>
     </div>

@@ -1,20 +1,24 @@
-import { NextResponse } from "next/server";
-import { getLibSQLClient } from "@/lib/memory/db";
-import { handleApiError } from "@/lib/api-error-handler";
-import { getAllBuiltInTools, loadCustomTools, toolCategories } from "@/lib/tools";
-import { agenticTools } from "@/lib/tools/agentic";
-import { getAllAISDKTools } from "@/lib/ai-sdk-integration";
-import { createTrace } from "@/lib/langfuse-integration";
-import { getMemoryProvider } from "@/lib/memory/factory";
-import { z } from "zod";
+import { NextResponse } from 'next/server';
+import { getLibSQLClient } from '@/lib/memory/db';
+import { handleApiError } from '@/lib/api-error-handler';
+import {
+  getAllBuiltInTools,
+  loadCustomTools,
+  toolCategories,
+} from '@/lib/tools';
+import { agenticTools } from '@/lib/tools/agentic';
+import { getAllAISDKTools } from '@/lib/ai-sdk-integration';
+import { createTrace } from '@/lib/langfuse-integration';
+import { getMemoryProvider } from '@/lib/memory/factory';
+import { z } from 'zod';
 
 // Define schemas for validation
 const ToolQuerySchema = z.object({
   category: z.string().optional(),
-  search: z.string().optional().default(""),
-  builtIn: z.enum(["true", "false"]).optional().default("true"),
-  custom: z.enum(["true", "false"]).optional().default("true"),
-  agentic: z.enum(["true", "false"]).optional().default("true")
+  search: z.string().optional().default(''),
+  builtIn: z.enum(['true', 'false']).optional().default('true'),
+  custom: z.enum(['true', 'false']).optional().default('true'),
+  agentic: z.enum(['true', 'false']).optional().default('true'),
 });
 
 /**
@@ -28,66 +32,85 @@ export async function GET(request: Request) {
 
     // Parse and validate query parameters
     const queryResult = ToolQuerySchema.safeParse({
-      category: url.searchParams.get("category"),
-      search: url.searchParams.get("search") || "",
-      builtIn: url.searchParams.get("builtIn") || "true",
-      custom: url.searchParams.get("custom") || "true",
-      agentic: url.searchParams.get("agentic") || "true"
+      category: url.searchParams.get('category'),
+      search: url.searchParams.get('search') || '',
+      builtIn: url.searchParams.get('builtIn') || 'true',
+      custom: url.searchParams.get('custom') || 'true',
+      agentic: url.searchParams.get('agentic') || 'true',
     });
 
     if (!queryResult.success) {
       return NextResponse.json(
-        { error: "Invalid query parameters", details: queryResult.error.format() },
+        {
+          error: 'Invalid query parameters',
+          details: queryResult.error.format(),
+        },
         { status: 400 }
       );
     }
 
     const { category, search } = queryResult.data;
-    const includeBuiltIn = queryResult.data.builtIn !== "false";
-    const includeCustom = queryResult.data.custom !== "false";
-    const includeAgentic = queryResult.data.agentic !== "false";
+    const includeBuiltIn = queryResult.data.builtIn !== 'false';
+    const includeCustom = queryResult.data.custom !== 'false';
+    const includeAgentic = queryResult.data.agentic !== 'false';
 
     // Get all tools using the AI SDK integration module
     const allTools = await getAllAISDKTools({
       includeBuiltIn,
       includeCustom,
-      includeAgentic
+      includeAgentic,
     });
 
     // Get individual tool collections for categorization
     const builtInTools = includeBuiltIn ? getAllBuiltInTools() : {};
 
     // Get custom tools - try Upstash first if enabled
-    let customTools: Record<string, { description: string; parameters: unknown }> = {};
+    let customTools: Record<
+      string,
+      { description: string; parameters: unknown }
+    > = {};
     const provider = getMemoryProvider();
 
     if (includeCustom) {
       if (provider === 'upstash') {
         try {
           // Use a more specific type for Upstash tools table
-          type UpstashToolRow = { name: string; description: string; parameters_schema: string; category?: string };
-          const rawTools: Array<Record<string, unknown>> = await (await import("@/lib/memory/upstash/supabase-adapter")).getData('tools', {});
+          type UpstashToolRow = {
+            name: string;
+            description: string;
+            parameters_schema: string;
+            category?: string;
+          };
+          const rawTools: Array<Record<string, unknown>> = await (
+            await import('@/lib/memory/upstash/supabase-adapter')
+          ).getData('tools', {});
           const customToolsData: UpstashToolRow[] = rawTools.filter(
-            (t): t is UpstashToolRow => typeof t.name === 'string' && typeof t.description === 'string' && typeof t.parameters_schema === 'string'
+            (t): t is UpstashToolRow =>
+              typeof t.name === 'string' &&
+              typeof t.description === 'string' &&
+              typeof t.parameters_schema === 'string'
           );
-          customTools = customToolsData.reduce((acc, tool) => {
-            let parametersSchema: unknown = {};
-            try {
-              parametersSchema = JSON.parse(tool.parameters_schema);
-            } catch {}
-            acc[tool.name] = {
-              description: tool.description || '',
-              parameters: parametersSchema
-            };
-            return acc;
-          }, {} as Record<string, { description: string; parameters: unknown }>);
+          customTools = customToolsData.reduce(
+            (acc, tool) => {
+              let parametersSchema: unknown = {};
+              try {
+                parametersSchema = JSON.parse(tool.parameters_schema);
+              } catch {}
+              acc[tool.name] = {
+                description: tool.description || '',
+                parameters: parametersSchema,
+              };
+              return acc;
+            },
+            {} as Record<string, { description: string; parameters: unknown }>
+          );
         } catch {
           // fallback: normalize loadCustomTools result
           const loaded = await loadCustomTools();
           for (const [name, tool] of Object.entries(loaded)) {
             customTools[name] = {
               description: tool.description || '',
-              parameters: tool.parameters || {}
+              parameters: tool.parameters || {},
             };
           }
         }
@@ -97,7 +120,7 @@ export async function GET(request: Request) {
         for (const [name, tool] of Object.entries(loaded)) {
           customTools[name] = {
             description: tool.description || '',
-            parameters: tool.parameters || {}
+            parameters: tool.parameters || {},
           };
         }
       }
@@ -107,14 +130,14 @@ export async function GET(request: Request) {
 
     // Helper to get tool category
     function getToolCategory(name: string): string {
-      if (name in agTools) return "agentic";
-      if (name in customTools) return "custom";
+      if (name in agTools) return 'agentic';
+      if (name in customTools) return 'custom';
       for (const cat of toolCategories) {
         if (cat.id && name.toLowerCase().startsWith(cat.id)) {
           return cat.id;
         }
       }
-      return "other";
+      return 'other';
     }
 
     // Format tools for response
@@ -126,17 +149,20 @@ export async function GET(request: Request) {
         parameters: (tool as { parameters?: unknown }).parameters || {},
         isBuiltIn: name in builtInTools,
         isCustom: name in customTools,
-        isAgentic: name in agTools
+        isAgentic: name in agTools,
       }))
-      .filter(tool => {
+      .filter((tool) => {
         // Apply category filter
         if (category && tool.category !== category) {
           return false;
         }
 
         // Apply search filter
-        if (search && !tool.name.toLowerCase().includes(search.toLowerCase()) &&
-            !(tool.description || "").toLowerCase().includes(search.toLowerCase())) {
+        if (
+          search &&
+          !tool.name.toLowerCase().includes(search.toLowerCase()) &&
+          !(tool.description || '').toLowerCase().includes(search.toLowerCase())
+        ) {
           return false;
         }
 
@@ -151,11 +177,11 @@ export async function GET(request: Request) {
 
 // Define schemas for validation
 const CreateToolSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
-  description: z.string().min(1, { message: "Description is required" }),
+  name: z.string().min(1, { message: 'Name is required' }),
+  description: z.string().min(1, { message: 'Description is required' }),
   parametersSchema: z.union([z.string(), z.record(z.any())]),
   implementation: z.string().optional(),
-  category: z.string().default("custom")
+  category: z.string().default('custom'),
 });
 
 /**
@@ -171,21 +197,29 @@ export async function POST(request: Request) {
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Invalid request body", details: validationResult.error.format() },
+        {
+          error: 'Invalid request body',
+          details: validationResult.error.format(),
+        },
         { status: 400 }
       );
     }
 
-    const { name, description, parametersSchema, implementation, category } = validationResult.data;
+    const { name, description, parametersSchema, implementation, category } =
+      validationResult.data;
 
     // Validate parameters schema is valid JSON
     let parsedSchema;
     try {
-      parsedSchema = typeof parametersSchema === 'string'
-        ? JSON.parse(parametersSchema)
-        : parametersSchema;
+      parsedSchema =
+        typeof parametersSchema === 'string'
+          ? JSON.parse(parametersSchema)
+          : parametersSchema;
     } catch {
-      return NextResponse.json({ error: "Parameters schema must be valid JSON" }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Parameters schema must be valid JSON' },
+        { status: 400 }
+      );
     }
 
     // Determine which provider to use
@@ -197,12 +231,17 @@ export async function POST(request: Request) {
     if (provider === 'upstash') {
       try {
         // Check if tool with same name already exists
-        const existingTools = await (await import("@/lib/memory/upstash/supabase-adapter")).getData('tools', {
-          filters: [{ field: 'name', operator: 'eq', value: name }]
+        const existingTools = await (
+          await import('@/lib/memory/upstash/supabase-adapter')
+        ).getData('tools', {
+          filters: [{ field: 'name', operator: 'eq', value: name }],
         });
 
         if (existingTools.length > 0) {
-          return NextResponse.json({ error: "A tool with this name already exists" }, { status: 409 });
+          return NextResponse.json(
+            { error: 'A tool with this name already exists' },
+            { status: 409 }
+          );
         }
 
         // Create new tool
@@ -212,20 +251,22 @@ export async function POST(request: Request) {
           parameters_schema: JSON.stringify(parsedSchema),
           category,
           created_at: now,
-          updated_at: now
+          updated_at: now,
         };
 
-        const newTool = await (await import("@/lib/memory/upstash/supabase-adapter")).createItem('tools', toolData);
+        const newTool = await (
+          await import('@/lib/memory/upstash/supabase-adapter')
+        ).createItem('tools', toolData);
         toolId = newTool.id;
 
         // If implementation is provided, save it to the apps table
         if (implementation) {
-          await(
-            await import("@/lib/memory/upstash/supabase-adapter")
-          ).createItem<"apps">("apps", {
+          await (
+            await import('@/lib/memory/upstash/supabase-adapter')
+          ).createItem<'apps'>('apps', {
             name, // Assuming tool name can serve as app name for this context
             description: `Implementation for tool: ${name}`, // Optional: add a description
-            type: "tool",
+            type: 'tool',
             code: implementation,
             // parameters_schema and metadata can be omitted if they have defaults or are nullable
             created_at: now,
@@ -235,14 +276,14 @@ export async function POST(request: Request) {
 
         // Create trace for tool creation
         await createTrace({
-          name: "tool_created",
+          name: 'tool_created',
           metadata: {
             toolId,
             name,
             category,
             hasImplementation: !!implementation,
-            provider: 'upstash'
-          }
+            provider: 'upstash',
+          },
         });
 
         return NextResponse.json({
@@ -252,7 +293,7 @@ export async function POST(request: Request) {
           parametersSchema: parsedSchema,
           category,
           createdAt: now,
-          updatedAt: now
+          updatedAt: now,
         });
       } catch {
         useLibSQL = true;
@@ -268,11 +309,14 @@ export async function POST(request: Request) {
       // Check if tool with same name already exists
       const existingToolResult = await db.execute({
         sql: `SELECT id FROM tools WHERE name = ?`,
-        args: [name]
+        args: [name],
       });
 
       if (existingToolResult.rows.length > 0) {
-        return NextResponse.json({ error: "A tool with this name already exists" }, { status: 409 });
+        return NextResponse.json(
+          { error: 'A tool with this name already exists' },
+          { status: 409 }
+        );
       }
 
       // Insert new tool
@@ -288,8 +332,8 @@ export async function POST(request: Request) {
           JSON.stringify(parsedSchema),
           category,
           now,
-          now
-        ]
+          now,
+        ],
       });
 
       toolId = result.rows[0].id;
@@ -301,20 +345,20 @@ export async function POST(request: Request) {
             INSERT INTO apps (name, type, code, created_at, updated_at)
             VALUES (?, 'tool', ?, ?, ?)
           `,
-          args: [name, implementation, now, now]
+          args: [name, implementation, now, now],
         });
       }
 
       // Create trace for tool creation
       await createTrace({
-        name: "tool_created",
+        name: 'tool_created',
         metadata: {
           toolId,
           name,
           category,
           hasImplementation: !!implementation,
-          provider: 'libsql'
-        }
+          provider: 'libsql',
+        },
       });
 
       return NextResponse.json({
@@ -324,7 +368,7 @@ export async function POST(request: Request) {
         parametersSchema: parsedSchema,
         category,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       });
     }
   } catch (error) {

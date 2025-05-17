@@ -27,31 +27,37 @@ export const StreamProcessorOptionsSchema = z.object({
   errorHandler: z.function().optional(),
 });
 
-export type StreamProcessorOptions = z.infer<typeof StreamProcessorOptionsSchema>;
+export type StreamProcessorOptions = z.infer<
+  typeof StreamProcessorOptionsSchema
+>;
 
 /**
  * Schema for Redis stream options
  */
-export const RedisStreamOptionsSchema = z.object({
-  key: z.string().min(1),
-  scanType: z.enum(['zscan', 'sscan', 'hscan']).default('zscan'),
-  count: z.number().int().positive().default(10),
-  pattern: z.string().optional(),
-  parseJson: z.boolean().default(true),
-}).merge(StreamProcessorOptionsSchema.partial());
+export const RedisStreamOptionsSchema = z
+  .object({
+    key: z.string().min(1),
+    scanType: z.enum(['zscan', 'sscan', 'hscan']).default('zscan'),
+    count: z.number().int().positive().default(10),
+    pattern: z.string().optional(),
+    parseJson: z.boolean().default(true),
+  })
+  .merge(StreamProcessorOptionsSchema.partial());
 
 export type RedisStreamOptions = z.infer<typeof RedisStreamOptionsSchema>;
 
 /**
  * Schema for Vector stream options
  */
-export const VectorStreamOptionsSchema = z.object({
-  query: z.array(z.number()), // Only allow number arrays for vector queries
-  topK: z.number().int().positive().default(10),
-  filter: z.record(z.unknown()).optional(),
-  includeMetadata: z.boolean().default(true),
-  includeVectors: z.boolean().default(false), // Changed from includeValues to includeVectors
-}).merge(StreamProcessorOptionsSchema.partial());
+export const VectorStreamOptionsSchema = z
+  .object({
+    query: z.array(z.number()), // Only allow number arrays for vector queries
+    topK: z.number().int().positive().default(10),
+    filter: z.record(z.unknown()).optional(),
+    includeMetadata: z.boolean().default(true),
+    includeVectors: z.boolean().default(false), // Changed from includeValues to includeVectors
+  })
+  .merge(StreamProcessorOptionsSchema.partial());
 
 export type VectorStreamOptions = z.infer<typeof VectorStreamOptionsSchema>;
 
@@ -61,9 +67,12 @@ export type VectorStreamOptions = z.infer<typeof VectorStreamOptionsSchema>;
  * Error class for stream processor operations
  */
 export class StreamProcessorError extends Error {
-  constructor(message: string, public cause?: unknown) {
+  constructor(
+    message: string,
+    public cause?: unknown
+  ) {
     super(message);
-    this.name = "StreamProcessorError";
+    this.name = 'StreamProcessorError';
     Object.setPrototypeOf(this, StreamProcessorError.prototype);
   }
 }
@@ -77,7 +86,10 @@ export class StreamProcessor {
     try {
       return getVectorClient();
     } catch {
-      upstashLogger.warn('stream-processor', 'Vector client not available, vector operations will be disabled');
+      upstashLogger.warn(
+        'stream-processor',
+        'Vector client not available, vector operations will be disabled'
+      );
       return null;
     }
   })();
@@ -105,7 +117,7 @@ export class StreamProcessor {
       retryDelay = 1000,
       filter,
       transform,
-      errorHandler
+      errorHandler,
     } = validatedOptions;
 
     const redis = this.redis;
@@ -116,7 +128,11 @@ export class StreamProcessor {
         try {
           const cursor = this.cursor || '0';
           let result: [string, (string | number)[]] | null = null;
-          let scanMethod: (key: string, cursor: string | number, options: { count: number; match?: string }) => Promise<[string, (string | number)[]]>;
+          let scanMethod: (
+            key: string,
+            cursor: string | number,
+            options: { count: number; match?: string }
+          ) => Promise<[string, (string | number)[]]>;
 
           switch (scanType) {
             case 'zscan':
@@ -139,7 +155,7 @@ export class StreamProcessor {
             try {
               result = await scanMethod(key, cursor, {
                 count: count || batchSize,
-                ...(pattern ? { match: pattern } : {})
+                ...(pattern ? { match: pattern } : {}),
               });
               success = true;
             } catch {
@@ -147,7 +163,7 @@ export class StreamProcessor {
               if (retries > maxRetries) {
                 throw new StreamProcessorError('Max retries exceeded');
               }
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              await new Promise((resolve) => setTimeout(resolve, retryDelay));
             }
           }
 
@@ -166,9 +182,10 @@ export class StreamProcessor {
           let processedItems: unknown[] = [];
 
           if (scanType === 'zscan' || scanType === 'sscan') {
-            processedItems = scanType === 'zscan'
-              ? items.filter((_, index) => index % 2 === 0)
-              : items;
+            processedItems =
+              scanType === 'zscan'
+                ? items.filter((_, index) => index % 2 === 0)
+                : items;
           } else {
             const fields: string[] = [];
             const values: unknown[] = [];
@@ -180,7 +197,7 @@ export class StreamProcessor {
 
             processedItems = fields.map((field, index) => ({
               field,
-              value: values[index]
+              value: values[index],
             }));
           }
 
@@ -188,9 +205,10 @@ export class StreamProcessor {
             const pipeline = redis.pipeline();
 
             for (const item of processedItems) {
-              const itemKey = typeof item === 'object' && item !== null && 'field' in item
-                ? `${key}:${item.field}`
-                : `${key}:${item}`;
+              const itemKey =
+                typeof item === 'object' && item !== null && 'field' in item
+                  ? `${key}:${item.field}`
+                  : `${key}:${item}`;
 
               pipeline.get(itemKey);
             }
@@ -200,17 +218,25 @@ export class StreamProcessor {
             for (const json of jsonResults) {
               if (json) {
                 try {
-                  const parsedItem = parseJson ? JSON.parse(json as string) : json;
+                  const parsedItem = parseJson
+                    ? JSON.parse(json as string)
+                    : json;
 
                   if (!filter || filter(parsedItem)) {
-                    const itemToEmit = transform ? transform(parsedItem) : parsedItem;
+                    const itemToEmit = transform
+                      ? transform(parsedItem)
+                      : parsedItem;
                     this.push(itemToEmit);
                   }
                 } catch {
                   if (errorHandler) {
                     errorHandler(undefined, json);
                   } else {
-                    upstashLogger.error('stream-processor', 'Error processing item in Redis stream', { item: json });
+                    upstashLogger.error(
+                      'stream-processor',
+                      'Error processing item in Redis stream',
+                      { item: json }
+                    );
                   }
                 }
               }
@@ -234,13 +260,20 @@ export class StreamProcessor {
             try {
               errorHandler(error);
             } catch (handlerError) {
-              this.destroy(new StreamProcessorError('Error in stream error handler', handlerError));
+              this.destroy(
+                new StreamProcessorError(
+                  'Error in stream error handler',
+                  handlerError
+                )
+              );
             }
           } else {
-            this.destroy(new StreamProcessorError('Error streaming from Redis', error));
+            this.destroy(
+              new StreamProcessorError('Error streaming from Redis', error)
+            );
           }
         }
-      }
+      },
     });
   }
 
@@ -255,7 +288,7 @@ export class StreamProcessor {
       batchSize = 10,
       filter,
       transform,
-      errorHandler
+      errorHandler,
     } = validatedOptions;
 
     const vector = this.vector;
@@ -265,13 +298,19 @@ export class StreamProcessor {
         objectMode: true,
         read() {
           this.destroy(new StreamProcessorError('Vector client not available'));
-        }
+        },
       });
     }
 
     return new Readable({
       objectMode: true,
-      async read(this: Readable & { searchStarted?: boolean; results?: unknown[]; currentIndex?: number }) {
+      async read(
+        this: Readable & {
+          searchStarted?: boolean;
+          results?: unknown[];
+          currentIndex?: number;
+        }
+      ) {
         try {
           if (!this.searchStarted) {
             this.searchStarted = true;
@@ -281,7 +320,7 @@ export class StreamProcessor {
               topK,
               ...(vectorFilter ? { filter: JSON.stringify(vectorFilter) } : {}),
               includeMetadata,
-              includeVectors
+              includeVectors,
             });
 
             this.results = results;
@@ -291,7 +330,11 @@ export class StreamProcessor {
           const results = this.results;
           const currentIndex = this.currentIndex;
 
-          if (!results || currentIndex === undefined || currentIndex >= results.length) {
+          if (
+            !results ||
+            currentIndex === undefined ||
+            currentIndex >= results.length
+          ) {
             this.push(null);
             return;
           }
@@ -312,18 +355,29 @@ export class StreamProcessor {
             try {
               errorHandler(undefined);
             } catch (handlerError) {
-              this.destroy(new StreamProcessorError('Error in stream error handler', handlerError));
+              this.destroy(
+                new StreamProcessorError(
+                  'Error in stream error handler',
+                  handlerError
+                )
+              );
             }
           } else {
-            this.destroy(new StreamProcessorError('Error streaming from Vector'));
+            this.destroy(
+              new StreamProcessorError('Error streaming from Vector')
+            );
           }
         }
-      }
+      },
     });
   }
 
   public createTransformStream<TInput = unknown>(
-    transformer: (item: TInput, encoding: string, callback: TransformCallback) => void,
+    transformer: (
+      item: TInput,
+      encoding: string,
+      callback: TransformCallback
+    ) => void,
     errorHandler?: (error: unknown) => void
   ): Transform {
     return new Transform({
@@ -337,13 +391,20 @@ export class StreamProcessor {
               errorHandler(error);
               callback(null);
             } catch (handlerError) {
-              callback(new StreamProcessorError('Error in transform error handler', handlerError));
+              callback(
+                new StreamProcessorError(
+                  'Error in transform error handler',
+                  handlerError
+                )
+              );
             }
           } else {
-            callback(new StreamProcessorError('Error in transform stream', error));
+            callback(
+              new StreamProcessorError('Error in transform stream', error)
+            );
           }
         }
-      }
+      },
     });
   }
 
@@ -353,7 +414,7 @@ export class StreamProcessor {
     errorHandler?: (error: unknown, item?: T) => Promise<void>
   ): Promise<void> {
     const processorStream = this.createTransformStream<T>(
-      async function(item, _encoding, callback) {
+      async function (item, _encoding, callback) {
         try {
           await handler(item);
           callback(null, item);
@@ -363,17 +424,27 @@ export class StreamProcessor {
               await errorHandler(error, item);
               callback(null);
             } catch (handlerError) {
-              callback(new StreamProcessorError(`Error handling error in stream processor`, handlerError));
+              callback(
+                new StreamProcessorError(
+                  `Error handling error in stream processor`,
+                  handlerError
+                )
+              );
             }
           } else {
-            callback(new StreamProcessorError(`Error processing item in stream`, error));
+            callback(
+              new StreamProcessorError(`Error processing item in stream`, error)
+            );
           }
         }
       }
     );
 
     await new Promise<void>((resolve, reject) => {
-      inputStream.pipe(processorStream).on('finish', resolve).on('error', reject);
+      inputStream
+        .pipe(processorStream)
+        .on('finish', resolve)
+        .on('error', reject);
     });
   }
 }

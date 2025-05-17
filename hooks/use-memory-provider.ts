@@ -62,7 +62,7 @@ export function useMemoryProvider(): MemoryProviderConfig {
     useUpstashAdapter: false,
     isRedisAvailable: false,
     isVectorAvailable: false,
-    isReady: false
+    isReady: false,
   });
 
   useEffect(() => {
@@ -73,13 +73,15 @@ export function useMemoryProvider(): MemoryProviderConfig {
           // Add cache control headers to prevent caching
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch memory provider configuration: ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch memory provider configuration: ${response.statusText}`
+          );
         }
 
         const data = await response.json();
@@ -89,7 +91,7 @@ export function useMemoryProvider(): MemoryProviderConfig {
           isRedisAvailable: data.isRedisAvailable || false,
           isVectorAvailable: data.isVectorAvailable || false,
           isReady: data.isReady || false,
-          error: data.error
+          error: data.error,
         });
 
         // Log configuration for debugging
@@ -97,14 +99,14 @@ export function useMemoryProvider(): MemoryProviderConfig {
           provider: data.provider,
           useUpstashAdapter: data.useUpstashAdapter,
           isRedisAvailable: data.isRedisAvailable,
-          isVectorAvailable: data.isVectorAvailable
+          isVectorAvailable: data.isVectorAvailable,
         });
       } catch (error) {
         console.error('Error fetching memory provider configuration:', error);
-        setConfig(prev => ({
+        setConfig((prev) => ({
           ...prev,
           isReady: true,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         }));
       }
     }
@@ -133,9 +135,11 @@ export function shouldUseUpstash(): boolean {
   }
 
   // In server environment, we can check environment variables directly
-  return process.env.USE_UPSTASH_ADAPTER === 'true' &&
-         process.env.UPSTASH_REDIS_REST_URL !== undefined &&
-         process.env.UPSTASH_REDIS_REST_TOKEN !== undefined;
+  return (
+    process.env.USE_UPSTASH_ADAPTER === 'true' &&
+    process.env.UPSTASH_REDIS_REST_URL !== undefined &&
+    process.env.UPSTASH_REDIS_REST_TOKEN !== undefined
+  );
 }
 
 /**
@@ -150,8 +154,10 @@ export function isUpstashVectorAvailable(): boolean {
   }
 
   // In server environment, we can check environment variables directly
-  return process.env.UPSTASH_VECTOR_REST_URL !== undefined &&
-         process.env.UPSTASH_VECTOR_REST_TOKEN !== undefined;
+  return (
+    process.env.UPSTASH_VECTOR_REST_URL !== undefined &&
+    process.env.UPSTASH_VECTOR_REST_TOKEN !== undefined
+  );
 }
 
 export default useMemoryProvider;

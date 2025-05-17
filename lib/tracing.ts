@@ -14,7 +14,7 @@ import {
   logPrompt,
   createDataset,
   logEvaluationRun,
-  logUserFeedback
+  logUserFeedback,
 } from './langfuse-integration';
 
 import {
@@ -22,14 +22,15 @@ import {
   startOTelSpan,
   shutdownOTel,
   SpanKind,
-  SpanStatusCode
+  SpanStatusCode,
 } from './otel-tracing';
 
 // Initialize OpenTelemetry
 export function initializeTracing({
   serviceName = 'ai-sdk-chat',
   serviceVersion = '1.0.0',
-  endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+  endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+    'http://localhost:4318/v1/traces',
 }: {
   serviceName?: string;
   serviceVersion?: string;
@@ -39,7 +40,7 @@ export function initializeTracing({
   initializeOTel({
     serviceName,
     serviceVersion,
-    endpoint
+    endpoint,
   });
 }
 
@@ -55,7 +56,7 @@ export function initializeTracing({
 export async function trace({
   name,
   userId,
-  metadata
+  metadata,
 }: {
   name: string;
   userId?: string;
@@ -65,7 +66,7 @@ export async function trace({
   const langfuseTrace = await createTrace({
     name,
     userId,
-    metadata
+    metadata,
   });
 
   // Create OpenTelemetry root span to represent the trace
@@ -76,8 +77,8 @@ export async function trace({
       ...(userId ? { 'user.id': userId } : {}),
       ...(metadata ? { 'trace.metadata': JSON.stringify(metadata) } : {}),
       'trace.system': 'combined',
-      'langfuse.trace_id': langfuseTrace?.id || 'unknown'
-    }
+      'langfuse.trace_id': langfuseTrace?.id || 'unknown',
+    },
   });
 
   return {
@@ -88,9 +89,15 @@ export async function trace({
     userId,
     metadata,
     // Function to end the OpenTelemetry trace
-    end: (options: { status?: SpanStatusCode; attributes?: Record<string, string | number | boolean | string[]>; error?: Error } = {}) => {
+    end: (
+      options: {
+        status?: SpanStatusCode;
+        attributes?: Record<string, string | number | boolean | string[]>;
+        error?: Error;
+      } = {}
+    ) => {
       otelSpan.end(options);
-    }
+    },
   };
 }
 
@@ -108,7 +115,7 @@ export function span({
   traceId,
   name,
   metadata,
-  parentSpanId
+  parentSpanId,
 }: {
   traceId: string;
   name: string;
@@ -120,7 +127,7 @@ export function span({
     traceId,
     name,
     metadata,
-    parentObservationId: parentSpanId
+    parentObservationId: parentSpanId,
   });
 
   // Start OpenTelemetry span
@@ -130,8 +137,8 @@ export function span({
       'trace.id': traceId,
       ...(metadata ? { 'span.metadata': JSON.stringify(metadata) } : {}),
       ...(parentSpanId ? { 'parent.span.id': parentSpanId } : {}),
-      'langfuse.span_id': langfuseSpan.spanId
-    }
+      'langfuse.span_id': langfuseSpan.spanId,
+    },
   });
 
   return {
@@ -141,7 +148,7 @@ export function span({
     end: async (endMetadata?: any) => {
       // End OpenTelemetry span
       otelSpan.end({
-        attributes: endMetadata
+        attributes: endMetadata,
       });
 
       // End Langfuse span
@@ -156,9 +163,9 @@ export function span({
       return await logEvent({
         traceId,
         name: eventName,
-        metadata: eventMetadata
+        metadata: eventMetadata,
       });
-    }
+    },
   };
 }
 
@@ -191,8 +198,8 @@ export async function generation(options: {
       'generation.model': model,
       'trace.id': traceId,
       'generation.duration_ms': endTime.getTime() - startTime.getTime(),
-      ...(metadata ? { 'generation.metadata': JSON.stringify(metadata) } : {})
-    }
+      ...(metadata ? { 'generation.metadata': JSON.stringify(metadata) } : {}),
+    },
   });
 
   // End the OpenTelemetry span immediately since this is a completed generation
@@ -222,8 +229,8 @@ export async function event(options: {
     attributes: {
       'event.name': name,
       'trace.id': traceId,
-      ...(metadata ? { 'event.metadata': JSON.stringify(metadata) } : {})
-    }
+      ...(metadata ? { 'event.metadata': JSON.stringify(metadata) } : {}),
+    },
   });
 
   // End the OpenTelemetry span immediately
@@ -239,5 +246,5 @@ export {
   createDataset as dataset,
   logEvaluationRun as evaluationRun,
   logUserFeedback as userFeedback,
-  shutdownOTel as shutdown
+  shutdownOTel as shutdown,
 };

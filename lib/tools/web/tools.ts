@@ -2,8 +2,8 @@
  * @file Web-oriented tools (search, extract, scrape) for the Vercel AI SDK.
  *
  * @remarks
- *   • Uses the built-in `fetch` (Node ≥ 18) – no external HTTP client needed.  
- *   • DOM parsing is done via `cheerio` – install with: `npm i cheerio`.  
+ *   • Uses the built-in `fetch` (Node ≥ 18) – no external HTTP client needed.
+ *   • DOM parsing is done via `cheerio` – install with: `npm i cheerio`.
  *   • Each tool returns a discriminated union (`success: true | false`) that
  *     matches the shapes in `lib/tools/web/types.ts`.
  */
@@ -90,7 +90,9 @@ const clean = (txt: string, max = 2_000): string =>
  * Light-weight search hitting DuckDuckGo’s HTML endpoint.
  * No API-key required (HTML output can change any time).
  */
-async function webSearch(params: z.infer<typeof webSearchSchema>): Promise<WebSearchResult> {
+async function webSearch(
+  params: z.infer<typeof webSearchSchema>
+): Promise<WebSearchResult> {
   const { query, numResults } = params;
 
   try {
@@ -103,20 +105,25 @@ async function webSearch(params: z.infer<typeof webSearchSchema>): Promise<WebSe
       if (results.length >= numResults) return false; // break
       const title = clean($(el).text());
       const href = $(el).attr('href') ?? '';
-      const snippet = clean($(el).closest('.result').find('.result__snippet').text());
+      const snippet = clean(
+        $(el).closest('.result').find('.result__snippet').text()
+      );
       results.push({ title, snippet, url: href });
     });
 
     return { success: true, query, totalResults: results.length, results };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 /**
  * Fetch a page & optionally extract a specific selector’s text.
  */
 async function webExtract(
-  params: z.infer<typeof webExtractSchema>,
+  params: z.infer<typeof webExtractSchema>
 ): Promise<WebExtractResult> {
   const { url, selector } = params;
 
@@ -131,7 +138,10 @@ async function webExtract(
 
     return { success: true, url, title, content };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 
@@ -139,7 +149,7 @@ async function webExtract(
  * Extract multiple selectors in a single request.
  */
 async function webScrape(
-  params: z.infer<typeof webScrapeSchema>,
+  params: z.infer<typeof webScrapeSchema>
 ): Promise<WebScrapeResult> {
   const { url, selectors } = params;
 
@@ -154,7 +164,10 @@ async function webScrape(
 
     return { success: true, url, data };
   } catch (err) {
-    return { success: false, error: (err as Error).message } satisfies ToolFailure;
+    return {
+      success: false,
+      error: (err as Error).message,
+    } satisfies ToolFailure;
   }
 }
 

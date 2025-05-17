@@ -25,20 +25,25 @@ export class RedisStoreError extends Error {
     super(message);
     this.name = 'RedisStoreError';
     this.cause = cause;
-    if (cause) this.stack += '\nCaused by: ' + (cause instanceof Error ? cause.stack : String(cause));
+    if (cause)
+      this.stack +=
+        '\nCaused by: ' +
+        (cause instanceof Error ? cause.stack : String(cause));
   }
 }
 
 // --- Zod Schemas ---
 export const VectorMetadataSchema = z.record(z.any()).and(
-  z.object({
-    text: z.string().optional(),
-    source_url: z.string().optional(),
-    document_id: z.string().optional(),
-    chunk_id: z.string().optional(),
-    user_id: z.string().optional(),
-    created_at: z.string().optional(),
-  }).partial()
+  z
+    .object({
+      text: z.string().optional(),
+      source_url: z.string().optional(),
+      document_id: z.string().optional(),
+      chunk_id: z.string().optional(),
+      user_id: z.string().optional(),
+      created_at: z.string().optional(),
+    })
+    .partial()
 );
 
 export const VectorDocumentSchema = z.object({
@@ -141,7 +146,7 @@ export interface Thread {
 export interface Message {
   id: string;
   thread_id: string;
-  role: "user" | "assistant" | "system" | "tool";
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   created_at: string; // ISO 8601 timestamp
   metadata?: MessageMetadata | null;
@@ -218,7 +223,9 @@ export const RediSearchHybridResultSchema = z.object({
   vector: z.array(z.number()).optional(),
   metadata: z.record(z.any()).optional(),
 });
-export type RediSearchHybridResult = z.infer<typeof RediSearchHybridResultSchema>;
+export type RediSearchHybridResult = z.infer<
+  typeof RediSearchHybridResultSchema
+>;
 
 // --- QStash/Workflow Types ---
 export interface QStashTaskPayload {
@@ -603,7 +610,7 @@ export type LogEntry = z.infer<typeof LogEntrySchema>;
 export interface LogQueryOptions {
   level?: LogLevel;
   startTime?: string; // ISO 8601
-  endTime?: string;   // ISO 8601
+  endTime?: string; // ISO 8601
   limit?: number;
   offset?: number;
 }

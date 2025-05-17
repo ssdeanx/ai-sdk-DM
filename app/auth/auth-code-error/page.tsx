@@ -1,9 +1,16 @@
-'use client'
+'use client';
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle } from 'lucide-react'
-import Link from 'next/link'
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * Error page displayed when there's an issue with the authentication code exchange
@@ -31,7 +38,10 @@ export default function AuthCodeErrorPage() {
             </ul>
           </div>
           <div className="text-sm">
-            <p>Please try signing in again or contact support if the problem persists.</p>
+            <p>
+              Please try signing in again or contact support if the problem
+              persists.
+            </p>
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
@@ -44,5 +54,5 @@ export default function AuthCodeErrorPage() {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

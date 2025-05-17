@@ -63,7 +63,7 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
     enabled: memoryProvider.useUpstashAdapter,
     redisAvailable: memoryProvider.isRedisAvailable,
     vectorAvailable: memoryProvider.isVectorAvailable,
-    isReady: memoryProvider.isReady
+    isReady: memoryProvider.isReady,
   });
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
       redisAvailable: memoryProvider.isRedisAvailable,
       vectorAvailable: memoryProvider.isVectorAvailable,
       isReady: memoryProvider.isReady,
-      error: memoryProvider.error
+      error: memoryProvider.error,
     });
 
     // Fetch additional Upstash adapter configuration if enabled
@@ -84,13 +84,15 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
             // Add cache control headers to prevent caching
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0'
-            }
+              Pragma: 'no-cache',
+              Expires: '0',
+            },
           });
 
           if (!response.ok) {
-            throw new Error(`Failed to fetch Upstash adapter configuration: ${response.statusText}`);
+            throw new Error(
+              `Failed to fetch Upstash adapter configuration: ${response.statusText}`
+            );
           }
 
           const data = await response.json();
@@ -99,17 +101,17 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
             throw new Error('Upstash adapter is not enabled on the server');
           }
 
-          setConfig(prev => ({
+          setConfig((prev) => ({
             ...prev,
             redisUrl: data.redisUrl,
             vectorUrl: data.vectorUrl,
             qstashEnabled: data.qstashEnabled,
-            isReady: true
+            isReady: true,
           }));
         } catch (error) {
-          setConfig(prev => ({
+          setConfig((prev) => ({
             ...prev,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           }));
         }
       }

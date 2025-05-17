@@ -45,7 +45,12 @@ export const MAX_RESPONSE_SIZE = 5 * 1024 * 1024;
 /**
  * OAuth grant types
  */
-export const OAUTH_GRANT_TYPES = ['client_credentials', 'authorization_code', 'password', 'refresh_token'] as const;
+export const OAUTH_GRANT_TYPES = [
+  'client_credentials',
+  'authorization_code',
+  'password',
+  'refresh_token',
+] as const;
 
 /**
  * Webhook methods

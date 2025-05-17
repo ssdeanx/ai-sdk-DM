@@ -45,7 +45,7 @@ export interface DataFilterSuccess {
 }
 export type DataFilterResult = DataFilterSuccess | ToolFailure;
 export const isDataFilterSuccess = (
-  r: DataFilterResult,
+  r: DataFilterResult
 ): r is DataFilterSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
@@ -58,7 +58,7 @@ export interface DataAggregationSuccess {
 }
 export type DataAggregationResult = DataAggregationSuccess | ToolFailure;
 export const isDataAggregationSuccess = (
-  r: DataAggregationResult,
+  r: DataAggregationResult
 ): r is DataAggregationSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
@@ -70,7 +70,7 @@ export interface YamlToJsonSuccess {
 }
 export type YamlToJsonResult = YamlToJsonSuccess | ToolFailure;
 export const isYamlToJsonSuccess = (
-  r: YamlToJsonResult,
+  r: YamlToJsonResult
 ): r is YamlToJsonSuccess => r.success;
 
 export interface JsonToYamlSuccess {
@@ -79,7 +79,7 @@ export interface JsonToYamlSuccess {
 }
 export type JsonToYamlResult = JsonToYamlSuccess | ToolFailure;
 export const isJsonToYamlSuccess = (
-  r: JsonToYamlResult,
+  r: JsonToYamlResult
 ): r is JsonToYamlSuccess => r.success;
 
 /* ------------------------------------------------------------------ */
@@ -110,7 +110,7 @@ export interface MdTableToJsonSuccess {
 }
 export type MdTableToJsonResult = MdTableToJsonSuccess | ToolFailure;
 export const isMdTableToJsonSuccess = (
-  r: MdTableToJsonResult,
+  r: MdTableToJsonResult
 ): r is MdTableToJsonSuccess => r.success;
 
 export interface JsonToMdTableSuccess {
@@ -119,5 +119,5 @@ export interface JsonToMdTableSuccess {
 }
 export type JsonToMdTableResult = JsonToMdTableSuccess | ToolFailure;
 export const isJsonToMdTableSuccess = (
-  r: JsonToMdTableResult,
+  r: JsonToMdTableResult
 ): r is JsonToMdTableSuccess => r.success;

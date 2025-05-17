@@ -73,7 +73,8 @@ export class PersonaManager {
       await UpstashPersonaScore.recordPersonaUsage(personaId, data.metadata);
 
       // Update score in Upstash
-      const previousScore = await UpstashPersonaScore.loadPersonaScore(personaId);
+      const previousScore =
+        await UpstashPersonaScore.loadPersonaScore(personaId);
       await UpstashPersonaScore.updatePersonaScore(personaId, {
         successfulInteraction: data.success,
         latencyMs: data.latency,
@@ -81,15 +82,17 @@ export class PersonaManager {
         metadata: {
           taskType: data.metadata.taskType,
           taskScore: data.success ? 1 : 0,
-          previousOverallScore: previousScore?.overall_score
-        }
+          previousOverallScore: previousScore?.overall_score,
+        },
       });
     } else if (personaScoreManager) {
       // Use the existing score manager
       if (typeof personaScoreManager.recordPersonaUsage === 'function') {
         await personaScoreManager.recordPersonaUsage(personaId, data);
       } else {
-        console.warn('PersonaScoreManager does not have recordPersonaUsage method');
+        console.warn(
+          'PersonaScoreManager does not have recordPersonaUsage method'
+        );
       }
     }
   }
@@ -99,19 +102,20 @@ export class PersonaManager {
    * @param rating - User rating (0-1)
    * @param feedback - Optional feedback text
    * @returns Promise that resolves when the feedback is recorded
-   */  public async recordUserFeedback(
+   */ public async recordUserFeedback(
     personaId: string,
     rating: number,
     feedback?: string
   ): Promise<void> {
     if (this.useUpstash) {
       // Get current score
-      const currentScore = await UpstashPersonaScore.loadPersonaScore(personaId);
+      const currentScore =
+        await UpstashPersonaScore.loadPersonaScore(personaId);
 
       if (currentScore) {
         // Update user satisfaction based on rating
         await UpstashPersonaScore.updatePersonaScore(personaId, {
-          userSatisfaction: rating
+          userSatisfaction: rating,
         });
 
         // Store feedback if provided
@@ -121,7 +125,7 @@ export class PersonaManager {
           const feedbackData = JSON.stringify({
             rating,
             feedback,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
 
           await redis.lpush(feedbackKey, feedbackData);
@@ -131,11 +135,17 @@ export class PersonaManager {
     } else if (personaScoreManager) {
       // Use the existing score manager
       if (typeof personaScoreManager.recordUserFeedback === 'function') {
-        await personaScoreManager.recordUserFeedback(personaId, rating, feedback);
+        await personaScoreManager.recordUserFeedback(
+          personaId,
+          rating,
+          feedback
+        );
       } else if (typeof personaScoreManager.recordFeedback === 'function') {
         await personaScoreManager.recordFeedback(personaId, rating, feedback);
       } else {
-        console.warn('PersonaScoreManager does not have recordFeedback or recordUserFeedback method');
+        console.warn(
+          'PersonaScoreManager does not have recordFeedback or recordUserFeedback method'
+        );
       }
     }
   }
@@ -146,14 +156,16 @@ export class PersonaManager {
    * @param limit - Maximum number of personas to return
    * @returns Promise resolving to an array of top personas with scores
    */
-  public async getTopPerformingPersonas(limit: number = 10): Promise<Array<{ persona: PersonaDefinition, score: PersonaScore }>> {
+  public async getTopPerformingPersonas(
+    limit: number = 10
+  ): Promise<Array<{ persona: PersonaDefinition; score: PersonaScore }>> {
     if (this.useUpstash) {
       const redis = getRedisClient();
 
       // Get all persona IDs with scores
       const personaKeys = await redis.keys('persona:score:*');
       const topPersonaIds = personaKeys
-        .map(key => key.replace('persona:score:', ''))
+        .map((key) => key.replace('persona:score:', ''))
         .slice(0, limit);
 
       if (!topPersonaIds || topPersonaIds.length === 0) {
@@ -161,12 +173,13 @@ export class PersonaManager {
       }
 
       // Get persona data and scores
-      const result: Array<{ persona: PersonaDefinition, score: PersonaScore }> = [];
+      const result: Array<{ persona: PersonaDefinition; score: PersonaScore }> =
+        [];
 
       for (const personaId of topPersonaIds) {
         const [personaData, scoreData] = await Promise.all([
           UpstashPersonaStore.loadPersona(personaId),
-          UpstashPersonaScore.loadPersonaScore(personaId)
+          UpstashPersonaScore.loadPersonaScore(personaId),
         ]);
 
         if (personaData && scoreData) {
@@ -198,7 +211,8 @@ export class PersonaManager {
         .map(([personaId, score]) => ({ personaId, ...score }))
         .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0))
         .slice(0, limit);
-      const result: Array<{ persona: PersonaDefinition, score: PersonaScore }> = [];
+      const result: Array<{ persona: PersonaDefinition; score: PersonaScore }> =
+        [];
 
       for (const score of scores) {
         const persona = await this.getPersonaById(score.personaId);
@@ -211,13 +225,15 @@ export class PersonaManager {
     }
 
     return [];
-  }  /**
+  } /**
    * Gets the most frequently used personas
    *
    * @param limit - Maximum number of personas to return
    * @returns Promise resolving to an array of most used personas with usage counts
    */
-  public async getMostUsedPersonas(limit: number = 10): Promise<Array<{ persona: PersonaDefinition, usageCount: number }>> {
+  public async getMostUsedPersonas(
+    limit: number = 10
+  ): Promise<Array<{ persona: PersonaDefinition; usageCount: number }>> {
     if (this.useUpstash) {
       const redis = getRedisClient();
       const usagePattern = 'persona:usage:*';
@@ -230,7 +246,7 @@ export class PersonaManager {
       }
 
       // Get total usage for each persona
-      const usageCounts: Array<{ personaId: string, count: number }> = [];
+      const usageCounts: Array<{ personaId: string; count: number }> = [];
 
       for (const key of usageKeys) {
         const personaId = key.replace('persona:usage:', '');
@@ -239,7 +255,7 @@ export class PersonaManager {
         if (totalUsage) {
           usageCounts.push({
             personaId,
-            count: parseInt(totalUsage as string, 10)
+            count: parseInt(totalUsage as string, 10),
           });
         }
       }
@@ -248,7 +264,8 @@ export class PersonaManager {
       usageCounts.sort((a, b) => b.count - a.count);
 
       // Get persona data for top used personas
-      const result: Array<{ persona: PersonaDefinition, usageCount: number }> = [];
+      const result: Array<{ persona: PersonaDefinition; usageCount: number }> =
+        [];
 
       for (const { personaId, count } of usageCounts.slice(0, limit)) {
         const personaData = await UpstashPersonaStore.loadPersona(personaId);
@@ -269,7 +286,11 @@ export class PersonaManager {
       for (const persona of allPersonas) {
         try {
           const scoreData = await personaScoreManager.getScore(persona.id);
-          if (scoreData && scoreData.metadata && scoreData.metadata.usageCount) {
+          if (
+            scoreData &&
+            scoreData.metadata &&
+            scoreData.metadata.usageCount
+          ) {
             usageMap.set(persona.id, scoreData.metadata.usageCount);
           } else {
             usageMap.set(persona.id, 0); // Default to 0 if no usage data
@@ -285,7 +306,8 @@ export class PersonaManager {
         .map(([personaId, count]) => ({ personaId, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
-      const result: Array<{ persona: PersonaDefinition, usageCount: number }> = [];
+      const result: Array<{ persona: PersonaDefinition; usageCount: number }> =
+        [];
 
       for (const { personaId, count } of usageData) {
         const persona = await this.getPersonaById(personaId);
@@ -312,23 +334,30 @@ export class PersonaManager {
       useUpstash?: boolean;
     } = {}
   ) {
-    this.personasDirectory = personasDir || path.resolve(process.cwd(), 'lib', 'agents', 'personas', 'personasData');
+    this.personasDirectory =
+      personasDir ||
+      path.resolve(process.cwd(), 'lib', 'agents', 'personas', 'personasData');
     fsExtra.ensureDirSync(this.personasDirectory);
 
     // Initialize Upstash integration if specified or if MEMORY_PROVIDER is 'upstash'
-    this.useUpstash = options.useUpstash !== undefined
-      ? options.useUpstash
-      : getMemoryProvider() === 'upstash';
+    this.useUpstash =
+      options.useUpstash !== undefined
+        ? options.useUpstash
+        : getMemoryProvider() === 'upstash';
 
     // Initialize streaming service
     this.streamingService = PersonaStreamingService.getInstance();
 
-    console.log(`PersonaManager initialized with ${this.useUpstash ? 'Upstash' : 'file-based'} storage`);
+    console.log(
+      `PersonaManager initialized with ${this.useUpstash ? 'Upstash' : 'file-based'} storage`
+    );
   }
 
   private async loadPersonasFromDirectory(): Promise<void> {
     if (!fsExtra.existsSync(this.personasDirectory)) {
-      console.warn(`Personas directory does not exist: ${this.personasDirectory}`);
+      console.warn(
+        `Personas directory does not exist: ${this.personasDirectory}`
+      );
       return;
     }
     const files = await fsExtra.readdir(this.personasDirectory);
@@ -339,14 +368,25 @@ export class PersonaManager {
 
       try {
         const content = await fsExtra.readFile(filePath, 'utf-8');
-        const data: any = file.endsWith('.json') ? JSON.parse(content) : (file.endsWith('.yaml') || file.endsWith('.yml')) ? yaml.load(content) : null;
+        const data: any = file.endsWith('.json')
+          ? JSON.parse(content)
+          : file.endsWith('.yaml') || file.endsWith('.yml')
+            ? yaml.load(content)
+            : null;
 
         if (!data) {
-          console.warn(`Skipping file with unsupported extension or empty content: ${file}`);
+          console.warn(
+            `Skipping file with unsupported extension or empty content: ${file}`
+          );
           continue;
         }
 
-        if (data.promptFragment || data.parentPersonaId || file.startsWith('micro_') || data.microTraits) {
+        if (
+          data.promptFragment ||
+          data.parentPersonaId ||
+          file.startsWith('micro_') ||
+          data.microTraits
+        ) {
           const microPersona = validateMicroPersonaDefinition(data);
           this.registerMicroPersona(microPersona, false);
         } else {
@@ -356,7 +396,10 @@ export class PersonaManager {
       } catch (error: any) {
         console.error(`Error loading persona from ${file}: ${error.message}`);
         if (error.errors) {
-          console.error('Validation details:', JSON.stringify(error.errors, null, 2));
+          console.error(
+            'Validation details:',
+            JSON.stringify(error.errors, null, 2)
+          );
         }
       }
     }
@@ -377,10 +420,18 @@ export class PersonaManager {
       this.microPersonas.clear();
 
       // Load built-in personas
-      Object.values(basePersonas).forEach((p: PersonaDefinition) => this.registerPersona(p, false));
-      Object.values(specializedPersonas).forEach((p: PersonaDefinition) => this.registerPersona(p, false));
-      Object.values(domainPersonas).forEach((p: PersonaDefinition) => this.registerPersona(p, false));
-      Object.values(taskPersonas).forEach((p: PersonaDefinition) => this.registerPersona(p, false));
+      Object.values(basePersonas).forEach((p: PersonaDefinition) =>
+        this.registerPersona(p, false)
+      );
+      Object.values(specializedPersonas).forEach((p: PersonaDefinition) =>
+        this.registerPersona(p, false)
+      );
+      Object.values(domainPersonas).forEach((p: PersonaDefinition) =>
+        this.registerPersona(p, false)
+      );
+      Object.values(taskPersonas).forEach((p: PersonaDefinition) =>
+        this.registerPersona(p, false)
+      );
 
       // Load from file system or Upstash
       if (this.useUpstash) {
@@ -391,7 +442,9 @@ export class PersonaManager {
 
       this.initialized = true;
       this.initPromise = null;
-      console.log(`PersonaManager initialized. Loaded ${this.personas.size} personas and ${this.microPersonas.size} micro-personas.`);
+      console.log(
+        `PersonaManager initialized. Loaded ${this.personas.size} personas and ${this.microPersonas.size} micro-personas.`
+      );
     })();
     return this.initPromise;
   }
@@ -414,10 +467,15 @@ export class PersonaManager {
 
       // Use streaming service to get all micro-personas for each persona
       for (const persona of personas) {
-        if (persona.compatibleMicroPersonas && persona.compatibleMicroPersonas.length > 0) {
-          const microPersonas = await this.streamingService.getAllMicroPersonas({
-            parentPersonaId: persona.id
-          });
+        if (
+          persona.compatibleMicroPersonas &&
+          persona.compatibleMicroPersonas.length > 0
+        ) {
+          const microPersonas = await this.streamingService.getAllMicroPersonas(
+            {
+              parentPersonaId: persona.id,
+            }
+          );
 
           for (const microPersona of microPersonas) {
             this.microPersonas.set(microPersona.id, microPersona);
@@ -425,7 +483,9 @@ export class PersonaManager {
         }
       }
 
-      console.log(`Loaded ${this.personas.size} personas and ${this.microPersonas.size} micro-personas from Upstash.`);
+      console.log(
+        `Loaded ${this.personas.size} personas and ${this.microPersonas.size} micro-personas from Upstash.`
+      );
     } catch (error) {
       console.error('Error loading personas from Upstash:', error);
 
@@ -450,7 +510,10 @@ export class PersonaManager {
    * @param saveToStorage - Whether to save to file/Upstash
    * @returns Promise resolving to the registered persona
    */
-  public async registerPersona(personaData: PersonaDefinition, saveToStorage: boolean = true): Promise<PersonaDefinition> {
+  public async registerPersona(
+    personaData: PersonaDefinition,
+    saveToStorage: boolean = true
+  ): Promise<PersonaDefinition> {
     await this.ensureInitialized();
 
     // personaData is assumed to have a valid id due to prior validation or creation processes.
@@ -477,7 +540,10 @@ export class PersonaManager {
    * @param saveToStorage - Whether to save to file/Upstash
    * @returns Promise resolving to the registered micro-persona
    */
-  public async registerMicroPersona(microPersonaData: MicroPersonaDefinition, saveToStorage: boolean = true): Promise<MicroPersonaDefinition> {
+  public async registerMicroPersona(
+    microPersonaData: MicroPersonaDefinition,
+    saveToStorage: boolean = true
+  ): Promise<MicroPersonaDefinition> {
     await this.ensureInitialized();
 
     // microPersonaData is assumed to have a valid id due to prior validation or creation processes.
@@ -528,7 +594,9 @@ export class PersonaManager {
    * @param id - The micro-persona ID
    * @returns Promise resolving to the micro-persona or null if not found
    */
-  public async getMicroPersonaById(id: string): Promise<MicroPersonaDefinition | null> {
+  public async getMicroPersonaById(
+    id: string
+  ): Promise<MicroPersonaDefinition | null> {
     await this.ensureInitialized();
 
     // Check in-memory cache first
@@ -559,11 +627,13 @@ export class PersonaManager {
    * @param options - Optional filtering options
    * @returns Promise resolving to an array of personas
    */
-  public async listPersonas(options: {
-    tags?: string[];
-    capabilities?: GeminiCapability[];
-    limit?: number;
-  } = {}): Promise<PersonaDefinition[]> {
+  public async listPersonas(
+    options: {
+      tags?: string[];
+      capabilities?: GeminiCapability[];
+      limit?: number;
+    } = {}
+  ): Promise<PersonaDefinition[]> {
     await this.ensureInitialized();
 
     if (this.useUpstash) {
@@ -571,7 +641,7 @@ export class PersonaManager {
       return this.streamingService.getAllPersonas({
         tags: options.tags,
         capabilities: options.capabilities,
-        limit: options.limit
+        limit: options.limit,
       });
     } else {
       // Get from in-memory cache
@@ -579,16 +649,18 @@ export class PersonaManager {
 
       // Apply filters if provided
       if (options.tags && options.tags.length > 0) {
-        personas = personas.filter(p => {
+        personas = personas.filter((p) => {
           if (!p.tags) return false;
-          return options.tags!.some(tag => p.tags!.includes(tag));
+          return options.tags!.some((tag) => p.tags!.includes(tag));
         });
       }
 
       if (options.capabilities && options.capabilities.length > 0) {
-        personas = personas.filter(p => {
+        personas = personas.filter((p) => {
           if (!p.capabilities) return false;
-          return options.capabilities!.some(cap => p.capabilities!.includes(cap));
+          return options.capabilities!.some((cap) =>
+            p.capabilities!.includes(cap)
+          );
         });
       }
 
@@ -613,10 +685,12 @@ export class PersonaManager {
    * @param options - Optional filtering options
    * @returns Promise resolving to an array of micro-personas
    */
-  public async listMicroPersonas(options: {
-    parentPersonaId?: string;
-    limit?: number;
-  } = {}): Promise<MicroPersonaDefinition[]> {
+  public async listMicroPersonas(
+    options: {
+      parentPersonaId?: string;
+      limit?: number;
+    } = {}
+  ): Promise<MicroPersonaDefinition[]> {
     await this.ensureInitialized();
 
     if (this.useUpstash) {
@@ -624,12 +698,12 @@ export class PersonaManager {
         // Get micro-personas for a specific parent
         return this.streamingService.getAllMicroPersonas({
           parentPersonaId: options.parentPersonaId,
-          limit: options.limit
+          limit: options.limit,
         });
       } else {
         // Get all micro-personas using streaming service
         return this.streamingService.getAllMicroPersonas({
-          limit: options.limit
+          limit: options.limit,
         });
       }
     } else {
@@ -638,8 +712,8 @@ export class PersonaManager {
 
       // Filter by parent if provided
       if (options.parentPersonaId) {
-        microPersonas = microPersonas.filter(mp =>
-          mp.parentPersonaId === options.parentPersonaId
+        microPersonas = microPersonas.filter(
+          (mp) => mp.parentPersonaId === options.parentPersonaId
         );
       }
 
@@ -652,7 +726,13 @@ export class PersonaManager {
     }
   }
 
-  public async createPersona(personaData: Omit<PersonaDefinition, 'id' | 'createdAt' | 'lastUpdatedAt' | 'version'> & { version?: string }, saveToFile: boolean = true): Promise<PersonaDefinition> {
+  public async createPersona(
+    personaData: Omit<
+      PersonaDefinition,
+      'id' | 'createdAt' | 'lastUpdatedAt' | 'version'
+    > & { version?: string },
+    saveToFile: boolean = true
+  ): Promise<PersonaDefinition> {
     const newPersona: PersonaDefinition = validatePersonaDefinition({
       ...personaData,
       id: uuidv4(),
@@ -663,18 +743,28 @@ export class PersonaManager {
     return this.registerPersona(newPersona, saveToFile);
   }
 
-  public async createMicroPersona(microPersonaData: Omit<MicroPersonaDefinition, 'id' | 'createdAt' | 'lastUpdatedAt' | 'version'> & { version?: string }, saveToFile: boolean = true): Promise<MicroPersonaDefinition> {
-    const newMicroPersona: MicroPersonaDefinition = validateMicroPersonaDefinition({
-      ...microPersonaData,
-      id: `micro_${uuidv4()}`,
-      version: microPersonaData.version || '1.0.0',
-      createdAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
-    });
+  public async createMicroPersona(
+    microPersonaData: Omit<
+      MicroPersonaDefinition,
+      'id' | 'createdAt' | 'lastUpdatedAt' | 'version'
+    > & { version?: string },
+    saveToFile: boolean = true
+  ): Promise<MicroPersonaDefinition> {
+    const newMicroPersona: MicroPersonaDefinition =
+      validateMicroPersonaDefinition({
+        ...microPersonaData,
+        id: `micro_${uuidv4()}`,
+        version: microPersonaData.version || '1.0.0',
+        createdAt: new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
+      });
     return this.registerMicroPersona(newMicroPersona, saveToFile);
   }
 
-  public async updatePersona(id: string, updates: Partial<Omit<PersonaDefinition, 'id' | 'createdAt'>>): Promise<PersonaDefinition | null> {
+  public async updatePersona(
+    id: string,
+    updates: Partial<Omit<PersonaDefinition, 'id' | 'createdAt'>>
+  ): Promise<PersonaDefinition | null> {
     await this.ensureInitialized();
     const existingPersona = this.personas.get(id);
     if (!existingPersona) return null;
@@ -690,7 +780,12 @@ export class PersonaManager {
     return updatedPersona;
   }
 
-  public async updateMicroPersona(id: string, updates: Partial<Omit<MicroPersonaDefinition, 'id' | 'createdAt' | 'parentPersonaId'>>): Promise<MicroPersonaDefinition | null> {
+  public async updateMicroPersona(
+    id: string,
+    updates: Partial<
+      Omit<MicroPersonaDefinition, 'id' | 'createdAt' | 'parentPersonaId'>
+    >
+  ): Promise<MicroPersonaDefinition | null> {
     await this.ensureInitialized();
     const existingMicro = this.microPersonas.get(id);
     if (!existingMicro) return null;
@@ -710,14 +805,20 @@ export class PersonaManager {
     await this.ensureInitialized();
     if (!this.personas.has(id)) return false;
 
-    const formats: PersonaFileFormat[] = [PersonaFileFormat.JSON, PersonaFileFormat.YAML, PersonaFileFormat.YML];
+    const formats: PersonaFileFormat[] = [
+      PersonaFileFormat.JSON,
+      PersonaFileFormat.YAML,
+      PersonaFileFormat.YML,
+    ];
     if (this.personas.delete(id)) {
       for (const format of formats) {
         const filePath = path.join(this.personasDirectory, `${id}.${format}`);
         if (await fsExtra.pathExists(filePath)) await fsExtra.remove(filePath);
       }
 
-      const microsToDelete = Array.from(this.microPersonas.values()).filter(mp => mp.parentPersonaId === id);
+      const microsToDelete = Array.from(this.microPersonas.values()).filter(
+        (mp) => mp.parentPersonaId === id
+      );
       for (const micro of microsToDelete) {
         await this.deleteMicroPersona(micro.id);
       }
@@ -737,7 +838,11 @@ export class PersonaManager {
       return false;
     }
 
-    const formats: PersonaFileFormat[] = [PersonaFileFormat.JSON, PersonaFileFormat.YAML, PersonaFileFormat.YML];
+    const formats: PersonaFileFormat[] = [
+      PersonaFileFormat.JSON,
+      PersonaFileFormat.YAML,
+      PersonaFileFormat.YML,
+    ];
     for (const format of formats) {
       const filePath = path.join(this.personasDirectory, `${id}.${format}`);
       try {
@@ -745,26 +850,40 @@ export class PersonaManager {
           await fsExtra.remove(filePath);
         }
       } catch (error) {
-        console.error(`Error removing file ${filePath} for micro-persona ${id}:`, error);
+        console.error(
+          `Error removing file ${filePath} for micro-persona ${id}:`,
+          error
+        );
       }
     }
 
     for (const persona of this.personas.values()) {
-      if (persona.compatibleMicroPersonas && persona.compatibleMicroPersonas.includes(id)) {
-        persona.compatibleMicroPersonas = persona.compatibleMicroPersonas.filter(mpId => mpId !== id);
+      if (
+        persona.compatibleMicroPersonas &&
+        persona.compatibleMicroPersonas.includes(id)
+      ) {
+        persona.compatibleMicroPersonas =
+          persona.compatibleMicroPersonas.filter((mpId) => mpId !== id);
         persona.lastUpdatedAt = new Date().toISOString();
 
         try {
           await this.savePersonaToFile(persona.id);
         } catch (error) {
-          console.error(`Error saving updated persona ${persona.id} after deleting micro-persona ${id}:`, error);
+          console.error(
+            `Error saving updated persona ${persona.id} after deleting micro-persona ${id}:`,
+            error
+          );
         }
       }
     }
     return true;
   }
 
-  public async savePersonaToFile(personaId: string, format: PersonaFileFormat = PersonaFileFormat.JSON, customFilePath?: string): Promise<string> {
+  public async savePersonaToFile(
+    personaId: string,
+    format: PersonaFileFormat = PersonaFileFormat.JSON,
+    customFilePath?: string
+  ): Promise<string> {
     await this.ensureInitialized();
     const persona = this.personas.get(personaId);
     if (!persona) throw new Error(`Persona with ID ${personaId} not found.`);
@@ -789,14 +908,20 @@ export class PersonaManager {
     }
 
     await fsExtra.writeFile(finalFilePath, content);
-    console.log(`Saved persona ${personaId} to ${finalFilePath} (format: ${effectiveFormat})`);
+    console.log(
+      `Saved persona ${personaId} to ${finalFilePath} (format: ${effectiveFormat})`
+    );
     return finalFilePath;
   }
 
-  public async saveMicroPersonaToFile(microPersonaId: string, format: PersonaFileFormat = PersonaFileFormat.JSON): Promise<string> {
+  public async saveMicroPersonaToFile(
+    microPersonaId: string,
+    format: PersonaFileFormat = PersonaFileFormat.JSON
+  ): Promise<string> {
     await this.ensureInitialized();
     const microPersona = this.microPersonas.get(microPersonaId);
-    if (!microPersona) throw new Error(`Micro-persona with ID ${microPersonaId} not found.`);
+    if (!microPersona)
+      throw new Error(`Micro-persona with ID ${microPersonaId} not found.`);
 
     const fileName = `${microPersonaId}.${format}`;
     const filePath = path.join(this.personasDirectory, fileName);
@@ -817,30 +942,52 @@ export class PersonaManager {
     microPersona?: MicroPersonaDefinition,
     dynamicContext?: Record<string, string>
   ): string {
-    const composed = microPersona ? composePersona(basePersona, microPersona) : basePersona;
+    const composed = microPersona
+      ? composePersona(basePersona, microPersona)
+      : basePersona;
     let prompt = composed.systemPromptTemplate;
 
     if (composed.traits) {
       prompt = prompt.replace(/\{\{traits\}\}/g, composed.traits.join(', '));
     }
     if (microPersona && microPersona.microTraits) {
-      prompt = prompt.replace(/\{\{microTraits\}\}/g, microPersona.microTraits.join(', '));
+      prompt = prompt.replace(
+        /\{\{microTraits\}\}/g,
+        microPersona.microTraits.join(', ')
+      );
     }
     if (dynamicContext) {
       for (const key in dynamicContext) {
-        prompt = prompt.replace(new RegExp(`\\{\\{dynamicContext.${key}\\}\\}`, 'g'), dynamicContext[key]);
+        prompt = prompt.replace(
+          new RegExp(`\\{\\{dynamicContext.${key}\\}\\}`, 'g'),
+          dynamicContext[key]
+        );
       }
     }
 
     Object.entries(composed).forEach(([key, value]) => {
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        prompt = prompt.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
+      if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+      ) {
+        prompt = prompt.replace(
+          new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
+          String(value)
+        );
       }
     });
     if (microPersona) {
       Object.entries(microPersona).forEach(([key, value]) => {
-        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-          prompt = prompt.replace(new RegExp(`\\{\\{microPersona.${key}\\}\\}`, 'g'), String(value));
+        if (
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        ) {
+          prompt = prompt.replace(
+            new RegExp(`\\{\\{microPersona.${key}\\}\\}`, 'g'),
+            String(value)
+          );
         }
       });
     }
@@ -877,16 +1024,23 @@ export class PersonaManager {
     let candidatePersonas = Array.from(this.personas.values());
 
     // Filter by required capabilities
-    if (options.requiredCapabilities && options.requiredCapabilities.length > 0) {
-      candidatePersonas = candidatePersonas.filter(p =>
-        options.requiredCapabilities!.every(cap => p.capabilities?.includes(cap))
+    if (
+      options.requiredCapabilities &&
+      options.requiredCapabilities.length > 0
+    ) {
+      candidatePersonas = candidatePersonas.filter((p) =>
+        options.requiredCapabilities!.every((cap) =>
+          p.capabilities?.includes(cap)
+        )
       );
     }
 
     // Filter by task type
     if (options.taskType) {
-      candidatePersonas = candidatePersonas.filter(p =>
-        p.tags?.includes(`task:${options.taskType}`) || p.tags?.includes(options.taskType!)
+      candidatePersonas = candidatePersonas.filter(
+        (p) =>
+          p.tags?.includes(`task:${options.taskType}`) ||
+          p.tags?.includes(options.taskType!)
       );
     }
 
@@ -895,11 +1049,13 @@ export class PersonaManager {
 
     // Get scores for all candidates
     const scoreResults: (PersonaScore | null)[] = await Promise.all(
-      candidatePersonas.map(async p => {
+      candidatePersonas.map(async (p) => {
         if (this.useUpstash) {
           return await UpstashPersonaScore.loadPersonaScore(p.id);
         } else if (personaScoreManager) {
-          return await personaScoreManager.getScore(p.id) as PersonaScore | null;
+          return (await personaScoreManager.getScore(
+            p.id
+          )) as PersonaScore | null;
         }
         return null;
       })
@@ -921,7 +1077,7 @@ export class PersonaManager {
       const p = candidatePersonas[i];
       const currentPersonaScore = scoreResults[i];
       let currentOverallScore = currentPersonaScore?.overall_score ?? 0.5;
-      let matchReason = "Highest overall score";
+      let matchReason = 'Highest overall score';
 
       // Find the best micro-persona for this persona
       let bestMicroPersona: MicroPersonaDefinition | undefined = undefined;
@@ -941,16 +1097,20 @@ export class PersonaManager {
             let microScoreData: PersonaScore | null = null;
 
             if (this.useUpstash) {
-              microScoreData = await UpstashPersonaScore.loadPersonaScore(micro.id);
+              microScoreData = await UpstashPersonaScore.loadPersonaScore(
+                micro.id
+              );
             } else if (personaScoreManager) {
-              microScoreData = await personaScoreManager.getScore(micro.id) as PersonaScore | null;
+              microScoreData = (await personaScoreManager.getScore(
+                micro.id
+              )) as PersonaScore | null;
             }
 
             const microOverallScore = microScoreData?.overall_score ?? 0.5;
             if (microOverallScore > bestMicroScore) {
               bestMicroScore = microOverallScore;
               bestMicroPersona = micro;
-              matchReason = "Best persona and micro-persona combination";
+              matchReason = 'Best persona and micro-persona combination';
             }
           }
         }
@@ -964,14 +1124,16 @@ export class PersonaManager {
       // Update best match if this is better
       if (currentOverallScore > highestScore) {
         highestScore = currentOverallScore;
-        const composed = bestMicroPersona ? composePersona(p, bestMicroPersona) : p;
+        const composed = bestMicroPersona
+          ? composePersona(p, bestMicroPersona)
+          : p;
         bestMatch = {
           persona: p,
           microPersona: bestMicroPersona,
           scoreData: currentPersonaScore,
           composedPersona: composed,
           matchReason,
-          score: currentOverallScore
+          score: currentOverallScore,
         };
       }
     }
@@ -979,30 +1141,57 @@ export class PersonaManager {
     return bestMatch;
   }
 
-  public getAgentPersona(personaDef: PersonaDefinition, microDef?: MicroPersonaDefinition, dynamicContext?: Record<string, string>): AgentPersona {
-    const composed = microDef ? composePersona(personaDef, microDef) : personaDef;
+  public getAgentPersona(
+    personaDef: PersonaDefinition,
+    microDef?: MicroPersonaDefinition,
+    dynamicContext?: Record<string, string>
+  ): AgentPersona {
+    const composed = microDef
+      ? composePersona(personaDef, microDef)
+      : personaDef;
 
     const agentCapabilities: AgentPersona['capabilities'] = {};
     if (composed.capabilities) {
       for (const cap of composed.capabilities) {
         switch (cap) {
-          case GeminiCapability.TEXT_GENERATION: agentCapabilities.text = true; break;
+          case GeminiCapability.TEXT_GENERATION:
+            agentCapabilities.text = true;
+            break;
           case GeminiCapability.MULTIMODAL_UNDERSTANDING:
             agentCapabilities.vision = true;
             agentCapabilities.audio = true;
             break;
           case GeminiCapability.FUNCTION_CALLING:
           case GeminiCapability.TOOL_USE:
-            agentCapabilities.functions = true; break;
-          case GeminiCapability.JSON_MODE: agentCapabilities.json_mode = true; break;
-          case GeminiCapability.TUNING: agentCapabilities.fine_tuning = true; break;
-          case GeminiCapability.THINKING: agentCapabilities.thinking = true; break;
-          case GeminiCapability.SEARCH_GROUNDING: agentCapabilities.search_grounding = true; break;
-          case GeminiCapability.CACHING: agentCapabilities.cached_content = true; break;
-          case GeminiCapability.CODE_EXECUTION: agentCapabilities.code_execution = true; break;
-          case GeminiCapability.STRUCTURED_OUTPUTS: agentCapabilities.structured_output = true; break;
-          case GeminiCapability.IMAGE_GENERATION: agentCapabilities.image_generation = true; break;
-          case GeminiCapability.AUDIO_GENERATION: agentCapabilities.audio_generation = true; break;
+            agentCapabilities.functions = true;
+            break;
+          case GeminiCapability.JSON_MODE:
+            agentCapabilities.json_mode = true;
+            break;
+          case GeminiCapability.TUNING:
+            agentCapabilities.fine_tuning = true;
+            break;
+          case GeminiCapability.THINKING:
+            agentCapabilities.thinking = true;
+            break;
+          case GeminiCapability.SEARCH_GROUNDING:
+            agentCapabilities.search_grounding = true;
+            break;
+          case GeminiCapability.CACHING:
+            agentCapabilities.cached_content = true;
+            break;
+          case GeminiCapability.CODE_EXECUTION:
+            agentCapabilities.code_execution = true;
+            break;
+          case GeminiCapability.STRUCTURED_OUTPUTS:
+            agentCapabilities.structured_output = true;
+            break;
+          case GeminiCapability.IMAGE_GENERATION:
+            agentCapabilities.image_generation = true;
+            break;
+          case GeminiCapability.AUDIO_GENERATION:
+            agentCapabilities.audio_generation = true;
+            break;
         }
       }
     }
@@ -1011,9 +1200,16 @@ export class PersonaManager {
       id: composed.id,
       name: composed.name,
       description: composed.description || '',
-      systemPromptTemplate: this.generateSystemPrompt(personaDef, microDef, dynamicContext),
+      systemPromptTemplate: this.generateSystemPrompt(
+        personaDef,
+        microDef,
+        dynamicContext
+      ),
       modelSettings: composed.modelSettings || {},
-      capabilities: Object.keys(agentCapabilities).length > 0 ? agentCapabilities : undefined,
+      capabilities:
+        Object.keys(agentCapabilities).length > 0
+          ? agentCapabilities
+          : undefined,
     };
   }
 }

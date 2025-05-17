@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // Schema for updating a workflow
 const updateWorkflowSchema = z.object({
-  name: z.string().min(1, "Name is required").optional(),
+  name: z.string().min(1, 'Name is required').optional(),
   description: z.string().optional(),
   metadata: z.record(z.any()).optional(),
 });
@@ -16,22 +16,25 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    
+
     // Get workflow
     const workflowData = await workflow.getWorkflow(id);
-    
+
     if (!workflowData) {
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({ workflow: workflowData });
   } catch (error) {
     console.error(`Error getting workflow ${params.id}:`, error);
     return NextResponse.json(
-      { error: 'Failed to get workflow', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to get workflow',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }
@@ -44,19 +47,22 @@ export async function PUT(
 ) {
   try {
     const { id } = params;
-    
+
     // Parse request body
     const body = await request.json();
-    
+
     // Validate request body
     const validationResult = updateWorkflowSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Invalid request body', details: validationResult.error.format() },
+        {
+          error: 'Invalid request body',
+          details: validationResult.error.format(),
+        },
         { status: 400 }
       );
     }
-    
+
     // Check if workflow exists
     const existingWorkflow = await workflow.getWorkflow(id);
     if (!existingWorkflow) {
@@ -65,15 +71,21 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
+
     // Update workflow
-    const updatedWorkflow = await workflow.updateWorkflow(id, validationResult.data);
-    
+    const updatedWorkflow = await workflow.updateWorkflow(
+      id,
+      validationResult.data
+    );
+
     return NextResponse.json({ workflow: updatedWorkflow });
   } catch (error) {
     console.error(`Error updating workflow ${params.id}:`, error);
     return NextResponse.json(
-      { error: 'Failed to update workflow', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to update workflow',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }
@@ -86,7 +98,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
-    
+
     // Check if workflow exists
     const existingWorkflow = await workflow.getWorkflow(id);
     if (!existingWorkflow) {
@@ -95,15 +107,18 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
+
     // Delete workflow
     await workflow.deleteWorkflow(id);
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(`Error deleting workflow ${params.id}:`, error);
     return NextResponse.json(
-      { error: 'Failed to delete workflow', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to delete workflow',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

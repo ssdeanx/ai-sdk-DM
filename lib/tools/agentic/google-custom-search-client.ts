@@ -1,9 +1,9 @@
-import { aiFunction, AIFunctionsProvider, assert, getEnv } from '@agentic/core'
-import { customsearch_v1 as GoogleSearchAPI } from '@googleapis/customsearch'
-import { z } from 'zod'
+import { aiFunction, AIFunctionsProvider, assert, getEnv } from '@agentic/core';
+import { customsearch_v1 as GoogleSearchAPI } from '@googleapis/customsearch';
+import { z } from 'zod';
 
-import { paginate } from './paginate'
-import { createAISDKTools } from './ai-sdk'
+import { paginate } from './paginate';
+import { createAISDKTools } from './ai-sdk';
 
 export namespace googleCustomSearch {
   export const SearchParamsSchema = z.object({
@@ -12,9 +12,9 @@ export namespace googleCustomSearch {
     safeSearch: z
       .union([z.literal('active'), z.literal('off')])
       .optional()
-      .describe('Search safety level. Defaults to "active".')
-  })
-  export type SearchParams = z.infer<typeof SearchParamsSchema>
+      .describe('Search safety level. Defaults to "active".'),
+  });
+  export type SearchParams = z.infer<typeof SearchParamsSchema>;
 }
 
 /**
@@ -23,37 +23,37 @@ export namespace googleCustomSearch {
  * @see https://developers.google.com/custom-search/v1/overview
  */
 export class GoogleCustomSearchClient extends AIFunctionsProvider {
-  protected readonly apiKey: string
+  protected readonly apiKey: string;
 
-  readonly cseId: string
-  readonly client: GoogleSearchAPI.Customsearch
+  readonly cseId: string;
+  readonly client: GoogleSearchAPI.Customsearch;
 
   constructor({
     apiKey = getEnv('GOOGLE_API_KEY'),
-    cseId = getEnv('GOOGLE_CSE_ID')
+    cseId = getEnv('GOOGLE_CSE_ID'),
   }: {
     /** Google API key */
-    apiKey?: string
+    apiKey?: string;
 
     /** Google Custom Search Engine ID */
-    cseId?: string
+    cseId?: string;
   } = {}) {
     assert(
       apiKey,
       'GoogleCustomSearchClient missing required "apiKey" (defaults to "GOOGLE_API_KEY")'
-    )
+    );
     assert(
       cseId,
       'GoogleCustomSearchClient missing required "cseId" (defaults to "GOOGLE_CSE_ID")'
-    )
-    super()
+    );
+    super();
 
-    this.apiKey = apiKey
-    this.cseId = cseId
+    this.apiKey = apiKey;
+    this.cseId = cseId;
 
     this.client = new GoogleSearchAPI.Customsearch({
-      auth: this.apiKey
-    })
+      auth: this.apiKey,
+    });
   }
 
   /**
@@ -62,7 +62,7 @@ export class GoogleCustomSearchClient extends AIFunctionsProvider {
   @aiFunction({
     name: 'google_custom_search',
     description: `Google Custom Search for online trends, news, current events, real-time information, or research topics.`,
-    inputSchema: googleCustomSearch.SearchParamsSchema
+    inputSchema: googleCustomSearch.SearchParamsSchema,
   })
   async search(
     queryOrParams: string | googleCustomSearch.SearchParams
@@ -70,33 +70,35 @@ export class GoogleCustomSearchClient extends AIFunctionsProvider {
     const params =
       typeof queryOrParams === 'string'
         ? { query: queryOrParams }
-        : queryOrParams
+        : queryOrParams;
 
     const results = await paginate({
       size: params.maxResults ?? 10,
       handler: async ({ cursor = 0, limit }) => {
-        const maxChunkSize = 10
+        const maxChunkSize = 10;
 
         const {
-          data: { items = [] }
+          data: { items = [] },
         } = await this.client.cse.list({
           cx: this.cseId,
           q: params.query,
           start: cursor,
           num: Math.min(limit, maxChunkSize),
-          safe: params.safeSearch ?? 'active'
-        })
+          safe: params.safeSearch ?? 'active',
+        });
 
         return {
           data: items,
           nextCursor:
-            items.length < maxChunkSize ? undefined : cursor + items.length
-        }
-      }
-    })
+            items.length < maxChunkSize ? undefined : cursor + items.length,
+        };
+      },
+    });
 
-    return results
+    return results;
   }
 }
 
-export const googleCustomSearchTools = createAISDKTools(new GoogleCustomSearchClient())
+export const googleCustomSearchTools = createAISDKTools(
+  new GoogleCustomSearchClient()
+);

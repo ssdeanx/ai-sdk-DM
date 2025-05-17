@@ -1,13 +1,18 @@
-import { streamText, CoreMessage, StreamTextResult } from "ai";
-import { getProviderByName } from "../ai"
-import { loadMessages, saveMessage, loadAgentState, saveAgentState } from "../memory/memory"
-import { jsonSchemaToZod } from "../tools"
-import { initializeTools } from "../tools/toolInitializer"
-import { getLibSQLClient } from "../memory/db"
-import { getItemById, getData, shouldUseUpstash } from "../memory/supabase"
-import { createSupabaseClient } from "../memory/upstash/supabase-adapter-factory"
-import { v4 as uuidv4 } from "uuid"
-import { z } from "zod"
+import { streamText, CoreMessage, StreamTextResult } from 'ai';
+import { getProviderByName } from '../ai';
+import {
+  loadMessages,
+  saveMessage,
+  loadAgentState,
+  saveAgentState,
+} from '../memory/memory';
+import { jsonSchemaToZod } from '../tools';
+import { initializeTools } from '../tools/toolInitializer';
+import { getLibSQLClient } from '../memory/db';
+import { getItemById, getData, shouldUseUpstash } from '../memory/supabase';
+import { createSupabaseClient } from '../memory/upstash/supabase-adapter-factory';
+import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 import {
   Agent,
   AgentSchema,
@@ -19,9 +24,9 @@ import {
   AgentRunOptionsSchema,
   AgentRunFinishData,
   AgentRunFinishDataSchema,
-  AgentRunFinishReason
-} from "./agent.types"
-import { personaManager } from "./personas/persona-manager"
+  AgentRunFinishReason,
+} from './agent.types';
+import { personaManager } from './personas/persona-manager';
 
 interface ProviderOptions {
   traceId?: string;
@@ -44,12 +49,18 @@ export async function runAgent(
 ): Promise<RunResult> {
   // Validate inputs with Zod schemas
   const validatedAgentId = z.string().parse(agentId);
-  const validatedThreadId = memoryThreadId ? z.string().parse(memoryThreadId) : undefined;
-  const validatedInput = initialInput ? z.string().parse(initialInput) : undefined;
-  const validatedOptions = options ? AgentRunOptionsSchema.parse(options) : undefined;
+  const validatedThreadId = memoryThreadId
+    ? z.string().parse(memoryThreadId)
+    : undefined;
+  const validatedInput = initialInput
+    ? z.string().parse(initialInput)
+    : undefined;
+  const validatedOptions = options
+    ? AgentRunOptionsSchema.parse(options)
+    : undefined;
 
   // Generate thread ID if not provided
-  const threadId = validatedThreadId || uuidv4()
+  const threadId = validatedThreadId || uuidv4();
 
   try {
     // Load agent configuration from Supabase or Upstash
@@ -62,41 +73,46 @@ export async function runAgent(
       const supabaseClient = createSupabaseClient();
 
       // Get agent
-      agent = await supabaseClient.from("agents").getById(agentId) as unknown as Agent;
-      if (!agent) throw new Error("Agent not found");
+      agent = (await supabaseClient
+        .from('agents')
+        .getById(agentId)) as unknown as Agent;
+      if (!agent) throw new Error('Agent not found');
 
       // Get model
-      model = await supabaseClient.from("models").getById(agent.model_id) as any;
-      if (!model) throw new Error("Model not found for agent");
+      model = (await supabaseClient
+        .from('models')
+        .getById(agent.model_id)) as any;
+      if (!model) throw new Error('Model not found for agent');
 
       // Get tools
       if (Array.isArray(agent.tool_ids) && agent.tool_ids.length > 0) {
-        const toolPromises = agent.tool_ids.map(id =>
-          supabaseClient.from("tools").getById(id)
+        const toolPromises = agent.tool_ids.map((id) =>
+          supabaseClient.from('tools').getById(id)
         );
         const toolResults = await Promise.all(toolPromises);
         tools = toolResults.filter(Boolean) as unknown as ToolConfig[];
       }
     } else {
       // Use regular Supabase
-      agent = await getItemById("agents", agentId) as unknown as Agent;
-      if (!agent) throw new Error("Agent not found");
+      agent = (await getItemById('agents', agentId)) as unknown as Agent;
+      if (!agent) throw new Error('Agent not found');
 
       // Load model config from Supabase
-      model = await getItemById("models", agent.model_id);
-      if (!model) throw new Error("Model not found for agent");
+      model = await getItemById('models', agent.model_id);
+      if (!model) throw new Error('Model not found for agent');
 
       // Load agent's tools from Supabase
       if (agent && Array.isArray(agent.tool_ids) && agent.tool_ids.length > 0) {
-        const toolData = await getData("tools", {
-          filters: (query) => query.in('id', agent?.tool_ids || [])        }) as unknown as ToolConfig[];
+        const toolData = (await getData('tools', {
+          filters: (query) => query.in('id', agent?.tool_ids || []),
+        })) as unknown as ToolConfig[];
         tools = toolData || [];
       }
     }
 
     // Use LibSQL for memory/thread
-    const db = getLibSQLClient()
-    const messages = await loadMessages(threadId)
+    const db = getLibSQLClient();
+    const messages = await loadMessages(threadId);
 
     if (messages.length === 0) {
       // This is a new thread, create it
@@ -104,10 +120,11 @@ export async function runAgent(
         sql: `INSERT INTO memory_threads (id, agent_id, name, created_at, updated_at)
               VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
         args: [threadId, agentId, `${agent.name} Thread`],
-      })
+      });
 
       // Generate system message
-      let systemMessage = agent.system_prompt || `You are ${agent.name}. ${agent.description}`
+      let systemMessage =
+        agent.system_prompt || `You are ${agent.name}. ${agent.description}`;
 
       // If agent has a persona, use it to generate system prompt
       if (agent.persona_id) {
@@ -122,45 +139,50 @@ export async function runAgent(
               {
                 name: agent.name || '',
                 description: agent.description || '',
-                toolNames: tools.map(t => t.name || '').join(", ")
+                toolNames: tools.map((t) => t.name || '').join(', '),
               }
             );
           }
         } catch (error) {
-          console.error("Failed to generate persona system prompt:", error)
+          console.error('Failed to generate persona system prompt:', error);
         }
       }
 
-      await saveMessage(threadId, "system", systemMessage)
-      messages.push({ role: "system", content: systemMessage })
+      await saveMessage(threadId, 'system', systemMessage);
+      messages.push({ role: 'system', content: systemMessage });
     }
 
     // Add initial user input if provided
     if (initialInput) {
-      await saveMessage(threadId, "user", initialInput)
-      messages.push({ role: "user", content: initialInput })
+      await saveMessage(threadId, 'user', initialInput);
+      messages.push({ role: 'user', content: initialInput });
     }
 
     // Load agent state
-    const agentState = await loadAgentState(threadId, agentId)
+    const agentState = await loadAgentState(threadId, agentId);
 
     // Initialize AI provider
-    const provider = await getProviderByName(model.provider, model.api_key, model.base_url)
-    if (!provider) throw new Error(`Failed to initialize provider: ${model.provider}`)
-    const aiModel = provider(model.model_id)
+    const provider = await getProviderByName(
+      model.provider,
+      model.api_key,
+      model.base_url
+    );
+    if (!provider)
+      throw new Error(`Failed to initialize provider: ${model.provider}`);
+    const aiModel = provider(model.model_id);
 
     // Initialize tools
-    await initializeTools()
+    await initializeTools();
 
     // Prepare tools for AI SDK
-    const aiTools: Record<string, any> = {}
+    const aiTools: Record<string, any> = {};
     for (const toolConfig of tools) {
       try {
-        const toolName = toolConfig.name
+        const toolName = toolConfig.name;
 
         // Create a custom tool from the configuration
-        const schema = JSON.parse(toolConfig.parameters_schema)
-        const zodSchema = jsonSchemaToZod(schema)
+        const schema = JSON.parse(toolConfig.parameters_schema);
+        const zodSchema = jsonSchemaToZod(schema);
 
         // Create the tool directly
         aiTools[toolName] = {
@@ -168,19 +190,26 @@ export async function runAgent(
           parameters: zodSchema,
           execute: async (params: any) => {
             // Log tool execution
-            console.log(`Agent ${agent.name} executing tool: ${toolName}`, params)
+            console.log(
+              `Agent ${agent.name} executing tool: ${toolName}`,
+              params
+            );
 
             try {
               // This is a fallback implementation
-              return { result: `Executed ${toolName} with params: ${JSON.stringify(params)}` }
+              return {
+                result: `Executed ${toolName} with params: ${JSON.stringify(params)}`,
+              };
             } catch (error) {
-              console.error(`Error executing tool ${toolName}:`, error)
-              return { error: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}` }
+              console.error(`Error executing tool ${toolName}:`, error);
+              return {
+                error: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+              };
             }
-          }
-        }
+          },
+        };
       } catch (error) {
-        console.error(`Error setting up tool ${toolConfig.name}:`, error)
+        console.error(`Error setting up tool ${toolConfig.name}:`, error);
       }
     }
 
@@ -195,44 +224,59 @@ export async function runAgent(
       toolChoice: options?.toolChoice,
       onFinish: options?.onFinish
         ? async (event) => {
-          // Adapt the event data to AgentRunFinishData
-          const assistantMessage = event.response.messages.find(
-            (m): m is CoreMessage & { id: string; role: 'assistant'; toolCalls?: Array<{ toolCallId: string; toolName: string; args: any; }>; } => m.role === 'assistant'
-          );
+            // Adapt the event data to AgentRunFinishData
+            const assistantMessage = event.response.messages.find(
+              (
+                m
+              ): m is CoreMessage & {
+                id: string;
+                role: 'assistant';
+                toolCalls?: Array<{
+                  toolCallId: string;
+                  toolName: string;
+                  args: any;
+                }>;
+              } => m.role === 'assistant'
+            );
 
-          if (assistantMessage) {
-            // Extract text content from CoreMessage content parts
-            let content = "";
-            if (Array.isArray(assistantMessage.content)) {
-              content = assistantMessage.content
-                .filter(part => part.type === 'text')
-                .map(part => (part as { type: 'text'; text: string; }).text)
-                .join('');
-            } else if (typeof assistantMessage.content === 'string') {
-              content = assistantMessage.content;
+            if (assistantMessage) {
+              // Extract text content from CoreMessage content parts
+              let content = '';
+              if (Array.isArray(assistantMessage.content)) {
+                content = assistantMessage.content
+                  .filter((part) => part.type === 'text')
+                  .map((part) => (part as { type: 'text'; text: string }).text)
+                  .join('');
+              } else if (typeof assistantMessage.content === 'string') {
+                content = assistantMessage.content;
+              }
+
+              const finishData: AgentRunFinishData = {
+                message: {
+                  id: assistantMessage.id || uuidv4(), // Ensure id is present
+                  role: 'assistant',
+                  content: content,
+                  toolInvocations: assistantMessage.toolCalls?.map((tc) => ({
+                    toolCallId: tc.toolCallId,
+                    toolName: tc.toolName,
+                    args: tc.args,
+                  })),
+                  createdAt: new Date(),
+                },
+                usage: event.usage,
+                finishReason:
+                  event.finishReason === 'unknown'
+                    ? undefined
+                    : (event.finishReason as AgentRunFinishReason),
+              };
+              await options.onFinish!(finishData);
             }
-
-            const finishData: AgentRunFinishData = {
-              message: {
-                id: assistantMessage.id || uuidv4(), // Ensure id is present
-                role: 'assistant',
-                content: content,
-                toolInvocations: assistantMessage.toolCalls?.map(tc => ({
-                  toolCallId: tc.toolCallId,
-                  toolName: tc.toolName,
-                  args: tc.args,
-                })),
-                createdAt: new Date(),
-              },
-              usage: event.usage,
-              finishReason: event.finishReason === 'unknown' ? undefined : (event.finishReason as AgentRunFinishReason),
-            };
-            await options.onFinish!(finishData);
           }
-        }
         : undefined,
-      providerOptions: options?.traceId ? { traceId: { value: options.traceId } } : undefined, // Optional, as per integration notes above
-    })
+      providerOptions: options?.traceId
+        ? { traceId: { value: options.traceId } }
+        : undefined, // Optional, as per integration notes above
+    });
 
     // streamOutput handling
     const streamOutput = options?.streamOutput ?? false;
@@ -247,7 +291,7 @@ export async function runAgent(
     } else {
       // Original behavior: resolve text, save messages and state.
       const responseText = await result.text;
-      await saveMessage(threadId, "assistant", responseText);
+      await saveMessage(threadId, 'assistant', responseText);
 
       // Update agent state (agentState was loaded earlier)
       const newState = {
@@ -266,8 +310,8 @@ export async function runAgent(
       };
     }
   } catch (error) {
-    console.error(`Error running agent ${agentId}:`, error)
-    throw error
+    console.error(`Error running agent ${agentId}:`, error);
+    throw error;
   }
 }
 
@@ -281,15 +325,15 @@ export async function listAgents(): Promise<Agent[]> {
     if (shouldUseUpstash()) {
       // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-      const agents = await supabaseClient.from("agents").getAll();
+      const agents = await supabaseClient.from('agents').getAll();
       return agents as unknown as Agent[];
     } else {
       // Use regular Supabase
-      const agents = await getData("agents", {});
+      const agents = await getData('agents', {});
       return agents as unknown as Agent[];
     }
   } catch (error) {
-    console.error("Error listing agents:", error);
+    console.error('Error listing agents:', error);
     throw error;
   }
 }
@@ -305,11 +349,11 @@ export async function getAgent(agentId: string): Promise<Agent | null> {
     if (shouldUseUpstash()) {
       // Use Upstash adapter
       const supabaseClient = createSupabaseClient();
-      const agent = await supabaseClient.from("agents").getById(agentId);
+      const agent = await supabaseClient.from('agents').getById(agentId);
       return agent as unknown as Agent | null;
     } else {
       // Use regular Supabase
-      const agent = await getItemById("agents", agentId);
+      const agent = await getItemById('agents', agentId);
       return agent as unknown as Agent | null;
     }
   } catch (error) {

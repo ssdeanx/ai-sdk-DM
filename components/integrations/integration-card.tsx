@@ -1,25 +1,34 @@
-"use client"
+'use client';
 
-import { ReactNode } from "react"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { ExternalLink } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { ReactNode } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ExternalLink } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface IntegrationCardProps {
-  name: string
-  description: string
-  icon: ReactNode
-  href: string
+  name: string;
+  description: string;
+  icon: ReactNode;
+  href: string;
 }
 
-export function IntegrationCard({ name, description, icon, href }: IntegrationCardProps) {
+export function IntegrationCard({
+  name,
+  description,
+  icon,
+  href,
+}: IntegrationCardProps) {
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
-    >
+    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
       <Card className="h-full overflow-hidden border border-border/50 bg-background/50 backdrop-blur-sm hover:border-primary/20 hover:shadow-md transition-all">
         <CardHeader className="flex flex-row items-center gap-4 pb-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -44,5 +53,5 @@ export function IntegrationCard({ name, description, icon, href }: IntegrationCa
         </CardFooter>
       </Card>
     </motion.div>
-  )
+  );
 }

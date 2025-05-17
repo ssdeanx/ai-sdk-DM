@@ -1,41 +1,52 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Calendar, User } from "lucide-react"
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Calendar, User } from 'lucide-react';
 
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface BlogPost {
-  id: string
-  title: string
-  excerpt: string
-  author: string
-  imageUrl: string
-  tags: string
-  publishedAt: string
+  id: string;
+  title: string;
+  excerpt: string;
+  author: string;
+  imageUrl: string;
+  tags: string;
+  publishedAt: string;
 }
 
 interface BlogCardProps {
-  post: BlogPost
+  post: BlogPost;
 }
 
 export function BlogCard({ post }: BlogCardProps) {
-  const tagArray = post.tags ? post.tags.split(",").map((tag) => tag.trim()) : []
-  const publishedDate = new Date(post.publishedAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const tagArray = post.tags
+    ? post.tags.split(',').map((tag) => tag.trim())
+    : [];
+  const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       <Link href={`/blog/${post.id}`}>
         <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
           <div className="aspect-video overflow-hidden">
             <img
-              src={post.imageUrl || "/placeholder.svg?height=400&width=600"}
+              src={post.imageUrl || '/placeholder.svg?height=400&width=600'}
               alt={post.title}
               className="w-full h-full object-cover transition-transform hover:scale-105"
             />
@@ -73,5 +84,5 @@ export function BlogCard({ post }: BlogCardProps) {
         </Card>
       </Link>
     </motion.div>
-  )
+  );
 }

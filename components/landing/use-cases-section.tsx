@@ -1,24 +1,34 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Check, ChevronRight, Code, FileText, MessageSquare, Search, ShoppingCart, Users } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Check,
+  ChevronRight,
+  Code,
+  FileText,
+  MessageSquare,
+  Search,
+  ShoppingCart,
+  Users,
+} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 // Default use cases data
 const defaultUseCases = [
   {
-    id: "customer-support",
-    title: "Customer Support",
-    description: "Build AI agents that can handle customer inquiries, troubleshoot issues, and provide personalized support 24/7.",
+    id: 'customer-support',
+    title: 'Customer Support',
+    description:
+      'Build AI agents that can handle customer inquiries, troubleshoot issues, and provide personalized support 24/7.',
     icon: Users,
     features: [
-      "Handle multiple customer inquiries simultaneously",
-      "Access knowledge bases and documentation",
-      "Escalate complex issues to human agents",
-      "Personalize responses based on customer history",
+      'Handle multiple customer inquiries simultaneously',
+      'Access knowledge bases and documentation',
+      'Escalate complex issues to human agents',
+      'Personalize responses based on customer history',
     ],
     code: `import { openai } from '@ai-sdk/openai';
 import { createAgent } from '@ai-sdk/agent';
@@ -45,15 +55,16 @@ const response = await supportAgent.execute({
 });`,
   },
   {
-    id: "content-generation",
-    title: "Content Generation",
-    description: "Create AI agents that can generate blog posts, product descriptions, social media content, and more.",
+    id: 'content-generation',
+    title: 'Content Generation',
+    description:
+      'Create AI agents that can generate blog posts, product descriptions, social media content, and more.',
     icon: FileText,
     features: [
-      "Generate SEO-optimized content",
-      "Create content in different tones and styles",
-      "Research topics and incorporate facts",
-      "Edit and refine existing content",
+      'Generate SEO-optimized content',
+      'Create content in different tones and styles',
+      'Research topics and incorporate facts',
+      'Edit and refine existing content',
     ],
     code: `import { anthropic } from '@ai-sdk/anthropic';
 import { createAgent } from '@ai-sdk/agent';
@@ -80,15 +91,16 @@ const blogPost = await contentAgent.execute({
 });`,
   },
   {
-    id: "research-assistant",
-    title: "Research Assistant",
-    description: "Build AI agents that can search the web, analyze data, and synthesize information to help with research tasks.",
+    id: 'research-assistant',
+    title: 'Research Assistant',
+    description:
+      'Build AI agents that can search the web, analyze data, and synthesize information to help with research tasks.',
     icon: Search,
     features: [
-      "Search the web for relevant information",
-      "Analyze and summarize research papers",
-      "Extract key insights from large datasets",
-      "Generate research reports and presentations",
+      'Search the web for relevant information',
+      'Analyze and summarize research papers',
+      'Extract key insights from large datasets',
+      'Generate research reports and presentations',
     ],
     code: `import { google } from '@ai-sdk/google';
 import { createAgent } from '@ai-sdk/agent';
@@ -116,15 +128,16 @@ const researchReport = await researchAgent.execute({
 });`,
   },
   {
-    id: "code-assistant",
-    title: "Code Assistant",
-    description: "Create AI agents that can help developers write, debug, and optimize code across multiple programming languages.",
+    id: 'code-assistant',
+    title: 'Code Assistant',
+    description:
+      'Create AI agents that can help developers write, debug, and optimize code across multiple programming languages.',
     icon: Code,
     features: [
-      "Generate code based on requirements",
-      "Debug and fix code issues",
-      "Explain complex code snippets",
-      "Optimize code for performance",
+      'Generate code based on requirements',
+      'Debug and fix code issues',
+      'Explain complex code snippets',
+      'Optimize code for performance',
     ],
     code: `import { openai } from '@ai-sdk/openai';
 import { createAgent } from '@ai-sdk/agent';
@@ -151,42 +164,42 @@ const generatedCode = await codeAgent.execute({
   ]
 });`,
   },
-]
+];
 
 export default function UseCasesSection() {
-  const [useCases, setUseCases] = useState(defaultUseCases)
-  const [activeTab, setActiveTab] = useState(defaultUseCases[0].id)
+  const [useCases, setUseCases] = useState(defaultUseCases);
+  const [activeTab, setActiveTab] = useState(defaultUseCases[0].id);
 
   useEffect(() => {
     // Fetch use cases content from API
     const fetchUseCasesContent = async () => {
       try {
-        const response = await fetch("/api/content/use-cases")
+        const response = await fetch('/api/content/use-cases');
         if (response.ok) {
-          const data = await response.json()
+          const data = await response.json();
           if (data && Array.isArray(data)) {
             // Map API data to use cases format
             const mappedUseCases = data.map((item: any) => ({
               id: item.data?.id || item.id,
-              title: item.title || "",
-              description: item.description || "",
-              icon: getIconByName(item.data?.icon || ""),
+              title: item.title || '',
+              description: item.description || '',
+              icon: getIconByName(item.data?.icon || ''),
               features: item.data?.features || [],
-              code: item.data?.code || "",
-            }))
-            setUseCases(mappedUseCases)
+              code: item.data?.code || '',
+            }));
+            setUseCases(mappedUseCases);
             if (mappedUseCases.length > 0) {
-              setActiveTab(mappedUseCases[0].id)
+              setActiveTab(mappedUseCases[0].id);
             }
           }
         }
       } catch (error) {
-        console.error("Error fetching use cases content:", error)
+        console.error('Error fetching use cases content:', error);
       }
-    }
+    };
 
-    fetchUseCasesContent()
-  }, [])
+    fetchUseCasesContent();
+  }, []);
 
   // Helper function to get icon component by name
   function getIconByName(name: string) {
@@ -197,8 +210,8 @@ export default function UseCasesSection() {
       Code: Code,
       MessageSquare: MessageSquare,
       ShoppingCart: ShoppingCart,
-    }
-    return iconMap[name] || Users
+    };
+    return iconMap[name] || Users;
   }
 
   return (
@@ -215,11 +228,17 @@ export default function UseCasesSection() {
             Use Cases
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
-            Discover how AI SDK Framework can be used to build a wide range of AI-powered applications.
+            Discover how AI SDK Framework can be used to build a wide range of
+            AI-powered applications.
           </p>
         </motion.div>
 
-        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          defaultValue={activeTab}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
           <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8 bg-gray-900 p-1 rounded-lg">
             {useCases.map((useCase) => (
               <TabsTrigger
@@ -232,7 +251,7 @@ export default function UseCasesSection() {
               </TabsTrigger>
             ))}
           </TabsList>
-          
+
           {useCases.map((useCase) => (
             <TabsContent key={useCase.id} value={useCase.id} className="mt-0">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -241,9 +260,11 @@ export default function UseCasesSection() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <h3 className="text-2xl font-bold text-white mb-4">{useCase.title}</h3>
+                  <h3 className="text-2xl font-bold text-white mb-4">
+                    {useCase.title}
+                  </h3>
                   <p className="text-gray-400 mb-6">{useCase.description}</p>
-                  
+
                   <div className="space-y-3 mb-8">
                     {useCase.features.map((feature, index) => (
                       <div key={index} className="flex items-start gap-2">
@@ -254,15 +275,19 @@ export default function UseCasesSection() {
                       </div>
                     ))}
                   </div>
-                  
-                  <Button asChild variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  >
                     <Link href="/docs/use-cases">
                       View Documentation
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                 </motion.div>
-                
+
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -291,5 +316,5 @@ export default function UseCasesSection() {
         </Tabs>
       </div>
     </section>
-  )
+  );
 }

@@ -11,12 +11,15 @@ export async function GET(req: NextRequest) {
   const id = searchParams.get('id');
   if (id) {
     const item = await adapter.from(table).getById(PROVIDER_PREFIX + id);
-    if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!item)
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(item);
   }
   const items = await adapter.from(table).getAll();
   type SettingsRow = { key: string; value: string; [k: string]: unknown };
-  const providers = (items as SettingsRow[]).filter((i) => i.key && i.key.startsWith(PROVIDER_PREFIX));
+  const providers = (items as SettingsRow[]).filter(
+    (i) => i.key && i.key.startsWith(PROVIDER_PREFIX)
+  );
   return NextResponse.json(providers);
 }
 
@@ -28,17 +31,18 @@ export async function POST(req: NextRequest) {
     ...data,
     key: PROVIDER_PREFIX + id,
     created_at: now,
-    updated_at: now
+    updated_at: now,
   });
   return NextResponse.json(created, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
   const data = await req.json();
-  if (!data.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  if (!data.id)
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const updated = await adapter.from(table).update(PROVIDER_PREFIX + data.id, {
     ...data,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   });
   return NextResponse.json(updated);
 }

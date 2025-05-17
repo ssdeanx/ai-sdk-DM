@@ -3,12 +3,12 @@ import {
   AIFunctionsProvider,
   assert,
   getEnv,
-  sanitizeSearchParams
-} from '@agentic/core'
-import defaultKy, { type KyInstance } from 'ky'
+  sanitizeSearchParams,
+} from '@agentic/core';
+import defaultKy, { type KyInstance } from 'ky';
 
-import { bravesearch } from './brave-search'
-import { createAISDKTools } from './ai-sdk'
+import { bravesearch } from './brave-search';
+import { createAISDKTools } from './ai-sdk';
 
 /**
  * Agentic client for the Brave search engine.
@@ -16,34 +16,34 @@ import { createAISDKTools } from './ai-sdk'
  * @see https://brave.com/search/api
  */
 export class BraveSearchClient extends AIFunctionsProvider {
-  protected readonly ky: KyInstance
-  protected readonly apiKey: string
-  protected readonly apiBaseUrl: string
+  protected readonly ky: KyInstance;
+  protected readonly apiKey: string;
+  protected readonly apiBaseUrl: string;
 
   constructor({
     apiKey = getEnv('BRAVE_SEARCH_API_KEY'),
     apiBaseUrl = bravesearch.apiBaseUrl,
-    ky = defaultKy
+    ky = defaultKy,
   }: {
-    apiKey?: string
-    apiBaseUrl?: string
-    ky?: KyInstance
+    apiKey?: string;
+    apiBaseUrl?: string;
+    ky?: KyInstance;
   } = {}) {
     assert(
       apiKey,
       'BraveSearchClient missing required "apiKey" (defaults to "BRAVE_SEARCH_API_KEY")'
-    )
-    super()
+    );
+    super();
 
-    this.apiKey = apiKey
-    this.apiBaseUrl = apiBaseUrl
+    this.apiKey = apiKey;
+    this.apiBaseUrl = apiBaseUrl;
 
     this.ky = ky.extend({
       prefixUrl: apiBaseUrl,
       headers: {
-        'X-Subscription-Token': apiKey
-      }
-    })
+        'X-Subscription-Token': apiKey,
+      },
+    });
   }
 
   /**
@@ -56,7 +56,7 @@ export class BraveSearchClient extends AIFunctionsProvider {
       'Use this for broad information gathering, recent events, or when you need diverse web sources. ' +
       'Supports pagination, content filtering, and freshness controls. ' +
       'Maximum 20 results per request, with offset for pagination. ',
-    inputSchema: bravesearch.SearchParamsSchema
+    inputSchema: bravesearch.SearchParamsSchema,
   })
   async search(
     queryOrParams: string | bravesearch.SearchParams
@@ -64,16 +64,16 @@ export class BraveSearchClient extends AIFunctionsProvider {
     const { query: q, ...params } =
       typeof queryOrParams === 'string'
         ? { query: queryOrParams }
-        : queryOrParams
+        : queryOrParams;
 
     return this.ky
       .get('res/v1/web/search', {
         searchParams: sanitizeSearchParams({
           ...params,
-          q
-        })
+          q,
+        }),
       })
-      .json<bravesearch.SearchResponse>()
+      .json<bravesearch.SearchResponse>();
   }
 
   /**
@@ -90,7 +90,7 @@ export class BraveSearchClient extends AIFunctionsProvider {
       '- Phone numbers and opening hours\n' +
       "Use this when the query implies 'near me' or mentions specific locations. " +
       'Automatically falls back to web search if no local results are found.',
-    inputSchema: bravesearch.LocalSearchParamsSchema
+    inputSchema: bravesearch.LocalSearchParamsSchema,
   })
   async localSearch(
     queryOrParams: string | bravesearch.LocalSearchParams
@@ -98,7 +98,7 @@ export class BraveSearchClient extends AIFunctionsProvider {
     const { query: q, ...params } =
       typeof queryOrParams === 'string'
         ? { query: queryOrParams }
-        : queryOrParams
+        : queryOrParams;
 
     const webData = await this.ky
       .get('res/v1/web/search', {
@@ -106,52 +106,52 @@ export class BraveSearchClient extends AIFunctionsProvider {
           search_lang: 'en',
           result_filter: 'locations',
           ...params,
-          q
-        })
+          q,
+        }),
       })
-      .json<bravesearch.SearchResponse>()
+      .json<bravesearch.SearchResponse>();
 
     const locationIds = webData.locations?.results
       ?.filter((r) => !!r.id)
-      .map((r) => r.id)
+      .map((r) => r.id);
 
     if (!locationIds?.length) {
-      return this.search(queryOrParams)
+      return this.search(queryOrParams);
     }
 
     // Get POI details and descriptions in parallel
     const [pois, descriptions] = await Promise.all([
       this.getPoisData(locationIds),
-      this.getDescriptionsData(locationIds)
-    ])
+      this.getDescriptionsData(locationIds),
+    ]);
 
-    const desc = descriptions.descriptions
+    const desc = descriptions.descriptions;
 
     return Object.entries(desc).map(([id, description]) => ({
       description,
-      ...pois.results.find((r) => r.id === id)!
-    }))
+      ...pois.results.find((r) => r.id === id)!,
+    }));
   }
 
   async getPoisData(ids: string[]): Promise<bravesearch.PoiResponse> {
     return this.ky
       .get('res/v1/local/pois', {
         searchParams: sanitizeSearchParams({
-          ids: ids.filter(Boolean)
-        })
+          ids: ids.filter(Boolean),
+        }),
       })
-      .json<bravesearch.PoiResponse>()
+      .json<bravesearch.PoiResponse>();
   }
 
   async getDescriptionsData(ids: string[]): Promise<bravesearch.Description> {
     return this.ky
       .get('res/v1/local/descriptions', {
         searchParams: sanitizeSearchParams({
-          ids: ids.filter(Boolean)
-        })
+          ids: ids.filter(Boolean),
+        }),
       })
-      .json<bravesearch.Description>()
+      .json<bravesearch.Description>();
   }
 }
 
-export const braveSearchTools = createAISDKTools(new BraveSearchClient())
+export const braveSearchTools = createAISDKTools(new BraveSearchClient());

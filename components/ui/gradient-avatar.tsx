@@ -1,21 +1,21 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface GradientAvatarProps extends React.ComponentProps<typeof Avatar> {
-  gradientFrom?: string
-  gradientTo?: string
-  borderWidth?: "thin" | "medium" | "thick"
-  fallback: string
-  src?: string
-  alt?: string
+  gradientFrom?: string;
+  gradientTo?: string;
+  borderWidth?: 'thin' | 'medium' | 'thick';
+  fallback: string;
+  src?: string;
+  alt?: string;
 }
 
 export function GradientAvatar({
   className,
-  gradientFrom = "from-blue-500",
-  gradientTo = "to-violet-500",
-  borderWidth = "medium",
+  gradientFrom = 'from-blue-500',
+  gradientTo = 'to-violet-500',
+  borderWidth = 'medium',
   fallback,
   src,
   alt,
@@ -23,15 +23,15 @@ export function GradientAvatar({
 }: GradientAvatarProps) {
   // Determine border width
   const borderWidthClass = {
-    thin: "p-[1px]",
-    medium: "p-[2px]",
-    thick: "p-[3px]",
-  }[borderWidth]
+    thin: 'p-[1px]',
+    medium: 'p-[2px]',
+    thick: 'p-[3px]',
+  }[borderWidth];
 
   return (
     <div
       className={cn(
-        "rounded-full bg-gradient-to-br",
+        'rounded-full bg-gradient-to-br',
         gradientFrom,
         gradientTo,
         borderWidthClass,
@@ -45,5 +45,5 @@ export function GradientAvatar({
         </AvatarFallback>
       </Avatar>
     </div>
-  )
+  );
 }

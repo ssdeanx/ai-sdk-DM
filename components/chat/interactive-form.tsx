@@ -1,166 +1,195 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Maximize, Minimize, FormInput, Check, AlertCircle, Info } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Maximize,
+  Minimize,
+  FormInput,
+  Check,
+  AlertCircle,
+  Info,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export interface FormField {
-  id: string
-  type: 'text' | 'textarea' | 'number' | 'email' | 'checkbox' | 'radio' | 'select' | 'date'
-  label: string
-  placeholder?: string
-  required?: boolean
-  options?: { value: string, label: string }[] // For radio and select
+  id: string;
+  type:
+    | 'text'
+    | 'textarea'
+    | 'number'
+    | 'email'
+    | 'checkbox'
+    | 'radio'
+    | 'select'
+    | 'date';
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[]; // For radio and select
   validation?: {
-    pattern?: string
-    min?: number
-    max?: number
-    minLength?: number
-    maxLength?: number
-    errorMessage?: string
-  }
+    pattern?: string;
+    min?: number;
+    max?: number;
+    minLength?: number;
+    maxLength?: number;
+    errorMessage?: string;
+  };
 }
 
 export interface InteractiveFormProps {
-  title?: string
-  description?: string
-  fields: FormField[]
-  submitLabel?: string
-  cancelLabel?: string
-  onSubmit?: (data: Record<string, any>) => void
-  onCancel?: () => void
-  className?: string
+  title?: string;
+  description?: string;
+  fields: FormField[];
+  submitLabel?: string;
+  cancelLabel?: string;
+  onSubmit?: (data: Record<string, any>) => void;
+  onCancel?: () => void;
+  className?: string;
 }
 
 export function InteractiveForm({
-  title = "Feedback Form",
+  title = 'Feedback Form',
   description,
   fields = [],
-  submitLabel = "Submit",
-  cancelLabel = "Cancel",
+  submitLabel = 'Submit',
+  cancelLabel = 'Cancel',
   onSubmit,
   onCancel,
-  className
+  className,
 }: InteractiveFormProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [formData, setFormData] = useState<Record<string, any>>({})
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Handle form input change
   const handleChange = (id: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [id]: value
-    }))
+      [id]: value,
+    }));
 
     // Clear error when field is changed
     if (errors[id]) {
-      setErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[id]
-        return newErrors
-      })
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[id];
+        return newErrors;
+      });
     }
-  }
+  };
 
   // Validate a single field
   const validateField = (field: FormField, value: any): string | null => {
     // Required check
-    if (field.required && (value === undefined || value === null || value === '')) {
-      return `${field.label} is required`
+    if (
+      field.required &&
+      (value === undefined || value === null || value === '')
+    ) {
+      return `${field.label} is required`;
     }
 
     // Type-specific validation
     if (field.validation) {
-      const { pattern, min, max, minLength, maxLength, errorMessage } = field.validation
+      const { pattern, min, max, minLength, maxLength, errorMessage } =
+        field.validation;
 
       // Pattern validation
-      if (pattern && typeof value === 'string' && !new RegExp(pattern).test(value)) {
-        return errorMessage || `${field.label} has an invalid format`
+      if (
+        pattern &&
+        typeof value === 'string' &&
+        !new RegExp(pattern).test(value)
+      ) {
+        return errorMessage || `${field.label} has an invalid format`;
       }
 
       // Number range validation
       if (field.type === 'number') {
-        const numValue = Number(value)
+        const numValue = Number(value);
         if (min !== undefined && numValue < min) {
-          return `${field.label} must be at least ${min}`
+          return `${field.label} must be at least ${min}`;
         }
         if (max !== undefined && numValue > max) {
-          return `${field.label} must be at most ${max}`
+          return `${field.label} must be at most ${max}`;
         }
       }
 
       // String length validation
       if (typeof value === 'string') {
         if (minLength !== undefined && value.length < minLength) {
-          return `${field.label} must be at least ${minLength} characters`
+          return `${field.label} must be at least ${minLength} characters`;
         }
         if (maxLength !== undefined && value.length > maxLength) {
-          return `${field.label} must be at most ${maxLength} characters`
+          return `${field.label} must be at most ${maxLength} characters`;
         }
       }
     }
 
-    return null
-  }
+    return null;
+  };
 
   // Validate all fields
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {};
 
-    fields.forEach(field => {
-      const value = formData[field.id]
-      const error = validateField(field, value)
+    fields.forEach((field) => {
+      const value = formData[field.id];
+      const error = validateField(field, value);
       if (error) {
-        newErrors[field.id] = error
+        newErrors[field.id] = error;
       }
-    })
+    });
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (validateForm()) {
-      setSubmitting(true)
+      setSubmitting(true);
 
       // Simulate API call
       setTimeout(() => {
         if (onSubmit) {
-          onSubmit(formData)
+          onSubmit(formData);
         }
-        setSubmitted(true)
-        setSubmitting(false)
-      }, 1000)
+        setSubmitted(true);
+        setSubmitting(false);
+      }, 1000);
     }
-  }
+  };
 
   // Reset form
   const resetForm = () => {
-    setFormData({})
-    setErrors({})
-    setSubmitted(false)
-  }
+    setFormData({});
+    setErrors({});
+    setSubmitted(false);
+  };
 
   // Render form field based on type
   const renderField = (field: FormField) => {
-    const { id, type, label, placeholder, required, options } = field
-    const value = formData[id]
-    const error = errors[id]
+    const { id, type, label, placeholder, required, options } = field;
+    const value = formData[id];
+    const error = errors[id];
 
     switch (type) {
       case 'text':
@@ -178,7 +207,7 @@ export function InteractiveForm({
               placeholder={placeholder}
               value={value || ''}
               onChange={(e) => handleChange(id, e.target.value)}
-              className={cn(error && "border-red-500 focus:ring-red-500")}
+              className={cn(error && 'border-red-500 focus:ring-red-500')}
             />
             {error && (
               <p className="text-xs text-red-500 flex items-center gap-1">
@@ -187,7 +216,7 @@ export function InteractiveForm({
               </p>
             )}
           </div>
-        )
+        );
 
       case 'textarea':
         return (
@@ -201,7 +230,7 @@ export function InteractiveForm({
               placeholder={placeholder}
               value={value || ''}
               onChange={(e) => handleChange(id, e.target.value)}
-              className={cn(error && "border-red-500 focus:ring-red-500")}
+              className={cn(error && 'border-red-500 focus:ring-red-500')}
             />
             {error && (
               <p className="text-xs text-red-500 flex items-center gap-1">
@@ -210,7 +239,7 @@ export function InteractiveForm({
               </p>
             )}
           </div>
-        )
+        );
 
       case 'checkbox':
         return (
@@ -233,7 +262,7 @@ export function InteractiveForm({
               )}
             </div>
           </div>
-        )
+        );
 
       case 'radio':
         return (
@@ -248,8 +277,13 @@ export function InteractiveForm({
             >
               {options?.map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.value} id={`${id}-${option.value}`} />
-                  <Label htmlFor={`${id}-${option.value}`}>{option.label}</Label>
+                  <RadioGroupItem
+                    value={option.value}
+                    id={`${id}-${option.value}`}
+                  />
+                  <Label htmlFor={`${id}-${option.value}`}>
+                    {option.label}
+                  </Label>
                 </div>
               ))}
             </RadioGroup>
@@ -260,7 +294,7 @@ export function InteractiveForm({
               </p>
             )}
           </div>
-        )
+        );
 
       case 'select':
         return (
@@ -273,7 +307,10 @@ export function InteractiveForm({
               value={value || ''}
               onValueChange={(value) => handleChange(id, value)}
             >
-              <SelectTrigger id={id} className={cn(error && "border-red-500 focus:ring-red-500")}>
+              <SelectTrigger
+                id={id}
+                className={cn(error && 'border-red-500 focus:ring-red-500')}
+              >
                 <SelectValue placeholder={placeholder || `Select ${label}`} />
               </SelectTrigger>
               <SelectContent>
@@ -291,7 +328,7 @@ export function InteractiveForm({
               </p>
             )}
           </div>
-        )
+        );
 
       case 'date':
         return (
@@ -305,7 +342,7 @@ export function InteractiveForm({
               type="date"
               value={value || ''}
               onChange={(e) => handleChange(id, e.target.value)}
-              className={cn(error && "border-red-500 focus:ring-red-500")}
+              className={cn(error && 'border-red-500 focus:ring-red-500')}
             />
             {error && (
               <p className="text-xs text-red-500 flex items-center gap-1">
@@ -314,18 +351,18 @@ export function InteractiveForm({
               </p>
             )}
           </div>
-        )
+        );
 
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
     <div
       className={cn(
-        "relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background",
-        expanded && "fixed inset-4 z-50 bg-background flex flex-col",
+        'relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-background',
+        expanded && 'fixed inset-4 z-50 bg-background flex flex-col',
         className
       )}
       onMouseEnter={() => setHovered(true)}
@@ -348,23 +385,33 @@ export function InteractiveForm({
             className="h-7 w-7 rounded-full bg-white/10 text-white hover:bg-white/20"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-            <span className="sr-only">{expanded ? "Minimize" : "Maximize"}</span>
+            {expanded ? (
+              <Minimize className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize className="h-3.5 w-3.5" />
+            )}
+            <span className="sr-only">
+              {expanded ? 'Minimize' : 'Maximize'}
+            </span>
           </Button>
         </motion.div>
       </div>
 
-      <div className={cn(
-        "p-4 overflow-auto",
-        expanded ? "flex-1" : "max-h-[400px]"
-      )}>
+      <div
+        className={cn(
+          'p-4 overflow-auto',
+          expanded ? 'flex-1' : 'max-h-[400px]'
+        )}
+      >
         {submitted ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
               <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-medium mb-2">Thank You!</h3>
-            <p className="text-muted-foreground mb-6">Your submission has been received.</p>
+            <p className="text-muted-foreground mb-6">
+              Your submission has been received.
+            </p>
             <Button onClick={resetForm}>Submit Another Response</Button>
           </div>
         ) : (
@@ -372,15 +419,15 @@ export function InteractiveForm({
             {description && (
               <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 flex items-start gap-3">
                 <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-blue-700 dark:text-blue-300">{description}</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  {description}
+                </p>
               </div>
             )}
 
             <div className="space-y-6">
               {fields.map((field) => (
-                <div key={field.id}>
-                  {renderField(field)}
-                </div>
+                <div key={field.id}>{renderField(field)}</div>
               ))}
             </div>
 
@@ -395,22 +442,20 @@ export function InteractiveForm({
                   {cancelLabel}
                 </Button>
               )}
-              <Button
-                type="submit"
-                variant="gradient"
-                disabled={submitting}
-              >
+              <Button type="submit" variant="gradient" disabled={submitting}>
                 {submitting ? (
                   <>
                     <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
                     Processing...
                   </>
-                ) : submitLabel}
+                ) : (
+                  submitLabel
+                )}
               </Button>
             </div>
           </form>
         )}
       </div>
     </div>
-  )
+  );
 }

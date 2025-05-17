@@ -1,11 +1,15 @@
 import { generateId } from 'ai';
-import { RediSearchHybridQuery, QStashTaskPayload, WorkflowNode } from './upstashTypes';
+import {
+  RediSearchHybridQuery,
+  QStashTaskPayload,
+  WorkflowNode,
+} from './upstashTypes';
 import {
   getRedisClient,
   getVectorClient,
   runRediSearchHybridQuery,
   enqueueQStashTask,
-  trackWorkflowNode
+  trackWorkflowNode,
 } from './upstashClients';
 
 // Check if Upstash is available
@@ -21,7 +25,10 @@ export const isUpstashAvailable = async (): Promise<boolean> => {
 };
 
 // Thread operations
-export async function createThread(name: string, metadata: Record<string, unknown> = {}): Promise<string> {
+export async function createThread(
+  name: string,
+  metadata: Record<string, unknown> = {}
+): Promise<string> {
   const redis = getRedisClient();
   const threadId = generateId();
   const now = new Date().toISOString();
@@ -40,15 +47,22 @@ export async function createThread(name: string, metadata: Record<string, unknow
   return threadId;
 }
 
-export async function getThread(threadId: string): Promise<Record<string, unknown> | null> {
+export async function getThread(
+  threadId: string
+): Promise<Record<string, unknown> | null> {
   const redis = getRedisClient();
   const thread = await redis.hgetall(`thread:${threadId}`);
   return thread && Object.keys(thread).length > 0 ? thread : null;
 }
 
-export async function listThreads(limit = 10, offset = 0): Promise<Record<string, unknown>[]> {
+export async function listThreads(
+  limit = 10,
+  offset = 0
+): Promise<Record<string, unknown>[]> {
   const redis = getRedisClient();
-  const threadIds = await redis.zrange('threads', offset, offset + limit - 1, { rev: true });
+  const threadIds = await redis.zrange('threads', offset, offset + limit - 1, {
+    rev: true,
+  });
 
   const threads: Record<string, unknown>[] = [];
   for (const threadId of threadIds) {
@@ -115,7 +129,9 @@ export async function saveMessage(
   return messageId;
 }
 
-export async function getMessages(threadId: string): Promise<Record<string, unknown>[]> {
+export async function getMessages(
+  threadId: string
+): Promise<Record<string, unknown>[]> {
   const redis = getRedisClient();
 
   // Get all message IDs for this thread
@@ -168,7 +184,10 @@ export async function storeEmbedding(
   return id;
 }
 
-export async function searchEmbeddings(vector: number[], limit = 5): Promise<unknown[]> {
+export async function searchEmbeddings(
+  vector: number[],
+  limit = 5
+): Promise<unknown[]> {
   const vectorDb = getVectorClient();
 
   const results = await vectorDb.query({
@@ -181,12 +200,17 @@ export async function searchEmbeddings(vector: number[], limit = 5): Promise<unk
 }
 
 // --- Advanced RediSearch/Hybrid Search ---
-export async function advancedThreadHybridSearch(query: RediSearchHybridQuery): Promise<unknown> {
+export async function advancedThreadHybridSearch(
+  query: RediSearchHybridQuery
+): Promise<unknown> {
   return runRediSearchHybridQuery(query);
 }
 
 // --- QStash/Workflow Integration Example ---
-export async function enqueueMemoryWorkflow(type: string, data: Record<string, unknown>): Promise<unknown> {
+export async function enqueueMemoryWorkflow(
+  type: string,
+  data: Record<string, unknown>
+): Promise<unknown> {
   const payload: QStashTaskPayload = {
     id: generateId(),
     type,
@@ -197,7 +221,9 @@ export async function enqueueMemoryWorkflow(type: string, data: Record<string, u
   return enqueueQStashTask(payload);
 }
 
-export async function trackMemoryWorkflowNode(node: WorkflowNode): Promise<unknown> {
+export async function trackMemoryWorkflowNode(
+  node: WorkflowNode
+): Promise<unknown> {
   return trackWorkflowNode(node);
 }
 

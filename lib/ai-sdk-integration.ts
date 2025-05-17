@@ -15,28 +15,28 @@ import {
   type StreamTextResult,
   type GenerateTextResult,
   type Provider,
-  LanguageModel
-} from "ai";
+  LanguageModel,
+} from 'ai';
 import {
   streamGoogleAIWithTracing,
   streamOpenAIWithTracing,
   streamAnthropicWithTracing,
   generateGoogleAIWithTracing,
   generateOpenAIWithTracing,
-  generateAnthropicWithTracing
-} from "./ai-sdk-tracing";
-import { createTrace, logEvent } from "./langfuse-integration";
-import { getAllBuiltInTools, loadCustomTools } from "./tools";
-import { agenticTools } from "./tools/agentic";
-import { personaManager } from "./agents/personas/persona-manager";
-import { modelRegistry, type ModelSettings } from "./models/model-registry";
-import { getModelById, getModelByModelId } from "./models/model-service";
-import { z } from "zod";
-import { upstashLogger } from "./memory/upstash/upstash-logger";
-import type { Message as ChatMessage } from "./memory/upstash/upstashTypes";
-import type { ToolExecutionEntity as ToolDefinition } from "./memory/upstash/upstashTypes";
-import type { ModelEntity as MetadataRecord } from "./memory/upstash/upstashTypes";
-import { streamText, generateText, wrapLanguageModel } from "ai";
+  generateAnthropicWithTracing,
+} from './ai-sdk-tracing';
+import { createTrace, logEvent } from './langfuse-integration';
+import { getAllBuiltInTools, loadCustomTools } from './tools';
+import { agenticTools } from './tools/agentic';
+import { personaManager } from './agents/personas/persona-manager';
+import { modelRegistry, type ModelSettings } from './models/model-registry';
+import { getModelById, getModelByModelId } from './models/model-service';
+import { z } from 'zod';
+import { upstashLogger } from './memory/upstash/upstash-logger';
+import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
+import type { ToolExecutionEntity as ToolDefinition } from './memory/upstash/upstashTypes';
+import type { ModelEntity as MetadataRecord } from './memory/upstash/upstashTypes';
+import { streamText, generateText, wrapLanguageModel } from 'ai';
 
 // --- Zod Schemas ---
 
@@ -55,17 +55,21 @@ export const AISDKOptionsSchema = z.object({
   traceName: z.string().optional(),
   userId: z.string().optional(),
   metadata: z.record(z.custom<MetadataRecord>()).optional().default({}),
-  middleware: z.union([
-    z.custom<LanguageModelV1Middleware>(),
-    z.array(z.custom<LanguageModelV1Middleware>())
-  ]).optional(),
+  middleware: z
+    .union([
+      z.custom<LanguageModelV1Middleware>(),
+      z.array(z.custom<LanguageModelV1Middleware>()),
+    ])
+    .optional(),
   useSearchGrounding: z.boolean().optional(),
-  dynamicRetrievalConfig: z.object({
-    mode: z.enum(['MODE_AUTOMATIC', 'MODE_DYNAMIC', 'MODE_MANUAL']),
-    dynamicThreshold: z.number().optional()
-  }).optional(),
+  dynamicRetrievalConfig: z
+    .object({
+      mode: z.enum(['MODE_AUTOMATIC', 'MODE_DYNAMIC', 'MODE_MANUAL']),
+      dynamicThreshold: z.number().optional(),
+    })
+    .optional(),
   responseModalities: z.array(z.enum(['TEXT', 'IMAGE'])).optional(),
-  cachedContent: z.string().optional()
+  cachedContent: z.string().optional(),
 });
 
 export type AISDKOptions = z.infer<typeof AISDKOptionsSchema>;
@@ -82,9 +86,12 @@ export class AISDKIntegrationError extends Error {
    * @param message - Error message
    * @param cause - Optional cause of the error
    */
-  constructor(message: string, public cause?: unknown) {
+  constructor(
+    message: string,
+    public cause?: unknown
+  ) {
     super(message);
-    this.name = "AISDKIntegrationError";
+    this.name = 'AISDKIntegrationError';
     Object.setPrototypeOf(this, AISDKIntegrationError.prototype);
   }
 }
@@ -97,7 +104,9 @@ export class AISDKIntegrationError extends Error {
  * @param modelId - Model ID
  * @returns Model configuration or undefined
  */
-async function getModelConfiguration(modelId: string): Promise<ModelSettings | undefined> {
+async function getModelConfiguration(
+  modelId: string
+): Promise<ModelSettings | undefined> {
   try {
     let model: ModelSettings | undefined;
     const regModel = modelRegistry.getModel(modelId);
@@ -107,11 +116,44 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
       const dbModel = await getModelById(modelId);
       if (dbModel && dbModel.provider) {
         // Normalize provider to match allowed values
-        const normalizedProvider = dbModel.provider === "google-vertex" ? "vertex" : dbModel.provider;
+        const normalizedProvider =
+          dbModel.provider === 'google-vertex' ? 'vertex' : dbModel.provider;
         model = {
           ...dbModel,
-          provider: ["custom","google","openai","anthropic","vertex"].includes(String(normalizedProvider)) ? normalizedProvider as ("custom"|"google"|"openai"|"anthropic"|"vertex") : "custom",
-          category: ["text","chat","multimodal","image","video","audio","embedding","fine-tuning"].includes(String(dbModel.category)) ? dbModel.category as ("text"|"chat"|"multimodal"|"image"|"video"|"audio"|"embedding"|"fine-tuning") : "text",
+          provider: [
+            'custom',
+            'google',
+            'openai',
+            'anthropic',
+            'vertex',
+          ].includes(String(normalizedProvider))
+            ? (normalizedProvider as
+                | 'custom'
+                | 'google'
+                | 'openai'
+                | 'anthropic'
+                | 'vertex')
+            : 'custom',
+          category: [
+            'text',
+            'chat',
+            'multimodal',
+            'image',
+            'video',
+            'audio',
+            'embedding',
+            'fine-tuning',
+          ].includes(String(dbModel.category))
+            ? (dbModel.category as
+                | 'text'
+                | 'chat'
+                | 'multimodal'
+                | 'image'
+                | 'video'
+                | 'audio'
+                | 'embedding'
+                | 'fine-tuning')
+            : 'text',
           capabilities: dbModel.capabilities ?? {},
           created_at: dbModel.created_at ?? new Date().toISOString(),
           updated_at: dbModel.updated_at ?? new Date().toISOString(),
@@ -120,11 +162,46 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
         const modelIdModel = await getModelByModelId(modelId);
         if (modelIdModel && modelIdModel.provider) {
           // Normalize provider to match allowed values
-          const normalizedProvider2 = modelIdModel.provider === "google-vertex" ? "vertex" : modelIdModel.provider;
+          const normalizedProvider2 =
+            modelIdModel.provider === 'google-vertex'
+              ? 'vertex'
+              : modelIdModel.provider;
           model = {
             ...modelIdModel,
-            provider: ["custom","google","openai","anthropic","vertex"].includes(String(normalizedProvider2)) ? normalizedProvider2 as ("custom"|"google"|"openai"|"anthropic"|"vertex") : "custom",
-            category: ["text","chat","multimodal","image","video","audio","embedding","fine-tuning"].includes(String(modelIdModel.category)) ? modelIdModel.category as ("text"|"chat"|"multimodal"|"image"|"video"|"audio"|"embedding"|"fine-tuning") : "text",
+            provider: [
+              'custom',
+              'google',
+              'openai',
+              'anthropic',
+              'vertex',
+            ].includes(String(normalizedProvider2))
+              ? (normalizedProvider2 as
+                  | 'custom'
+                  | 'google'
+                  | 'openai'
+                  | 'anthropic'
+                  | 'vertex')
+              : 'custom',
+            category: [
+              'text',
+              'chat',
+              'multimodal',
+              'image',
+              'video',
+              'audio',
+              'embedding',
+              'fine-tuning',
+            ].includes(String(modelIdModel.category))
+              ? (modelIdModel.category as
+                  | 'text'
+                  | 'chat'
+                  | 'multimodal'
+                  | 'image'
+                  | 'video'
+                  | 'audio'
+                  | 'embedding'
+                  | 'fine-tuning')
+              : 'text',
             capabilities: modelIdModel.capabilities ?? {},
             created_at: modelIdModel.created_at ?? new Date().toISOString(),
             updated_at: modelIdModel.updated_at ?? new Date().toISOString(),
@@ -134,7 +211,10 @@ async function getModelConfiguration(modelId: string): Promise<ModelSettings | u
     }
     return model;
   } catch (error) {
-    upstashLogger.warn("Error getting model configuration for " + modelId, String(error));
+    upstashLogger.warn(
+      'Error getting model configuration for ' + modelId,
+      String(error)
+    );
     return undefined;
   }
 }
@@ -163,7 +243,9 @@ function extractPersonaId(metadata: unknown): string | undefined {
  * @param modelId - Model ID
  * @returns API key or undefined
  */
-async function getModelConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
+async function getModelConfig(
+  modelId: string
+): Promise<{ api_key?: string } | undefined> {
   const model = await getModelConfiguration(modelId);
   if (model && model.api_key) return { api_key: model.api_key };
   return {};
@@ -175,7 +257,9 @@ async function getModelConfig(modelId: string): Promise<{ api_key?: string } | u
  * @param modelId - Model ID
  * @returns API key or undefined
  */
-async function getOpenAIConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
+async function getOpenAIConfig(
+  modelId: string
+): Promise<{ api_key?: string } | undefined> {
   return getModelConfig(modelId);
 }
 
@@ -185,7 +269,9 @@ async function getOpenAIConfig(modelId: string): Promise<{ api_key?: string } | 
  * @param modelId - Model ID
  * @returns API key or undefined
  */
-async function getAnthropicConfig(modelId: string): Promise<{ api_key?: string } | undefined> {
+async function getAnthropicConfig(
+  modelId: string
+): Promise<{ api_key?: string } | undefined> {
   return getModelConfig(modelId);
 }
 
@@ -201,11 +287,11 @@ async function getAnthropicConfig(modelId: string): Promise<{ api_key?: string }
 export async function getAllAISDKTools({
   includeBuiltIn = true,
   includeCustom = true,
-  includeAgentic = true
+  includeAgentic = true,
 }: {
-  includeBuiltIn?: boolean
-  includeCustom?: boolean
-  includeAgentic?: boolean
+  includeBuiltIn?: boolean;
+  includeCustom?: boolean;
+  includeAgentic?: boolean;
 } = {}) {
   const builtInTools = includeBuiltIn ? getAllBuiltInTools() : {};
   const customTools = includeCustom ? await loadCustomTools() : {};
@@ -213,7 +299,7 @@ export async function getAllAISDKTools({
   return {
     ...builtInTools,
     ...customTools,
-    ...agTools
+    ...agTools,
   };
 }
 
@@ -227,14 +313,14 @@ export async function getAllAISDKTools({
  */
 export function createCustomAISDKProvider({
   languageModels = {},
-  fallbackProvider
+  fallbackProvider,
 }: {
   languageModels?: Record<string, LanguageModel>;
   fallbackProvider?: Provider;
 } = {}): Provider {
   return customProvider({
     languageModels,
-    fallbackProvider
+    fallbackProvider,
   });
 }
 /**
@@ -274,9 +360,9 @@ export async function streamWithAISDK({
   dynamicRetrievalConfig,
   responseModalities,
   cachedContent,
-  middleware
+  middleware,
 }: {
-  provider: "google" | "openai" | "anthropic";
+  provider: 'google' | 'openai' | 'anthropic';
   modelId: string;
   messages: ChatMessage[];
   temperature?: number;
@@ -290,10 +376,10 @@ export async function streamWithAISDK({
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
-    mode: "MODE_AUTOMATIC" | "MODE_DYNAMIC" | "MODE_MANUAL";
+    mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
     dynamicThreshold?: number;
   };
-  responseModalities?: Array<"TEXT" | "IMAGE">;
+  responseModalities?: Array<'TEXT' | 'IMAGE'>;
   cachedContent?: string;
 }): Promise<StreamTextResult<Record<string, never>, never>> {
   const traceObj = await createTrace({
@@ -306,8 +392,8 @@ export async function streamWithAISDK({
       temperature,
       maxTokens,
       hasTools: tools && Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
   const traceId = traceObj?.id;
   try {
@@ -315,7 +401,7 @@ export async function streamWithAISDK({
     const startTime = Date.now();
     let result;
     switch (provider) {
-      case "google":
+      case 'google':
         result = await streamGoogleAIWithTracing({
           modelId,
           messages,
@@ -329,16 +415,16 @@ export async function streamWithAISDK({
           metadata: {
             ...(metadata || {}),
             parentTraceId: traceId,
-            middlewareApplied: !!middleware
+            middlewareApplied: !!middleware,
           },
           useSearchGrounding,
           dynamicRetrievalConfig,
           responseModalities,
           cachedContent,
-          middleware
+          middleware,
         });
         break;
-      case "openai":
+      case 'openai':
         result = await streamOpenAIWithTracing({
           modelId,
           messages,
@@ -352,12 +438,12 @@ export async function streamWithAISDK({
           metadata: {
             ...(metadata || {}),
             parentTraceId: traceId,
-            middlewareApplied: !!middleware
+            middlewareApplied: !!middleware,
           },
-          middleware
+          middleware,
         });
         break;
-      case "anthropic":
+      case 'anthropic':
         result = await streamAnthropicWithTracing({
           modelId,
           messages,
@@ -371,9 +457,9 @@ export async function streamWithAISDK({
           metadata: {
             ...(metadata || {}),
             parentTraceId: traceId,
-            middlewareApplied: !!middleware
+            middlewareApplied: !!middleware,
           },
-          middleware
+          middleware,
         });
         break;
       default:
@@ -383,19 +469,27 @@ export async function streamWithAISDK({
       try {
         const endTime = Date.now();
         const latency = endTime - startTime;
-        personaManager.recordPersonaUsage(personaId, {
-          success: true,
-          latency,
-          adaptabilityFactor: 1.0,
-          metadata: {
-            taskType: 'stream',
-            executionTime: latency.toString()
-          }
-        }).catch(error => {
-          upstashLogger.warn(`Error updating persona score for ${personaId}`, error instanceof Error ? error.message : String(error));
-        });
+        personaManager
+          .recordPersonaUsage(personaId, {
+            success: true,
+            latency,
+            adaptabilityFactor: 1.0,
+            metadata: {
+              taskType: 'stream',
+              executionTime: latency.toString(),
+            },
+          })
+          .catch((error) => {
+            upstashLogger.warn(
+              `Error updating persona score for ${personaId}`,
+              error instanceof Error ? error.message : String(error)
+            );
+          });
       } catch (scoreError) {
-        upstashLogger.warn(`Error updating persona score`, scoreError instanceof Error ? scoreError.message : String(scoreError));
+        upstashLogger.warn(
+          `Error updating persona score`,
+          scoreError instanceof Error ? scoreError.message : String(scoreError)
+        );
       }
     }
     return result;
@@ -403,15 +497,18 @@ export async function streamWithAISDK({
     if (traceId) {
       await logEvent({
         traceId,
-        name: "stream_error",
+        name: 'stream_error',
         metadata: {
           error: error instanceof Error ? error.message : String(error),
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
-    upstashLogger.error("Error in streamWithAISDK", error instanceof Error ? error.message : String(error));
-    throw new AISDKIntegrationError("Error in streamWithAISDK", error);
+    upstashLogger.error(
+      'Error in streamWithAISDK',
+      error instanceof Error ? error.message : String(error)
+    );
+    throw new AISDKIntegrationError('Error in streamWithAISDK', error);
   }
 }
 
@@ -444,20 +541,20 @@ export async function generateWithAISDK({
   traceName,
   userId,
   metadata = undefined,
-  middleware
+  middleware,
 }: {
-  provider: "google" | "openai" | "anthropic"
-  modelId: string
-  messages: ChatMessage[]
-  temperature?: number
-  maxTokens?: number
-  tools?: Record<string, ToolDefinition>
-  apiKey?: string
-  baseURL?: string
-  traceName?: string
-  userId?: string
-  metadata?: MetadataRecord
-  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[]
+  provider: 'google' | 'openai' | 'anthropic';
+  modelId: string;
+  messages: ChatMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Record<string, ToolDefinition>;
+  apiKey?: string;
+  baseURL?: string;
+  traceName?: string;
+  userId?: string;
+  metadata?: MetadataRecord;
+  middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }): Promise<GenerateTextResult<Record<string, never>, never>> {
   const traceObj = await createTrace({
     name: traceName || `${provider}_generate`,
@@ -469,8 +566,8 @@ export async function generateWithAISDK({
       temperature,
       maxTokens,
       hasTools: tools && Object.keys(tools).length > 0,
-      messageCount: messages.length
-    }
+      messageCount: messages.length,
+    },
   });
   const traceId = traceObj?.id;
   try {
@@ -478,7 +575,7 @@ export async function generateWithAISDK({
     const startTime = Date.now();
     let result;
     switch (provider) {
-      case "google":
+      case 'google':
         result = await generateGoogleAIWithTracing({
           modelId,
           messages,
@@ -492,12 +589,12 @@ export async function generateWithAISDK({
           metadata: {
             ...(metadata || {}),
             parentTraceId: traceId,
-            middlewareApplied: !!middleware
+            middlewareApplied: !!middleware,
           },
-          middleware
+          middleware,
         });
         break;
-      case "openai":
+      case 'openai':
         result = await generateOpenAIWithTracing({
           modelId,
           messages,
@@ -510,11 +607,11 @@ export async function generateWithAISDK({
           userId,
           metadata: {
             ...(metadata || {}),
-            parentTraceId: traceId
-          }
+            parentTraceId: traceId,
+          },
         });
         break;
-      case "anthropic":
+      case 'anthropic':
         result = await generateAnthropicWithTracing({
           modelId,
           messages,
@@ -527,8 +624,8 @@ export async function generateWithAISDK({
           userId,
           metadata: {
             ...(metadata || {}),
-            parentTraceId: traceId
-          }
+            parentTraceId: traceId,
+          },
         });
         break;
       default:
@@ -538,19 +635,27 @@ export async function generateWithAISDK({
       try {
         const endTime = Date.now();
         const latency = endTime - startTime;
-        personaManager.recordPersonaUsage(personaId, {
-          success: true,
-          latency,
-          adaptabilityFactor: 1.0,
-          metadata: {
-            taskType: 'generate',
-            executionTime: latency.toString()
-          }
-        }).catch(error => {
-          upstashLogger.warn(`Error updating persona score for ${personaId}`, error instanceof Error ? error.message : String(error));
-        });
+        personaManager
+          .recordPersonaUsage(personaId, {
+            success: true,
+            latency,
+            adaptabilityFactor: 1.0,
+            metadata: {
+              taskType: 'generate',
+              executionTime: latency.toString(),
+            },
+          })
+          .catch((error) => {
+            upstashLogger.warn(
+              `Error updating persona score for ${personaId}`,
+              error instanceof Error ? error.message : String(error)
+            );
+          });
       } catch (scoreError) {
-        upstashLogger.warn(`Error updating persona score`, scoreError instanceof Error ? scoreError.message : String(scoreError));
+        upstashLogger.warn(
+          `Error updating persona score`,
+          scoreError instanceof Error ? scoreError.message : String(scoreError)
+        );
       }
     }
     return result;
@@ -558,15 +663,18 @@ export async function generateWithAISDK({
     if (traceId) {
       await logEvent({
         traceId,
-        name: "generate_error",
+        name: 'generate_error',
         metadata: {
           error: error instanceof Error ? error.message : String(error),
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
-    upstashLogger.error("Error in generateWithAISDK", error instanceof Error ? error.message : String(error));
-    throw new AISDKIntegrationError("Error in generateWithAISDK", error);
+    upstashLogger.error(
+      'Error in generateWithAISDK',
+      error instanceof Error ? error.message : String(error)
+    );
+    throw new AISDKIntegrationError('Error in generateWithAISDK', error);
   }
 }
 

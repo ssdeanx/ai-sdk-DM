@@ -5,18 +5,25 @@
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import { request, Variables, gql, GraphQLClient, ClientError } from 'graphql-request';
+import {
+  request,
+  Variables,
+  gql,
+  GraphQLClient,
+  ClientError,
+} from 'graphql-request';
 import { eq } from 'drizzle-orm';
-import * as libsqlSchema from '@/db/libsql/schema';     // sqlite
-import * as pgSchema from '@/db/supabase/schema';       // postgres
-import { getLibSQLClient } from '@/lib/memory/db';      // existing helper
+import * as libsqlSchema from '@/db/libsql/schema'; // sqlite
+import * as pgSchema from '@/db/supabase/schema'; // postgres
+import { getLibSQLClient } from '@/lib/memory/db'; // existing helper
 import { getDrizzleClient as getPgDrizzle } from '@/lib/memory/supabase'; // pg
 import { storeTextEmbedding } from '@/lib/memory/vector-store';
+import { GqlQueryResult, ToolFailure } from './types';
 import {
-  GqlQueryResult,
-  ToolFailure
-} from './types';
-import { DEFAULT_SUPABASE_GRAPHQL_URL, DEFAULT_HEADERS, DATABASE_URL } from './constants';
+  DEFAULT_SUPABASE_GRAPHQL_URL,
+  DEFAULT_HEADERS,
+  DATABASE_URL,
+} from './constants';
 
 const TTL_MIN = 60; // Cache Time-To-Live in minutes (e.g., 1 hour)
 
@@ -24,10 +31,7 @@ const TTL_MIN = 60; // Cache Time-To-Live in minutes (e.g., 1 hour)
 
 export const gqlQuerySchema = z.object({
   query: z.string().describe('GraphQL query (or mutation) string'),
-  variables: z
-    .record(z.any())
-    .optional()
-    .describe('Optional variables object'),
+  variables: z.record(z.any()).optional().describe('Optional variables object'),
   cache: z
     .boolean()
     .default(true)
@@ -39,7 +43,7 @@ export const gqlQuerySchema = z.object({
 async function cacheInLibSQL(
   query: string,
   variables: Variables | undefined,
-  json: string,
+  json: string
 ): Promise<void> {
   const db = getLibSQLClient();
   await db.execute({
@@ -65,7 +69,7 @@ async function cacheInLibSQL(
  * @returns Query result or error
  */
 async function gqlQuery(
-  params: z.infer<typeof gqlQuerySchema>,
+  params: z.infer<typeof gqlQuerySchema>
 ): Promise<GqlQueryResult> {
   const { query, variables, cache } = params;
   const id = `${query}:${JSON.stringify(variables ?? {})}`;
@@ -82,9 +86,10 @@ async function gqlQuery(
 
       if (row) {
         // Convert createdAt to Date safely
-        const createdAt = row.createdAt instanceof Date
-          ? row.createdAt
-          : new Date(row.createdAt as string);
+        const createdAt =
+          row.createdAt instanceof Date
+            ? row.createdAt
+            : new Date(row.createdAt as string);
 
         const ageMin = (Date.now() - createdAt.getTime()) / 60000;
 
@@ -100,11 +105,7 @@ async function gqlQuery(
     }
 
     /* ---------- 2.  perform real network request --------------- */
-    const data = await request(
-      DATABASE_URL,
-      query,
-      variables,
-    );
+    const data = await request(DATABASE_URL, query, variables);
 
     if (cache) {
       const json = JSON.stringify(data);
@@ -138,7 +139,7 @@ async function gqlQuery(
     console.error('GraphQL query error:', err);
     return {
       success: false,
-      error: (err as Error).message
+      error: (err as Error).message,
     } as ToolFailure;
   }
 }

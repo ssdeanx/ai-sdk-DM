@@ -1,37 +1,53 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Separator } from '@/components/ui/separator'
-import { useToast } from '@/components/ui/use-toast'
-import { GitHubSignInButton } from '@/components/auth/github-sign-in-button'
-import { Loader2 } from 'lucide-react'
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/components/ui/use-toast';
+import { GitHubSignInButton } from '@/components/auth/github-sign-in-button';
+import { Loader2 } from 'lucide-react';
 
 // Form validation schema
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
-})
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters' }),
+});
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = z.infer<typeof formSchema>;
 
 export default function SignInPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { toast } = useToast()
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+
   // Get the redirect URL from query params
-  const redirectTo = searchParams.get('redirectTo') || '/'
-  
+  const redirectTo = searchParams.get('redirectTo') || '/';
+
   // Initialize form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -39,13 +55,13 @@ export default function SignInPage() {
       email: '',
       password: '',
     },
-  })
-  
+  });
+
   // Handle form submission
   const onSubmit = async (values: FormValues) => {
     try {
-      setIsLoading(true)
-      
+      setIsLoading(true);
+
       // Call the sign-in API
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -53,35 +69,36 @@ export default function SignInPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(values),
-      })
-      
-      const data = await response.json()
-      
+      });
+
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to sign in')
+        throw new Error(data.error || 'Failed to sign in');
       }
-      
+
       // Show success message
       toast({
         title: 'Sign in successful',
         description: 'Welcome back!',
-      })
-      
+      });
+
       // Redirect to the requested page
-      router.push(redirectTo)
-      router.refresh()
+      router.push(redirectTo);
+      router.refresh();
     } catch (error) {
-      console.error('Sign in error:', error)
+      console.error('Sign in error:', error);
       toast({
         title: 'Sign in failed',
-        description: error instanceof Error ? error.message : 'Please try again',
+        description:
+          error instanceof Error ? error.message : 'Please try again',
         variant: 'destructive',
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-  
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
@@ -96,7 +113,7 @@ export default function SignInPage() {
           <div className="space-y-2">
             <GitHubSignInButton redirectTo={redirectTo} />
           </div>
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full" />
@@ -107,7 +124,7 @@ export default function SignInPage() {
               </span>
             </div>
           </div>
-          
+
           {/* Email/Password Form */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -124,7 +141,7 @@ export default function SignInPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="password"
@@ -132,13 +149,17 @@ export default function SignInPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
@@ -155,12 +176,16 @@ export default function SignInPage() {
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-center text-muted-foreground">
             Don&apos;t have an account?{' '}
-            <Button variant="link" className="p-0" onClick={() => router.push('/auth/signup')}>
+            <Button
+              variant="link"
+              className="p-0"
+              onClick={() => router.push('/auth/signup')}
+            >
               Sign up
             </Button>
           </div>
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
