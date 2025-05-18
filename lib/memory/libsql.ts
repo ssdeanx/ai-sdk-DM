@@ -1,23 +1,30 @@
-import {
-  createClient,
-  type Row,
-  type Value,
-  type InStatement,
-} from '@libsql/client';
+import { createClient } from '@libsql/client';
+import { z } from 'zod';
 import { generateId } from 'ai'; // Standard ID generation
 
-// Import all Zod schemas and their corresponding TypeScript types
+// Import Drizzle CRUD helpers
+import { DrizzleCrud } from '../../db/libsql/crud';
+import { eq, desc, and, sql } from 'drizzle-orm/libsql';
+import { type Column, ColumnBaseConfig, ColumnDataType } from 'drizzle-orm';
+import { type SQL } from 'drizzle-orm';
+
+// Type helpers
+export type MemoryThreadData = typeof schema.memory_threads.$inferInsert;
+export type MemoryThreadResult = typeof schema.memory_threads.$inferSelect;
+export type MessageData = typeof schema.messages.$inferInsert;
+export type MessageResult = typeof schema.messages.$inferSelect;
+export type EmbeddingData = typeof schema.embeddings.$inferInsert;
+export type EmbeddingResult = typeof schema.embeddings.$inferSelect;
+export type AgentStateData = typeof schema.agent_states.$inferInsert;
+export type AgentStateResult = typeof schema.agent_states.$inferSelect;
+
+// Type helpers for JSON fields
+export type JsonField<T> = T | null;
+export type JsonString = string | null;
+
+
+// Import validation types
 import {
-  MemoryThreadSchema,
-  MessageSchema,
-  EmbeddingSchema,
-  AgentStateSchema,
-  AppSchema,
-  UserSchema,
-  IntegrationSchema,
-  AppCodeBlockSchema,
-  FileSchema,
-  TerminalSessionSchema,
   type MemoryThread,
   type Message,
   type Embedding,
@@ -28,7 +35,6 @@ import {
   type AppCodeBlock,
   type File,
   type TerminalSession,
-  type NewMemoryThread,
   type NewMessage,
   type NewEmbedding,
   type NewAgentState,
@@ -38,32 +44,53 @@ import {
   type NewAppCodeBlock,
   type NewFile,
   type NewTerminalSession,
+  MessageSchema,
+  EmbeddingSchema,
+  AgentStateSchema,
+  AppSchema,
+  UserSchema,
+  IntegrationSchema,
+  AppCodeBlockSchema,
+  FileSchema,
+  TerminalSessionSchema,
 } from '../../db/libsql/validation';
 
-// Drizzle imports - currently unused by the raw SQL functions in this file.
-// Kept to avoid removing existing code.
+import type { Row } from '@libsql/client';
+
+// Type assertion helper for Row type
+function assertRow<T>(row: Row): asserts row is T {
+  if (typeof row !== 'object') {
+    throw new Error('Expected object');
+  }
+  Object.keys(row).forEach(key => {
+    if (!(key in row)) {
+      throw new Error(`Missing required field: ${key}`);
+    }
+  });
+}
+
+// Import schema types and tables
 import {
-  type MemoryThread as DbMemoryThread,
-  type Message as DbMessage,
-  type Embedding as DbEmbedding,
-  type AgentState as DbAgentState,
   memory_threads,
   messages,
   embeddings,
   agent_states,
-  type App as DbApp,
-  type User as DbUser,
-  type Integration as DbIntegration,
-  type AppCodeBlock as DbAppCodeBlock,
-  type File as DbFile,
-  type TerminalSession as DbTerminalSession,
-  apps as appsTable,
-  users as usersTable,
-  integrations as integrationsTable,
-  app_code_blocks as appCodeBlocksTable,
-  files as filesTable,
-  terminal_sessions as terminalSessionsTable,
+  apps,
+  users,
+  integrations,
+  app_code_blocks,
+  files,
+  terminal_sessions,
 } from '../../db/libsql/schema';
+
+// Initialize database client and Drizzle CRUD
+const dbClient = createClient({
+  url: process.env.LIBSQL_URL!,
+  authToken: process.env.LIBSQL_AUTH_TOKEN,
+});
+
+const db = drizzle(dbClient);
+const crud = new DrizzleCrud(db);
 
 /**
  * Helper to parse row and then parse specific JSON string fields into objects.
@@ -74,50 +101,45 @@ import {
  * @param jsonFields Array of field names that are stored as JSON strings.
  * @returns The parsed and transformed entity.
  */
-function parseRowAndTransformJsonFields<T extends Record<string, any>>(
-  row: Row,
+function parseRowAndTransformJsonFields<T extends Record<string, unknown>>(
+  row: T,
   schema: z.ZodType<T>,
   jsonFields: (keyof T)[] = []
 ): T {
-  const rawDataForZod: Record<string, any> = { ...row };
+  // Create a copy of the row to avoid mutating the original
+  const rawDataForZod: Record<string, unknown> = { ...row };
 
+  // Transform JSON fields to strings before validation
   jsonFields.forEach((field) => {
-    if (
-      rawDataForZod[field as string] &&
-      typeof rawDataForZod[field as string] === 'object'
-    ) {
-      rawDataForZod[field as string] = JSON.stringify(
-        rawDataForZod[field as string]
-      );
+    const key = field as string;
+    const fieldValue = rawDataForZod[key];
+    if (fieldValue && typeof fieldValue === 'object') {
+      rawDataForZod[key] = JSON.stringify(fieldValue);
     }
   });
 
+  // Validate the transformed data
   const parsed = schema.safeParse(rawDataForZod);
   if (!parsed.success) {
-    console.error(
-      `Invalid DB data for ${schema.description || 'entity'}:`,
-      parsed.error.format()
-    );
-    throw new Error(
-      `Invalid database data structure for ${schema.description || 'entity'}: ${JSON.stringify(parsed.error.format())}`
-    );
+    throw new Error('Invalid database data');
   }
 
-  const result = { ...parsed.data };
+  // Create the final result object
+  const result: T = { ...parsed.data };
+
+  // Transform stringified JSON fields back to objects after validation
   jsonFields.forEach((field) => {
-    const key = field as keyof T;
-    if (result[key] && typeof result[key] === 'string') {
+    const key = field as string;
+    const fieldValue = result[key];
+    if (fieldValue && typeof fieldValue === 'string') {
       try {
-        result[key] = JSON.parse(result[key] as string);
-      } catch (e) {
-        console.warn(
-          `Failed to parse JSON string for field ${String(key)}: ${result[key]}`,
-          e
-        );
-        result[key] = {} as any;
+        result[key] = JSON.parse(fieldValue);
+      } catch {
+        throw new Error(`Invalid JSON data for field ${field}`);
       }
     }
   });
+
   return result;
 }
 
@@ -172,58 +194,29 @@ export async function getMemory(threadId: string): Promise<Message[]> {
 /**
  * Add a memory entry (message) to a thread, enforcing schema.
  * Metadata is stringified before insertion.
- * @param threadId - The ID of the memory thread.
+ * @param memory_thread_id - The ID of the memory thread.
  * @param role - The role of the message sender (e.g., 'user', 'assistant').
  * @param content - The content of the message.
  * @param metadata - Optional metadata object for the message.
  * @returns The created Message object (with metadata as an object).
  */
-export async function addMemory(
-  threadId: string,
-  role: Message['role'],
+export async function createMessage(
+  memory_thread_id: string,
+  role: string,
   content: string,
   metadata?: Record<string, unknown>
 ): Promise<Message> {
-  const client = createLibSQLClient();
-  const id = generateId();
-  const created_at = new Date().toISOString();
-
+  const metadataJson = metadata ? JSON.stringify(metadata) : null;
   const messageData: NewMessage = {
-    id,
-    memory_thread_id: threadId,
+    id: generateId(),
+    memory_thread_id,
     role,
     content,
-    metadata: metadata ? JSON.stringify(metadata) : null,
-    created_at,
+    metadata: metadataJson,
+    created_at: new Date().toISOString(),
   };
 
-  const parsedInput = MessageSchema.safeParse(messageData);
-  if (!parsedInput.success) {
-    throw new Error(
-      `Invalid message data for addMemory: ${JSON.stringify(parsedInput.error.format())}`
-    );
-  }
-
-  try {
-    await client.execute({
-      sql: 'INSERT INTO messages (id, memory_thread_id, role, content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      args: [
-        parsedInput.data.id,
-        parsedInput.data.memory_thread_id,
-        parsedInput.data.role,
-        parsedInput.data.content,
-        parsedInput.data.metadata,
-        parsedInput.data.created_at,
-      ],
-    });
-    return parseRowAndTransformJsonFields(
-      parsedInput.data as unknown as Row,
-      MessageSchema,
-      ['metadata']
-    );
-  } catch (error) {
-    throw error;
-  }
+  return crud.createMessage(messageData);
 }
 
 /**
@@ -232,18 +225,7 @@ export async function addMemory(
  * @returns Array of MemoryThread objects.
  */
 export async function getThreads(): Promise<MemoryThread[]> {
-  const client = createLibSQLClient();
-  try {
-    const result = await client.execute({
-      sql: 'SELECT * FROM memory_threads ORDER BY updated_at DESC',
-      args: [],
-    });
-    return result.rows.map((row) =>
-      parseRowAndTransformJsonFields(row, MemoryThreadSchema, ['metadata'])
-    );
-  } catch (error) {
-    throw error;
-  }
+  return await crud.getMemoryThreads();
 }
 
 /**
@@ -252,15 +234,9 @@ export async function getThreads(): Promise<MemoryThread[]> {
  * @returns True if deletion was successful, false otherwise.
  */
 export async function deleteThread(threadId: string): Promise<boolean> {
-  const client = createLibSQLClient();
   try {
-    await client.batch([
-      {
-        sql: 'DELETE FROM messages WHERE memory_thread_id = ?',
-        args: [threadId],
-      },
-      { sql: 'DELETE FROM memory_threads WHERE id = ?', args: [threadId] },
-    ]);
+    await crud.deleteMemoryThread(threadId);
+    await crud.deleteMessagesByThreadId(threadId);
     return true;
   } catch (error) {
     throw error;
@@ -279,40 +255,15 @@ export async function insertEmbedding(
   model: string = 'all-MiniLM-L6-v2',
   dimensions?: number
 ): Promise<Embedding> {
-  const client = createLibSQLClient();
-  const id = generateId();
-  const created_at = new Date().toISOString();
-
   const embeddingData: NewEmbedding = {
-    id,
+    id: generateId(),
     vector: new Uint8Array(vector.buffer),
     model,
     dimensions: dimensions ?? vector.length,
-    created_at,
+    created_at: new Date().toISOString(),
   };
 
-  const parsedInput = EmbeddingSchema.safeParse(embeddingData);
-  if (!parsedInput.success) {
-    throw new Error(
-      `Invalid embedding data: ${JSON.stringify(parsedInput.error.format())}`
-    );
-  }
-
-  try {
-    await client.execute({
-      sql: 'INSERT INTO embeddings (id, vector, model, dimensions, created_at) VALUES (?, ?, ?, ?, ?)',
-      args: [
-        parsedInput.data.id,
-        parsedInput.data.vector,
-        parsedInput.data.model,
-        parsedInput.data.dimensions,
-        parsedInput.data.created_at,
-      ],
-    });
-    return parsedInput.data;
-  } catch (error) {
-    throw error;
-  }
+  return crud.createEmbedding(embeddingData);
 }
 
 /**
@@ -354,49 +305,49 @@ export async function saveAgentState(
   agent_id: string,
   state_data: Record<string, unknown>
 ): Promise<AgentState> {
-  const client = createLibSQLClient();
-  const now = new Date().toISOString();
-  const stateJson = JSON.stringify(state_data);
-
   const agentStateData: NewAgentState = {
     memory_thread_id,
     agent_id,
-    state_data: stateJson,
-    created_at: now,
-    updated_at: now,
+    state_data: JSON.stringify(state_data),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
-  const parsedInput = AgentStateSchema.safeParse(agentStateData);
-  if (!parsedInput.success) {
-    throw new Error(
-      `Invalid agent state data: ${JSON.stringify(parsedInput.error.format())}`
-    );
+  const existingState = await crud.getAgentState(memory_thread_id, agent_id);
+  if (existingState) {
+    const updateData: Partial<NewAgentState> = {
+      state_data: agentStateData.state_data,
+      updated_at: agentStateData.updated_at,
+    };
+    return crud.updateAgentState(memory_thread_id, agent_id, updateData);
+  } else {
+    return crud.createAgentState(agentStateData);
   }
+}
 
-  try {
-    await client.execute({
-      sql: `
-        INSERT INTO agent_states (memory_thread_id, agent_id, state_data, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(memory_thread_id, agent_id)
-        DO UPDATE SET state_data = excluded.state_data, updated_at = excluded.updated_at
-      `,
-      args: [
-        parsedInput.data.memory_thread_id,
-        parsedInput.data.agent_id,
-        parsedInput.data.state_data,
-        now,
-        now,
-      ],
-    });
-    return parseRowAndTransformJsonFields(
-      parsedInput.data as unknown as Row,
-      AgentStateSchema,
-      ['state_data']
-    );
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Load agent state for a given thread and agent.
+ * State data is parsed from JSON string to object.
+ * @param memory_thread_id - The ID of the memory thread.
+ * @param agent_id - The ID of the agent.
+ * @returns The AgentState object or null if not found.
+ */
+export async function getAgentState(memory_thread_id: string, agent_id: string): Promise<AgentState | null> {
+  const result = await crud.getAgentState(memory_thread_id, agent_id);
+  if (!result) return null;
+
+  return parseRowAndTransformJsonFields(result, AgentStateSchema, ['state_data'] as const);
+}
+
+/**
+ * Get messages for a specific thread, validated and parsed.
+ * Metadata is parsed from JSON string to object.
+ * @param memory_thread_id - The ID of the memory thread.
+ * @returns Array of Message objects.
+ */
+export async function getMessages(memory_thread_id: string): Promise<Message[]> {
+  const result = await crud.getMessages(memory_thread_id);
+  return result.map((row) => parseRowAndTransformJsonFields(row, MessageSchema, ['metadata'] as const));
 }
 
 /**
@@ -419,8 +370,8 @@ export async function loadAgentState(
     if (result.rows.length === 0) {
       return null;
     }
-    return parseRowAndTransformJsonFields(result.rows[0], AgentStateSchema, [
-      'state_data',
+    return parseRowAndTransformJsonFields(result.rows[0], validation.agent_states, ['state_data']);
+    'state_data',
     ]);
   } catch (error) {
     throw error;

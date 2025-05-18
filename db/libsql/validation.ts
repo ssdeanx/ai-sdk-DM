@@ -35,6 +35,7 @@ export type NewMessage = z.infer<typeof MessageSchema>;
 
 export const EmbeddingSchema = z.object({
   id: z.string(),
+  // Accept any Uint8Array (ArrayBufferLike or ArrayBuffer)
   vector: z.instanceof(Uint8Array),
   model: z.string().optional().nullable(),
   dimensions: z.number().optional().nullable(),

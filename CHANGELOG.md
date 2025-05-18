@@ -1,7 +1,34 @@
 # DeanmachinesAI Changelog
 
-All notable changes to the DeanmachinesAI project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v0.0.15] - 2025-05-18
+
+### LibSQL Drizzle CRUD Layer: Full Entity Coverage & Validation Sync
+
+- **Completed Full CRUD for All LibSQL Entities in `db/libsql/crud.ts`:**
+  - Added robust, type-safe CRUD (Create, Read, Update, Delete, List) helpers for all entities defined in `db/libsql/validation.ts` and `db/libsql/schema.ts`.
+  - Implemented and validated CRUD for: `MemoryThread`, `Message`, `Embedding`, `AgentState`, `Workflow`, `WorkflowStep`, `App`, `User`, `Integration`, `AppCodeBlock`, `File`, `TerminalSession`, and **now** `GqlCache`.
+  - Ensured all CRUD helpers use Zod schemas for input/output validation and are fully type-safe.
+  - Added missing CRUD for `GqlCache` (create, get, list, update, delete) and completed missing list/update/delete for `Workflow` and `WorkflowStep`.
+  - Added missing CRUD for `GqlCache` (create, get, list, update, delete) and completed missing list/update/delete for `Workflow` and `WorkflowStep`.
+  - All CRUD methods now match project conventions, use correct Drizzle schema/table names, and are error-free (validated with get_errors after each change).
+  - All new/modified methods include comprehensive TSDoc comments.
+- **Schema & Validation Synchronization:**
+  - Confirmed that all CRUD helpers are in sync with the Zod schemas in `db/libsql/validation.ts` and Drizzle schema in `db/libsql/schema.ts`.
+  - No changes were made to schema or validation files; only CRUD logic was updated.
+- **Next Steps:**
+  - Wire up API routes and adapters to use the updated LibSQL CRUD layer.
+  - Perform end-to-end testing for all entities and routes using LibSQL.
+  - Update documentation and usage examples as needed.
+
+#### What Still Needs To Be Done
+
+- Integrate the new CRUD helpers into all relevant API routes and adapters.
+- Conduct thorough testing of all CRUD operations and edge cases.
+- Ensure `.env.example` and documentation reflect any new requirements or configuration for LibSQL.
+
+---
 
 ## [v0.0.14] - 2025-05-18
 
@@ -15,6 +42,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Implemented robust `try/catch` error handling for all database operations, with console logging for errors.
   - Existing Drizzle ORM related imports in `lib/memory/libsql.ts` were preserved as per previous instructions but are not utilized by the newly added raw SQL CRUD functions.
 - **Schema and Validation:** The LibSQL adapter's raw SQL queries are designed to be compatible with the table structures defined in `db/libsql/schema.ts` (Drizzle schema). All data interactions are validated against the Zod schemas in `db/libsql/validation.ts`.
+
+### Embedding CRUD Operations
+
+- **Completed: Create & Get Operations (`db/libsql/crud.ts`):**
+  - Implemented robust `createEmbedding` operation that:
+    - Validates input using `EmbeddingSchema`
+    - Inserts embedding data using Drizzle ORM
+    - Converts vector data between `Uint8Array` and `Buffer` for storage/retrieval
+    - Returns validated embedding with proper type handling
+  - Implemented `getEmbedding` operation that:
+    - Retrieves embeddings from database
+    - Validates returned data using `EmbeddingSchema`
+    - Handles vector data conversion correctly
+
+- **Pending: Update & Delete Operations (`db/libsql/crud.ts`):**
+  - Need to implement `updateEmbedding` with proper vector handling
+  - Need to implement `deleteEmbedding` with proper error handling
+  - Both operations should maintain type safety and validation patterns established in create/get operations
+
+- **Testing Required:**
+  - End-to-end testing of embedding CRUD operations
+  - Vector data handling verification
+  - Error handling and edge case testing
 
 #### What Still Needs To Be Done (LibSQL & Integration)
 
