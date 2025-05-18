@@ -4,14 +4,14 @@ import { createVertex } from '@ai-sdk/google-vertex';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { getLibSQLClient } from './memory/db';
-import {
-  getRedisClient,
-  getVectorClient,
-} from './memory/upstash/upstashClients';
+import { getVectorClient } from './memory/upstash/upstashClients';
 import { shouldUseUpstash } from './memory/supabase';
 import { getEncoding } from 'js-tiktoken';
 import { pipeline } from '@xenova/transformers';
 import { upstashLogger } from './memory/upstash/upstash-logger';
+import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
+import type { CoreMessage, ToolSet } from 'ai';
+import type { FeatureExtractionPipeline } from '@xenova/transformers';
 
 // Initialize Google AI provider with enhanced capabilities
 export function getGoogleAI(apiKey: string, baseURL?: string) {
@@ -58,9 +58,9 @@ export async function streamAIResponse(
   providerName: string,
   modelName: string,
   apiKey: string,
-  messages: any[],
+  messages: ChatMessage[],
   options: {
-    tools?: any;
+    tools?: ToolSet;
     temperature?: number;
     maxTokens?: number;
     topP?: number;
@@ -98,16 +98,24 @@ export async function streamAIResponse(
         throw new Error(`Provider ${providerName} not supported yet`);
     }
 
+    // Prepare call options for Vercel AI SDK
+    const { tools, ...restOptions } = options;
+    const callOptions = tools ? { ...restOptions, tools } : restOptions;
+
     // Stream the response using AI SDK
     const result = streamText({
       model,
-      messages,
-      ...options,
+      messages: messages as CoreMessage[],
+      ...callOptions,
     });
 
     return result;
   } catch (error) {
-    upstashLogger.error({ msg: 'Error streaming AI response', error });
+    upstashLogger.error(
+      'ai-integration',
+      'Error streaming AI response',
+      error instanceof Error ? error : { error: String(error) }
+    );
     throw error;
   }
 }
@@ -117,9 +125,9 @@ export async function generateAIResponse(
   providerName: string,
   modelName: string,
   apiKey: string,
-  messages: any[],
+  messages: ChatMessage[],
   options: {
-    tools?: any;
+    tools?: ToolSet;
     temperature?: number;
     maxTokens?: number;
     topP?: number;
@@ -157,58 +165,57 @@ export async function generateAIResponse(
         throw new Error(`Provider ${providerName} not supported yet`);
     }
 
+    // Prepare call options for Vercel AI SDK
+    const { tools, ...restOptions } = options;
+    const callOptions = tools ? { ...restOptions, tools } : restOptions;
+
     // Generate the response using AI SDK
     const result = await generateText({
       model,
-      messages,
-      ...options,
+      messages: messages as CoreMessage[],
+      ...callOptions,
     });
 
     return result;
   } catch (error) {
-    upstashLogger.error({ msg: 'Error generating AI response', error });
+    upstashLogger.error(
+      'ai-integration',
+      'Error generating AI response',
+      error instanceof Error ? error : { error: String(error) }
+    );
     throw error;
   }
 }
 
 // Count tokens in a text using js-tiktoken
-export function countTokens(text: string, modelName = 'gpt-4') {
+/**
+ * Counts the number of tokens in a text using js-tiktoken.
+ * Always uses the 'o200k_base' encoding for maximum compatibility with Gemini and modern models.
+ * Falls back to an approximate count if encoding fails.
+ *
+ * @param text - The input text to tokenize.
+ * @param _modelName - (Unused) Model name, kept for compatibility.
+ * @returns The number of tokens in the text.
+ */
+export function countTokens(text: string, _modelName = 'gpt-4') {
   try {
-    // Map model names to encoding names
-    let encodingName: 'cl100k_base' | 'p50k_base' | 'r50k_base' | 'o200k_base' =
-      'cl100k_base'; // Default for GPT-4, GPT-3.5-turbo
-
-    if (modelName.includes('gpt-3') && !modelName.includes('turbo')) {
-      encodingName = 'p50k_base'; // For older GPT-3 models
-    } else if (
-      modelName.includes('davinci') ||
-      modelName.includes('curie') ||
-      modelName.includes('babbage') ||
-      modelName.includes('ada')
-    ) {
-      encodingName = 'p50k_base'; // For older OpenAI models
-    } else if (
-      modelName.includes('claude') ||
-      modelName.includes('anthropic')
-    ) {
-      encodingName = 'cl100k_base'; // Claude uses the same tokenizer as GPT-4
-    } else if (modelName.includes('gemini')) {
-      // Gemini doesn't use tiktoken, but we'll approximate with cl100k_base
-      encodingName = 'o200k_base';
-    }
-
-    const encoding = getEncoding(encodingName);
+    // Always use o200k_base for token counting (Gemini/modern models)
+    const encoding = getEncoding('o200k_base');
     const tokens = encoding.encode(text);
     return tokens.length;
   } catch (error) {
-    upstashLogger.error({ msg: 'Error counting tokens', error });
+    upstashLogger.error(
+      'ai-integration',
+      'Error counting tokens',
+      error instanceof Error ? error : { error: String(error) }
+    );
     // Fallback to approximate token count (1 token ≈ 4 characters)
     return Math.ceil(text.length / 4);
   }
 }
 
 // Generate embeddings using @xenova/transformers
-let embeddingModel: any = null;
+let embeddingModel: unknown = null;
 
 export async function generateEmbedding(text: string) {
   try {
@@ -220,14 +227,21 @@ export async function generateEmbedding(text: string) {
       );
     }
 
-    const result = await embeddingModel(text, {
+    // Type assertion for embeddingModel
+    const model = embeddingModel as FeatureExtractionPipeline;
+
+    const result = await model(text, {
       pooling: 'mean',
       normalize: true,
     });
 
     return result.data;
   } catch (error) {
-    upstashLogger.error({ msg: 'Error generating embedding', error });
+    upstashLogger.error(
+      'ai-integration',
+      'Error generating embedding',
+      error instanceof Error ? error : { error: String(error) }
+    );
     throw error;
   }
 }
@@ -277,9 +291,19 @@ export async function saveEmbedding(
 
     return id;
   } catch (error) {
-    upstashLogger.error({ msg: 'Error saving embedding', error });
+    upstashLogger.error(
+      'ai-integration',
+      'Error saving embedding',
+      error instanceof Error ? error : { error: String(error) }
+    );
     throw error;
   }
+}
+
+// Define Upstash vector result type
+interface UpstashVectorResult {
+  id: string | number;
+  score: number;
 }
 
 // Perform vector search
@@ -293,16 +317,16 @@ export async function performVectorSearch(vector: Float32Array, limit = 5) {
       const vectorArray = Array.from(vector);
 
       // Perform similarity search using Upstash Vector API
-      const results = await vectorClient.query({
+      const results: UpstashVectorResult[] = await vectorClient.query({
         vector: vectorArray,
         topK: limit,
         includeMetadata: true,
       });
 
       // Format results to match the expected output
-      return results.map((result: any) => ({
-        id: result.id,
-        similarity: result.score || 0,
+      return results.map((result) => ({
+        id: String(result.id),
+        similarity: typeof result.score === 'number' ? result.score : 0,
       }));
     } else {
       // Use LibSQL
@@ -332,7 +356,11 @@ export async function performVectorSearch(vector: Float32Array, limit = 5) {
       return similarities.slice(0, limit);
     }
   } catch (error) {
-    upstashLogger.error({ msg: 'Error performing vector search', error });
+    upstashLogger.error(
+      'ai-integration',
+      'Error performing vector search',
+      error instanceof Error ? error : { error: String(error) }
+    );
     throw error;
   }
 }

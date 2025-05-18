@@ -14,21 +14,27 @@ import {
   defaultSettingsMiddleware as aiSdkDefaultSettingsMiddleware,
 } from 'ai';
 import { LRUCache } from 'lru-cache';
+import { upstashLogger } from './memory/upstash/upstash-logger';
 
 // Define request-response middleware types
 export interface RequestMiddleware {
   name: string;
-  beforeRequest?: (params: { messages: any[] }) => Promise<{ messages: any[] }>;
+  beforeRequest?: (params: {
+    messages: unknown[];
+  }) => Promise<{ messages: unknown[] }>;
   onError?: (params: {
     error: Error;
-    runAgain: (options?: { metadata?: Record<string, any> }) => Promise<any>;
-    metadata?: Record<string, any>;
-  }) => Promise<{ error: Error } | any>;
+    runAgain: (options?: {
+      metadata?: Record<string, unknown>;
+    }) => Promise<unknown>;
+    metadata?: Record<string, unknown>;
+  }) => Promise<{ error: Error } | unknown>;
 }
-
 export interface ResponseMiddleware {
   name: string;
-  afterResponse?: (params: { response: any }) => Promise<{ response: any }>;
+  afterResponse?: (params: {
+    response: unknown;
+  }) => Promise<{ response: unknown }>;
 }
 
 // Helper function to create middleware
@@ -47,9 +53,8 @@ function getResponseCache(options?: { maxSize?: number; ttl?: number }) {
     updateAgeOnGet: true, // Reset TTL when item is accessed
   };
 
-  return new LRUCache<string, any>(cacheOptions);
+  return new LRUCache<string, Record<string, unknown>>(cacheOptions);
 }
-
 // Default response cache instance
 const responseCache = getResponseCache();
 
@@ -63,7 +68,7 @@ function simulateReadableStream({
 }: {
   initialDelayInMs?: number;
   chunkDelayInMs?: number;
-  chunks: any[];
+  chunks: string[];
 }) {
   return new ReadableStream({
     async start(controller) {
@@ -82,7 +87,6 @@ function simulateReadableStream({
     },
   });
 }
-
 // =============================================
 // Language Model Middleware Implementations
 // =============================================
@@ -115,16 +119,21 @@ export function createCachingMiddleware(options: {
   return {
     wrapGenerate: async ({ doGenerate, params }) => {
       const cacheKey = JSON.stringify(params);
-      if (cache.has(cacheKey)) {
-        return cache.get(cacheKey);
+      const cachedResult = cache.get(cacheKey);
+      if (cache.has(cacheKey) && cachedResult) {
+        return cachedResult as Awaited<ReturnType<typeof doGenerate>>;
       }
       const result = await doGenerate();
-      cache.set(cacheKey, result);
+      if (result) {
+        cache.set(cacheKey, result);
+      }
       return result;
     },
     wrapStream: async ({ doStream, params }) => {
       const cacheKey = JSON.stringify(params);
-      const cached = cache.get(cacheKey);
+      const cached = cache.get(cacheKey) as
+        | { chunks: LanguageModelV1StreamPart[] }
+        | undefined;
 
       if (cached) {
         // Return a simulated stream from cached data
@@ -132,7 +141,9 @@ export function createCachingMiddleware(options: {
           stream: simulateReadableStream({
             initialDelayInMs: 0,
             chunkDelayInMs: 10,
-            chunks: cached.chunks || [],
+            chunks: (cached.chunks || []).map((chunk) =>
+              chunk.type === 'text-delta' ? chunk.textDelta : ''
+            ),
           }),
           rawCall: { rawPrompt: null, rawSettings: {} },
         };
@@ -178,20 +189,39 @@ export function createLoggingMiddleware(options: {
 }): LanguageModelV1Middleware | null {
   if (!options.enabled) return null;
 
+  // Import or define your Upstash logger here
+  // For example, assuming you have an async function upstashLog(key: string, value: any)
+  // import { upstashLog } from './upstashLogger';
+
   return {
     wrapGenerate: async ({ doGenerate, params }) => {
       if (options.logParams) {
-        console.log('Generate params:', JSON.stringify(params, null, 2));
+        // Log params to Upstash
+        try {
+          await upstashLogger.info('logParams', 'Parameters logged', params);
+        } catch {
+          // Optionally handle logging error
+        }
       }
       const result = await doGenerate();
       if (options.logResults) {
-        console.log('Generate result:', result.text);
+        // Log result to Upstash
+        try {
+          await upstashLogger.info('logResults', 'Results logged', result);
+        } catch {
+          // Optionally handle logging error
+        }
       }
       return result;
     },
     wrapStream: async ({ doStream, params }) => {
       if (options.logParams) {
-        console.log('Stream params:', JSON.stringify(params, null, 2));
+        // Log params to Upstash
+        try {
+          await upstashLogger.info('logParams', 'Parameters logged', params);
+        } catch {
+          // Optionally handle logging error
+        }
       }
 
       const { stream, ...rest } = await doStream();
@@ -200,20 +230,25 @@ export function createLoggingMiddleware(options: {
         return { stream, ...rest };
       }
 
-      let generatedText = '';
       const transformStream = new TransformStream<
         LanguageModelV1StreamPart,
         LanguageModelV1StreamPart
       >({
-        transform(chunk, controller) {
+        async transform(chunk, controller) {
           if (chunk.type === 'text-delta') {
-            generatedText += chunk.textDelta;
+            try {
+              await upstashLogger.info(
+                'logStreamChunk',
+                'Stream chunk logged',
+                { chunk: chunk.textDelta }
+              );
+            } catch {
+              // Optionally handle logging error
+            }
           }
           controller.enqueue(chunk);
         },
-        flush() {
-          console.log('Stream result:', generatedText);
-        },
+        flush() {},
       });
 
       return {
@@ -223,6 +258,11 @@ export function createLoggingMiddleware(options: {
     },
   };
 }
+
+// You must define or import upstashLog somewhere in your codebase:
+// async function upstashLog(key: string, value: any) {
+//   // Implement Upstash logging logic here
+// }
 
 /**
  * Create a reasoning extraction middleware
@@ -272,7 +312,10 @@ export function createDefaultSettingsMiddleware(options?: {
   settings?: {
     temperature?: number;
     maxTokens?: number;
-    providerMetadata?: Record<string, any>;
+    providerMetadata?: Record<
+      string,
+      Record<string, string | number | boolean | null>
+    >;
   };
 }): LanguageModelV1Middleware | null {
   if (!options?.settings) return null;
@@ -280,9 +323,7 @@ export function createDefaultSettingsMiddleware(options?: {
   return aiSdkDefaultSettingsMiddleware({
     settings: options.settings,
   });
-}
-
-/**
+} /**
  * Create middleware array from options
  *
  * @param options - Middleware options
@@ -310,7 +351,10 @@ export function createMiddlewareFromOptions(options: {
   defaultSettings?: {
     temperature?: number;
     maxTokens?: number;
-    providerMetadata?: Record<string, any>;
+    providerMetadata?: Record<
+      string,
+      Record<string, string | number | boolean | null>
+    >;
   };
 }): LanguageModelV1Middleware[] {
   const middlewares: LanguageModelV1Middleware[] = [];
@@ -347,7 +391,6 @@ export function createMiddlewareFromOptions(options: {
 
   return middlewares;
 }
-
 // =============================================
 // Request-Response Middleware Implementations
 // =============================================
@@ -368,31 +411,33 @@ export function createContextInjectionMiddleware(options: {
 
   return createMiddleware({
     name: 'context-injection',
-    beforeRequest: async ({ messages }) => {
-      // Add context to the first message if it's a system message
-      // or add a new system message if there isn't one
-      if (messages.length > 0 && messages[0].role === 'system') {
+    beforeRequest: async ({ messages }: { messages: unknown[] }) => {
+      const typedMessages = messages as Array<{
+        role: string;
+        content: string;
+      }>;
+
+      if (typedMessages.length > 0 && typedMessages[0].role === 'system') {
         return {
           messages: [
             {
               role: 'system',
-              content: `${messages[0].content}\n\nAdditional context: ${options.context}`,
+              content: `${typedMessages[0].content}\n\nAdditional context: ${options.context}`,
             },
-            ...messages.slice(1),
+            ...typedMessages.slice(1),
           ],
         };
       } else {
         return {
           messages: [
             { role: 'system', content: `Context: ${options.context}` },
-            ...messages,
+            ...typedMessages,
           ],
         };
       }
     },
   });
 }
-
 /**
  * Create a content filtering middleware
  *
@@ -412,8 +457,9 @@ export function createContentFilteringMiddleware(options: {
 
   return createMiddleware({
     name: 'content-filtering',
-    afterResponse: async ({ response }) => {
-      let filteredText = response.text();
+    afterResponse: async ({ response }: { response: unknown }) => {
+      const typedResponse = response as { text: () => string };
+      let filteredText = typedResponse.text();
 
       // Apply each pattern and replacement
       options.patterns.forEach((pattern, index) => {
@@ -427,14 +473,13 @@ export function createContentFilteringMiddleware(options: {
       // Return modified response
       return {
         response: {
-          ...response,
+          ...typedResponse,
           text: () => filteredText,
         },
       };
     },
   });
 }
-
 /**
  * Create an error handling middleware
  *
@@ -459,8 +504,6 @@ export function createErrorHandlingMiddleware(options: {
   return createMiddleware({
     name: 'error-handler',
     onError: async ({ error, runAgain, metadata }) => {
-      console.error('Model error:', error);
-
       // Get current retry count from metadata
       const retryCount = (metadata?.retryCount as number) || 0;
 
@@ -472,7 +515,8 @@ export function createErrorHandlingMiddleware(options: {
       ) {
         // Wait and retry with exponential backoff
         const delay = retryDelay * Math.pow(2, retryCount);
-        console.log(
+        upstashLogger.warn(
+          'ai-integration',
           `Rate limit hit. Retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -571,7 +615,10 @@ export function createCompleteMiddleware(options: {
     defaultSettings?: {
       temperature?: number;
       maxTokens?: number;
-      providerMetadata?: Record<string, any>;
+      providerMetadata?: Record<
+        string,
+        Record<string, string | number | boolean | null>
+      >;
     };
   };
   requestResponse?: {

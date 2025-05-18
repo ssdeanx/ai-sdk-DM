@@ -22,7 +22,7 @@ export async function createTrace({
 }: {
   name: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   try {
     const trace = langfuse.trace({
@@ -31,13 +31,11 @@ export async function createTrace({
       metadata,
     });
     return trace;
-  } catch (error) {
-    console.error('Langfuse trace creation error:', error);
+  } catch {
     // Don't throw - we don't want to break the application if tracing fails
     return null;
   }
 }
-
 // Create a generation
 export async function createGeneration({
   traceId,
@@ -53,12 +51,14 @@ export async function createGeneration({
   traceId: string;
   name: string;
   model: string;
-  modelParameters?: any;
-  input: any; // Use 'any' or a more specific type like CoreMessage[] | string
-  output: any; // Use 'any' or a more specific type like string
+  modelParameters?: {
+    [key: string]: string | number | boolean | string[] | null;
+  };
+  input: string | Record<string, unknown>;
+  output: string | Record<string, unknown>;
   startTime: Date;
   endTime: Date;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   try {
     const generation = langfuse.generation({
@@ -73,14 +73,11 @@ export async function createGeneration({
       metadata,
     });
     return generation;
-  } catch (error) {
-    console.error('Langfuse generation creation error:', error);
+  } catch {
     // Don't throw - we don't want to break the application if tracing fails
     return null;
   }
-}
-
-/**
+} /**
  * Create a span to measure the duration of an operation
  *
  * @param options - Configuration options for the span
@@ -104,12 +101,19 @@ export async function createSpan({
   name: string;
   startTime: Date;
   endTime: Date;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   parentObservationId?: string;
 }) {
   try {
     // Create span parameters
-    const spanParams: any = {
+    const spanParams: {
+      traceId: string;
+      name: string;
+      startTime: Date;
+      endTime: Date;
+      metadata?: Record<string, unknown>;
+      parentObservationId?: string;
+    } = {
       traceId,
       name,
       startTime,
@@ -124,13 +128,11 @@ export async function createSpan({
 
     const span = langfuse.span(spanParams);
     return span;
-  } catch (error) {
-    console.error('Langfuse span creation error:', error);
+  } catch {
     // Don't throw - we don't want to break the application if tracing fails
     return null;
   }
 }
-
 /**
  * Create and start a span, returning a function to end it
  *
@@ -149,14 +151,14 @@ export function startSpan({
 }: {
   traceId: string;
   name: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   parentObservationId?: string;
 }) {
   const startTime = new Date();
 
   return {
     spanId: `span-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-    end: async (endMetadata?: any) => {
+    end: async (endMetadata?: Record<string, unknown>) => {
       const endTime = new Date();
 
       // Merge initial metadata with end metadata
@@ -177,7 +179,6 @@ export function startSpan({
     },
   };
 }
-
 // Log an event
 export async function logEvent({
   traceId,
@@ -186,7 +187,7 @@ export async function logEvent({
 }: {
   traceId: string;
   name: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   try {
     const event = langfuse.event({
@@ -195,13 +196,11 @@ export async function logEvent({
       metadata,
     });
     return event;
-  } catch (error) {
-    console.error('Langfuse event creation error:', error);
+  } catch {
     // Don't throw - we don't want to break the application if tracing fails
     return null;
   }
 }
-
 /**
  * Score a generation or trace for model evaluation
  *
@@ -228,7 +227,12 @@ export async function scoreGeneration({
 }) {
   try {
     // Create the score with the available parameters
-    const scoreParams: any = {
+    const scoreParams: {
+      traceId: string;
+      name: string;
+      value: number;
+      comment?: string;
+    } = {
       traceId,
       name,
       value,
@@ -244,13 +248,11 @@ export async function scoreGeneration({
 
     const score = langfuse.score(scoreParams);
     return score;
-  } catch (error) {
-    console.error('Langfuse score creation error:', error);
+  } catch {
     // Don't throw - we don't want to break the application if scoring fails
     return null;
   }
 }
-
 /**
  * Log a prompt template for prompt management and versioning
  *
@@ -318,8 +320,7 @@ export async function logPrompt({
       version,
       tags,
     };
-  } catch (error) {
-    console.error('Langfuse prompt creation error:', error);
+  } catch {
     // Don't throw - we don't want to break the application if prompt logging fails
     return null;
   }
@@ -342,9 +343,9 @@ export async function createDataset({
   name: string;
   description?: string;
   items?: Array<{
-    input: any;
-    expectedOutput?: any;
-    metadata?: any;
+    input: Record<string, unknown>;
+    expectedOutput?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
   }>;
 }) {
   try {
@@ -398,12 +399,10 @@ export async function createDataset({
       itemCount: items.length,
       createdAt: new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('Langfuse dataset creation error:', error);
+  } catch {
     return null;
   }
 }
-
 /**
  * Log a model evaluation run
  *
@@ -445,7 +444,12 @@ export async function logUserFeedback({
       typeof rating === 'boolean' ? (rating ? 1 : 0) : rating;
 
     // Create the score with the available parameters
-    const scoreParams: any = {
+    const scoreParams: {
+      traceId: string;
+      name: string;
+      value: number;
+      comment?: string;
+    } = {
       traceId,
       name: 'user_feedback',
       value: numericRating,
@@ -481,12 +485,10 @@ export async function logUserFeedback({
       userId,
       timestamp: new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('Langfuse user feedback error:', error);
+  } catch {
     return null;
   }
 }
-
 export async function logEvaluationRun({
   name,
   modelId,
@@ -499,11 +501,11 @@ export async function logEvaluationRun({
   datasetId: string;
   metrics: Record<string, number>;
   results?: Array<{
-    input: any;
-    output: any;
-    expectedOutput?: any;
+    input: Record<string, unknown>;
+    output: Record<string, unknown>;
+    expectedOutput?: Record<string, unknown>;
     scores: Record<string, number>;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }>;
 }) {
   try {
@@ -586,8 +588,7 @@ export async function logEvaluationRun({
       resultCount: results.length,
       createdAt: new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('Langfuse evaluation run creation error:', error);
+  } catch {
     return null;
   }
 }

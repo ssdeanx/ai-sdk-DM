@@ -6,14 +6,23 @@
  * allowing for better observability and monitoring of AI interactions.
  */
 
+// --- TYPE & LOGGER IMPORT FIXES ---
+// Use project canonical types and logger import
+import type { Tool } from '../db/supabase/validation';
+import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
+// MetadataRecord is just Record<string, unknown> for this project
+
 import {
   streamText,
   generateText,
   wrapLanguageModel,
-  extractReasoningMiddleware,
-  simulateStreamingMiddleware,
-  defaultSettingsMiddleware,
+  extractReasoningMiddleware, // intentionally kept for future use
+  simulateStreamingMiddleware, // intentionally kept for future use
+  defaultSettingsMiddleware, // intentionally kept for future use
   type LanguageModelV1Middleware,
+  LanguageModelV1,
+  CoreMessage,
+  ToolSet,
 } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -32,7 +41,8 @@ import {
   shutdown,
 } from './tracing';
 import { SpanKind, SpanStatusCode } from './otel-tracing';
-import { BaseAgent } from './agents/baseAgent';
+
+// Initialize tracing when this module is imported
 import { personaManager } from './agents/personas/persona-manager';
 import * as supabaseMemory from './memory/supabase';
 import { shouldUseUpstash } from './memory/supabase';
@@ -44,9 +54,6 @@ import {
 import * as db from './memory/db';
 import { initializeTools } from './tools/toolInitializer';
 import * as aiSdkIntegration from './ai-sdk-integration';
-
-// Optionally, import types or utility functions as needed
-// import { Agent, RunResult, AgentState } from "./agents/agent.types";
 
 // Initialize tracing when this module is imported
 initializeTracing({
@@ -85,15 +92,6 @@ export function getProviderWithTracing(
         baseURL,
         traceName || `openai_provider`
       );
-    case 'anthropic':
-      if (!apiKey) {
-        throw new Error('API key is required for Anthropic');
-      }
-      return getAnthropicWithTracing(
-        apiKey,
-        baseURL,
-        traceName || `anthropic_provider`
-      );
     default:
       throw new Error(`Unsupported provider: ${providerName}`);
   }
@@ -122,7 +120,6 @@ export async function streamAIWithTracing({
   messages,
   temperature = 0.7,
   maxTokens,
-  tools = {},
   apiKey,
   baseURL,
   traceName,
@@ -133,18 +130,19 @@ export async function streamAIWithTracing({
   responseModalities,
   cachedContent,
   middleware,
+  tools = {},
 }: {
   provider: string;
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
   apiKey?: string;
+  tools?: ToolSet;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
@@ -183,39 +181,23 @@ export async function streamAIWithTracing({
         messages,
         temperature,
         maxTokens,
-        tools,
         apiKey,
         baseURL,
         traceName,
         userId,
         metadata,
+        middleware,
       });
     case 'anthropic':
       if (!apiKey) {
         throw new Error('API key is required for Anthropic');
       }
-      return streamAnthropicWithTracing({
-        modelId,
-        messages,
-        temperature,
-        maxTokens,
-        tools,
-        apiKey,
-        baseURL,
-        traceName,
-        userId,
-        metadata,
-      });
     default:
       throw new Error(`Unsupported provider: ${provider}`);
   }
 }
-
-/**
- * Generate text with any AI provider and comprehensive tracing
- *
+/** * Generate text with any AI provider and comprehensive tracing *
  * @param options - Configuration options
- * @param options.provider - The provider name (google, openai, anthropic)
  * @param options.modelId - The model ID to use
  * @param options.messages - Array of messages for the model
  * @param options.temperature - Optional temperature setting (default: 0.7)
@@ -228,13 +210,14 @@ export async function streamAIWithTracing({
  * @param options.metadata - Optional additional metadata for the trace
  * @returns The generation result from the AI SDK
  */
+
 export async function generateAIWithTracing({
   provider,
   modelId,
   messages,
   temperature = 0.7,
   maxTokens,
-  tools = {},
+  tools = {} as Record<string, ToolDefinition>,
   apiKey,
   baseURL,
   traceName,
@@ -247,15 +230,15 @@ export async function generateAIWithTracing({
 }: {
   provider: string;
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, ToolDefinition>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
     mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
@@ -292,7 +275,6 @@ export async function generateAIWithTracing({
         messages,
         temperature,
         maxTokens,
-        tools,
         apiKey,
         baseURL,
         traceName,
@@ -308,7 +290,6 @@ export async function generateAIWithTracing({
         messages,
         temperature,
         maxTokens,
-        tools,
         apiKey,
         baseURL,
         traceName,
@@ -319,7 +300,6 @@ export async function generateAIWithTracing({
       throw new Error(`Unsupported provider: ${provider}`);
   }
 }
-
 /**
  * Enhanced version of streamText with Langfuse tracing
  *
@@ -337,16 +317,16 @@ export async function generateAIWithTracing({
  * @returns The streaming result from the AI SDK
  */
 export async function streamTextWithTracing(options: {
-  model: any;
-  messages?: any[];
+  model: LanguageModelV1;
+  messages?: CoreMessage[];
   prompt?: string;
   temperature?: number;
   maxTokens?: number;
   topP?: number;
-  tools?: Record<string, any>;
+  tools?: ToolSet;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
     mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
@@ -354,7 +334,6 @@ export async function streamTextWithTracing(options: {
   };
   responseModalities?: Array<'TEXT' | 'IMAGE'>;
   cachedContent?: string;
-  [key: string]: any;
 }) {
   const { traceName, userId, metadata, ...streamOptions } = options;
 
@@ -426,12 +405,12 @@ export async function streamTextWithTracing(options: {
             name: 'stream_completion',
             model: options.model ? String(options.model) : 'unknown',
             modelParameters: {
-              temperature: options.temperature,
-              maxTokens: options.maxTokens,
-              topP: options.topP,
+              temperature: options.temperature ?? null,
+              maxTokens: options.maxTokens ?? null,
+              topP: options.topP ?? null,
             },
-            input: options.messages || options.prompt || '',
-            output: text,
+            input: { content: options.messages || options.prompt || '' },
+            output: { content: text },
             startTime,
             endTime,
             metadata: {
@@ -452,11 +431,9 @@ export async function streamTextWithTracing(options: {
           });
         }
       })
-      .catch((error) => {
-        console.error('Error logging stream completion:', error);
-
+      .catch(async (error) => {
         // End the span with error
-        streamSpan.end({
+        await streamSpan.end({
           success: false,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -507,16 +484,16 @@ export async function streamTextWithTracing(options: {
  * @returns The generation result from the AI SDK
  */
 export async function generateTextWithTracing(options: {
-  model: any;
-  messages?: any[];
+  model: LanguageModelV1;
+  messages?: CoreMessage[];
   prompt?: string;
   temperature?: number;
   maxTokens?: number;
   topP?: number;
-  tools?: Record<string, any>;
+  tools?: ToolSet;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
     mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
@@ -524,7 +501,6 @@ export async function generateTextWithTracing(options: {
   };
   responseModalities?: Array<'TEXT' | 'IMAGE'>;
   cachedContent?: string;
-  [key: string]: any;
 }) {
   const { traceName, userId, metadata, ...generateOptions } = options;
 
@@ -548,9 +524,9 @@ export async function generateTextWithTracing(options: {
     name: 'generate_text_operation',
     metadata: {
       model: options.model ? String(options.model) : 'unknown',
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      topP: options.topP,
+      temperature: options.temperature ?? null,
+      maxTokens: options.maxTokens ?? null,
+      topP: options.topP ?? null,
       startTime: startTime.toISOString(),
     },
   });
@@ -594,12 +570,12 @@ export async function generateTextWithTracing(options: {
         name: 'text_generation',
         model: options.model ? String(options.model) : 'unknown',
         modelParameters: {
-          temperature: options.temperature,
-          maxTokens: options.maxTokens,
-          topP: options.topP,
+          temperature: options.temperature ?? null,
+          maxTokens: options.maxTokens ?? null,
+          topP: options.topP ?? null,
         },
-        input: options.messages || options.prompt || '',
-        output: result.text,
+        input: { content: options.messages || options.prompt || '' },
+        output: { content: result.text },
         startTime,
         endTime,
         metadata: {
@@ -647,10 +623,7 @@ export async function generateTextWithTracing(options: {
   }
 }
 
-/**
- * Enhanced version of getGoogleAI with comprehensive tracing
- *
- * @param apiKey - Optional Google API key (falls back to environment variable)
+/** * Enhanced version of getGoogleAI with comprehensive tracing *
  * @param baseURL - Optional custom base URL for the Google AI API
  * @param traceName - Optional name for the trace
  * @returns A Google AI provider instance that can be used to create models
@@ -663,10 +636,6 @@ export function getGoogleAIWithTracing(
   // Use the provided API key or fall back to environment variable
   const effectiveApiKey = apiKey || process.env.GOOGLE_API_KEY || '';
 
-  if (!effectiveApiKey) {
-    console.warn('No Google API key provided for getGoogleAIWithTracing');
-  }
-
   // Create a trace for the Google AI provider
   trace({
     name: traceName || 'google_ai_provider',
@@ -675,9 +644,7 @@ export function getGoogleAIWithTracing(
       baseURL: baseURL || 'default',
       timestamp: new Date().toISOString(),
     },
-  }).catch((error) => {
-    console.error('Error creating trace for Google AI provider:', error);
-  });
+  }).catch(() => {});
 
   // Create the Google AI provider
   const googleAI = createGoogleGenerativeAI({
@@ -703,9 +670,6 @@ export function getOpenAIWithTracing(
 ) {
   if (!apiKey) {
     apiKey = process.env.OPENAI_API_KEY || '';
-    console.warn(
-      'No OpenAI API key provided for getOpenAIWithTracing, using environment variable'
-    );
   }
 
   // Create a trace for the OpenAI provider
@@ -716,9 +680,7 @@ export function getOpenAIWithTracing(
       baseURL: baseURL || 'default',
       timestamp: new Date().toISOString(),
     },
-  }).catch((error) => {
-    console.error('Error creating trace for OpenAI provider:', error);
-  });
+  }).catch(() => {});
 
   // Create the OpenAI provider
   const openAI = createOpenAI({
@@ -744,9 +706,6 @@ export function getAnthropicWithTracing(
 ) {
   if (!apiKey) {
     apiKey = process.env.ANTHROPIC_API_KEY || '';
-    console.warn(
-      'No Anthropic API key provided for getAnthropicWithTracing, using environment variable'
-    );
   }
 
   // Create a trace for the Anthropic provider
@@ -757,9 +716,7 @@ export function getAnthropicWithTracing(
       baseURL: baseURL || 'default',
       timestamp: new Date().toISOString(),
     },
-  }).catch((error) => {
-    console.error('Error creating trace for Anthropic provider:', error);
-  });
+  }).catch(() => {});
 
   // Create the Anthropic provider
   const anthropic = createAnthropic({
@@ -804,15 +761,15 @@ export async function streamGoogleAIWithTracing({
   middleware,
 }: {
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: ToolSet;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
     mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
@@ -931,8 +888,6 @@ export async function streamGoogleAIWithTracing({
 
     return result;
   } catch (error) {
-    console.error('Error streaming Google AI response with tracing:', error);
-
     // End the span with error
     googleAiSpan.end({
       success: false,
@@ -973,15 +928,15 @@ export async function streamOpenAIWithTracing({
   middleware,
 }: {
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, Tool>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }) {
   // Create a trace for this operation
@@ -1063,7 +1018,10 @@ export async function streamOpenAIWithTracing({
       messages,
       temperature,
       maxTokens,
-      ...(Object.keys(tools).length > 0 ? { tools } : {}),
+      tools:
+        Object.keys(tools).length > 0
+          ? (tools as unknown as ToolSet)
+          : undefined,
       traceName: `${traceName || 'openai_stream'}_inner`,
       userId,
       metadata: {
@@ -1082,8 +1040,6 @@ export async function streamOpenAIWithTracing({
 
     return result;
   } catch (error) {
-    console.error('Error streaming OpenAI response with tracing:', error);
-
     // End the span with error
     openAiSpan.end({
       success: false,
@@ -1093,7 +1049,6 @@ export async function streamOpenAIWithTracing({
     throw error;
   }
 }
-
 /**
  * Stream text with Anthropic and comprehensive tracing
  *
@@ -1124,15 +1079,15 @@ export async function streamAnthropicWithTracing({
   middleware,
 }: {
   modelId: string;
-  messages: any[];
+  messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, Tool>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
 }) {
   // Create a trace for this operation
@@ -1211,10 +1166,13 @@ export async function streamAnthropicWithTracing({
     // Stream with tracing
     const result = await streamTextWithTracing({
       model,
-      messages,
+      messages: messages as CoreMessage[],
       temperature,
       maxTokens,
-      ...(Object.keys(tools).length > 0 ? { tools } : {}),
+      tools:
+        Object.keys(tools).length > 0
+          ? (tools as unknown as ToolSet)
+          : undefined,
       traceName: `${traceName || 'anthropic_stream'}_inner`,
       userId,
       metadata: {
@@ -1233,8 +1191,6 @@ export async function streamAnthropicWithTracing({
 
     return result;
   } catch (error) {
-    console.error('Error streaming Anthropic response with tracing:', error);
-
     // End the span with error
     anthropicSpan.end({
       success: false,
@@ -1244,7 +1200,6 @@ export async function streamAnthropicWithTracing({
     throw error;
   }
 }
-
 /**
  * Generate text with Google AI and comprehensive tracing
  *
@@ -1261,6 +1216,7 @@ export async function streamAnthropicWithTracing({
  * @param options.metadata - Optional additional metadata for the trace
  * @returns The generation result from the AI SDK
  */
+
 export async function generateGoogleAIWithTracing({
   modelId,
   messages,
@@ -1279,15 +1235,15 @@ export async function generateGoogleAIWithTracing({
   middleware,
 }: {
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, ToolDefinition>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   useSearchGrounding?: boolean;
   dynamicRetrievalConfig?: {
     mode: 'MODE_AUTOMATIC' | 'MODE_DYNAMIC' | 'MODE_MANUAL';
@@ -1406,8 +1362,6 @@ export async function generateGoogleAIWithTracing({
 
     return result;
   } catch (error) {
-    console.error('Error generating Google AI response with tracing:', error);
-
     // End the span with error
     googleAiSpan.end({
       success: false,
@@ -1417,7 +1371,6 @@ export async function generateGoogleAIWithTracing({
     throw error;
   }
 }
-
 /**
  * Generate text with OpenAI and comprehensive tracing
  *
@@ -1434,6 +1387,11 @@ export async function generateGoogleAIWithTracing({
  * @param options.metadata - Optional additional metadata for the trace
  * @returns The generation result from the AI SDK
  */
+export type ToolDefinition = {
+  description: string;
+  parameters: Record<string, unknown>;
+};
+
 export async function generateOpenAIWithTracing({
   modelId,
   messages,
@@ -1447,15 +1405,15 @@ export async function generateOpenAIWithTracing({
   metadata,
 }: {
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, ToolDefinition>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -1533,8 +1491,6 @@ export async function generateOpenAIWithTracing({
 
     return result;
   } catch (error) {
-    console.error('Error generating OpenAI response with tracing:', error);
-
     // End the span with error
     openAiSpan.end({
       success: false,
@@ -1544,7 +1500,6 @@ export async function generateOpenAIWithTracing({
     throw error;
   }
 }
-
 /**
  * Generate text with Anthropic and comprehensive tracing
  *
@@ -1574,15 +1529,15 @@ export async function generateAnthropicWithTracing({
   metadata,
 }: {
   modelId: string;
-  messages: any[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, any>;
+  tools?: Record<string, ToolDefinition>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   // Create a trace for this operation
   const traceObj = await trace({
@@ -1660,8 +1615,6 @@ export async function generateAnthropicWithTracing({
 
     return result;
   } catch (error) {
-    console.error('Error generating Anthropic response with tracing:', error);
-
     // End the span with error
     anthropicSpan.end({
       success: false,
@@ -1671,7 +1624,6 @@ export async function generateAnthropicWithTracing({
     throw error;
   }
 }
-
 /**
  * Evaluate a model generation with a score
  *

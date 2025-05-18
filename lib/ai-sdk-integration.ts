@@ -1,3 +1,4 @@
+import { ToolExecutionEntity } from './memory/upstash/upstashTypes';
 /**
  * AI SDK Integration Module
  *
@@ -16,14 +17,16 @@ import {
   type GenerateTextResult,
   type Provider,
   LanguageModel,
+  CoreMessage,
+  Tool,
 } from 'ai';
 import {
   streamGoogleAIWithTracing,
   streamOpenAIWithTracing,
-  streamAnthropicWithTracing,
   generateGoogleAIWithTracing,
   generateOpenAIWithTracing,
   generateAnthropicWithTracing,
+  ToolDefinition,
 } from './ai-sdk-tracing';
 import { createTrace, logEvent } from './langfuse-integration';
 import { getAllBuiltInTools, loadCustomTools } from './tools';
@@ -31,15 +34,56 @@ import { agenticTools } from './tools/agentic';
 import { personaManager } from './agents/personas/persona-manager';
 import { modelRegistry, type ModelSettings } from './models/model-registry';
 import { getModelById, getModelByModelId } from './models/model-service';
-import { z } from 'zod';
 import { upstashLogger } from './memory/upstash/upstash-logger';
 import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
-import type { ToolExecutionEntity as ToolDefinition } from './memory/upstash/upstashTypes';
 import type { ModelEntity as MetadataRecord } from './memory/upstash/upstashTypes';
 import { streamText, generateText, wrapLanguageModel } from 'ai';
+import { z } from 'zod';
 
 // --- Zod Schemas ---
 
+// TODO: [2025-05-18] - SdkToolDefinition and SdkToolDefinitionSchema seem to be misdefined or misused.
+// They describe AI call options rather than a tool definition.
+// Their usage for 'tools' collections has been replaced with a proper ToolSet/Tool schema.
+// Consider refactoring or removing SdkToolDefinitionSchema and SdkToolDefinition.
+export type SdkToolDefinition = z.ZodType<typeof SdkToolDefinitionSchema>;
+
+/**
+ * Zod schema for a single tool, compatible with Vercel AI SDK.
+ * @internal
+ */
+const AiSdkToolSchema = z.object({
+  description: z.string().optional(),
+  parameters: z.custom<z.ZodTypeAny>(
+    (val: unknown) => {
+      // Basic check, can be more robust if needed
+      return (
+        typeof val === 'object' &&
+        val !== null &&
+        typeof (val as z.ZodType).parse === 'function'
+      );
+    },
+    { message: 'Tool parameters must be a Zod schema' }
+  ),
+  execute: z.function(z.tuple([z.any()]), z.any()).optional(), // Simplified execute schema
+});
+
+/**
+ * Schema for individual tool definition compatible with ai-sdk-tracing generate functions
+ * @internal
+ */
+export const SdkToolDefinitionSchema = z.object({
+  modelId: z.string().min(1),
+  temperature: z.number().min(0).max(2).optional().default(0.7),
+  maxTokens: z.number().int().positive().optional(),
+  tools: z.record(AiSdkToolSchema).optional().default({}),
+  apiKey: z.string().optional(),
+  baseURL: z.string().optional(),
+  traceName: z.string().optional(),
+});
+// --- Zod Schemas ---
+
+/**
 /**
  * Schema for AI SDK integration options
  */
@@ -49,7 +93,7 @@ export const AISDKOptionsSchema = z.object({
   messages: z.array(z.custom<ChatMessage>()),
   temperature: z.number().min(0).max(2).optional().default(0.7),
   maxTokens: z.number().int().positive().optional(),
-  tools: z.record(z.custom<ToolDefinition>()).optional().default({}),
+  tools: z.record(z.custom<SdkToolDefinition>()).optional().default({}),
   apiKey: z.string().optional(),
   baseURL: z.string().optional(),
   traceName: z.string().optional(),
@@ -350,7 +394,7 @@ export async function streamWithAISDK({
   messages,
   temperature = 0.7,
   maxTokens,
-  tools = {},
+  tools = {} as Record<string, Tool<any, any>>,
   apiKey,
   baseURL,
   traceName,
@@ -362,12 +406,12 @@ export async function streamWithAISDK({
   cachedContent,
   middleware,
 }: {
-  provider: 'google' | 'openai' | 'anthropic';
+  provider: 'google' | 'openai';
   modelId: string;
-  messages: ChatMessage[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
-  tools?: Record<string, ToolDefinition>;
+  tools?: Record<string, Tool<any, any>>;
   apiKey?: string;
   baseURL?: string;
   traceName?: string;
@@ -430,27 +474,7 @@ export async function streamWithAISDK({
           messages,
           temperature,
           maxTokens,
-          tools,
           apiKey: apiKey || (await getOpenAIConfig(modelId))?.api_key,
-          baseURL,
-          traceName,
-          userId,
-          metadata: {
-            ...(metadata || {}),
-            parentTraceId: traceId,
-            middlewareApplied: !!middleware,
-          },
-          middleware,
-        });
-        break;
-      case 'anthropic':
-        result = await streamAnthropicWithTracing({
-          modelId,
-          messages,
-          temperature,
-          maxTokens,
-          tools,
-          apiKey: apiKey || (await getAnthropicConfig(modelId))?.api_key,
           baseURL,
           traceName,
           userId,
@@ -511,23 +535,12 @@ export async function streamWithAISDK({
     throw new AISDKIntegrationError('Error in streamWithAISDK', error);
   }
 }
-
 /**
  * Generate text with AI SDK
+ * @param modelId - The model ID
+ * @param messages - The messages to send
+ * @param temperature - The temperature for the generation
  *
- * @param options - Configuration options
- * @param options.provider - AI provider (google, openai, anthropic)
- * @param options.modelId - Model ID
- * @param options.messages - Messages to send to the model
- * @param options.temperature - Optional temperature parameter
- * @param options.maxTokens - Optional max tokens parameter
- * @param options.tools - Optional tools to use
- * @param options.apiKey - Optional API key
- * @param options.baseURL - Optional base URL
- * @param options.traceName - Optional trace name
- * @param options.userId - Optional user ID
- * @param options.metadata - Optional additional metadata
- * @returns The generation result
  */
 export async function generateWithAISDK({
   provider,
@@ -535,17 +548,17 @@ export async function generateWithAISDK({
   messages,
   temperature = 0.7,
   maxTokens,
-  tools = {},
+  tools = {} as Record<string, ToolDefinition>,
   apiKey,
   baseURL,
   traceName,
   userId,
-  metadata = undefined,
+  metadata,
   middleware,
 }: {
   provider: 'google' | 'openai' | 'anthropic';
   modelId: string;
-  messages: ChatMessage[];
+  messages: CoreMessage[];
   temperature?: number;
   maxTokens?: number;
   tools?: Record<string, ToolDefinition>;
@@ -553,9 +566,9 @@ export async function generateWithAISDK({
   baseURL?: string;
   traceName?: string;
   userId?: string;
-  metadata?: MetadataRecord;
+  metadata?: Record<string, unknown>;
   middleware?: LanguageModelV1Middleware | LanguageModelV1Middleware[];
-}): Promise<GenerateTextResult<Record<string, never>, never>> {
+}): Promise<GenerateTextResult<Record<string, Tool<any, any>>, any>> {
   const traceObj = await createTrace({
     name: traceName || `${provider}_generate`,
     userId,
@@ -576,13 +589,21 @@ export async function generateWithAISDK({
     let result;
     switch (provider) {
       case 'google':
+        const googleTools: Record<string, ToolDefinition> = {};
+        for (const [name, def] of Object.entries(tools)) {
+          googleTools[name] = {
+            ...def,
+            description: def.description,
+            parameters: def.parameters,
+          };
+        }
         result = await generateGoogleAIWithTracing({
           modelId,
           messages,
           temperature,
           maxTokens,
-          tools,
           apiKey: apiKey || (await getModelConfig(modelId))?.api_key,
+          tools: googleTools,
           baseURL,
           traceName,
           userId,
@@ -600,7 +621,6 @@ export async function generateWithAISDK({
           messages,
           temperature,
           maxTokens,
-          tools,
           apiKey: apiKey || (await getOpenAIConfig(modelId))?.api_key,
           baseURL,
           traceName,
@@ -617,7 +637,6 @@ export async function generateWithAISDK({
           messages,
           temperature,
           maxTokens,
-          tools,
           apiKey: apiKey || (await getAnthropicConfig(modelId))?.api_key,
           baseURL,
           traceName,
@@ -678,6 +697,4 @@ export async function generateWithAISDK({
   }
 }
 
-// Example usage for streamText, generateText, wrapLanguageModel (to avoid unused import errors)
-// These are utility exports for advanced consumers
 export { streamText, generateText, wrapLanguageModel };

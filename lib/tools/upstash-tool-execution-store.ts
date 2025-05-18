@@ -1,5 +1,5 @@
 import { getRedisClient } from '../memory/upstash/upstashClients';
-import { v4 as uuidv4 } from 'uuid';
+import { generateId } from 'ai';
 import { z } from 'zod';
 import { shouldUseUpstash } from '../memory/supabase';
 import { trace, span, event } from '../tracing';

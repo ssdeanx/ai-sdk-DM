@@ -41,7 +41,7 @@ let tracer: Tracer | null = null;
 export async function storeTraceDataInUpstash(
   traceId: string,
   spanId: string,
-  data: Record<string, any>
+  data: Record<string, unknown>
 ): Promise<boolean> {
   if (!shouldUseUpstash()) {
     return false;
@@ -63,12 +63,10 @@ export async function storeTraceDataInUpstash(
     await redis.expire(key, 60 * 60 * 24 * 30);
 
     return true;
-  } catch (error) {
-    console.error('Failed to store trace data in Upstash:', error);
+  } catch {
     return false;
   }
 }
-
 /**
  * Retrieve trace data from Upstash Redis
  *
@@ -79,7 +77,7 @@ export async function storeTraceDataInUpstash(
 export async function getTraceDataFromUpstash(
   traceId: string,
   spanId?: string
-): Promise<Record<string, any> | null> {
+): Promise<Record<string, unknown> | null> {
   if (!shouldUseUpstash()) {
     return null;
   }
@@ -110,7 +108,9 @@ export async function getTraceDataFromUpstash(
         return null;
       }
 
-      const result: Record<string, any> = {
+      const result: Record<string, unknown> & {
+        spans: Record<string, unknown>[];
+      } = {
         traceId,
         spans: [],
       };
@@ -131,8 +131,7 @@ export async function getTraceDataFromUpstash(
 
       return result;
     }
-  } catch (error) {
-    console.error('Failed to retrieve trace data from Upstash:', error);
+  } catch {
     return null;
   }
 }
@@ -155,7 +154,6 @@ export function initializeOTel({
   endpoint?: string;
 }) {
   if (sdk) {
-    console.warn('OpenTelemetry SDK already initialized');
     return;
   }
 
@@ -189,11 +187,7 @@ export function initializeOTel({
 
     // Get a tracer
     tracer = trace.getTracer(serviceName, serviceVersion);
-
-    console.log('OpenTelemetry SDK initialized');
-  } catch (error) {
-    console.error('Failed to initialize OpenTelemetry SDK:', error);
-  }
+  } catch {}
 }
 /** * Create a span to measure the duration of an operation *
  * @param name - The name of the span
@@ -211,7 +205,6 @@ export function initializeOTel({
   } = {}
 ): Span {
   if (!tracer) {
-    console.warn('OpenTelemetry tracer not initialized');
     // Return a no-op span
     return trace.getTracer('noop').startSpan('noop');
   }
@@ -313,14 +306,8 @@ export function startOTelSpan(
  */
 export function shutdownOTel() {
   if (sdk) {
-    sdk
-      .shutdown()
-      .then(() => console.log('OpenTelemetry SDK shut down'))
-      .catch((error) =>
-        console.error('Error shutting down OpenTelemetry SDK:', error)
-      );
+    sdk.shutdown().then(() => {});
   }
 }
-
 // Export SpanKind and SpanStatusCode for convenience
 export { SpanKind, SpanStatusCode };

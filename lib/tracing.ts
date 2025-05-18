@@ -60,7 +60,7 @@ export async function trace({
 }: {
   name: string;
   userId?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   // Create Langfuse trace
   const langfuseTrace = await createTrace({
@@ -100,7 +100,6 @@ export async function trace({
     },
   };
 }
-
 /**
  * Create a span in both Langfuse and OpenTelemetry
  *
@@ -119,7 +118,7 @@ export function span({
 }: {
   traceId: string;
   name: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   parentSpanId?: string;
 }) {
   // Start Langfuse span (this returns an object with an end function)
@@ -145,7 +144,9 @@ export function span({
     id: langfuseSpan.spanId,
     otelSpan: otelSpan.span,
     // Function to end both spans
-    end: async (endMetadata?: any) => {
+    end: async (
+      endMetadata?: Record<string, string | number | boolean | string[]>
+    ) => {
       // End OpenTelemetry span
       otelSpan.end({
         attributes: endMetadata,
@@ -153,9 +154,11 @@ export function span({
 
       // End Langfuse span
       return await langfuseSpan.end(endMetadata);
-    },
-    // Function to add an event to both spans
-    addEvent: async (eventName: string, eventMetadata?: any) => {
+    }, // Function to add an event to both spans
+    addEvent: async (
+      eventName: string,
+      eventMetadata?: Record<string, string | number | boolean | string[]>
+    ) => {
       // Add event to OpenTelemetry span
       otelSpan.addEvent(eventName, eventMetadata);
 
@@ -168,7 +171,6 @@ export function span({
     },
   };
 }
-
 /**
  * Log a generation in both Langfuse and OpenTelemetry
  *
@@ -179,12 +181,14 @@ export async function generation(options: {
   traceId: string;
   name: string;
   model: string;
-  modelParameters?: any;
-  input: any;
-  output: any;
+  modelParameters?: {
+    [key: string]: string | number | boolean | string[] | null;
+  };
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
   startTime: Date;
   endTime: Date;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   const { traceId, name, model, startTime, endTime, metadata } = options;
 
@@ -206,9 +210,7 @@ export async function generation(options: {
   otelSpan.end();
 
   return langfuseGeneration;
-}
-
-/**
+} /**
  * Log an event in both Langfuse and OpenTelemetry
  *
  * @param options - Configuration options for the event
@@ -217,7 +219,7 @@ export async function generation(options: {
 export async function event(options: {
   traceId: string;
   name: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   const { traceId, name, metadata } = options;
 
@@ -238,7 +240,6 @@ export async function event(options: {
 
   return langfuseEvent;
 }
-
 // Re-export other Langfuse functions
 export {
   scoreGeneration as score,
