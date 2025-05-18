@@ -127,6 +127,7 @@ import {
   createSupabaseClient,
   type SupabaseClient as UpstashSupabaseClient,
 } from './upstash/supabase-adapter-factory';
+import { PgTableWithColumns, PgColumn } from 'drizzle-orm/pg-core';
 
 // Define cache item type and client types
 export type CacheItem = Record<string, unknown> | unknown[]; // Use precise type for cache items
@@ -259,7 +260,6 @@ export async function logDatabaseConnection(
     const db = getDrizzleClient();
     const maskedUrl = connectionUrlInput.replace(/:[^@]*@/, ':***@');
     const connectionId = crypto.randomUUID();
-
     const result = await db
       .insert(schema.database_connections)
       .values({
@@ -274,7 +274,6 @@ export async function logDatabaseConnection(
         metadata: options?.metadata || {},
       })
       .returning({ id: schema.database_connections.id });
-
     return result[0]?.id || null;
   } catch {
     return null;
@@ -306,9 +305,7 @@ export const isUpstashAvailable = async (): Promise<boolean> => {
 };
 
 // ----- Database Access Functions -----
-
 // Utility: Normalize Drizzle Date/null fields to string for Zod compatibility
-
 // Define a helper type for objects with potentially Date/string/null timestamps
 type ObjectWithOptionalTimestamps = {
   created_at?: Date | string | null;
@@ -404,29 +401,29 @@ export async function getAllUsers(params?: {
             return eq(col, value);
           });
         if (filters.length > 0) {
-          // @ts-expect-error: Drizzle query builder chaining
-          query = query.where(and(...filters));
+          query = query.where(and(...filters)) as typeof query;
         }
       }
       if (params?.orderBy) {
-        const orderByField = params.orderBy as keyof typeof schema.users; // Ensure orderByField is a key of the actual schema table
+        const orderByField = params.orderBy as keyof typeof schema.users;
         const col = schema.users[orderByField];
 
-        // This check ensures `col` is valid, especially if `User` type and `schema.users` could diverge.
-        // TypeScript should ideally catch if `orderByField` isn't a valid key, making `col` a typed PgColumn.
-        if (!col)
-          throw new Error(`Invalid orderBy column: ${String(params.orderBy)}`);
+        if (!col) {
+          throw new Error(
+            `Invalid orderBy column: '${String(params.orderBy)}' not found in schema.users.`
+          );
+        }
 
-        // @ts-expect-error Drizzle's fluent query builder type inference can be complex with reassignments
-        query = query.orderBy(desc(col));
+        if (typeof col === 'function') {
+          throw new Error(
+            `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column.`
+          );
+        }
+
+        query = query.orderBy(desc(col as Column)) as typeof query;
       }
       if (params?.limit !== undefined) {
-        // @ts-expect-error: Drizzle query builder chaining
-        query = query.limit(params.limit);
-      }
-      if (params?.offset !== undefined) {
-        // @ts-expect-error: Drizzle query builder chaining
-        query = query.offset(params.offset);
+        query = query.limit(params.limit) as typeof query;
       }
       const results = await query;
       return results.map((row) => normalizeTimestampsToString(row) as User);
@@ -528,42 +525,38 @@ export async function getAllTools(params?: {
             return eq(col, value);
           });
         if (filters.length > 0) {
-          // @ts-expect-error: Drizzle query builder chaining
-          query = query.where(and(...filters));
+          query = query.where(and(...filters)) as typeof query;
         }
       }
       if (params?.orderBy) {
-        const col = getToolColumn(params.orderBy as string);
+        const col = getToolColumn(params.orderBy as string) as Column;
         if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-        // @ts-expect-error: Drizzle query builder chaining
-        query = query.orderBy(desc(col));
+        query = query.orderBy(desc(col)) as typeof query;
       }
       if (params?.limit !== undefined) {
-        // @ts-expect-error: Drizzle query builder chaining
-        query = query.limit(params.limit);
+        query = query.limit(params.limit) as typeof query;
       }
       const results = await query;
-      return results.map((row) => {
-        const norm = normalizeTimestampsToString(row); // norm now has string timestamps
-        return {
-          ...norm, // This includes string created_at and updated_at
-          parameters_schema:
-            typeof norm.parameters_schema === 'object' &&
-            norm.parameters_schema !== null
-              ? norm.parameters_schema
-              : {}, // Ensure parameters_schema is an object
-          tags:
-            typeof norm.tags === 'object' && norm.tags !== null
-              ? norm.tags
-              : {}, // Ensure tags is an object
-        } as Tool;
-      });
+      return results.map(
+        (norm) =>
+          ({
+            ...normalizeTimestampsToString(norm),
+            parameters_schema:
+              typeof norm.parameters_schema === 'object' &&
+              norm.parameters_schema !== null
+                ? norm.parameters_schema
+                : {},
+            tags:
+              typeof norm.tags === 'object' && norm.tags !== null
+                ? norm.tags
+                : {},
+          }) as Tool
+      );
     }
   } catch (error) {
     throw error;
   }
 }
-
 export async function getToolById(id: string): Promise<Tool | null> {
   try {
     if (shouldUseUpstash()) {
@@ -710,37 +703,37 @@ export async function getAllApps(params?: {
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
   if (params?.orderBy) {
-    const col = schema.apps[params.orderBy as keyof typeof schema.apps];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    const colName = params.orderBy as keyof typeof schema.apps; // Explicitly type the key from App's keys
+    const col = schema.apps[colName]; // Access the property on schema.apps
+    // Check if the resolved property exists
+    if (!col) {
+      throw new Error(
+        `Invalid orderBy column: '${String(params.orderBy)}' not found in schema.apps.`
+      );
+    }
+    // Check if the resolved property is a function (e.g., a table method like getSQL())
+    // which cannot be used for ordering.
+    if (typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column.`
+      );
+    }
+    // Cast 'col' to 'Column' to satisfy Drizzle's 'desc' function.
+    // This tells TypeScript to treat 'col' as a generic column type.
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
   const results = await query;
-  return results.map((row) => normalizeTimestampsToString(row) as App);
-}
-
-export async function getAppById(id: string): Promise<App | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.apps)
-    .where(eq(schema.apps.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as App;
+  return results.map((result) => normalizeTimestampsToString(result)) as App[];
 }
 
 export async function createApp(data: NewApp): Promise<App> {
@@ -804,17 +797,19 @@ export async function getAllAppCodeBlocks(params?: {
       schema.app_code_blocks[
         params.orderBy as keyof typeof schema.app_code_blocks
       ];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    if (!col || typeof col === 'function') {
+      // Added check for function type
+      throw new Error(
+        `Invalid orderBy column or column is not sortable: ${String(params.orderBy)}`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as AppCodeBlock);
@@ -891,51 +886,43 @@ export async function getAllIntegrations(params?: {
 }): Promise<Integration[]> {
   const db = getDrizzleClient();
   let query = db.select().from(schema.integrations);
+
   if (params?.where) {
     const filters = Object.entries(params.where)
       .filter(([_, value]) => value !== undefined)
       .map(([key, value]) => {
         const col = schema.integrations[
           key as keyof typeof schema.integrations
-        ] as Column;
+        ] as Column; // Ensure this cast is appropriate for all where keys
         if (!col) throw new Error(`Invalid filter column: ${key}`);
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
+
   if (params?.orderBy) {
-    const col =
-      schema.integrations[params.orderBy as keyof typeof schema.integrations];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    const colName = params.orderBy as keyof typeof schema.integrations;
+    const col = schema.integrations[colName];
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column, or column does not exist.`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
+
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
+
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
+
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as Integration);
-}
-
-export async function getIntegrationById(
-  id: string
-): Promise<Integration | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.integrations)
-    .where(eq(schema.integrations.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as Integration;
 }
 
 export async function createIntegration(
@@ -1004,39 +991,28 @@ export async function getAllFiles(params?: {
     }
   }
   if (params?.orderBy) {
-    const col = schema.files[params.orderBy as keyof typeof schema.files];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    const colName = params.orderBy as keyof typeof schema.files;
+    const col = schema.files[colName];
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column, or column does not exist.`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
+
+  // Apply LIMIT
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
+
+  // Apply OFFSET
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
+
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as File);
-}
-
-export async function getFileById(id: string): Promise<File | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.files)
-    .where(eq(schema.files.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as File;
-}
-
-export async function createFile(data: NewFile): Promise<File> {
-  const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
-  const inserted = await db.insert(schema.files).values(insertData).returning();
-  return normalizeTimestampsToString(inserted[0]) as File;
 }
 
 export async function updateFile(
@@ -1073,6 +1049,7 @@ export async function getAllTerminalSessions(params?: {
 }): Promise<TerminalSession[]> {
   const db = getDrizzleClient();
   let query = db.select().from(schema.terminal_sessions);
+
   if (params?.where) {
     const filters = Object.entries(params.where)
       .filter(([_, value]) => value !== undefined)
@@ -1084,27 +1061,29 @@ export async function getAllTerminalSessions(params?: {
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
+
   if (params?.orderBy) {
-    const col =
-      schema.terminal_sessions[
-        params.orderBy as keyof typeof schema.terminal_sessions
-      ];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    const colName = params.orderBy as keyof typeof schema.terminal_sessions;
+    const col = schema.terminal_sessions[colName];
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column, or column does not exist.`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
+
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
+
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
+
   const results = await query;
   return results.map(
     (row) => normalizeTimestampsToString(row) as TerminalSession
@@ -1147,8 +1126,18 @@ export async function updateTerminalSession(
     .set({ ...safeUpdateData, updated_at: new Date() })
     .where(eq(schema.terminal_sessions.id, id))
     .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as TerminalSession;
+  // Define a type alias for the database row structure of a terminal session.
+  // This makes the type of 'updated[0]' more explicit.
+  type TerminalSessionRowFromDB = typeof schema.terminal_sessions.$inferSelect;
+
+  // Assign updated[0] to a variable with the explicit type.
+  const firstTerminalSession: TerminalSessionRowFromDB | undefined = updated[0];
+
+  // Check if the first item exists.
+  if (!firstTerminalSession) {
+    return null;
+  }
+  return normalizeTimestampsToString(firstTerminalSession) as TerminalSession;
 }
 
 export async function deleteTerminalSession(id: string): Promise<boolean> {
@@ -1159,300 +1148,104 @@ export async function deleteTerminalSession(id: string): Promise<boolean> {
   return true;
 }
 
-// ===== Workflows =====
+// ===== Models =====
 /**
- * CRUD for Workflow entity (Supabase only)
+ * CRUD for Model entity (Supabase only)
  * Generated on 2025-05-17
  */
-export async function getAllWorkflows(params?: {
-  limit?: number;
-  offset?: number;
-  where?: Partial<Workflow>;
-  orderBy?: keyof Workflow;
-}): Promise<Workflow[]> {
-  const db = getDrizzleClient();
-  let query = db.select().from(schema.workflows);
-  if (params?.where) {
-    const filters = Object.entries(params.where)
-      .filter(([_, value]) => value !== undefined)
-      .map(([key, value]) => {
-        const col = schema.workflows[
-          key as keyof typeof schema.workflows
-        ] as Column;
-        if (!col) throw new Error(`Invalid filter column: ${key}`);
-        return eq(col, value);
-      });
-    if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
-    }
-  }
-  if (params?.orderBy) {
-    const col =
-      schema.workflows[params.orderBy as keyof typeof schema.workflows];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
-  }
-  if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
-  }
-  if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
-  }
-  const results = await query;
-  return results.map((row) => normalizeTimestampsToString(row) as Workflow);
-}
+// Helper function to normalize model data, especially numeric fields and JSON capabilities
+function normalizeModelData(
+  row: Record<string, any> // Drizzle row, can be any object from DB
+): Model {
+  const normalizedTimestampsRow = normalizeTimestampsToString(row);
 
-export async function getWorkflowById(id: string): Promise<Workflow | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.workflows)
-    .where(eq(schema.workflows.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as Workflow;
-}
-
-export async function createWorkflow(data: NewWorkflow): Promise<Workflow> {
-  const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
-  const inserted = await db
-    .insert(schema.workflows)
-    .values(insertData)
-    .returning();
-  return normalizeTimestampsToString(inserted[0]) as Workflow;
-}
-
-export async function updateWorkflow(
-  id: string,
-  data: Partial<Workflow>
-): Promise<Workflow | null> {
-  const db = getDrizzleClient();
-  const safeUpdateData = stripTimestamps(data);
-  const updated = await db
-    .update(schema.workflows)
-    .set({ ...safeUpdateData, updated_at: new Date() })
-    .where(eq(schema.workflows.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as Workflow;
-}
-
-export async function deleteWorkflow(id: string): Promise<boolean> {
-  const db = getDrizzleClient();
-  await db.delete(schema.workflows).where(eq(schema.workflows.id, id));
-  return true;
-}
-
-// ===== WorkflowSteps =====
-/**
- * CRUD for WorkflowStep entity (Supabase only)
- * Generated on 2025-05-17
- */
-
-// Helper function to transform a database row to a Model object
-// Generated on 2024-06-09
-function dbRowToModel(dbRow: (typeof schema.models)['$inferSelect']): Model {
-  const normalizedTimestampsRow = normalizeTimestampsToString(dbRow);
-
-  let capabilitiesValue = normalizedTimestampsRow.capabilities; // Assuming 'capabilities' exists on normalizedTimestampsRow based on error context
+  // Handle 'capabilities' which might be a string (JSON) or already an object/null/undefined
+  let capabilitiesValue = row.capabilities; // Use direct row access
   if (typeof capabilitiesValue === 'string') {
     try {
       capabilitiesValue = JSON.parse(capabilitiesValue);
     } catch (e) {
-      // console.warn(`Failed to parse capabilities JSON string for model ${normalizedTimestampsRow.id}:`, capabilitiesValue, e);
-      capabilitiesValue = undefined;
+      // console.warn(`Failed to parse capabilities JSON for model ${row.id}:`, e);
+      capabilitiesValue = null; // Match schema: optional().nullable()
     }
-  } else if (capabilitiesValue === null) {
-    // If DB stores null for JSONB, and Model expects undefined or Record, map null to undefined.
-    capabilitiesValue = undefined;
-  } else if (
-    capabilitiesValue !== undefined &&
-    typeof capabilitiesValue !== 'object'
-  ) {
-    // If it's not a string, not undefined, not null, and not an object, it's unexpected.
-    // console.warn(`Unexpected type for capabilities for model ${normalizedTimestampsRow.id}:`, typeof capabilitiesValue);
-    capabilitiesValue = undefined;
   }
-  // At this point, capabilitiesValue is an object, undefined.
+  // If capabilitiesValue is already an object or null, it's fine.
+  // If it's undefined and schema expects nullable, it's also fine.
+
+  // Handle 'metadata' similarly if it could be a JSON string from DB
+  // For now, assume Drizzle handles JSONB to object/null for metadata.
+  // let metadataValue = row.metadata;
+  // if (typeof metadataValue === 'string') { ... }
 
   const modelData = {
-    ...(normalizedTimestampsRow as any), // Spread as any to ensure all runtime props are included
-    max_tokens: Number((normalizedTimestampsRow as any).max_tokens),
-    input_cost_per_token: Number(
-      (normalizedTimestampsRow as any).input_cost_per_token
-    ),
-    output_cost_per_token: Number(
-      (normalizedTimestampsRow as any).output_cost_per_token
-    ),
+    ...(normalizedTimestampsRow as Omit<
+      typeof normalizedTimestampsRow,
+      keyof Model
+    > &
+      Partial<Model>), // Spread properties
+
+    // Ensure all fields from ModelSchema are correctly typed
+    id: String(row.id),
+    name: String(row.name),
+    provider_id: String(row.provider_id),
+    model_id: String(row.model_id),
+
+    // Mandatory numeric fields
+    max_tokens: Number(row.max_tokens),
+    // Assuming input/output_cost_per_token are stored as numeric or text in DB that can be Number()
+    input_cost_per_token: Number(row.input_cost_per_token),
+    output_cost_per_token: Number(row.output_cost_per_token),
+
+    // Optional boolean fields (boolean | undefined)
+    supports_vision:
+      row.supports_vision != null ? Boolean(row.supports_vision) : undefined,
+    supports_functions:
+      row.supports_functions != null
+        ? Boolean(row.supports_functions)
+        : undefined,
+    supports_streaming:
+      row.supports_streaming != null
+        ? Boolean(row.supports_streaming)
+        : undefined,
+
+    // Optional numeric fields (number | undefined)
     default_temperature:
-      (normalizedTimestampsRow as any).default_temperature != null // Handles undefined and null
-        ? Number((normalizedTimestampsRow as any).default_temperature)
-        : null,
-    top_p:
-      (normalizedTimestampsRow as any).top_p != null // Handles undefined and null
-        ? Number((normalizedTimestampsRow as any).top_p)
-        : null,
-    top_k:
-      (normalizedTimestampsRow as any).top_k != null // Handles undefined and null
-        ? Number((normalizedTimestampsRow as any).top_k)
-        : null,
-    frequency_penalty:
-      (normalizedTimestampsRow as any).frequency_penalty != null // Handles undefined and null
-        ? Number((normalizedTimestampsRow as any).frequency_penalty)
-        : null,
-    presence_penalty:
-      (normalizedTimestampsRow as any).presence_penalty != null // Handles undefined and null
-        ? Number((normalizedTimestampsRow as any).presence_penalty)
-        : null,
-    capabilities: capabilitiesValue,
+      row.default_temperature != null
+        ? Number(row.default_temperature)
+        : undefined,
+    default_top_p:
+      row.default_top_p != null ? Number(row.default_top_p) : undefined,
+    default_frequency_penalty:
+      row.default_frequency_penalty != null
+        ? Number(row.default_frequency_penalty)
+        : undefined,
+    default_presence_penalty:
+      row.default_presence_penalty != null
+        ? Number(row.default_presence_penalty)
+        : undefined,
+    context_window:
+      row.context_window != null ? Number(row.context_window) : undefined,
+
+    // Optional nullable string fields
+    description: row.description != null ? String(row.description) : null,
+    base_url: row.base_url != null ? String(row.base_url) : null,
+
+    // Optional string fields (string | undefined)
+    category: row.category != null ? String(row.category) : undefined,
+    api_key: row.api_key != null ? String(row.api_key) : undefined, // Assuming api_key is optional in Model type
+    status: row.status != null ? String(row.status) : undefined, // Assuming status is optional in Model type
+
+    // JSON fields (already handled or spread)
+    capabilities: capabilitiesValue, // Already processed
+    metadata: row.metadata, // Assumed to be object | null from spread or Drizzle
+
+    // Timestamps are handled by normalizeTimestampsToString and spread
+    created_at: normalizedTimestampsRow.created_at,
+    updated_at: normalizedTimestampsRow.updated_at,
   };
-
-  // This cast assumes that modelData now structurally matches the Model type.
-  // For robust validation, ModelSchema.parse(modelData) would be better if ModelSchema is available.
-  return modelData as unknown as Model;
+  return modelData as Model;
 }
 
-export async function getAllWorkflowSteps(params?: {
-  limit?: number;
-  offset?: number;
-  where?: Partial<WorkflowStep>;
-  orderBy?: keyof WorkflowStep;
-}): Promise<WorkflowStep[]> {
-  const db = getDrizzleClient();
-  let query = db.select().from(schema.workflow_steps);
-  if (params?.where) {
-    const filters = Object.entries(params.where)
-      .filter(([_, value]) => value !== undefined)
-      .map(([key, value]) => {
-        const col = schema.workflow_steps[
-          key as keyof typeof schema.workflow_steps
-        ] as Column;
-        if (!col) throw new Error(`Invalid filter column: ${key}`);
-        return eq(col, value);
-      });
-    if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
-    }
-  }
-  if (params?.orderBy) {
-    const col =
-      schema.workflow_steps[
-        params.orderBy as keyof typeof schema.workflow_steps
-      ];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
-  }
-  if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
-  }
-  if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
-  }
-  const results = await query;
-  return results.map((row) => normalizeTimestampsToString(row) as WorkflowStep);
-}
-
-export async function getWorkflowStepById(
-  id: string
-): Promise<WorkflowStep | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.workflow_steps)
-    .where(eq(schema.workflow_steps.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as WorkflowStep;
-}
-
-export async function createWorkflowStep(
-  data: NewWorkflowStep
-): Promise<WorkflowStep> {
-  const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
-  const inserted = await db
-    .insert(schema.workflow_steps)
-    .values(insertData)
-    .returning();
-  return normalizeTimestampsToString(inserted[0]) as WorkflowStep;
-}
-
-export async function updateWorkflowStep(
-  id: string,
-  data: Partial<WorkflowStep>
-): Promise<WorkflowStep | null> {
-  const db = getDrizzleClient();
-  const safeUpdateData = stripTimestamps(data);
-  const updated = await db
-    .update(schema.workflow_steps)
-    .set({ ...safeUpdateData, updated_at: new Date() })
-    .where(eq(schema.workflow_steps.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as WorkflowStep;
-}
-
-export async function deleteWorkflowStep(id: string): Promise<boolean> {
-  const db = getDrizzleClient();
-  await db
-    .delete(schema.workflow_steps)
-    .where(eq(schema.workflow_steps.id, id));
-  return true;
-}
-
-// ===== Models =====
-/**
-  }
-  const results = await query;
-  return results.map(dbRowToModel);
-}
-
-export async function getModelById(id: string): Promise<Model | null> {
-  const db = getDrizzleClient();
-  orderBy?: keyof Model;
-}): Promise<Model[]> {
-  const db = getDrizzleClient();
-    .where(eq(schema.models.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return dbRowToModel(result[0]);
-}
-
-export async function createModel(data: NewModel): Promise<Model> {
-  const db = getDrizzleClient();
-      });
-    if (filters.length > 0) {
-    .insert(schema.models)
-    .values(insertData)
-    .returning();
-  return dbRowToModel(inserted[0]);
-}
-
-export async function updateModel(
-  id: string,
-    query = query.orderBy(desc(col));
-  }
-  if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
-  }
-  if (params?.offset !== undefined) {
-    .where(eq(schema.models.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return dbRowToModel(updated[0]);
-}
-
-export async function deleteModel(id: string): Promise<boolean> {
 export async function getModelById(id: string): Promise<Model | null> {
   const db = getDrizzleClient();
   const result = await db
@@ -1461,38 +1254,135 @@ export async function getModelById(id: string): Promise<Model | null> {
     .where(eq(schema.models.id, id))
     .limit(1);
   if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as Model;
-}
-
-export async function createModel(data: NewModel): Promise<Model> {
-  const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
-  const inserted = await db
-    .insert(schema.models)
-    .values(insertData)
-    .returning();
-  return normalizeTimestampsToString(inserted[0]) as Model;
+  return normalizeModelData(result[0]);
 }
 
 export async function updateModel(
   id: string,
   data: Partial<Model>
 ): Promise<Model | null> {
-  const db = getDrizzleClient();
-  const safeUpdateData = stripTimestamps(data);
-  const updated = await db
-    .update(schema.models)
-    .set({ ...safeUpdateData, updated_at: new Date() })
-    .where(eq(schema.models.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as Model;
+  try {
+    if (shouldUseUpstash()) {
+      const client = getUpstashClient();
+      const tableClient = client.from('models');
+      // Upstash adapter might not need special handling for numeric strings
+      // but ensure data conforms to what Upstash expects.
+      // For now, assume direct update is fine.
+      const updatedResult = await tableClient.update(id, data);
+      if (!updatedResult || updatedResult.length === 0 || !updatedResult[0]) {
+        return null;
+      }
+      // Normalize the result from Upstash to match Model type expectations
+      return normalizeModelData(updatedResult[0] as Record<string, any>);
+    } else {
+      const db = getDrizzleClient();
+      const safeUpdateData = stripTimestamps(data);
+
+      // Prepare data for Drizzle, converting numbers to strings for numeric columns
+      // and handling potential null/undefined values correctly.
+      const updatePayload: Record<string, any> = { ...safeUpdateData };
+
+      // Example: Convert numeric fields that are stored as numeric/text in DB
+      // but might be numbers in `Partial<Model>`
+      if (safeUpdateData.max_tokens !== undefined) {
+        updatePayload.max_tokens = Number(safeUpdateData.max_tokens);
+      }
+      if (safeUpdateData.input_cost_per_token !== undefined) {
+        updatePayload.input_cost_per_token = String(
+          safeUpdateData.input_cost_per_token
+        );
+      }
+      if (safeUpdateData.output_cost_per_token !== undefined) {
+        updatePayload.output_cost_per_token = String(
+          safeUpdateData.output_cost_per_token
+        );
+      }
+      if (
+        safeUpdateData.default_temperature !== undefined &&
+        safeUpdateData.default_temperature !== null
+      ) {
+        updatePayload.default_temperature = String(
+          safeUpdateData.default_temperature
+        );
+      } else if (safeUpdateData.default_temperature === null) {
+        updatePayload.default_temperature = null;
+      }
+      if (
+        safeUpdateData.default_top_p !== undefined &&
+        safeUpdateData.default_top_p !== null
+      ) {
+        updatePayload.default_top_p = String(safeUpdateData.default_top_p);
+      } else if (safeUpdateData.default_top_p === null) {
+        updatePayload.default_top_p = null;
+      }
+      if (
+        safeUpdateData.default_frequency_penalty !== undefined &&
+        safeUpdateData.default_frequency_penalty !== null
+      ) {
+        updatePayload.default_frequency_penalty = String(
+          safeUpdateData.default_frequency_penalty
+        );
+      } else if (safeUpdateData.default_frequency_penalty === null) {
+        updatePayload.default_frequency_penalty = null;
+      }
+      if (
+        safeUpdateData.default_presence_penalty !== undefined &&
+        safeUpdateData.default_presence_penalty !== null
+      ) {
+        updatePayload.default_presence_penalty = String(
+          safeUpdateData.default_presence_penalty
+        );
+      } else if (safeUpdateData.default_presence_penalty === null) {
+        updatePayload.default_presence_penalty = null;
+      }
+      if (
+        safeUpdateData.context_window !== undefined &&
+        safeUpdateData.context_window !== null
+      ) {
+        updatePayload.context_window = Number(safeUpdateData.context_window);
+      } else if (safeUpdateData.context_window === null) {
+        updatePayload.context_window = null;
+      }
+
+      // Remove undefined keys to avoid issues with Drizzle's set method
+      Object.keys(updatePayload).forEach((key) => {
+        if (updatePayload[key] === undefined) {
+          delete updatePayload[key];
+        }
+      });
+
+      const updated = await db
+        .update(schema.models)
+        .set({ ...updatePayload, updated_at: new Date() })
+        .where(eq(schema.models.id, id))
+        .returning();
+
+      if (!updated || updated.length === 0 || !updated[0]) {
+        return null;
+      }
+      return normalizeModelData(updated[0]);
+    }
+  } catch (error) {
+    // console.error("Error in updateModel:", error);
+    throw error;
+  }
 }
 
 export async function deleteModel(id: string): Promise<boolean> {
-  const db = getDrizzleClient();
-  await db.delete(schema.models).where(eq(schema.models.id, id));
-  return true;
+  try {
+    if (shouldUseUpstash()) {
+      const client = getUpstashClient();
+      const tableClient = client.from('models');
+      await tableClient.delete(id);
+    } else {
+      const db = getDrizzleClient();
+      await db.delete(schema.models).where(eq(schema.models.id, id));
+    }
+    return true;
+  } catch (err) {
+    // console.error("Error in deleteModel:", err);
+    throw err;
+  }
 }
 
 // ===== Providers =====
@@ -1514,31 +1404,36 @@ export async function getAllProviders(params?: {
       .map(([key, value]) => {
         const col = schema.providers[
           key as keyof typeof schema.providers
-        ] as Column;
+        ] as unknown as Column;
         if (!col) throw new Error(`Invalid filter column: ${key}`);
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
   if (params?.orderBy) {
     const col =
       schema.providers[params.orderBy as keyof typeof schema.providers];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    if (!col) {
+      throw new Error(`Invalid orderBy column: ${String(params.orderBy)}`);
+    }
+    // Check if 'col' is a function (e.g., a method on the table object)
+    if (typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column.`
+      );
+    }
+    // Cast 'col' to Column to satisfy Drizzle's desc() function and resolve TS error
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
-  const results = await query;
+  const results = await query.execute();
   return results.map((row) => normalizeTimestampsToString(row) as Provider);
 }
 
@@ -1608,8 +1503,7 @@ export async function getAllAgentPersonas(params?: {
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
   if (params?.orderBy) {
@@ -1617,17 +1511,18 @@ export async function getAllAgentPersonas(params?: {
       schema.agent_personas[
         params.orderBy as keyof typeof schema.agent_personas
       ];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy column or column is not sortable: ${String(params.orderBy)}`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as AgentPersona);
@@ -1644,33 +1539,6 @@ export async function getAgentPersonaById(
     .limit(1);
   if (!result[0]) return null;
   return normalizeTimestampsToString(result[0]) as AgentPersona;
-}
-
-export async function createAgentPersona(
-  data: NewAgentPersona
-): Promise<AgentPersona> {
-  const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
-  const inserted = await db
-    .insert(schema.agent_personas)
-    .values(insertData)
-    .returning();
-  return normalizeTimestampsToString(inserted[0]) as AgentPersona;
-}
-
-export async function updateAgentPersona(
-  id: string,
-  data: Partial<AgentPersona>
-): Promise<AgentPersona | null> {
-  const db = getDrizzleClient();
-  const safeUpdateData = stripTimestamps(data);
-  const updated = await db
-    .update(schema.agent_personas)
-    .set({ ...safeUpdateData, updated_at: new Date() })
-    .where(eq(schema.agent_personas.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as AgentPersona;
 }
 
 export async function deleteAgentPersona(id: string): Promise<boolean> {
@@ -1703,23 +1571,23 @@ export async function getAllAgents(params?: {
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
   if (params?.orderBy) {
     const col = schema.agents[params.orderBy as keyof typeof schema.agents];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy column or column is not sortable: ${String(params.orderBy)}`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as Agent);
@@ -1743,6 +1611,9 @@ export async function createAgent(data: NewAgent): Promise<Agent> {
     .insert(schema.agents)
     .values(insertData)
     .returning();
+  if (!inserted[0]) {
+    throw new Error('Failed to create agent or retrieve the created row.');
+  }
   return normalizeTimestampsToString(inserted[0]) as Agent;
 }
 
@@ -1791,24 +1662,24 @@ export async function getAllAgentTools(params?: {
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
   if (params?.orderBy) {
     const col =
       schema.agent_tools[params.orderBy as keyof typeof schema.agent_tools];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy column or column is not sortable: ${String(params.orderBy)}`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as AgentTool);
@@ -1835,11 +1706,14 @@ export async function getAgentToolByKeys(
 
 export async function createAgentTool(data: NewAgentTool): Promise<AgentTool> {
   const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
+  const insertData = stripTimestamps(data); // NewAgentTool doesn't have created_at
   const inserted = await db
     .insert(schema.agent_tools)
-    .values(insertData)
+    .values(insertData) // Drizzle handles created_at via DB defaults/triggers if defined
     .returning();
+  if (!inserted[0]) {
+    throw new Error('Failed to create agent tool or retrieve the created row.');
+  }
   return normalizeTimestampsToString(inserted[0]) as AgentTool;
 }
 
@@ -1904,23 +1778,23 @@ export async function getAllSettings(params?: {
         return eq(col, value);
       });
     if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
+      query = query.where(and(...filters)) as typeof query;
     }
   }
   if (params?.orderBy) {
     const col = schema.settings[params.orderBy as keyof typeof schema.settings];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
+    if (!col || typeof col === 'function') {
+      throw new Error(
+        `Invalid orderBy column or column is not sortable: ${String(params.orderBy)}`
+      );
+    }
+    query = query.orderBy(desc(col as Column)) as typeof query;
   }
   if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
+    query = query.limit(params.limit) as typeof query;
   }
   if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
+    query = query.offset(params.offset) as typeof query;
   }
   const results = await query;
   return results.map((row) => normalizeTimestampsToString(row) as Setting);
@@ -1931,7 +1805,7 @@ export async function getSettingById(id: string): Promise<Setting | null> {
   const result = await db
     .select()
     .from(schema.settings)
-    .where(eq(schema.settings.id, id))
+    .where(eq(schema.settings.key, id))
     .limit(1);
   if (!result[0]) return null;
   return normalizeTimestampsToString(result[0]) as Setting;
@@ -1944,9 +1818,11 @@ export async function createSetting(data: NewSetting): Promise<Setting> {
     .insert(schema.settings)
     .values(insertData)
     .returning();
+  if (!inserted[0]) {
+    throw new Error('Failed to create setting or retrieve the created row.');
+  }
   return normalizeTimestampsToString(inserted[0]) as Setting;
 }
-
 export async function updateSetting(
   id: string,
   data: Partial<Setting>
@@ -1955,207 +1831,410 @@ export async function updateSetting(
   const safeUpdateData = stripTimestamps(data);
   const updated = await db
     .update(schema.settings)
-    .set({ ...safeUpdateData, updated_at: new Date() })
-    .where(eq(schema.settings.id, id))
+    .set(safeUpdateData)
+    .where(eq(schema.settings.key, id))
     .returning();
   if (!updated[0]) return null;
   return normalizeTimestampsToString(updated[0]) as Setting;
 }
 export async function deleteSetting(id: string): Promise<boolean> {
   const db = getDrizzleClient();
-  await db.delete(schema.settings).where(eq(schema.settings.id, id));
+  await db.delete(schema.settings).where(eq(schema.settings.key, id));
   return true;
 }
 
-// ===== BlogPosts =====
+// --- Generic Database Operations ---
+
 /**
- * CRUD for BlogPost entity (Supabase only)
- * Generated on 2025-05-17
+ * Generic function to get an entity by its ID.
+ * @param tableName The name of the table.
+ * @param id The ID of the entity.
+ * @returns The entity or null if not found.
  */
-export async function getAllBlogPosts(params?: {
-  limit?: number;
-  offset?: number;
-  where?: Partial<BlogPost>;
-  orderBy?: keyof BlogPost;
-}): Promise<BlogPost[]> {
-  const db = getDrizzleClient();
-  let query = db.select().from(schema.blog_posts);
-  if (params?.where) {
-    const filters = Object.entries(params.where)
-      .filter(([_, value]) => value !== undefined)
-      .map(([key, value]) => {
-        const col = schema.blog_posts[
-          key as keyof typeof schema.blog_posts
-        ] as Column;
-        if (!col) throw new Error(`Invalid filter column: ${key}`);
-        return eq(col, value);
-      });
-    if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
-    }
-  }
-  if (params?.orderBy) {
-    const col =
-      schema.blog_posts[params.orderBy as keyof typeof schema.blog_posts];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
-  }
-  if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
-  }
-  if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
-  }
-  const results = await query;
-  return results.map((row) => normalizeTimestampsToString(row) as BlogPost);
-}
-
-export async function getBlogPostById(id: string): Promise<BlogPost | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.blog_posts)
-    .where(eq(schema.blog_posts.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as BlogPost;
-}
-
-export async function createBlogPost(data: NewBlogPost): Promise<BlogPost> {
-  const db = getDrizzleClient();
-  const insertData = {
-    ...stripTimestamps(data),
-    published_at: data.published_at ? new Date(data.published_at) : null,
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
-  const inserted = await db
-    .insert(schema.blog_posts)
-    .values(insertData)
-    .returning();
-  return normalizeTimestampsToString(inserted[0]) as BlogPost;
-}
-
-export async function updateBlogPost(
-  id: string,
-  data: Partial<BlogPost>
-): Promise<BlogPost | null> {
-  const db = getDrizzleClient();
-  const safeUpdateData = stripTimestamps(data);
-  const updateData = {
-    ...safeUpdateData,
-    updated_at: new Date(),
-    published_at: safeUpdateData.published_at
-      ? new Date(safeUpdateData.published_at)
-      : null,
-  };
-  const updated = await db
-    .update(schema.blog_posts)
-    .set(updateData)
-    .where(eq(schema.blog_posts.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as BlogPost;
-}
-export async function deleteBlogPost(id: string): Promise<boolean> {
-  const db = getDrizzleClient();
-  await db.delete(schema.blog_posts).where(eq(schema.blog_posts.id, id));
-  return true;
-}
-
-// ===== MdxDocuments =====
-/**
- * CRUD for MdxDocument entity (Supabase only)
- * Generated on 2025-05-17
- */
-export async function getAllMdxDocuments(params?: {
-  limit?: number;
-  offset?: number;
-  where?: Partial<MdxDocument>;
-  orderBy?: keyof MdxDocument;
-}): Promise<MdxDocument[]> {
-  const db = getDrizzleClient();
-  let query = db.select().from(schema.mdx_documents);
-  if (params?.where) {
-    const filters = Object.entries(params.where)
-      .filter(([_, value]) => value !== undefined)
-      .map(([key, value]) => {
-        const col = schema.mdx_documents[
-          key as keyof typeof schema.mdx_documents
-        ] as Column;
-        if (!col) throw new Error(`Invalid filter column: ${key}`);
-        return eq(col, value);
-      });
-    if (filters.length > 0) {
-      // @ts-expect-error: Drizzle query builder chaining
-      query = query.where(and(...filters));
-    }
-  }
-  if (params?.orderBy) {
-    const col =
-      schema.mdx_documents[params.orderBy as keyof typeof schema.mdx_documents];
-    if (!col) throw new Error(`Invalid orderBy column: ${params.orderBy}`);
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.orderBy(desc(col));
-  }
-  if (params?.limit !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.limit(params.limit);
-  }
-  if (params?.offset !== undefined) {
-    // @ts-expect-error: Drizzle query builder chaining
-    query = query.offset(params.offset);
-  }
-  const results = await query;
-  return results.map((row) => normalizeTimestampsToString(row) as MdxDocument);
-}
-
-export async function getMdxDocumentById(
+export async function getEntityById<T extends { id: string }>(
+  tableName: keyof typeof schema,
   id: string
-): Promise<MdxDocument | null> {
-  const db = getDrizzleClient();
-  const result = await db
-    .select()
-    .from(schema.mdx_documents)
-    .where(eq(schema.mdx_documents.id, id))
-    .limit(1);
-  if (!result[0]) return null;
-  return normalizeTimestampsToString(result[0]) as MdxDocument;
+): Promise<T | null> {
+  try {
+    if (shouldUseUpstash()) {
+      const client = getUpstashClient();
+      const tableClient = client.from(tableName);
+      const result = (await tableClient.getById(id)) as T | null;
+      if (result && 'created_at' in result && 'updated_at' in result) {
+        return normalizeTimestampsToString(
+          result as ObjectWithOptionalTimestamps
+        ) as unknown as T;
+      }
+      return result;
+    } else {
+      const db = getDrizzleClient();
+      const table = schema[tableName] as PgTableWithColumns<any>; // Cast to a generic Drizzle table
+      if (!table || !table.id) {
+        throw new Error(
+          `Table ${String(tableName)} or its ID column is not defined in the schema.`
+        );
+      }
+      const result = await db
+        .select()
+        .from(table)
+        .where(eq(table.id, id))
+        .limit(1);
+      if (!result[0]) return null;
+      return normalizeTimestampsToString(result[0] as any) as unknown as T; // Normalize and cast
+    }
+  } catch (err) {
+    // console.error(`Error in getEntityById for ${String(tableName)}:`, err);
+    throw err;
+  }
+}
+/**
+ * Generic function to create an entity.
+ * @param tableName The name of the table.
+ * @param data The data for the new entity.
+ * @returns The created entity.
+ */
+export async function createEntity<
+  T extends { id: string },
+  NewT extends Record<string, any>,
+>(tableName: keyof typeof schema, data: NewT): Promise<T> {
+  try {
+    if (shouldUseUpstash()) {
+      const client = getUpstashClient();
+
+      const tableClient = client.from(tableName);
+      const createdData = (await tableClient.create(data)) as T;
+      if (
+        createdData &&
+        'created_at' in createdData &&
+        'updated_at' in createdData
+      ) {
+        return normalizeTimestampsToString(
+          createdData as ObjectWithOptionalTimestamps
+        ) as unknown as T;
+      }
+      return createdData;
+    } else {
+      const db = getDrizzleClient();
+      const table = schema[tableName] as PgTableWithColumns<any>;
+      if (!table) {
+        throw new Error(
+          `Table ${String(tableName)} is not defined in the schema.`
+        );
+      }
+      const insertData = stripTimestamps(data as any); // Remove timestamps if present
+      const inserted = await db.insert(table).values(insertData).returning();
+
+      if (!inserted[0]) {
+        throw new Error(
+          `Failed to create entity in ${String(tableName)} or retrieve the created row.`
+        );
+      }
+      return normalizeTimestampsToString(inserted[0] as any) as unknown as T; // Normalize and cast
+    }
+  } catch (err) {
+    // console.error(`Error in createEntity for ${String(tableName)}:`, err);
+    throw err;
+  }
+}
+/**
+ * Generic function to delete an entity by its ID.
+ * @param tableName The name of the table.
+ * @param id The ID of the entity to delete.
+ * @returns True if deletion was successful, false otherwise.
+ */
+export async function deleteEntity(
+  tableName: keyof typeof schema,
+  id: string
+): Promise<boolean> {
+  try {
+    if (shouldUseUpstash()) {
+      const client = getUpstashClient();
+      const tableClient = client.from(tableName);
+      await tableClient.delete(id);
+    } else {
+      const db = getDrizzleClient();
+      const table = schema[tableName] as PgTableWithColumns<any>;
+      if (!table || !table.id) {
+        throw new Error(
+          `Table ${String(tableName)} or its ID column is not defined in the schema.`
+        );
+      }
+      await db.delete(table).where(eq(table.id, id));
+    }
+    return true;
+  } catch (err) {
+    // console.error(`Error in deleteEntity for ${String(tableName)}:`, err);
+    // Consider re-throwing or returning false based on error handling strategy
+    throw err; // Re-throw by default
+  }
 }
 
-export async function createMdxDocument(
-  data: NewMdxDocument
-): Promise<MdxDocument> {
-  const db = getDrizzleClient();
-  const insertData = stripTimestamps(data);
-  const inserted = await db
-    .insert(schema.mdx_documents)
-    .values(insertData)
-    .returning();
-  return normalizeTimestampsToString(inserted[0]) as MdxDocument;
+// --- Vector Operations ---
+
+/**
+ * Represents a vector with content and embedding.
+ */
+export interface VectorData {
+  id: string;
+  content: string;
+  embedding: number[];
+  metadata?: Record<string, unknown>;
 }
 
-export async function updateMdxDocument(
-  id: string,
-  data: Partial<MdxDocument>
-): Promise<MdxDocument | null> {
-  const db = getDrizzleClient();
-  const safeUpdateData = stripTimestamps(data);
-  const updated = await db
-    .update(schema.mdx_documents)
-    .set({ ...safeUpdateData, updated_at: new Date() })
-    .where(eq(schema.mdx_documents.id, id))
-    .returning();
-  if (!updated[0]) return null;
-  return normalizeTimestampsToString(updated[0]) as MdxDocument;
+/**
+ * Upserts a vector into the Upstash vector store.
+ * @param vector The vector data to upsert.
+ * @returns A promise that resolves when the operation is complete.
+ * @throws Error if Upstash Vector client is not available.
+ */
+export async function upsertVector(vector: VectorData): Promise<void> {
+  if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
+    throw new Error(
+      'Upstash Vector client is not configured or Upstash adapter is not enabled.'
+    );
+  }
+  const client = getUpstashClient();
+  if (!client.vector) {
+    throw new Error('Upstash Vector client (client.vector) is not available.');
+  }
+  try {
+    await client.vector.upsert([
+      {
+        id: vector.id,
+        vector: vector.embedding,
+        metadata: vector.metadata,
+      },
+    ]);
+  } catch (error) {
+    // console.error('Error upserting vector:', error);
+    throw error;
+  }
+}
+/**
+ * Queries vectors from the Upstash vector store.
+ * @param embedding The query embedding.
+ * @param topK The number of top results to return.
+ * @param filter Optional metadata filter string.
+ * @returns A promise that resolves with an array of query results.
+ * @throws Error if Upstash Vector client is not available.
+ */
+export async function queryVectors(
+  embedding: number[],
+  topK: number,
+  filter?: Record<string, unknown>
+): Promise<
+  Array<{ id: string; score: number; metadata?: Record<string, unknown> }>
+> {
+  if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
+    throw new Error(
+      'Upstash Vector client is not configured or Upstash adapter is not enabled.'
+    );
+  }
+  const client = getUpstashClient();
+  if (!client.vector) {
+    throw new Error('Upstash Vector client (client.vector) is not available.');
+  }
+  try {
+    const results = await client.vector.search(embedding, {
+      topK,
+      includeMetadata: true,
+      filter,
+    });
+    return results.map((r) => ({
+      id: String(r.id), // Ensure id is string
+      score: Number(r.score), // Convert score to number
+      metadata:
+        r.metadata && typeof r.metadata === 'object'
+          ? (r.metadata as Record<string, unknown>)
+          : undefined,
+    }));
+  } catch (error) {
+    // console.error('Error querying vectors:', error);
+    throw error;
+  }
 }
 
-export async function deleteMdxDocument(id: string): Promise<boolean> {
-  const db = getDrizzleClient();
-  await db.delete(schema.mdx_documents).where(eq(schema.mdx_documents.id, id));
-  return true;
+/**
+ * Deletes a vector from the Upstash vector store by its ID.
+ * @param id The ID of the vector to delete.
+ * @returns A promise that resolves when the operation is complete.
+ * @throws Error if Upstash Vector client is not available.
+ */
+export async function deleteVector(id: string | string[]): Promise<void> {
+  if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
+    throw new Error(
+      'Upstash Vector client is not configured or Upstash adapter is not enabled.'
+    );
+  }
+  const client = getUpstashClient();
+  if (!client.vector) {
+    throw new Error('Upstash Vector client (client.vector) is not available.');
+  }
+  try {
+    await client.vector.delete(id);
+  } catch (error) {
+    // console.error('Error deleting vector(s):', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetches vectors from the Upstash vector store by their IDs.
+ * @param ids An array of vector IDs to fetch.
+ * @returns A promise that resolves with an array of fetched vectors.
+ * @throws Error if Upstash Vector client is not available.
+ */
+export async function fetchVectors(
+  ids: string[]
+): Promise<Array<VectorData | null>> {
+  if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
+    throw new Error(
+      'Upstash Vector client is not configured or Upstash adapter is not enabled.'
+    );
+  }
+  const client = getUpstashClient();
+  if (!client.vector) {
+    throw new Error('Upstash Vector client (client.vector) is not available.');
+  }
+  try {
+    /**
+     * @interface UpstashRawVectorResult
+     * @description Represents the raw structure of a vector item as potentially returned
+     * by the Upstash vector client's `get` method, before transformation into `VectorData`.
+     * This interface is based on the usage observed in the `fetchVectors` function,
+     * particularly the access to an optional `data` field for content.
+     */
+    interface UpstashRawVectorResult {
+      /** The unique identifier of the vector. Can be a string or a number from the Upstash client. */
+      id: string | number;
+
+      /**
+       * Optional field that may contain the primary content of the vector.
+       * If this field is a string, it's used as the `content` for `VectorData`.
+       * Typed as `unknown` to enforce a type check before use.
+       */
+      data?: unknown;
+
+      /**
+       * The numerical embedding (vector representation) of the item.
+       * Defaults to an empty array if not provided by the client.
+       */
+      vector?: number[];
+
+      /**
+       * Optional metadata associated with the vector.
+       * This should conform to a key-value structure.
+       */
+      metadata?: Record<string, unknown>;
+    }
+
+    const rawResults = (await client.vector.get(ids, {
+      includeMetadata: true,
+    })) as Array<UpstashRawVectorResult | null>;
+
+    return rawResults.map((rawResult): VectorData | null => {
+      if (rawResult === null) {
+        return null;
+      }
+
+      const content = typeof rawResult.data === 'string' ? rawResult.data : '';
+
+      return {
+        id: String(rawResult.id),
+        content: content,
+        embedding: rawResult.vector || [],
+        metadata: rawResult.metadata,
+      };
+    });
+  } catch (error) {
+    // console.error('Error fetching vectors:', error);
+    throw error;
+  }
+}/**
+ * Resets the Upstash vector index, deleting all vectors.
+ * Use with caution.
+ * @returns A promise that resolves when the operation is complete.
+ * @throws Error if Upstash Vector client is not available.
+ */export async function resetVectorIndex(): Promise<void> {
+  if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
+    throw new Error(
+      'Upstash Vector client is not configured or Upstash adapter is not enabled.'
+    );
+  }
+  const client = getUpstashClient();
+  if (!client.vector) {
+    throw new Error('Upstash Vector client (client.vector) is not available.');
+  }
+  try {
+    await client.vector.reset();
+  } catch (error) {
+    // console.error('Error resetting vector index:', error);
+    throw error;
+  }
+}
+
+// --- Cache Invalidation ---
+
+/**
+ * Generates a cache key for a query.
+ * @param baseKey The base key for the query (e.g., table name).
+ * @param params Optional parameters for the query.
+ * @returns A string representing the cache key.
+ */
+export function generateCacheKey(
+  baseKey: string,
+  params?: Record<string, any>
+): string {
+  if (!params || Object.keys(params).length === 0) {
+    return baseKey;
+  }
+  // Sort parameter keys for consistent key generation
+  const sortedParams = Object.keys(params)
+    .sort()
+    .reduce((obj: Record<string, any>, key: string) => {
+      obj[key] = params[key];
+      return obj;
+    }, {});
+  const paramString = JSON.stringify(sortedParams);
+  const hash = crypto.createHash('sha256').update(paramString).digest('hex');
+  return `${baseKey}:${hash}`;
+}
+
+/**
+ * Invalidates cache entries related to a specific table or entity.
+ * This is a simple implementation that clears the entire cache.
+ * More granular invalidation can be implemented if needed.
+ * @param _tableName The name of the table for which to invalidate cache entries.
+ */
+export function invalidateCacheForTable(_tableName: string): void {
+  // For now, clear the entire cache on any invalidation.
+  // TODO: Implement more granular cache invalidation if performance becomes an issue.
+  // e.g., by iterating over keys and deleting those matching `_tableName:*`
+  clearQueryCache();
+}
+
+// Example of how to use cache for a specific function (e.g., getAllUsers)
+// This is illustrative; actual caching is integrated into the CRUD functions if shouldUseUpstash is false.
+export async function getCachedAllUsers(params?: {
+  limit?: number;
+  offset?: number;
+  where?: Partial<User>;
+  orderBy?: keyof User;
+}): Promise<User[]> {
+  const cacheKey = generateCacheKey('users:getAll', params);
+  if (queryCache.has(cacheKey)) {
+    cacheStats.hits++;
+    return queryCache.get(cacheKey) as User[];
+  }
+
+  cacheStats.misses++;
+  try {
+    const users = await getAllUsers(params); // Actual data fetching
+    queryCache.set(cacheKey, users);
+    cacheStats.sets++;
+    return users;
+  } catch (error) {
+    cacheStats.errors++;
+    throw error;
+  }
 }
