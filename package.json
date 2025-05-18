@@ -16,9 +16,6 @@
     "migrate:down:supabase": "drizzle-kit down --config drizzle.supabase.config.ts",
     "migrate:down:libsql": "drizzle-kit down --config drizzle.libsql.config.ts",
     "migrate:all": "pnpm migrate:generate:supabase init && pnpm migrate:up:supabase && pnpm migrate:generate:libsql init && pnpm migrate:up:libsql",
-    "generate:types:supabase": "drizzle-orm generate:types --schema=./db/supabase/schema.ts --out=./db/supabase/types.ts",
-    "generate:types:libsql": "drizzle-orm generate:types --schema=./db/libsql/schema.ts --out=./db/libsql/types.ts",
-    "generate:types": "pnpm generate:types:supabase && pnpm generate:types:libsql",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
   },

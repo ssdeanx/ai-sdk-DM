@@ -1,53 +1,50 @@
 import { getLibSQLClient } from './db';
-import { v4 as generateUUID } from 'uuid';
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
+import { generateId } from 'ai';
 import { encodingForModel } from 'js-tiktoken';
 import { pipeline } from '@xenova/transformers';
 import { generateAIResponse } from '../ai';
 import { LRUCache } from 'lru-cache';
 import { getGoogleAI } from '../google-ai'; // for fallback embeddings
-import { z } from 'zod';
+import {
+  MemoryThreadSchema,
+  MessageSchema,
+  EmbeddingSchema,
+  AgentStateSchema,
+} from '../../db/libsql/validation';
+
+// --- DRIZZLE ORM TYPES FOR ALL MAIN ENTITIES (EXCEPT WORKFLOWS/GQL) ---
+import {
+  MemoryThread as DrizzleMemoryThread,
+  NewMemoryThread as DrizzleNewMemoryThread,
+  Message as DrizzleMessage,
+  NewMessage as DrizzleNewMessage,
+  Embedding as DrizzleEmbedding,
+  NewEmbedding as DrizzleNewEmbedding,
+  AgentState as DrizzleAgentState,
+  NewAgentState as DrizzleNewAgentState,
+  App as DrizzleApp,
+  NewApp as DrizzleNewApp,
+  User as DrizzleUser,
+  NewUser as DrizzleNewUser,
+  Integration as DrizzleIntegration,
+  NewIntegration as DrizzleNewIntegration,
+  AppCodeBlock as DrizzleAppCodeBlock,
+  NewAppCodeBlock as DrizzleNewAppCodeBlock,
+  File as DrizzleFile,
+  NewFile as DrizzleNewFile,
+  TerminalSession as DrizzleTerminalSession,
+  NewTerminalSession as DrizzleNewTerminalSession,
+  users,
+  apps,
+} from '../../db/libsql/schema';
 
 // Zod schemas for memory management
-export const MessageRoleSchema = z.enum([
-  'user',
-  'assistant',
-  'system',
-  'tool',
-]);
-export type MessageRole = z.infer<typeof MessageRoleSchema>;
-
-export const MessageSchema = z.object({
-  id: z.string().uuid().optional(),
-  role: MessageRoleSchema,
-  content: z.string(),
-  tool_call_id: z.string().optional(),
-  name: z.string().optional(), // For tool messages
-  metadata: z.record(z.unknown()).optional(),
-  token_count: z.number().int().optional(),
-  embedding_id: z.string().optional(),
-  created_at: z.string().optional(),
-});
-export type Message = z.infer<typeof MessageSchema>;
-
-export const ThreadSchema = z.object({
-  id: z.string().uuid(),
-  agent_id: z.string().uuid().optional(),
-  network_id: z.string().uuid().optional(),
-  name: z.string(),
-  summary: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
-export type Thread = z.infer<typeof ThreadSchema>;
-
-export const AgentStateSchema = z.record(z.unknown());
-export type AgentState = z.infer<typeof AgentStateSchema>;
-
-export const ThreadOptionsSchema = z.object({
-  agent_id: z.string().uuid().optional(),
-  network_id: z.string().uuid().optional(),
-  metadata: z.record(z.unknown()).optional(),
+export const ThreadOptionsSchema = MemoryThreadSchema.pick({
+  agent_id: true,
+  network_id: true,
+  metadata: true,
 });
 export type ThreadOptions = z.infer<typeof ThreadOptionsSchema>;
 
@@ -62,10 +59,10 @@ export const MessageOptionsSchema = z.object({
 export type MessageOptions = z.infer<typeof MessageOptionsSchema>;
 
 // Initialize embedding model
-let embeddingModel: any = null;
+let embeddingModel: unknown = null;
 
 // Cache for thread messages: key = thread_id, value = Message[]
-const messagesCache = new LRUCache<string, Message[]>({
+const messagesCache = new LRUCache<string, z.infer<typeof MessageSchema>[]>({
   max: 100,
   ttl: 1000 * 60 * 10,
 });
@@ -76,11 +73,11 @@ export async function createMemoryThread(
   options: {
     agent_id?: string;
     network_id?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   } = {}
 ): Promise<string> {
   const db = getLibSQLClient();
-  const thread_id = generateUUID();
+  const thread_id = generateId();
   const { agent_id, network_id, metadata } = options;
 
   await db.execute({
@@ -103,7 +100,7 @@ export async function createMemoryThread(
 // Get memory thread by ID
 export async function getMemoryThread(
   thread_id: string
-): Promise<MemoryThread | null> {
+): Promise<z.infer<typeof MemoryThreadSchema> | null> {
   const db = getLibSQLClient();
 
   const result = await db.execute({
@@ -139,7 +136,7 @@ export async function listMemoryThreads(
     limit?: number;
     offset?: number;
   } = {}
-): Promise<MemoryThread[]> {
+): Promise<z.infer<typeof MemoryThreadSchema>[]> {
   const db = getLibSQLClient();
   const { agent_id, network_id, limit = 10, offset = 0 } = options;
 
@@ -147,7 +144,7 @@ export async function listMemoryThreads(
     SELECT * FROM memory_threads
     WHERE 1=1
   `;
-  const args: any[] = [];
+  const args: (string | number | null)[] = [];
 
   if (agent_id) {
     sql += ` AND agent_id = ?`;
@@ -198,8 +195,7 @@ export async function deleteMemoryThread(thread_id: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error(`Error deleting memory thread ${thread_id}:`, error);
-    return false;
+    throw new Error(`Failed to delete memory thread: ${error}`);
   }
 }
 
@@ -207,7 +203,7 @@ export async function deleteMemoryThread(thread_id: string): Promise<boolean> {
 export async function loadMessages(
   thread_id: string,
   limit?: number
-): Promise<Message[]> {
+): Promise<z.infer<typeof MessageSchema>[]> {
   // Return cached messages if no limit is specified
   if (!limit) {
     const cached = messagesCache.get(thread_id);
@@ -223,7 +219,7 @@ export async function loadMessages(
     WHERE memory_thread_id = ?
     ORDER BY created_at ASC
   `;
-  const args: any[] = [thread_id];
+  const args: (string | number | null)[] = [thread_id];
 
   if (limit) {
     sql += ` LIMIT ?`;
@@ -261,8 +257,8 @@ export function countTokens(
   try {
     // Use encodingForModel, handle potential errors if model name is invalid
     try {
-      // Cast to any to bypass strict type check; runtime errors are caught below.
-      encoder = encodingForModel(model as any);
+      // Cast to unknown to bypass strict type check; runtime errors are caught below.
+      encoder = encodingForModel(model as unknown);
     } catch (e) {
       // Check if the error indicates an invalid model name
       // (The exact error message might vary depending on the js-tiktoken version)
@@ -275,10 +271,9 @@ export function countTokens(
       }
 
       if (isInvalidModelError) {
-        console.warn(
-          `Warning: Model '${model}' not found for token counting by js-tiktoken. Falling back to cl100k_base.`
+        throw new Error(
+          `Model '${model}' not found for token counting by js-tiktoken.`
         );
-        encoder = encodingForModel('cl100k_base' as any); // Fallback to a known valid model, cast to any
       } else {
         // Re-throw unexpected errors
         throw e;
@@ -287,9 +282,7 @@ export function countTokens(
     const tokens = encoder.encode(text);
     return tokens.length;
   } catch (error) {
-    console.error('Error counting tokens:', error);
-    // Fallback to approximate token count (1 token ≈ 4 characters)
-    return Math.ceil(text.length / 4);
+    throw new Error(`Error counting tokens: ${error}`);
   }
 }
 
@@ -307,15 +300,14 @@ export async function generateEmbedding(
           'Xenova/all-MiniLM-L6-v2'
         );
       }
-      const result = await embeddingModel(text, {
+      const result = await (embeddingModel as unknown)(text, {
         pooling: 'mean',
         normalize: true,
       });
       return result.data;
     } catch (error) {
-      console.warn(
-        'Xenova embedding failed, falling back to Google text-embedding-004:',
-        error
+      throw new Error(
+        `Xenova embedding failed, falling back to Google text-embedding-004: ${error}`
       );
     }
   }
@@ -324,8 +316,8 @@ export async function generateEmbedding(
   try {
     const googleAI = getGoogleAI(); // uses process.env.GOOGLE_API_KEY
     // hypothetically support embed method; adjust per SDK
-    if (typeof (googleAI as any).embed === 'function') {
-      const res = await (googleAI as any).embed({
+    if (typeof (googleAI as unknown).embed === 'function') {
+      const res = await (googleAI as unknown).embed({
         model: 'text-embedding-004',
         input: text,
       });
@@ -336,9 +328,7 @@ export async function generateEmbedding(
       throw new Error('Google AI SDK embedding method not available');
     }
   } catch (error) {
-    console.error('Google embedding failed:', error);
-    // final fallback: zero vector
-    return new Float32Array(384);
+    throw new Error(`Google embedding failed: ${error}`);
   }
 }
 
@@ -349,7 +339,7 @@ export async function saveEmbedding(
 ): Promise<string> {
   try {
     const db = getLibSQLClient();
-    const id = generateUUID();
+    const id = generateId();
 
     // Convert Float32Array to Buffer
     const buffer = Buffer.from(vector.buffer);
@@ -364,8 +354,7 @@ export async function saveEmbedding(
 
     return id;
   } catch (error) {
-    console.error('Error saving embedding:', error);
-    throw error;
+    throw new Error(`Error saving embedding: ${error}`);
   }
 }
 
@@ -379,12 +368,12 @@ export async function saveMessage(
     tool_name?: string;
     generate_embeddings?: boolean;
     count_tokens?: boolean;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     model_name?: string;
   } = {}
 ): Promise<string> {
   const db = getLibSQLClient();
-  const message_id = generateUUID();
+  const message_id = generateId();
   const {
     tool_call_id,
     tool_name,
@@ -407,7 +396,7 @@ export async function saveMessage(
       const embedding = await generateEmbedding(content);
       embedding_id = await saveEmbedding(embedding);
     } catch (error) {
-      console.error('Error generating embedding for message:', error);
+      throw new Error(`Error generating embedding for message: ${error}`);
     }
   }
 
@@ -448,7 +437,7 @@ export async function saveMessage(
 export async function loadAgentState(
   thread_id: string,
   agent_id: string
-): Promise<AgentState> {
+): Promise<z.infer<typeof AgentStateSchema>> {
   const db = getLibSQLClient();
 
   const result = await db.execute({
@@ -466,8 +455,7 @@ export async function loadAgentState(
   try {
     return JSON.parse(result.rows[0].state_data as string);
   } catch (e) {
-    console.error('Error parsing agent state:', e);
-    return {};
+    throw new Error(`Error parsing agent state: ${e}`);
   }
 }
 
@@ -475,7 +463,7 @@ export async function loadAgentState(
 export async function saveAgentState(
   thread_id: string,
   agent_id: string,
-  state: AgentState
+  state: z.infer<typeof AgentStateSchema>
 ): Promise<void> {
   const db = getLibSQLClient();
 
@@ -610,7 +598,12 @@ export async function semanticSearchMemory(
     agent_id?: string;
     limit?: number;
   } = {}
-): Promise<any[]> {
+): Promise<
+  {
+    message: z.infer<typeof MessageSchema>;
+    similarity: number;
+  }[]
+> {
   try {
     const { thread_id, agent_id, limit = 5 } = options;
 
@@ -628,7 +621,7 @@ export async function semanticSearchMemory(
       WHERE m.embedding_id IS NOT NULL
     `;
 
-    const args = [];
+    const args: (string | number | null)[] = [];
 
     if (thread_id) {
       sql += ` AND m.memory_thread_id = ?`;
@@ -650,13 +643,17 @@ export async function semanticSearchMemory(
 
       return {
         message: {
-          id: row.id,
-          role: row.role,
-          content: row.content,
-          thread_id: row.memory_thread_id,
-          thread_name: row.thread_name,
-          created_at: row.created_at,
-        },
+          id: row.id as string,
+          role: row.role as 'user' | 'assistant' | 'system' | 'tool',
+          content: row.content as string,
+          memory_thread_id: row.memory_thread_id as string, // Corrected property name
+          tool_call_id: row.tool_call_id as string | undefined,
+          tool_name: row.tool_name as string | undefined, // Renamed from name in loadMessages
+          token_count: row.token_count as number | undefined,
+          embedding_id: row.embedding_id as string | undefined,
+          metadata: JSON.parse((row.metadata as string) || '{}'),
+          created_at: row.created_at as string,
+        } as z.infer<typeof MessageSchema>, // Ensure type compatibility
         similarity,
       };
     });
@@ -667,8 +664,7 @@ export async function semanticSearchMemory(
     // Return top results
     return similarities.slice(0, limit);
   } catch (error) {
-    console.error('Error in semantic search:', error);
-    throw error;
+    throw new Error(`Error in semantic search: ${error}`);
   }
 }
 
@@ -689,4 +685,180 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   }
 
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// --- CRUD LOGIC STUBS FOR ALL MAIN ENTITIES (EXCEPT WORKFLOWS/GQL) ---
+// -- 2025-05-18
+// --- App ---
+export async function createApp(app: DrizzleNewApp): Promise<DrizzleApp> {
+  const [created] = await db.insert(apps).values(app).returning();
+  return created;
+}
+export async function getApp(id: string): Promise<DrizzleApp | null> {
+  const result = await db.select().from(apps).where(eq(apps.id, id));
+  return result.length > 0 ? result[0] : null;
+}
+export async function listApps(): Promise<DrizzleApp[]> {
+  return await db.select().from(apps);
+}
+export async function updateApp(
+  id: string,
+  updates: Partial<DrizzleNewApp>
+): Promise<DrizzleApp | null> {
+  const [updated] = await db
+    .update(apps)
+    .set(updates)
+    .where(eq(apps.id, id))
+    .returning();
+  return updated ?? null;
+}
+export async function deleteApp(id: string): Promise<boolean> {
+  const result = await db.delete(apps).where(eq(apps.id, id));
+  // Drizzle returns { rowsAffected: number }
+  return result.rowsAffected > 0;
+}
+
+// --- User ---
+
+export async function createUser(user: DrizzleNewUser): Promise<DrizzleUser> {
+  const [created] = await db.insert(users).values(user).returning();
+  return created;
+}
+export async function getUser(id: string): Promise<DrizzleUser | null> {
+  const result = await db.select().from(users).where(eq(users.id, id));
+  return result.length > 0 ? result[0] : null;
+}
+export async function listUsers(): Promise<DrizzleUser[]> {
+  return await db.select().from(users);
+}
+export async function updateUser(
+  id: string,
+  updates: Partial<DrizzleNewUser>
+): Promise<DrizzleUser | null> {
+  const [updated] = await db
+    .update(users)
+    .set(updates)
+    .where(eq(users.id, id))
+    .returning();
+  return updated ?? null;
+}
+export async function deleteUser(id: string): Promise<boolean> {
+  const result = await db.delete(users).where(eq(users.id, id));
+  return result.rowsAffected > 0;
+}
+
+// --- Integration ---
+export async function createIntegration(
+  integration: DrizzleNewIntegration
+): Promise<DrizzleIntegration> {
+  // TODO: Implement create logic
+  throw new Error('Not implemented');
+}
+export async function getIntegration(
+  id: string
+): Promise<DrizzleIntegration | null> {
+  // TODO: Implement get logic
+  throw new Error('Not implemented');
+}
+export async function listIntegrations(): Promise<DrizzleIntegration[]> {
+  // TODO: Implement list logic
+  throw new Error('Not implemented');
+}
+export async function updateIntegration(
+  id: string,
+  updates: Partial<DrizzleNewIntegration>
+): Promise<DrizzleIntegration | null> {
+  // TODO: Implement update logic
+  throw new Error('Not implemented');
+}
+export async function deleteIntegration(id: string): Promise<boolean> {
+  // TODO: Implement delete logic
+  throw new Error('Not implemented');
+}
+
+// --- AppCodeBlock ---
+export async function createAppCodeBlock(
+  block: DrizzleNewAppCodeBlock
+): Promise<DrizzleAppCodeBlock> {
+  // TODO: Implement create logic
+  throw new Error('Not implemented');
+}
+export async function getAppCodeBlock(
+  id: string
+): Promise<DrizzleAppCodeBlock | null> {
+  // TODO: Implement get logic
+  throw new Error('Not implemented');
+}
+export async function listAppCodeBlocks(
+  app_id?: string
+): Promise<DrizzleAppCodeBlock[]> {
+  // TODO: Implement list logic
+  throw new Error('Not implemented');
+}
+export async function updateAppCodeBlock(
+  id: string,
+  updates: Partial<DrizzleNewAppCodeBlock>
+): Promise<DrizzleAppCodeBlock | null> {
+  // TODO: Implement update logic
+  throw new Error('Not implemented');
+}
+export async function deleteAppCodeBlock(id: string): Promise<boolean> {
+  // TODO: Implement delete logic
+  throw new Error('Not implemented');
+}
+
+// --- File ---
+export async function createFile(file: DrizzleNewFile): Promise<DrizzleFile> {
+  // TODO: Implement create logic
+  throw new Error('Not implemented');
+}
+export async function getFile(id: string): Promise<DrizzleFile | null> {
+  // TODO: Implement get logic
+  throw new Error('Not implemented');
+}
+export async function listFiles(app_id?: string): Promise<DrizzleFile[]> {
+  // TODO: Implement list logic
+  throw new Error('Not implemented');
+}
+export async function updateFile(
+  id: string,
+  updates: Partial<DrizzleNewFile>
+): Promise<DrizzleFile | null> {
+  // TODO: Implement update logic
+  throw new Error('Not implemented');
+}
+export async function deleteFile(id: string): Promise<boolean> {
+  // TODO: Implement delete logic
+  throw new Error('Not implemented');
+}
+
+// --- TerminalSession ---
+export async function createTerminalSession(
+  session: DrizzleNewTerminalSession
+): Promise<DrizzleTerminalSession> {
+  // TODO: Implement create logic
+  throw new Error('Not implemented');
+}
+export async function getTerminalSession(
+  id: string
+): Promise<DrizzleTerminalSession | null> {
+  // TODO: Implement get logic
+  throw new Error('Not implemented');
+}
+export async function listTerminalSessions(
+  app_id?: string
+): Promise<DrizzleTerminalSession[]> {
+  // TODO: Implement list logic
+  throw new Error('Not implemented');
+}
+export async function updateTerminalSession(
+  id: string,
+  updates: Partial<DrizzleNewTerminalSession>
+): Promise<DrizzleTerminalSession | null> {
+  // TODO: Implement update logic
+  throw new Error('Not implemented');
+}
+export async function deleteTerminalSession(id: string): Promise<boolean> {
+  // TODO: Implement delete logic
+  throw new Error('Not implemented');
 }

@@ -295,7 +295,7 @@ export const isUpstashAvailable = async (): Promise<boolean> => {
   try {
     const upstash = getUpstashClient();
 
-    const tableClient = upstash.from('users');
+    const tableClient = upstash.from('users', schema.users);
     await tableClient.getAll({ limit: 1 });
 
     return true;
@@ -356,9 +356,14 @@ function stripTimestamps<
   T extends { created_at?: unknown; updated_at?: unknown },
 >(obj: T): Omit<T, 'created_at' | 'updated_at'> {
   // Remove created_at and updated_at keys for insert/update
-  const { created_at, updated_at, ...rest } = obj;
-  return rest;
+  const rest = { ...obj };
+  delete rest.created_at;
+  delete rest.updated_at;
+  // Cast is necessary because TypeScript doesn't change the type of `rest` after `delete` operations.
+  // The object `rest` structurally conforms to the Omit type after deletions.
+  return rest as Omit<T, 'created_at' | 'updated_at'>;
 }
+
 /**
  * Returns the column object from schema.tools for a given column name.
  * @param columnName - The name of the column to retrieve.
@@ -384,9 +389,17 @@ export async function getAllUsers(params?: {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('users');
-      // @ts-expect-error Upstash QueryOptions typing is too strict for dynamic orderBy
-      return await tableClient.getAll(params);
+      const tableClient = client.from('users', schema.users);
+      const upstashParams = {
+        ...params,
+        orderBy: params?.orderBy
+          ? { column: params.orderBy, order: 'desc' }
+          : undefined,
+      };
+      const results = (await tableClient.getAll(upstashParams)) as unknown[];
+      return results.map(
+        (item) => normalizeTimestampsToString(item as User) as User
+      );
     } else {
       const db = getDrizzleClient();
       let query = db.select().from(schema.users);
@@ -407,19 +420,16 @@ export async function getAllUsers(params?: {
       if (params?.orderBy) {
         const orderByField = params.orderBy as keyof typeof schema.users;
         const col = schema.users[orderByField];
-
         if (!col) {
           throw new Error(
             `Invalid orderBy column: '${String(params.orderBy)}' not found in schema.users.`
           );
         }
-
         if (typeof col === 'function') {
           throw new Error(
             `Invalid orderBy key: "${String(params.orderBy)}" refers to a method, not a sortable column.`
           );
         }
-
         query = query.orderBy(desc(col as Column)) as typeof query;
       }
       if (params?.limit !== undefined) {
@@ -432,13 +442,14 @@ export async function getAllUsers(params?: {
     throw err;
   }
 }
-
 export async function getUserById(id: string): Promise<User | null> {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('users');
-      return await tableClient.getById(id);
+      const tableClient = client.from('users', schema.users);
+      const user = (await tableClient.getById(id)) as User | null;
+      if (!user) return null;
+      return normalizeTimestampsToString(user) as User;
     } else {
       const db = getDrizzleClient();
       const result = await db
@@ -461,21 +472,30 @@ export async function updateUser(
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('users');
-      const updated = await tableClient.update(id, data);
-      if (!updated[0]) return null;
-      const row = updated[0];
-      return normalizeTimestampsToString(row) as User;
+      const tableClient = client.from<User>('users', schema.users);
+      const updatedUser = await tableClient.update(id, data); // Upstash adapter returns T
+      if (!updatedUser) {
+        return null;
+      }
+      // Normalize timestamps if User type includes them and Upstash might return Date objects
+      return normalizeTimestampsToString(updatedUser) as User;
     } else {
+      // Drizzle path
       const db = getDrizzleClient();
       const safeUpdateData = stripTimestamps(data);
-      const updated = await db
+      const updatedUsersArray = await db
         .update(schema.users)
         .set({ ...safeUpdateData, updated_at: new Date() })
         .where(eq(schema.users.id, id))
         .returning();
-      if (!updated[0]) return null;
-      return normalizeTimestampsToString(updated[0]) as User;
+      if (
+        !updatedUsersArray ||
+        updatedUsersArray.length === 0 ||
+        !updatedUsersArray[0]
+      ) {
+        return null;
+      }
+      return normalizeTimestampsToString(updatedUsersArray[0]) as User;
     }
   } catch (err) {
     throw err;
@@ -486,7 +506,7 @@ export async function deleteUser(id: string): Promise<boolean> {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('users');
+      const tableClient = client.from('users', schema.users);
       await tableClient.delete(id);
     } else {
       const db = getDrizzleClient();
@@ -508,9 +528,48 @@ export async function getAllTools(params?: {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('tools');
-      // @ts-expect-error Upstash QueryOptions typing is too strict for dynamic orderBy
-      return await tableClient.getAll(params);
+      const tableClient = client.from('tools', schema.tools);
+      // Prepare options for Upstash, transforming orderBy to match expected QueryOptions structure
+      const upstashOptions: {
+        limit?: number;
+        offset?: number;
+        where?: Partial<Tool>; // Pass 'where' through; may need future adjustment if Upstash expects 'filter'
+        orderBy?: { column: keyof Tool; ascending: boolean };
+      } = {};
+      if (params?.limit !== undefined) {
+        upstashOptions.limit = params.limit;
+      }
+      if (params?.offset !== undefined) {
+        upstashOptions.offset = params.offset;
+      }
+      if (params?.where) {
+        // Assuming 'where' might be handled or ignored by the adapter if not in its QueryOptions.
+        // The compile error is specific to 'orderBy'.
+        upstashOptions.where = params.where;
+      }
+      if (params?.orderBy) {
+        upstashOptions.orderBy = {
+          column: params.orderBy,
+          ascending: false, // Default to descending, matching Drizzle's behavior (desc())
+        };
+      }
+      const results = (await tableClient.getAll(upstashOptions)) as unknown[];
+      return results.map((item) => {
+        const toolItem = item as Record<string, unknown>; // Cast to access properties
+        const norm = normalizeTimestampsToString(toolItem as Tool); // Cast to Tool for normalizeTimestampsToString
+        return {
+          ...norm,
+          parameters_schema:
+            typeof norm.parameters_schema === 'object' &&
+            norm.parameters_schema !== null
+              ? norm.parameters_schema
+              : {},
+          tags:
+            typeof norm.tags === 'object' && norm.tags !== null
+              ? norm.tags
+              : {},
+        } as Tool;
+      });
     } else {
       const db = getDrizzleClient();
       let query = db.select().from(schema.tools);
@@ -557,12 +616,25 @@ export async function getAllTools(params?: {
     throw error;
   }
 }
+
 export async function getToolById(id: string): Promise<Tool | null> {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('tools');
-      return await tableClient.getById(id);
+      const tableClient = client.from('tools', schema.tools);
+      const tool = (await tableClient.getById(id)) as Tool | null;
+      if (!tool) return null;
+      const norm = normalizeTimestampsToString(tool);
+      return {
+        ...norm,
+        parameters_schema:
+          typeof norm.parameters_schema === 'object' &&
+          norm.parameters_schema !== null
+            ? norm.parameters_schema
+            : {},
+        tags:
+          typeof norm.tags === 'object' && norm.tags !== null ? norm.tags : {},
+      } as Tool;
     } else {
       const db = getDrizzleClient();
       const tools = await db
@@ -592,7 +664,7 @@ export async function createTool(data: NewTool): Promise<Tool> {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('tools');
+      const tableClient = client.from('tools', schema.tools);
       const createdToolData = await tableClient.create(data);
       // Normalize the result from Upstash to match Tool type expectations
       const norm = normalizeTimestampsToString(createdToolData as Tool);
@@ -613,7 +685,6 @@ export async function createTool(data: NewTool): Promise<Tool> {
         .insert(schema.tools)
         .values(insertData) // Drizzle handles created_at/updated_at via DB defaults/triggers
         .returning();
-
       const norm = normalizeTimestampsToString(inserted[0]);
       return {
         ...norm,
@@ -638,9 +709,14 @@ export async function updateTool(
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('tools');
+      const tableClient = client.from('tools', schema.tools);
       const updatedResult = await tableClient.update(id, data);
-      if (!updatedResult || updatedResult.length === 0 || !updatedResult[0]) {
+      if (
+        !updatedResult ||
+        !Array.isArray(updatedResult) ||
+        updatedResult.length === 0 ||
+        !updatedResult[0]
+      ) {
         return null;
       }
       const row = updatedResult[0];
@@ -665,7 +741,12 @@ export async function updateTool(
         .where(eq(schema.tools.id, id))
         .returning();
 
-      if (!updated || updated.length === 0 || !updated[0]) {
+      if (
+        !updated ||
+        !Array.isArray(updated) ||
+        updated.length === 0 ||
+        !updated[0]
+      ) {
         return null;
       }
       const norm = normalizeTimestampsToString(updated[0]);
@@ -684,7 +765,6 @@ export async function updateTool(
     throw error;
   }
 }
-
 // ===== Apps =====
 export async function getAllApps(params?: {
   limit?: number;
@@ -1155,7 +1235,7 @@ export async function deleteTerminalSession(id: string): Promise<boolean> {
  */
 // Helper function to normalize model data, especially numeric fields and JSON capabilities
 function normalizeModelData(
-  row: Record<string, any> // Drizzle row, can be any object from DB
+  row: Record<string, unknown> // Drizzle row, can be any object from DB
 ): Model {
   const normalizedTimestampsRow = normalizeTimestampsToString(row);
 
@@ -1164,7 +1244,7 @@ function normalizeModelData(
   if (typeof capabilitiesValue === 'string') {
     try {
       capabilitiesValue = JSON.parse(capabilitiesValue);
-    } catch (e) {
+    } catch {
       // console.warn(`Failed to parse capabilities JSON for model ${row.id}:`, e);
       capabilitiesValue = null; // Match schema: optional().nullable()
     }
@@ -1264,23 +1344,27 @@ export async function updateModel(
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('models');
+      const tableClient = client.from('models', schema.models);
       // Upstash adapter might not need special handling for numeric strings
       // but ensure data conforms to what Upstash expects.
       // For now, assume direct update is fine.
       const updatedResult = await tableClient.update(id, data);
-      if (!updatedResult || updatedResult.length === 0 || !updatedResult[0]) {
+      if (
+        !updatedResult ||
+        !Array.isArray(updatedResult) ||
+        !updatedResult[0]
+      ) {
         return null;
       }
       // Normalize the result from Upstash to match Model type expectations
-      return normalizeModelData(updatedResult[0] as Record<string, any>);
+      return normalizeModelData(updatedResult[0] as Record<string, unknown>);
     } else {
       const db = getDrizzleClient();
       const safeUpdateData = stripTimestamps(data);
 
       // Prepare data for Drizzle, converting numbers to strings for numeric columns
       // and handling potential null/undefined values correctly.
-      const updatePayload: Record<string, any> = { ...safeUpdateData };
+      const updatePayload: Record<string, unknown> = { ...safeUpdateData };
 
       // Example: Convert numeric fields that are stored as numeric/text in DB
       // but might be numbers in `Partial<Model>`
@@ -1357,7 +1441,7 @@ export async function updateModel(
         .where(eq(schema.models.id, id))
         .returning();
 
-      if (!updated || updated.length === 0 || !updated[0]) {
+      if (!updated || !Array.isArray(updated) || !updated[0]) {
         return null;
       }
       return normalizeModelData(updated[0]);
@@ -1372,7 +1456,7 @@ export async function deleteModel(id: string): Promise<boolean> {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from('models');
+      const tableClient = client.from('models', schema.models);
       await tableClient.delete(id);
     } else {
       const db = getDrizzleClient();
@@ -1858,7 +1942,7 @@ export async function getEntityById<T extends { id: string }>(
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from(tableName);
+      const tableClient = client.from(tableName as string, schema[tableName]);
       const result = (await tableClient.getById(id)) as T | null;
       if (result && 'created_at' in result && 'updated_at' in result) {
         return normalizeTimestampsToString(
@@ -1895,13 +1979,13 @@ export async function getEntityById<T extends { id: string }>(
  */
 export async function createEntity<
   T extends { id: string },
-  NewT extends Record<string, any>,
+  NewT extends Record<string, unknown>,
 >(tableName: keyof typeof schema, data: NewT): Promise<T> {
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
 
-      const tableClient = client.from(tableName);
+      const tableClient = client.from(tableName as string, schema[tableName]);
       const createdData = (await tableClient.create(data)) as T;
       if (
         createdData &&
@@ -1915,13 +1999,13 @@ export async function createEntity<
       return createdData;
     } else {
       const db = getDrizzleClient();
-      const table = schema[tableName] as PgTableWithColumns<any>;
+      const table = schema[tableName] as unknown as PgTableWithColumns<any>; //ignore for now -dev
       if (!table) {
         throw new Error(
           `Table ${String(tableName)} is not defined in the schema.`
         );
       }
-      const insertData = stripTimestamps(data as any); // Remove timestamps if present
+      const insertData = stripTimestamps(data as Record<string, unknown>);
       const inserted = await db.insert(table).values(insertData).returning();
 
       if (!inserted[0]) {
@@ -1929,19 +2013,23 @@ export async function createEntity<
           `Failed to create entity in ${String(tableName)} or retrieve the created row.`
         );
       }
-      return normalizeTimestampsToString(inserted[0] as any) as unknown as T; // Normalize and cast
+      return normalizeTimestampsToString(
+        inserted[0] as Record<string, unknown>
+      ) as unknown as T;
     }
   } catch (err) {
     // console.error(`Error in createEntity for ${String(tableName)}:`, err);
     throw err;
   }
 }
+
 /**
  * Generic function to delete an entity by its ID.
  * @param tableName The name of the table.
  * @param id The ID of the entity to delete.
  * @returns True if deletion was successful, false otherwise.
  */
+
 export async function deleteEntity(
   tableName: keyof typeof schema,
   id: string
@@ -1949,11 +2037,11 @@ export async function deleteEntity(
   try {
     if (shouldUseUpstash()) {
       const client = getUpstashClient();
-      const tableClient = client.from(tableName);
+      const tableClient = client.from(tableName as string, schema[tableName]);
       await tableClient.delete(id);
     } else {
       const db = getDrizzleClient();
-      const table = schema[tableName] as PgTableWithColumns<any>;
+      const table = schema[tableName] as PgTableWithColumns<any>; //ignore for now -dev
       if (!table || !table.id) {
         throw new Error(
           `Table ${String(tableName)} or its ID column is not defined in the schema.`
@@ -1968,7 +2056,6 @@ export async function deleteEntity(
     throw err; // Re-throw by default
   }
 }
-
 // --- Vector Operations ---
 
 /**
@@ -2034,13 +2121,29 @@ export async function queryVectors(
   if (!client.vector) {
     throw new Error('Upstash Vector client (client.vector) is not available.');
   }
+
+  /**
+   * @interface UpstashVectorQueryResultItem
+   * @description Represents the structure of an individual item returned by the
+   * Upstash vector client's `search` method.
+   */
+  interface UpstashVectorQueryResultItem {
+    /** The unique identifier of the vector. Can be a string or a number. */
+    id: string | number;
+    /** The similarity score of the vector to the query vector. */
+    score: number;
+    /** Optional metadata associated with the vector. */
+    metadata?: Record<string, unknown> | null; // Allow null as metadata can be null
+  }
+
   try {
-    const results = await client.vector.search(embedding, {
+    const results = (await client.vector.search(embedding, {
       topK,
       includeMetadata: true,
       filter,
-    });
-    return results.map((r) => ({
+    })) as UpstashVectorQueryResultItem[]; // Cast to the defined interface
+
+    return results.map((r: UpstashVectorQueryResultItem) => ({
       id: String(r.id), // Ensure id is string
       score: Number(r.score), // Convert score to number
       metadata:
@@ -2056,22 +2159,29 @@ export async function queryVectors(
 
 /**
  * Deletes a vector from the Upstash vector store by its ID.
- * @param id The ID of the vector to delete.
+ * @param id The ID of the vector to delete (string or array of strings).
  * @returns A promise that resolves when the operation is complete.
  * @throws Error if Upstash Vector client is not available.
  */
 export async function deleteVector(id: string | string[]): Promise<void> {
+  // Check if Upstash Vector should be used and is configured
   if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
     throw new Error(
       'Upstash Vector client is not configured or Upstash adapter is not enabled.'
     );
   }
-  const client = getUpstashClient();
-  if (!client.vector) {
+  // Get the Upstash Vector client
+  const vectorClient = getUpstashClient().vector;
+  if (!vectorClient) {
     throw new Error('Upstash Vector client (client.vector) is not available.');
   }
   try {
-    await client.vector.delete(id);
+    // Use the vector-store deleteEmbeddingsByIds function for proper deletion and error handling
+    // This function returns the number of deleted vectors, but we ignore the result for this signature
+    // Import from vector-store: deleteEmbeddingsByIds
+
+    const { deleteEmbeddingsByIds } = await import('./upstash/vector-store');
+    await deleteEmbeddingsByIds(id);
   } catch (error) {
     // console.error('Error deleting vector(s):', error);
     throw error;
@@ -2092,70 +2202,46 @@ export async function fetchVectors(
       'Upstash Vector client is not configured or Upstash adapter is not enabled.'
     );
   }
-  const client = getUpstashClient();
-  if (!client.vector) {
-    throw new Error('Upstash Vector client (client.vector) is not available.');
-  }
+  // Use the vector-store getEmbeddingsByIds function for proper fetching and error handling
   try {
-    /**
-     * @interface UpstashRawVectorResult
-     * @description Represents the raw structure of a vector item as potentially returned
-     * by the Upstash vector client's `get` method, before transformation into `VectorData`.
-     * This interface is based on the usage observed in the `fetchVectors` function,
-     * particularly the access to an optional `data` field for content.
-     */
-    interface UpstashRawVectorResult {
-      /** The unique identifier of the vector. Can be a string or a number from the Upstash client. */
-      id: string | number;
+    const { getEmbeddingsByIds } = await import('./upstash/vector-store');
+    const results = await getEmbeddingsByIds(ids, false, true);
 
-      /**
-       * Optional field that may contain the primary content of the vector.
-       * If this field is a string, it's used as the `content` for `VectorData`.
-       * Typed as `unknown` to enforce a type check before use.
-       */
-      data?: unknown;
+    // results can be Array<FetchResult<EmbeddingMetadata> | null>
+    return (Array.isArray(results) ? results : [results]).map(
+      (rawResult): VectorData | null => {
+        if (rawResult === null) {
+          return null;
+        }
 
-      /**
-       * The numerical embedding (vector representation) of the item.
-       * Defaults to an empty array if not provided by the client.
-       */
-      vector?: number[];
+        // The content may be in metadata.text, as per vector-store schema
+        const content =
+          typeof rawResult.metadata?.text === 'string'
+            ? rawResult.metadata.text
+            : '';
 
-      /**
-       * Optional metadata associated with the vector.
-       * This should conform to a key-value structure.
-       */
-      metadata?: Record<string, unknown>;
-    }
-
-    const rawResults = (await client.vector.get(ids, {
-      includeMetadata: true,
-    })) as Array<UpstashRawVectorResult | null>;
-
-    return rawResults.map((rawResult): VectorData | null => {
-      if (rawResult === null) {
-        return null;
+        return {
+          id: String(rawResult.id),
+          content: content,
+          embedding: rawResult.vector || [],
+          metadata: rawResult.metadata,
+        };
       }
-
-      const content = typeof rawResult.data === 'string' ? rawResult.data : '';
-
-      return {
-        id: String(rawResult.id),
-        content: content,
-        embedding: rawResult.vector || [],
-        metadata: rawResult.metadata,
-      };
-    });
+    );
   } catch (error) {
     // console.error('Error fetching vectors:', error);
     throw error;
   }
-}/**
+}
+
+/**
  * Resets the Upstash vector index, deleting all vectors.
  * Use with caution.
  * @returns A promise that resolves when the operation is complete.
  * @throws Error if Upstash Vector client is not available.
- */export async function resetVectorIndex(): Promise<void> {
+ */
+
+export async function resetVectorIndex(): Promise<void> {
   if (!shouldUseUpstash() || !process.env.UPSTASH_VECTOR_REST_URL) {
     throw new Error(
       'Upstash Vector client is not configured or Upstash adapter is not enabled.'
@@ -2166,7 +2252,11 @@ export async function fetchVectors(
     throw new Error('Upstash Vector client (client.vector) is not available.');
   }
   try {
-    await client.vector.reset();
+    // Reset using vector-store directly since client.vector.reset is not available
+    const { resetVectorIndex: resetVectorIndexFromStore } = await import(
+      './upstash/vector-store'
+    );
+    await resetVectorIndexFromStore();
   } catch (error) {
     // console.error('Error resetting vector index:', error);
     throw error;
@@ -2183,7 +2273,7 @@ export async function fetchVectors(
  */
 export function generateCacheKey(
   baseKey: string,
-  params?: Record<string, any>
+  params?: Record<string, unknown>
 ): string {
   if (!params || Object.keys(params).length === 0) {
     return baseKey;

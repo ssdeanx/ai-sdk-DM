@@ -32,15 +32,17 @@ export async function isDatabaseAvailable() {
     const db = getLibSQLClient();
     await db.execute('SELECT 1');
     return true;
-  } catch (error) {
-    console.warn('Database not available:', error);
+  } catch {
     libsqlClient = null; // Reset the client on connection error
     return false;
   }
 }
 
 // Helper function to execute a query with proper error handling
-export async function query(sql: string, params: any[] = []) {
+export async function query(
+  sql: string,
+  params: (string | number | boolean | null | Uint8Array)[] = []
+) {
   try {
     const db = getLibSQLClient();
     const result = await db.execute({
@@ -48,14 +50,17 @@ export async function query(sql: string, params: any[] = []) {
       args: params,
     });
     return result;
-  } catch (error) {
-    console.error('LibSQL query error:', error);
-    throw error;
+  } catch {
+    throw false;
   }
 }
-
 // Helper function to execute multiple queries in a transaction
-export async function transaction(queries: { sql: string; params: any[] }[]) {
+export async function transaction(
+  queries: {
+    sql: string;
+    params: (string | number | boolean | null | Uint8Array)[];
+  }[]
+) {
   const db = getLibSQLClient();
 
   try {
@@ -70,17 +75,17 @@ export async function transaction(queries: { sql: string; params: any[] }[]) {
   } catch (error) {
     try {
       await db.execute('ROLLBACK');
-    } catch (rollbackError) {
-      console.error('Error during transaction rollback:', rollbackError);
-    }
-    console.error('LibSQL transaction error:', error);
+    } catch {}
     throw error;
   }
 }
 
 // Alternative transaction method using batch
 export async function batchTransaction(
-  queries: { sql: string; params: any[] }[]
+  queries: {
+    sql: string;
+    params: (string | number | boolean | null | Uint8Array)[];
+  }[]
 ) {
   try {
     const db = getLibSQLClient();
@@ -91,7 +96,6 @@ export async function batchTransaction(
       }))
     );
   } catch (error) {
-    console.error('Database batch transaction error:', error);
     throw error;
   }
 }

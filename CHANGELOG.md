@@ -1,6 +1,38 @@
 # DeanmachinesAI Changelog
 
 All notable changes to the DeanmachinesAI project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v0.0.14] - 2025-05-18
+
+### LibSQL Persistence Layer: CRUD Implementation & Validation Alignment
+
+- **Completed LibSQL Adapter (`lib/memory/libsql.ts`):**
+  - Implemented full CRUD (Create, Read, Update, Delete, List) operations using raw SQL (`@libsql/client`) for the following core entities: `App`, `User`, `Integration`, `AppCodeBlock`, `File`, and `TerminalSession`.
+  - Ensured all functions correctly import and utilize Zod schemas and TypeScript types from `db/libsql/validation.ts` for robust input/output validation and type safety. This includes the `parseRowAndTransformJsonFields` helper to manage JSON stringification for storage and parsing to objects on retrieval for fields like `metadata`, `parameters_schema`, `config`, `credentials`, etc.
+  - Standardized ID generation by replacing `crypto.randomUUID()` with `generateId()` from the `ai` package, ensuring correct import and usage.
+  - Added comprehensive TSDoc comments for all new exported functions, detailing parameters, return values, and purpose.
+  - Implemented robust `try/catch` error handling for all database operations, with console logging for errors.
+  - Existing Drizzle ORM related imports in `lib/memory/libsql.ts` were preserved as per previous instructions but are not utilized by the newly added raw SQL CRUD functions.
+- **Schema and Validation:** The LibSQL adapter's raw SQL queries are designed to be compatible with the table structures defined in `db/libsql/schema.ts` (Drizzle schema). All data interactions are validated against the Zod schemas in `db/libsql/validation.ts`.
+
+#### What Still Needs To Be Done (LibSQL & Integration)
+
+- **API Route Integration:**
+  - Update and test all relevant API routes (e.g., `/api/ai-sdk/apps`, `/api/ai-sdk/users`, `/api/ai-sdk/files`, `/api/ai-sdk/code`, `/api/ai-sdk/terminal`, `/api/ai-sdk/integrations`) to correctly use the newly implemented CRUD functions in `lib/memory/libsql.ts` when LibSQL is selected as the persistence layer.
+- **Functional Testing:**
+  - Conduct thorough end-to-end testing of all features that rely on these entities, particularly:
+    - Chat functionalities (message storage, thread management if applicable via LibSQL).
+    - App Builder (file operations, code block management, terminal session logging and execution).
+- **LibSQL Specifics & TODOs:**
+  - **Vector Search Syntax:** Verify and finalize the VSS (vector similarity search) query syntax in the `vectorSearch` function within `libsql.ts`. The current placeholder (`vector <-> ?`) is typical for pgvector and needs to be confirmed or adjusted for the project's specific LibSQL/Turso VSS extension (e.g., `vss0` with `vss_search`).
+  - **Resolve `TODO` Comments in `libsql.ts`:**
+    - `TODO: 2025-05-18 - Implement robust error logging using project's standard logger (e.g., upstashLogger if configured)`: Replace `console.error` with the project's standard logging mechanism.
+    - `TODO: 2025-05-18 - Consider deleting related entities (AppCodeBlocks, Files, Integrations, TerminalSessions) or rely on foreign key cascades if set up in the database schema.` for `deleteApp`.
+    - `TODO: 2025-05-18 - Handle deletion of related data (e.g., Integrations, TerminalSessions) or use cascades.` for `deleteUser`.
+    - `TODO: 2025-05-18 - Implement recursive deletion if 'type' can be 'directory' and children exist.` for `deleteFile`.
+    - `TODO: 2025-05-18 - Clarify correct VSS query syntax for the project's LibSQL setup.` in `vectorSearch`.
+- **Schema Synchronization:** Continue to ensure that `db/libsql/schema.ts` (Drizzle schema, for reference or future Drizzle use with LibSQL) and `db/libsql/validation.ts` (Zod schemas) are kept in sync with any database schema changes and accurately reflect the expected data structures.
 
 ## [v0.0.13] - 2025-05-17
 
