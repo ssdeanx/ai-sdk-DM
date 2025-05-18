@@ -1,4 +1,4 @@
-import { generateText, streamText } from 'ai';
+import { generateText, streamText, ToolSet } from 'ai';
 import {
   createGoogleGenerativeAI,
   GoogleGenerativeAIProvider,
@@ -9,6 +9,7 @@ import { createAnthropic, AnthropicProvider } from '@ai-sdk/anthropic';
 import { getItemById } from './memory/supabase';
 import { getItemById as getUpstashItemById } from './memory/upstash/supabase-adapter';
 import { shouldUseUpstash } from './memory/supabase';
+import { ModelConfig } from './google-ai';
 
 // Define a union type for possible providers
 type AIProvider =
@@ -87,13 +88,17 @@ export async function getProviderByName(
 
 // Generate text with AI model
 export async function generateAIResponse(
-  providerName: string,
+  _providerName: string,
   modelId: string,
-  messages: any[],
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    id?: string;
+  }>,
   options: {
     apiKey?: string;
     baseURL?: string;
-    tools?: any;
+    tools?: ToolSet;
     temperature?: number;
     maxTokens?: number;
     topP?: number;
@@ -105,14 +110,20 @@ export async function generateAIResponse(
 ) {
   try {
     // Fetch model config from Upstash or Supabase
-    let modelConfig;
+    let modelConfig: ModelConfig | null;
 
     if (shouldUseUpstash()) {
       // Use Upstash adapter
-      modelConfig = await getUpstashItemById<any>('models', modelId);
+      modelConfig = (await getUpstashItemById(
+        'models',
+        modelId
+      )) as ModelConfig | null;
     } else {
       // Use regular Supabase
-      modelConfig = await getItemById<any>('models', modelId);
+      modelConfig = (await getItemById(
+        'models',
+        modelId
+      )) as ModelConfig | null;
     }
 
     if (!modelConfig) {
@@ -145,27 +156,27 @@ export async function generateAIResponse(
       frequencyPenalty: options.frequencyPenalty,
       presencePenalty: options.presencePenalty,
       stopSequences: options.stopSequences,
-      ...(options.tools && Object.keys(options.tools).length > 0
-        ? { tools: options.tools }
-        : {}),
+      ...(options.tools ? { tools: options.tools } : {}),
     });
 
     return result;
-  } catch (error) {
-    console.error('Error generating AI response:', error);
-    throw error;
+  } catch {
+    throw new Error('Failed to generate text');
   }
 }
 
-// Stream text with AI model
 export async function streamAIResponse(
-  providerName: string,
+  _providerName: string,
   modelId: string,
-  messages: any[],
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    id?: string;
+  }>,
   options: {
     apiKey?: string;
     baseURL?: string;
-    tools?: any;
+    tools?: ToolSet;
     temperature?: number;
     maxTokens?: number;
     topP?: number;
@@ -173,19 +184,24 @@ export async function streamAIResponse(
     presencePenalty?: number;
     stopSequences?: string[];
     systemPrompt?: string;
-    onChunk?: (chunk: any) => void;
+    onChunk?: (chunk: unknown) => void;
   } = {}
 ) {
   try {
-    // Fetch model config from Upstash or Supabase
-    let modelConfig;
+    let modelConfig: ModelConfig | null;
 
     if (shouldUseUpstash()) {
       // Use Upstash adapter
-      modelConfig = await getUpstashItemById<any>('models', modelId);
+      modelConfig = (await getUpstashItemById(
+        'models',
+        modelId
+      )) as ModelConfig | null;
     } else {
       // Use regular Supabase
-      modelConfig = await getItemById<any>('models', modelId);
+      modelConfig = (await getItemById(
+        'models',
+        modelId
+      )) as ModelConfig | null;
     }
 
     if (!modelConfig) {
@@ -226,7 +242,6 @@ export async function streamAIResponse(
 
     return result;
   } catch (error) {
-    console.error('Error streaming AI response:', error);
     throw error;
   }
 }

@@ -1,4 +1,33 @@
-import { ToolExecutionEntity } from './memory/upstash/upstashTypes';
+import {
+  CoreMessage,
+  customProvider,
+  GenerateTextResult,
+  LanguageModel,
+  LanguageModelV1Middleware,
+  Provider,
+  StreamTextResult,
+  Tool,
+} from 'ai';
+import { generateText, streamText, wrapLanguageModel } from 'ai';
+import { z } from 'zod';
+
+import { personaManager } from './agents/personas/persona-manager';
+import {
+  generateAnthropicWithTracing,
+  generateGoogleAIWithTracing,
+  generateOpenAIWithTracing,
+  streamGoogleAIWithTracing,
+  streamOpenAIWithTracing,
+  ToolDefinition,
+} from './ai-sdk-tracing';
+import { createTrace, logEvent } from './langfuse-integration';
+import { upstashLogger } from './memory/upstash/upstash-logger';
+import { modelRegistry, ModelSettings } from './models/model-registry';
+import { getModelById, getModelByModelId } from './models/model-service';
+import { getAllBuiltInTools, loadCustomTools } from './tools';
+import { agenticTools } from './tools/agentic';
+
+
 /**
  * AI SDK Integration Module
  *
@@ -10,36 +39,8 @@ import { ToolExecutionEntity } from './memory/upstash/upstashTypes';
  * @module ai-sdk-integration
  */
 
-import {
-  customProvider,
-  type LanguageModelV1Middleware,
-  type StreamTextResult,
-  type GenerateTextResult,
-  type Provider,
-  LanguageModel,
-  CoreMessage,
-  Tool,
-} from 'ai';
-import {
-  streamGoogleAIWithTracing,
-  streamOpenAIWithTracing,
-  generateGoogleAIWithTracing,
-  generateOpenAIWithTracing,
-  generateAnthropicWithTracing,
-  ToolDefinition,
-} from './ai-sdk-tracing';
-import { createTrace, logEvent } from './langfuse-integration';
-import { getAllBuiltInTools, loadCustomTools } from './tools';
-import { agenticTools } from './tools/agentic';
-import { personaManager } from './agents/personas/persona-manager';
-import { modelRegistry, type ModelSettings } from './models/model-registry';
-import { getModelById, getModelByModelId } from './models/model-service';
-import { upstashLogger } from './memory/upstash/upstash-logger';
 import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
 import type { ModelEntity as MetadataRecord } from './memory/upstash/upstashTypes';
-import { streamText, generateText, wrapLanguageModel } from 'ai';
-import { z } from 'zod';
-
 // --- Zod Schemas ---
 
 // TODO: [2025-05-18] - SdkToolDefinition and SdkToolDefinitionSchema seem to be misdefined or misused.
