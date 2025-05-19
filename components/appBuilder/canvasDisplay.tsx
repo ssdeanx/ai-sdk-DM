@@ -8,14 +8,18 @@ import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { autocompletion } from '@codemirror/autocomplete';
 import { linter, lintGutter } from '@codemirror/lint';
-import {
-  languageId,
-  languageServer,
-  languageServerWithClient,
-} from '@marimo-team/codemirror-languageserver';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 
+/**
+ * Props for the CanvasDisplay component.
+ * @remarks
+ * - `mode`: Determines the display mode (code, terminal, or canvas placeholder).
+ * - `content`: The code or text content to display.
+ * - `editable`: If true, enables editing in code mode.
+ * - `language`: The language for syntax highlighting in code mode.
+ * - `onChange`: Callback for content changes in code mode.
+ */
 export interface CanvasDisplayProps {
   mode?: 'terminal' | 'canvas' | 'code';
   content?: string;
@@ -25,6 +29,18 @@ export interface CanvasDisplayProps {
   onChange?: (value: string) => void;
 }
 
+const languageExtensions = {
+  javascript: javascript(),
+  typescript: javascript({ typescript: true }),
+  json: json(),
+  markdown: markdown(),
+};
+
+const fakeLinter = linter(() => []); // Placeholder for future lint integration
+
+/**
+ * Terminal-like display for output or logs.
+ */
 const TerminalDisplay: React.FC<{ content: string; className?: string }> = ({
   content,
   className,
@@ -39,16 +55,9 @@ const TerminalDisplay: React.FC<{ content: string; className?: string }> = ({
   </pre>
 );
 
-const languageExtensions = {
-  javascript: javascript(),
-  typescript: javascript({ typescript: true }),
-  json: json(),
-  markdown: markdown(),
-};
-
-// Example ESLint linter (stub, replace with real ESLint integration or WASM/worker)
-const fakeLinter = linter(() => []); // No diagnostics, placeholder
-
+/**
+ * Editable code block using CodeMirror, with language switching and copy.
+ */
 const EditableCodeBlock: React.FC<{
   value: string;
   editable?: boolean;
@@ -100,8 +109,7 @@ const EditableCodeBlock: React.FC<{
       EditorView.editable.of(editable),
       autocompletion(),
       lintGutter(),
-      fakeLinter, // Replace with real ESLint linter for live diagnostics
-      // For future: lsp({ serverUri: 'ws://localhost:3001' })
+      fakeLinter,
       EditorView.updateListener.of((v) => {
         if (v.docChanged && onChange) {
           onChange(v.state.doc.toString());
@@ -170,6 +178,9 @@ const EditableCodeBlock: React.FC<{
   );
 };
 
+/**
+ * Placeholder for canvas mode (future extensibility).
+ */
 const CanvasPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
   <div
     className={
@@ -187,6 +198,12 @@ const displayModeMap = {
   canvas: CanvasPlaceholder,
 };
 
+/**
+ * Main CanvasDisplay component for AppBuilder.
+ * Renders code editor, terminal, or canvas placeholder based on mode.
+ * @param props - CanvasDisplayProps
+ * @returns React element
+ */
 export function CanvasDisplay({
   mode = 'terminal',
   content = '',

@@ -9,14 +9,50 @@ import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 
 // Re-export Message type for external use if needed, or align with AI SDK's type
 export type Message = AIChatMessage;
+
+/**
+ * Props for the ChatBar component.
+ */
 export interface ChatBarProps {
+  /**
+   * API endpoint for the AI SDK chat route.
+   * Defaults to '/api/ai-sdk/chat'.
+   */
   apiEndpoint?: string;
+
+  /**
+   * Initial messages to populate the chat.
+   */
   initialMessages?: Message[];
-  modelId?: string; // Note: model, provider, systemPrompt, tools might be configured server-side with AI SDK
+
+  /**
+   * Model ID for the AI SDK.
+   */
+  modelId?: string;
+
+  /**
+   * Provider for the AI SDK.
+   */
   provider?: string;
+
+  /**
+   * System prompt for the AI SDK.
+   */
   systemPrompt?: string;
+
+  /**
+   * Tools for the AI SDK.
+   */
   tools?: string[];
+
+  /**
+   * Additional class names for the ChatBar component.
+   */
   className?: string;
+
+  /**
+   * Callback function triggered when an assistant message is sent.
+   */
   onMessageSend?: (assistantMessage: string, fullResponse?: Message) => void;
 }
 
@@ -25,21 +61,23 @@ export interface ChatBarProps {
 export function ChatBar({
   apiEndpoint = '/api/ai-sdk/chat', // Default API endpoint for AI SDK
   initialMessages = [],
-  // modelId, provider, systemPrompt, tools are typically configured on the API route
-  // but we can pass them as parameters if the API route supports it.
-  // For simplicity with useChat, we'll rely on the API route configuration
-  // or pass them as query parameters/body if the backend is set up for it.
-  // The useChat hook primarily takes the API endpoint and initial messages.
+  modelId,
+  provider,
+  systemPrompt,
+  tools,
   className,
   onMessageSend,
 }: ChatBarProps) {
   const { messages, input, handleInputChange, isLoading, append } = useChat({
     api: apiEndpoint,
     initialMessages: initialMessages as AIChatMessage[], // Cast to AI SDK's Message type
-    // Additional parameters like model, provider, etc. might need to be passed
-    // via the body or query parameters depending on your API route implementation.
-    // useChat's `append` function allows passing options, including body.
-    // For now, we'll keep it simple and assume the API route handles model/provider config.
+    // Pass advanced config if provided
+    body: {
+      ...(modelId && { modelId }),
+      ...(provider && { provider }),
+      ...(systemPrompt && { systemPrompt }),
+      ...(tools && { tools }),
+    },
     onFinish: (message) => {
       // onFinish is called when the assistant message is complete
       if (onMessageSend && message.role === 'assistant') {
