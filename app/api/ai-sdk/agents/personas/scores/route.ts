@@ -1,12 +1,11 @@
 /**
  * API routes for persona scores
  */
-
-import { NextResponse } from 'next/server';
 import { personaManager } from '@/lib/agents/personas/persona-manager';
 import { personaScoreManager } from '@/lib/agents/personas/persona-score-manager';
-import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import * as langfuseIntegration from '@/lib/langfuse-integration';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 // Zod Schemas

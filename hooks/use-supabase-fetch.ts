@@ -220,22 +220,16 @@ export function useSupabaseFetch<T>({
         if (shouldUseUpstash) {
           if (upstash.addHeaders) {
             headers['x-use-upstash-adapter'] = 'true';
-
-            // Add additional headers for Upstash adapter configuration
-            headers['x-upstash-adapter-version'] = '1.0.0';
-
-            // Add cache control headers
+            headers['x-upstash-adapter-version'] = '1.0.1';
             headers['x-upstash-cache-control'] = cache.enabled
               ? 'enabled'
               : 'disabled';
-
             if (cache.enabled && cache.ttl) {
               headers['x-upstash-cache-ttl'] = String(cache.ttl);
             }
           }
-
-          // Log Upstash adapter usage for debugging
-          console.log(`Using Upstash adapter for fetch: ${endpoint}`);
+          // Optionally, use upstashLogger here if logging is required
+          // upstashLogger.info('use-supabase-fetch', `Using Upstash adapter for fetch: ${endpoint}`);
         }
 
         const response = await fetch(url, { headers });
@@ -312,26 +306,26 @@ export function useSupabaseFetch<T>({
       }
     },
     [
-      /* deps */
       enabled,
       endpoint,
-      resourceName,
-      dataKey,
-      JSON.stringify(queryParams), // safe because queryParams is shallow
-      maxRetries,
-      retryDelay,
+      queryParams,
       page,
       cursor,
+      cache.enabled,
+      cache.ttl,
       pagination.pageSize,
       pagination.useCursor,
-      JSON.stringify(sort),
-      cache.enabled,
-      toast,
-      onSuccess,
-      onError,
-      useUpstashAdapter,
+      sort,
       upstash.forceUse,
       upstash.addHeaders,
+      useUpstashAdapter,
+      dataKey,
+      onSuccess,
+      resourceName,
+      maxRetries,
+      toast,
+      onError,
+      retryDelay,
     ]
   );
 
@@ -364,10 +358,8 @@ export function useSupabaseFetch<T>({
     isLoading,
     error,
     connectionError,
-
     totalCount,
     hasMore,
-
     fetchMore,
     refetch,
   };

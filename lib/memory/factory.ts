@@ -694,9 +694,20 @@ export function createMemory(
     loadMessages: cachedLoadMessages,
 
     // Embedding operations
-    generateEmbedding: async (text: string, _modelName?: string) => {
+    generateEmbedding: async (
+      text: string,
+      _modelName?: string
+    ): Promise<Float32Array> => {
       const { generateEmbedding } = await import('../ai-integration');
-      return generateEmbedding(text);
+      const embeddingResult = await generateEmbedding(text); // embeddingResult is of type DataArray
+      // Convert embeddingResult to number[] to ensure compatibility with Float32Array.
+      // DataArray might include types like BigInt64Array, whose elements (bigint)
+      // are not directly assignable to number, hence the explicit Number conversion.
+      const numericArray = Array.from(
+        embeddingResult as ArrayLike<number | bigint>,
+        Number
+      );
+      return new Float32Array(numericArray);
     },
     saveEmbedding: async (vector: Float32Array, model?: string) => {
       if (provider === 'libsql') {

@@ -1,140 +1,472 @@
 /**
- * Drizzle ORM integration for Supabase
+ * Drizzle ORM utilities for Supabase (Postgres) and LibSQL.
+ * Provides separate client initializers and generic helper functions.
  */
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from '@/db/supabase/schema';
+// Generated on May 19, 2025
 
-// Singleton instance for connection reuse
-let drizzleClient: ReturnType<typeof drizzle> | null = null;
+import {
+  drizzle as drizzlePg,
+  PostgresJsDatabase,
+} from 'drizzle-orm/postgres-js';
+import {
+  AnyPgTable,
+  PgTableWithColumns,
+} from 'drizzle-orm/pg-core';
+import postgres from 'postgres';
+import { drizzle as drizzleLibSql, LibSQLDatabase } from 'drizzle-orm/libsql';
+import {
+  createClient as createLibSqlClient,
+  Client as LibSqlClient,
+} from '@libsql/client';
+import {
+  AnySQLiteTable,
+  SQLiteTableWithColumns,
+} from 'drizzle-orm/sqlite-core';
+import { eq, SQL, sql } from 'drizzle-orm';
+
+import * as supabaseDbSchema from '@/db/supabase/schema';
+import * as libSqlDbSchema from '@/db/libsql/schema';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { z } from 'zod';
+
+// Singleton instances for Drizzle clients
+let supabaseDrizzleInstance: PostgresJsDatabase<
+  typeof supabaseDbSchema
+> | null = null;
+let libsqlDrizzleInstance: LibSQLDatabase<typeof libSqlDbSchema> | null = null;
+let rawLibsqlClientInstance: LibSqlClient | null = null; // For LibSQL raw client
 
 /**
- * Get a Drizzle ORM client for Supabase
- * @returns Drizzle ORM client
+ * Get a Drizzle ORM client for Supabase (Postgres).
+ * @returns {PostgresJsDatabase<typeof supabaseDbSchema>} Drizzle ORM client for Supabase.
+ * @throws Error if DATABASE_URL (for Supabase) is not set.
  */
-export const getDrizzleClient = () => {
-  if (drizzleClient) {
-    return drizzleClient;
+export const getSupabaseDrizzleClient = (): PostgresJsDatabase<
+  typeof supabaseDbSchema
+> => {
+  // Generated on May 19, 2025
+  if (supabaseDrizzleInstance) {
+    return supabaseDrizzleInstance;
   }
 
   const connectionString = process.env.DATABASE_URL;
-
   if (!connectionString) {
     throw new Error(
-      'Database connection string not found. Please set DATABASE_URL environment variable.'
+      'Supabase DATABASE_URL not found. Please set DATABASE_URL environment variable for Supabase (Postgres) connection.'
     );
   }
 
-  // Create a Postgres client
-  const client = postgres(connectionString, { max: 10 });
-
-  // Create a Drizzle client
-  drizzleClient = drizzle(client, { schema });
-
-  return drizzleClient;
+  try {
+    const pgClient = postgres(connectionString, { max: 10 }); // Adjust pool size as needed
+    supabaseDrizzleInstance = drizzlePg(pgClient, {
+      schema: supabaseDbSchema,
+      logger: process.env.NODE_ENV === 'development',
+    });
+    upstashLogger.info(
+      'drizzle-supabase',
+      'Supabase Drizzle client initialized successfully.'
+    );
+    return supabaseDrizzleInstance;
+  } catch (error) {
+    upstashLogger.error(
+      'drizzle-supabase',
+      'Failed to initialize Supabase Drizzle client',
+      error instanceof Error ? error : { error: String(error) }
+    );
+    throw new Error(
+      `Failed to initialize Supabase Drizzle client: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 };
 
 /**
- * Check if Drizzle is available
- * @returns True if Drizzle is available
+ * Get a Drizzle ORM client for LibSQL.
+ * @returns {LibSQLDatabase<typeof libSqlDbSchema>} Drizzle ORM client for LibSQL.
+ * @throws Error if LIBSQL_DATABASE_URL is not set.
  */
-export const isDrizzleAvailable = async () => {
+export const getLibsqlDrizzleClient = (): LibSQLDatabase<
+  typeof libSqlDbSchema
+> => {
+  // Generated on May 19, 2025
+  if (libsqlDrizzleInstance) {
+    return libsqlDrizzleInstance;
+  }
+
+  const dbUrl = process.env.LIBSQL_DATABASE_URL;
+  const authToken = process.env.LIBSQL_AUTH_TOKEN;
+
+  if (!dbUrl) {
+    throw new Error(
+      'LibSQL database URL not found. Please set LIBSQL_DATABASE_URL environment variable.'
+    );
+  }
+  if (
+    dbUrl.startsWith('libsql://') &&
+    dbUrl.includes('.turso.io') &&
+    !authToken
+  ) {
+    upstashLogger.warn(
+      'drizzle-libsql',
+      'LIBSQL_AUTH_TOKEN is not set for remote Turso DB. This might be required.'
+    );
+  }
+
   try {
-    const db = getDrizzleClient();
-    await db.select().from(schema.models).limit(1);
+    if (!rawLibsqlClientInstance) {
+      rawLibsqlClientInstance = createLibSqlClient({
+        url: dbUrl,
+        authToken: authToken,
+      });
+    }
+    libsqlDrizzleInstance = drizzleLibSql(rawLibsqlClientInstance, {
+      schema: libSqlDbSchema,
+      logger: process.env.NODE_ENV === 'development',
+    });
+    upstashLogger.info(
+      'drizzle-libsql',
+      'LibSQL Drizzle client initialized successfully.'
+    );
+    return libsqlDrizzleInstance;
+  } catch (error) {
+    upstashLogger.error(
+      'drizzle-libsql',
+      'Failed to initialize LibSQL Drizzle client',
+      error instanceof Error ? error : { error: String(error) }
+    );
+    throw new Error(
+      `Failed to initialize LibSQL Drizzle client: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+};
+
+/**
+ * Check if the Supabase Drizzle client is available.
+ * @returns {Promise<boolean>} True if available.
+ */
+export const isSupabaseDrizzleAvailable = async (): Promise<boolean> => {
+  // Generated on May 19, 2025
+  try {
+    const db = getSupabaseDrizzleClient();
+    if (!supabaseDbSchema.users) {
+      await db.execute('SELECT 1'); // Generic check
+    } else {
+      await db.select().from(supabaseDbSchema.users).limit(1);
+    }
     return true;
   } catch (error) {
-    console.error('Error checking Drizzle availability:', error);
+    await upstashLogger.error(
+      'drizzle-supabase',
+      'Error checking Supabase Drizzle availability',
+      error instanceof Error ? error : { error: String(error) }
+    );
     return false;
   }
 };
 
 /**
- * Generic function to get data from Drizzle
- * @param table The table to query
- * @param options Query options
- * @returns Array of results
+ * Check if the LibSQL Drizzle client is available.
+ * @returns {Promise<boolean>} True if available.
  */
-export async function getDataWithDrizzle<T>(
-  table: any,
-  options?: {
-    select?: any;
-    filters?: Record<string, any>;
-    limit?: number;
-    offset?: number;
-    orderBy?: { column: string; ascending?: boolean };
-  }
-): Promise<T[]> {
-  const db = getDrizzleClient();
-
+export const isLibsqlDrizzleAvailable = async (): Promise<boolean> => {
+  // Generated on May 19, 2025
   try {
-    // For simplicity, we'll just get all data and filter in memory
-    const allData = await db.select().from(table);
-
-    let result = allData;
-
-    // Apply filters in memory if provided
-    if (options?.filters) {
-      Object.entries(options.filters).forEach(([key, value]) => {
-        if (key === 'search') {
-          // Handle search filter specially - this would need to be customized
-          // This is a simplified example that searches in name or title columns
-          result = result.filter(
-            (item: any) =>
-              (item.name &&
-                item.name.toLowerCase().includes(value.toLowerCase())) ||
-              (item.title &&
-                item.title.toLowerCase().includes(value.toLowerCase()))
-          );
-        } else {
-          result = result.filter((item: any) => item[key] === value);
-        }
-      });
-    }
-
-    // Apply ordering if provided
-    if (options?.orderBy) {
-      const { column, ascending = true } = options.orderBy;
-      result.sort((a: any, b: any) => {
-        if (a[column] < b[column]) return ascending ? -1 : 1;
-        if (a[column] > b[column]) return ascending ? 1 : -1;
-        return 0;
-      });
-    }
-
-    // Apply pagination in memory
-    if (options?.offset !== undefined || options?.limit !== undefined) {
-      const start = options?.offset || 0;
-      const end = options?.limit ? start + options.limit : undefined;
-      result = result.slice(start, end);
-    }
-
-    return result as T[];
+    const db = getLibsqlDrizzleClient();
+    // Use a generic query for LibSQL as schema details (e.g., a 'models' table) are not guaranteed.
+    // This avoids potential compile-time errors if 'libSqlDbSchema.models' does not exist.
+    await db.run(sql`SELECT 1`); // Generic check for SQLite based
+    return true;
   } catch (error) {
-    console.error(`Error fetching data with Drizzle:`, error);
-    throw error;
+    await upstashLogger.error(
+      'drizzle-libsql',
+      'Error checking LibSQL Drizzle availability',
+      error instanceof Error ? error : { error: String(error) }
+    );
+    return false;
   }
-}
+};
+
+// --- SUPABASE (POSTGRES) CRUD HELPERS ---
+
 /**
- * Get a model by ID using Drizzle
- * @param modelId The model ID
- * @returns The model or null if not found
+ * Get a row by ID from a Supabase (Postgres) table using Drizzle and validate with Zod.
  */
-export async function getModelConfigWithDrizzle(modelId: string) {
-  const db = getDrizzleClient();
-
+export async function getByIdWithSupabaseDrizzle<
+  TTable extends { id: { name: string } },
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema,
+  id: string
+): Promise<TRow | null> {
   try {
-    // Get all models and find the one with matching ID
-    const allModels = await db.select().from(schema.models);
-    const model = allModels.find((m) => m.id === modelId);
-
-    if (!model) {
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.select().from(table).where(eq(table.id, id)).limit(1);
+    const row = result[0];
+    if (!row) return null;
+    const parsed = zodSchema.safeParse(row);
+    if (!parsed.success) {
+      await upstashLogger.error('drizzle-supabase', 'Validation failed in getByIdWithSupabaseDrizzle', { error: parsed.error.flatten(), row });
       return null;
     }
-
-    return model;
+    return parsed.data;
   } catch (error) {
-    console.error('Error fetching model config with Drizzle:', error);
-    throw error;
+    await upstashLogger.error('drizzle-supabase', 'Error in getByIdWithSupabaseDrizzle', error instanceof Error ? error : { error: String(error) });
+    return null;
+  }
+}
+
+export async function getAllWithSupabaseDrizzle<
+  TTable,
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema
+): Promise<TRow[]> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.select().from(table);
+    return result
+      .map((row: unknown) => zodSchema.safeParse(row))
+      .filter((parsed: z.SafeParseReturnType<TRow>) => parsed.success)
+      .map((parsed: z.SafeParseReturnType<TRow>) => (parsed as z.SafeParseSuccess<TRow>).data);
+  } catch (error) {
+    await upstashLogger.error('drizzle-supabase', 'Error in getAllWithSupabaseDrizzle', error instanceof Error ? error : { error: String(error) });
+    return [];
+  }
+}
+
+export async function createWithSupabaseDrizzle<
+  TTable,
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema,
+  data: unknown
+): Promise<TRow | null> {
+  try {
+    const parsed = zodSchema.safeParse(data);
+    if (!parsed.success) {
+      await upstashLogger.error('drizzle-supabase', 'Validation failed in createWithSupabaseDrizzle', { error: parsed.error.flatten(), data });
+      return null;
+    }
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.insert(table).values(parsed.data).returning();
+    const row = result[0];
+    if (!row) return null;
+    const out = zodSchema.safeParse(row);
+    if (!out.success) {
+      await upstashLogger.error('drizzle-supabase', 'Output validation failed in createWithSupabaseDrizzle', { error: out.error.flatten(), row });
+      return null;
+    }
+    return out.data;
+  } catch (error) {
+    await upstashLogger.error('drizzle-supabase', 'Error in createWithSupabaseDrizzle', error instanceof Error ? error : { error: String(error) });
+    return null;
+  }
+}
+
+export async function updateWithSupabaseDrizzle<
+  TTable extends { id: { name: string } },
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema,
+  id: string,
+  data: Partial<TRow>
+): Promise<TRow | null> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const currentRows = await db.select().from(table).where(eq(table.id, id)).limit(1);
+    const current = currentRows[0];
+    if (!current) return null;
+    const merged = { ...current, ...data, id };
+    const parsed = zodSchema.safeParse(merged);
+    if (!parsed.success) {
+      await upstashLogger.error('drizzle-supabase', 'Validation failed in updateWithSupabaseDrizzle', { error: parsed.error.flatten(), merged });
+      return null;
+    }
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.update(table).set(parsed.data).where(eq(table.id, id)).returning();
+    const row = result[0];
+    if (!row) return null;
+    const out = zodSchema.safeParse(row);
+    if (!out.success) {
+      await upstashLogger.error('drizzle-supabase', 'Output validation failed in updateWithSupabaseDrizzle', { error: out.error.flatten(), row });
+      return null;
+    }
+    return out.data;
+  } catch (error) {
+    await upstashLogger.error('drizzle-supabase', 'Error in updateWithSupabaseDrizzle', error instanceof Error ? error : { error: String(error) });
+    return null;
+  }
+}
+
+export async function deleteWithSupabaseDrizzle<
+  TTable extends { id: { name: string } }
+>(
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
+  table: TTable,
+  id: string
+): Promise<boolean> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.delete(table).where(eq(table.id, id));
+    if ('rowCount' in result) return result.rowCount > 0;
+    if (Array.isArray(result)) return result.length > 0;
+    return false;
+  } catch (error) {
+    await upstashLogger.error('drizzle-supabase', 'Error in deleteWithSupabaseDrizzle', error instanceof Error ? error : { error: String(error) });
+    return false;
+  }
+}
+
+// --- LIBSQL (SQLITE) CRUD HELPERS ---
+
+/**
+ * Get a row by ID from a LibSQL (SQLite) table using Drizzle and validate with Zod.
+ */
+export async function getByIdWithLibsqlDrizzle<
+  TTable extends { id: { name: string } },
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema,
+  id: string
+): Promise<TRow | null> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.select().from(table).where(eq(table.id, id)).all();
+    const row = result[0];
+    if (!row) return null;
+    const parsed = zodSchema.safeParse(row);
+    if (!parsed.success) {
+      await upstashLogger.error('drizzle-libsql', 'Validation failed in getByIdWithLibsqlDrizzle', { error: parsed.error.flatten(), row });
+      return null;
+    }
+    return parsed.data;
+  } catch (error) {
+    await upstashLogger.error('drizzle-libsql', 'Error in getByIdWithLibsqlDrizzle', error instanceof Error ? error : { error: String(error) });
+    return null;
+  }
+}
+
+export async function getAllWithLibsqlDrizzle<
+  TTable,
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema
+): Promise<TRow[]> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.select().from(table).all();
+    return result
+      .map((row: unknown) => zodSchema.safeParse(row))
+      .filter((parsed: z.SafeParseReturnType<TRow>) => parsed.success)
+      .map((parsed: z.SafeParseReturnType<TRow>) => (parsed as z.SafeParseSuccess<TRow>).data);
+  } catch (error) {
+    await upstashLogger.error('drizzle-libsql', 'Error in getAllWithLibsqlDrizzle', error instanceof Error ? error : { error: String(error) });
+    return [];
+  }
+}
+
+export async function createWithLibsqlDrizzle<
+  TTable,
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema,
+  data: unknown
+): Promise<TRow | null> {
+  try {
+    const parsed = zodSchema.safeParse(data);
+    if (!parsed.success) {
+      await upstashLogger.error('drizzle-libsql', 'Validation failed in createWithLibsqlDrizzle', { error: parsed.error.flatten(), data });
+      return null;
+    }
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.insert(table).values(parsed.data).all();
+    const row = result[0];
+    if (!row) return null;
+    const out = zodSchema.safeParse(row);
+    if (!out.success) {
+      await upstashLogger.error('drizzle-libsql', 'Output validation failed in createWithLibsqlDrizzle', { error: out.error.flatten(), row });
+      return null;
+    }
+    return out.data;
+  } catch (error) {
+    await upstashLogger.error('drizzle-libsql', 'Error in createWithLibsqlDrizzle', error instanceof Error ? error : { error: String(error) });
+    return null;
+  }
+}
+
+export async function updateWithLibsqlDrizzle<
+  TTable extends { id: { name: string } },
+  TRow,
+  TZodSchema extends z.ZodType<TRow, any, any>
+>(
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
+  table: TTable,
+  zodSchema: TZodSchema,
+  id: string,
+  data: Partial<TRow>
+): Promise<TRow | null> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const currentRows = await db.select().from(table).where(eq(table.id, id)).all();
+    const current = currentRows[0];
+    if (!current) return null;
+    const merged = { ...current, ...data, id };
+    const parsed = zodSchema.safeParse(merged);
+    if (!parsed.success) {
+      await upstashLogger.error('drizzle-libsql', 'Validation failed in updateWithLibsqlDrizzle', { error: parsed.error.flatten(), merged });
+      return null;
+    }
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.update(table).set(parsed.data).where(eq(table.id, id)).all();
+    const row = result[0];
+    if (!row) return null;
+    const out = zodSchema.safeParse(row);
+    if (!out.success) {
+      await upstashLogger.error('drizzle-libsql', 'Output validation failed in updateWithLibsqlDrizzle', { error: out.error.flatten(), row });
+      return null;
+    }
+    return out.data;
+  } catch (error) {
+    await upstashLogger.error('drizzle-libsql', 'Error in updateWithLibsqlDrizzle', error instanceof Error ? error : { error: String(error) });
+    return null;
+  }
+}
+
+export async function deleteWithLibsqlDrizzle<
+  TTable extends { id: { name: string } }
+>(
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
+  table: TTable,
+  id: string
+): Promise<boolean> {
+  try {
+    // @ts-expect-error: Drizzle table typing
+    const result = await db.delete(table).where(eq(table.id, id)).all();
+    if (Array.isArray(result)) return result.length > 0;
+    if ('rowsAffected' in result) return result.rowsAffected > 0;
+    return false;
+  } catch (error) {
+    await upstashLogger.error('drizzle-libsql', 'Error in deleteWithLibsqlDrizzle', error instanceof Error ? error : { error: String(error) });
+    return false;
   }
 }

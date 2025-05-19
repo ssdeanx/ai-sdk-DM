@@ -5,8 +5,6 @@ import { UserSchema } from '@/db/supabase/validation';
 import { z } from 'zod';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { createTrace } from '@/lib/langfuse-integration';
-// generateId is a standard import, kept for consistency though not directly used here.
-import { generateId } from 'ai';
 
 /**
  * POST /api/ai-sdk/auth/signup

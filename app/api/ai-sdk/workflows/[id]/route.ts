@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { workflow } from '@/lib/workflow';
 import { z } from 'zod';
 
-// Schema for updating a workflow
+// Canonical Zod schema for updating a workflow
 const updateWorkflowSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   description: z.string().optional(),
@@ -27,9 +27,9 @@ export async function GET(
       );
     }
 
+    // TODO: Add output validation if workflow.getWorkflow returns raw data
     return NextResponse.json({ workflow: workflowData });
   } catch (error) {
-    console.error(`Error getting workflow ${params.id}:`, error);
     return NextResponse.json(
       {
         error: 'Failed to get workflow',
@@ -78,9 +78,9 @@ export async function PUT(
       validationResult.data
     );
 
+    // TODO: Add output validation if workflow.updateWorkflow returns raw data
     return NextResponse.json({ workflow: updatedWorkflow });
   } catch (error) {
-    console.error(`Error updating workflow ${params.id}:`, error);
     return NextResponse.json(
       {
         error: 'Failed to update workflow',
@@ -113,7 +113,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error deleting workflow ${params.id}:`, error);
     return NextResponse.json(
       {
         error: 'Failed to delete workflow',

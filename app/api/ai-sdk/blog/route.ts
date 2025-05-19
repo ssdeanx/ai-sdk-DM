@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server';
+import { BlogPostSchema as SupabaseBlogPostSchema } from '@/db/supabase/validation';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { BlogPostSchema as SupabaseBlogPostSchema } from '@/db/supabase/validation';
+import { NextResponse } from 'next/server';
 
 const BlogPostSchema = SupabaseBlogPostSchema;
-const NewBlogPostSchema = BlogPostSchema.omit({ id: true, created_at: true, updated_at: true });
+const NewBlogPostSchema = BlogPostSchema.omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
 
 /**
  * GET /api/ai-sdk/blog

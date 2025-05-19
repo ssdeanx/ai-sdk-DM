@@ -1,11 +1,10 @@
 /**
  * API route for persona recommendations
  */
-
-import { NextResponse } from 'next/server';
 import { personaManager } from '@/lib/agents/personas/persona-manager';
-import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import * as langfuseIntegration from '@/lib/langfuse-integration';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 /**

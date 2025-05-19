@@ -43,7 +43,7 @@ function toLoggerError(err: unknown): Error | { error: string } {
 }
 
 // --- Table Name to Schema Map ---
-const tableSchemas = {
+export const tableSchemas = {
   users: UserSchema,
   apps: AppSchema,
   app_code_blocks: AppCodeBlockSchema,
@@ -63,7 +63,7 @@ const tableSchemas = {
   mdx_documents: MdxDocumentSchema,
 };
 
-type TableName = keyof typeof tableSchemas;
+export type TableName = keyof typeof tableSchemas;
 
 // --- Enhanced Type-Safe TableClient ---
 export interface TableClient<T> {

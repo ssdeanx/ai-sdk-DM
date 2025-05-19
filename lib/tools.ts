@@ -70,6 +70,7 @@ export async function loadCustomTools() {
         LEFT JOIN apps a ON t.name = a.name AND a.type = 'tool'
         WHERE t.type = 'custom'
       `,
+      args: [],
     });
 
     const customTools: Record<string, Tool<any, any>> = {};
@@ -113,9 +114,8 @@ export async function loadCustomTools() {
     return {};
   }
 }
-
 // Helper to convert JSON schema to Zod schema
-export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
+export function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodTypeAny {
   if (!schema || typeof schema !== 'object') {
     throw new Error('Invalid schema');
   }
@@ -123,13 +123,12 @@ export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
   if (schema.type === 'object') {
     const shape: Record<string, z.ZodTypeAny> = {};
 
-    if (schema.properties) {
+    if (schema.properties && typeof schema.properties === 'object') {
       for (const [key, prop] of Object.entries(schema.properties)) {
-        let zodProp = jsonSchemaToZod(prop as any);
+        let zodProp = jsonSchemaToZod(prop as Record<string, unknown>);
 
-        // Make  {
         // Make property optional if not in required array
-        if (schema.required && !schema.required.includes(key)) {
+        if (Array.isArray(schema.required) && !schema.required.includes(key)) {
           zodProp = zodProp.optional();
         }
 
@@ -141,11 +140,11 @@ export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
   } else if (schema.type === 'string') {
     let zodString = z.string();
 
-    if (schema.enum) {
+    if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
       return z.enum(schema.enum as [string, ...string[]]);
     }
 
-    if (schema.description) {
+    if (schema.description && typeof schema.description === 'string') {
       zodString = zodString.describe(schema.description);
     }
 
@@ -156,7 +155,7 @@ export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
     return z.boolean();
   } else if (schema.type === 'array') {
     if (schema.items) {
-      return z.array(jsonSchemaToZod(schema.items));
+      return z.array(jsonSchemaToZod(schema.items as Record<string, unknown>));
     }
     return z.array(z.any());
   }

@@ -1,10 +1,9 @@
 /**
  * API route for top performing personas
  */
-
-import { NextResponse } from 'next/server';
 import { personaManager } from '@/lib/agents/personas/persona-manager';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 /**

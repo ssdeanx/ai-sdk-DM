@@ -80,7 +80,7 @@ export function useUpstashAdapter(): UpstashAdapterConfig {
     if (memoryProvider.useUpstashAdapter && memoryProvider.isReady) {
       async function fetchAdapterConfig() {
         try {
-          const response = await fetch('/api/memory/upstash-config', {
+          const response = await fetch('/api/ai-sdk/memory/upstash-config', {
             // Add cache control headers to prevent caching
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',

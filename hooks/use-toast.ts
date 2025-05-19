@@ -55,7 +55,7 @@ type ToasterToast = ToastProps & {
 /**
  * Toast action types
  */
-const actionTypes = {
+export const actionTypes = {
   ADD_TOAST: 'ADD_TOAST',
   UPDATE_TOAST: 'UPDATE_TOAST',
   DISMISS_TOAST: 'DISMISS_TOAST',
@@ -66,7 +66,6 @@ const actionTypes = {
   PAUSE_TOAST: 'PAUSE_TOAST',
   RESUME_TOAST: 'RESUME_TOAST',
 } as const;
-
 let count = 0;
 
 function genId() {
@@ -486,23 +485,18 @@ toast.action = (props: ToastOptions & { action: ToastAction }) => {
   const { action, ...rest } = props;
 
   // Create a proper React element for the toast action
-  const actionElement: ToastActionElement = React.createElement('button', {
-    type: 'button',
-    className: action.className,
+  const actionElement: ToastActionElement = {
     onClick: () => {
       action.onClick();
       dispatch({ type: 'DISMISS_TOAST', toastId: undefined });
     },
-    children: action.label,
-  });
+  };
 
   return toast({
     ...rest,
     action: actionElement,
   });
-};
-
-/**
+}; /**
  * Enhanced toast hook
  */
 function useToast() {

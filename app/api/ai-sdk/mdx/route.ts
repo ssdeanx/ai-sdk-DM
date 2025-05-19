@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { MdxDocumentSchema as SupabaseMdxDocumentSchema } from '@/db/supabase/validation';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { MdxDocumentSchema as SupabaseMdxDocumentSchema } from '@/db/supabase/validation';
+import { NextResponse } from 'next/server';
 
 const MdxDocumentSchema = SupabaseMdxDocumentSchema;
 
@@ -12,9 +12,10 @@ const MdxDocumentSchema = SupabaseMdxDocumentSchema;
 export async function GET() {
   try {
     const supabase = createSupabaseClient();
-    const { data: docs } = await supabase.from('mdx_documents').select('*');
+    const table = supabase.from('mdx_documents', undefined); // schema is ignored
+    const docs = await table.getAll();
     return NextResponse.json(
-      docs?.map((d: unknown) => MdxDocumentSchema.parse(d))
+      docs.map((d: unknown) => MdxDocumentSchema.parse(d))
     );
   } catch (error) {
     upstashLogger.error(
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       updated_at: true,
     }).parse(body);
     const supabase = createSupabaseClient();
+    const table = supabase.from('mdx_documents', undefined); // schema is ignored
     const now = new Date().toISOString();
     const newDoc = {
       ...parsed,
@@ -53,12 +55,8 @@ export async function POST(request: Request) {
       created_at: now,
       updated_at: now,
     };
-    const { data, error } = await supabase
-      .from('mdx_documents')
-      .insert(newDoc)
-      .select();
-    if (error) throw error;
-    return NextResponse.json(MdxDocumentSchema.parse(data[0]));
+    const created = await table.create(newDoc);
+    return NextResponse.json(MdxDocumentSchema.parse(created));
   } catch (error) {
     upstashLogger.error(
       'POST /api/ai-sdk/mdx failed',
