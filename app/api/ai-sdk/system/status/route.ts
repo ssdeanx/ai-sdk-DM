@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isSupabaseAvailable } from '@/lib/memory/supabase';
+import { isSupabaseAvailable } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { isLibSQLAvailable } from '@/lib/memory/libsql';
 import { getRedisClient } from '@/lib/memory/upstash/upstashClients';
 import { handleApiError } from '@/lib/api-error-handler';

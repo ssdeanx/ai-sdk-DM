@@ -135,6 +135,7 @@
     "@tsparticles/engine": "^3.8.1",
     "@tsparticles/preset-firefly": "^3.2.0",
     "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.8.1",
     "@types/d3": "^7.4.3",
     "@uiw/codemirror-theme-vscode": "^4.23.12",
     "@uiw/react-codemirror": "^4.23.12",

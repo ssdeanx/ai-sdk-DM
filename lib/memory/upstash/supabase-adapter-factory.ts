@@ -36,6 +36,7 @@ import { EmbeddingVectorSchema } from './vector-store';
 import { getRedisClient, getVectorClient } from './upstashClients';
 import { upstashLogger } from './upstash-logger';
 import { generateId } from 'ai';
+import { isSupabaseAvailable } from '..';
 
 function toLoggerError(err: unknown): Error | { error: string } {
   if (err instanceof Error) return err;
@@ -289,3 +290,4 @@ export function createSupabaseClient(): SupabaseClient {
   };
 }
 // Generated on 2025-05-18 - TableClient and VectorClient now fully implement CRUD and vector operations using Upstash Redis/Vector and canonical Zod schemas. All methods are type-safe, robust, and log errors. See README for advanced query and streaming support.
+export { isSupabaseAvailable };

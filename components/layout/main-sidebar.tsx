@@ -13,7 +13,6 @@ import {
   useScroll,
   useInView,
   useReducedMotion,
-  useDragControls,
 } from 'framer-motion';
 import {
   ChevronLeft,
@@ -22,7 +21,6 @@ import {
   Database,
   Wrench,
   Bot,
-  Network,
   FileText,
   Settings,
   BarChart3,
@@ -34,6 +32,7 @@ import {
   Rocket,
   Activity,
   LayoutDashboard,
+  Network as NetworkIcon,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -69,7 +68,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     title: 'Dashboard',
-    href: '/dashboard',
+    href: '/(dashboard)/dashboard',
     icon: <LayoutDashboard className="h-4 w-4" />,
     isPinned: true,
     isNew: false,
@@ -78,7 +77,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Chat',
-    href: '/chat',
+    href: '/(dashboard)/chat',
     icon: <MessageSquare className="h-4 w-4" />,
     isPinned: true,
     isNew: false,
@@ -96,7 +95,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Models',
-    href: '/models',
+    href: '/(dashboard)/models',
     icon: <Database className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -105,7 +104,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Tools',
-    href: '/tools',
+    href: '/(dashboard)/tools',
     icon: <Wrench className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -114,7 +113,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Agents',
-    href: '/agents',
+    href: '/(dashboard)/agents',
     icon: <Bot className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -123,7 +122,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Workflows',
-    href: '/workflows',
+    href: '/(dashboard)/workflows',
     icon: <Zap className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -132,7 +131,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Analytics',
-    href: '/analytics',
+    href: '/(dashboard)/analytics',
     icon: <BarChart3 className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -150,7 +149,7 @@ const navItems: NavItem[] = [
     submenu: [
       {
         title: 'Blog',
-        href: '/blog',
+        href: '/(dashboard)/blog',
         icon: <FileText className="h-4 w-4" />,
         isPinned: false,
         isNew: false,
@@ -159,7 +158,7 @@ const navItems: NavItem[] = [
       },
       {
         title: 'MDX Builder',
-        href: '/mdx-builder',
+        href: '/(dashboard)/mdx-builder',
         icon: <Layers className="h-4 w-4" />,
         isPinned: false,
         isNew: true,
@@ -168,7 +167,7 @@ const navItems: NavItem[] = [
       },
       {
         title: 'Code Editor',
-        href: '/code-editor',
+        href: '/(dashboard)/code-editor',
         icon: <Code className="h-4 w-4" />,
         isPinned: false,
         isNew: false,
@@ -179,8 +178,8 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Networks',
-    href: '/networks',
-    icon: <Network className="h-4 w-4" />,
+    href: '/(dashboard)/networks',
+    icon: <NetworkIcon className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
     badge: null,
@@ -188,7 +187,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Team',
-    href: '/team',
+    href: '/(dashboard)/team',
     icon: <Users className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -197,7 +196,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Deployment',
-    href: '/deployment',
+    href: '/(dashboard)/deployment',
     icon: <Rocket className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -206,7 +205,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Observability',
-    href: '/observability',
+    href: '/(dashboard)/observability',
     icon: <Activity className="h-4 w-4" />,
     isPinned: false,
     isNew: true,
@@ -215,7 +214,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Settings',
-    href: '/settings',
+    href: '/(dashboard)/settings',
     icon: <Settings className="h-4 w-4" />,
     isPinned: false,
     isNew: false,
@@ -271,9 +270,6 @@ export const MainSidebar = memo(function MainSidebar({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [customOrder, setCustomOrder] = useState<string[]>([]);
-
-  // Drag controls for resizable sidebar
-  const dragControls = useDragControls();
 
   // Refs for animations and interactions
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -337,7 +333,7 @@ export const MainSidebar = memo(function MainSidebar({
     isLoading: statusLoading,
     error: statusError,
   } = useSupabaseFetch<StatusData>({
-    endpoint: '/api/system/status',
+    endpoint: '/api/ai-sdk/system/status', // Use ai-sdk canonical route
     resourceName: 'System Status',
     dataKey: 'status',
   });
@@ -400,16 +396,6 @@ export const MainSidebar = memo(function MainSidebar({
       });
     }
   }, [isMobile, collapsed, toast]);
-
-  // Use drag controls for custom drag behavior
-  const startDrag = useCallback(
-    (e: React.PointerEvent<Element>, item: string) => {
-      dragControls.start(e, { snapToCursor: true });
-      setDraggedItem(item);
-      setIsDragging(true);
-    },
-    [dragControls]
-  );
 
   // Handle item hover for enhanced interactions
   const handleItemHover = (title: string) => {
@@ -606,7 +592,7 @@ export const MainSidebar = memo(function MainSidebar({
         {/* Logo (fixed, no overlap) */}
         <div className="flex h-16 items-center border-b px-3 fixed top-0 left-0 w-[inherit] bg-background/80 z-30">
           <Link
-            href="/dashboard"
+            href="/(dashboard)/dashboard"
             className="flex items-center gap-2 font-semibold group"
           >
             <div className="relative flex items-center justify-center">
