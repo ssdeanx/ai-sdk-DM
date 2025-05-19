@@ -8,6 +8,26 @@ import {
   deleteItem,
   getData,
 } from '@/lib/memory/upstash/supabase-adapter';
+import { MemoryThreadSchema, MessageSchema } from '@/db/libsql/validation';
+
+/**
+ * Interface for formatted thread
+ */
+interface FormattedThread {
+  id: string;
+  name: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  messages?: Array<{
+    id: string;
+    threadId: string;
+    role: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+  }>;
+}
 
 /**
  * GET /api/ai-sdk/threads/[id]
@@ -33,12 +53,34 @@ export async function GET(
             { status: 404 }
           );
         }
-        const formattedThread = {
-          id: thread.id,
-          name: thread.name,
-          metadata: thread.metadata || {},
-          createdAt: thread.created_at,
-          updatedAt: thread.updated_at,
+        // Validate thread with canonical schema
+        const threadValidation = MemoryThreadSchema.safeParse(thread);
+        if (!threadValidation.success) {
+          return NextResponse.json(
+            { error: threadValidation.error.flatten().fieldErrors },
+            { status: 500 }
+          );
+        }
+        // Ensure all fields are strings and metadata is an object
+        const formattedThread: FormattedThread = {
+          id: String(thread.id ?? ''),
+          name: String(thread.name ?? ''),
+          metadata: (() => {
+            try {
+              if (typeof thread.metadata === 'string') {
+                return thread.metadata ? JSON.parse(thread.metadata) : {};
+              } else if (
+                typeof thread.metadata === 'object' &&
+                thread.metadata !== null &&
+                !(thread.metadata instanceof ArrayBuffer)
+              ) {
+                return thread.metadata;
+              }
+            } catch {}
+            return {};
+          })(),
+          createdAt: String(thread.created_at ?? ''),
+          updatedAt: String(thread.updated_at ?? ''),
         };
         if (includeMessages) {
           const messages = await getData('messages', {
@@ -46,16 +88,33 @@ export async function GET(
             orderBy: { column: 'created_at', ascending: true },
             limit: messageLimit,
           });
-          // Format messages
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (formattedThread as any).messages = messages.map((msg) => ({
-            id: msg.id,
-            threadId: msg.thread_id,
-            role: msg.role,
-            content: msg.content,
-            metadata: msg.metadata || {},
-            createdAt: msg.created_at,
-          }));
+          // Validate and format messages
+          formattedThread.messages = messages
+            .map((msg) => {
+              const msgValidation = MessageSchema.safeParse(msg);
+              if (!msgValidation.success) return null;
+              let msgMeta: Record<string, unknown> = {};
+              try {
+                if (typeof msg.metadata === 'string') {
+                  msgMeta = msg.metadata ? JSON.parse(msg.metadata) : {};
+                } else if (
+                  typeof msg.metadata === 'object' &&
+                  msg.metadata !== null &&
+                  !(msg.metadata instanceof ArrayBuffer)
+                ) {
+                  msgMeta = msg.metadata;
+                }
+              } catch {}
+              return {
+                id: String(msg.id ?? ''),
+                threadId: String(msg.memory_thread_id ?? ''),
+                role: String(msg.role ?? ''),
+                content: String(msg.content ?? ''),
+                metadata: msgMeta,
+                createdAt: String(msg.created_at ?? ''),
+              };
+            })
+            .filter((m): m is NonNullable<typeof m> => m !== null);
         }
         return NextResponse.json(formattedThread);
       } catch (err) {
@@ -73,63 +132,65 @@ export async function GET(
       return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
     }
     const thread = threadResult.rows[0];
-    let metadata = {};
-    try {
-      if (typeof thread.metadata === 'string') {
-        metadata = JSON.parse(thread.metadata);
-      } else if (
-        typeof thread.metadata === 'object' &&
-        thread.metadata !== null &&
-        !(thread.metadata instanceof ArrayBuffer)
-      ) {
-        metadata = thread.metadata;
-      }
-    } catch {
-      metadata = {};
-    }
-    const formattedThread = {
-      id: thread.id,
-      name: thread.name,
-      metadata,
-      createdAt: thread.created_at,
-      updatedAt: thread.updated_at,
+    // Ensure all fields are strings and metadata is an object
+    const formattedThread: FormattedThread = {
+      id: String(thread.id ?? ''),
+      name: String(thread.name ?? ''),
+      metadata: (() => {
+        try {
+          if (typeof thread.metadata === 'string') {
+            return thread.metadata ? JSON.parse(thread.metadata) : {};
+          } else if (
+            typeof thread.metadata === 'object' &&
+            thread.metadata !== null &&
+            !(thread.metadata instanceof ArrayBuffer)
+          ) {
+            return thread.metadata;
+          }
+        } catch {}
+        return {};
+      })(),
+      createdAt: String(thread.created_at ?? ''),
+      updatedAt: String(thread.updated_at ?? ''),
     };
     if (includeMessages) {
       const msgResult = await db.execute({
         sql: `SELECT * FROM messages WHERE thread_id = ? ORDER BY created_at ASC LIMIT ?`,
         args: [id, messageLimit],
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (formattedThread as any).messages = msgResult.rows.map((msg) => {
-        let msgMeta = {};
-        try {
-          if (typeof msg.metadata === 'string') {
-            msgMeta = JSON.parse(msg.metadata);
-          } else if (
-            typeof msg.metadata === 'object' &&
-            msg.metadata !== null &&
-            !(msg.metadata instanceof ArrayBuffer)
-          ) {
-            msgMeta = msg.metadata;
-          }
-        } catch {
-          msgMeta = {};
-        }
-        return {
-          id: msg.id,
-          threadId: msg.thread_id,
-          role: msg.role,
-          content: msg.content,
-          metadata: msgMeta,
-          createdAt: msg.created_at,
-        };
-      });
+      formattedThread.messages = msgResult.rows
+        .map((msg) => {
+          const msgValidation = MessageSchema.safeParse(msg);
+          if (!msgValidation.success) return null;
+          let msgMeta: Record<string, unknown> = {};
+          try {
+            if (typeof msg.metadata === 'string') {
+              msgMeta = msg.metadata ? JSON.parse(msg.metadata) : {};
+            } else if (
+              typeof msg.metadata === 'object' &&
+              msg.metadata !== null &&
+              !(msg.metadata instanceof ArrayBuffer)
+            ) {
+              msgMeta = msg.metadata;
+            }
+          } catch {}
+          return {
+            id: String(msg.id ?? ''),
+            threadId: String(msg.memory_thread_id ?? ''),
+            role: String(msg.role ?? ''),
+            content: String(msg.content ?? ''),
+            metadata: msgMeta,
+            createdAt: String(msg.created_at ?? ''),
+          };
+        })
+        .filter((m): m is NonNullable<typeof m> => m !== null);
     }
     return NextResponse.json(formattedThread);
   } catch (error) {
     return handleApiError(error);
   }
 }
+
 /**
  * PATCH /api/ai-sdk/threads/[id]
  *
@@ -163,6 +224,14 @@ export async function PATCH(
           metadata: updatedMetadata,
           updated_at: now,
         });
+        // Validate updated thread
+        const updatedValidation = MemoryThreadSchema.safeParse(updated);
+        if (!updatedValidation.success) {
+          return NextResponse.json(
+            { error: updatedValidation.error.flatten().fieldErrors },
+            { status: 500 }
+          );
+        }
         return NextResponse.json({
           id: updated.id,
           name: updated.name,
@@ -207,6 +276,20 @@ export async function PATCH(
       sql: `UPDATE memory_threads SET name = ?, metadata = ?, updated_at = ? WHERE id = ?`,
       args: [name ?? thread.name, JSON.stringify(updatedMetadata), now, id],
     });
+    // Validate updated thread
+    const updatedThread = {
+      ...thread,
+      name: name ?? thread.name,
+      metadata: updatedMetadata,
+      updated_at: now,
+    };
+    const updatedValidation = MemoryThreadSchema.safeParse(updatedThread);
+    if (!updatedValidation.success) {
+      return NextResponse.json(
+        { error: updatedValidation.error.flatten().fieldErrors },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({
       id: thread.id,
       name: name ?? thread.name,

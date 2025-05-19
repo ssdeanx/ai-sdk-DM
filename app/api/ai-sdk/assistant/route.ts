@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { AssistantResponse } from 'ai';
-import OpenAI from 'openai';
+import { AssistantResponse, generateId } from 'ai';
 import { createMemoryThread, saveMessage } from '@/lib/memory/memory';
 import { createTrace, logEvent } from '@/lib/langfuse-integration';
 import { handleApiError } from '@/lib/api-error-handler';
-import { v4 as uuidv4 } from 'uuid';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -45,11 +43,12 @@ export async function POST(req: Request) {
       });
     }
 
-    return AssistantResponse({
-      threadId,
-      messageId: message.id,
-
-      async process({ forwardStream, sendDataMessage }) {
+    return AssistantResponse(
+      {
+        threadId,
+        messageId: message.id,
+      },
+      async ({ forwardStream, sendDataMessage }) => {
         try {
           // Create a thread if needed
           const openaiThreadId =
@@ -246,13 +245,12 @@ export async function POST(req: Request) {
             error: error.message || 'Unknown error in assistant process',
           });
         }
-      },
-    });
+      }
+    );
   } catch (error) {
     return handleApiError(error);
   }
 }
-
 // Mock tool implementations
 async function executeWeatherTool(args: { location: string }) {
   // In a real implementation, this would call a weather API

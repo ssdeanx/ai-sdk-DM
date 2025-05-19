@@ -11,6 +11,7 @@ import {
   updateItem,
 } from '@/lib/memory/upstash/supabase-adapter';
 import { getLibSQLClient } from '@/lib/memory/db';
+import { MessageSchema } from '@/db/libsql/validation';
 
 /**
  * GET /api/ai-sdk/threads/[id]/messages
@@ -80,25 +81,29 @@ export async function GET(
         args: [id, limit, offset],
       });
 
-      messages = messagesResult.rows.map((msg) => {
-        let metadata = {};
-        try {
-          metadata =
-            typeof msg.metadata === 'string'
-              ? JSON.parse(msg.metadata)
-              : msg.metadata || {};
-        } catch {
-          // ignore
-        }
-        return {
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          metadata,
-          tokenCount: msg.token_count,
-          createdAt: msg.created_at,
-        };
-      });
+      messages = messagesResult.rows
+        .map((msg) => {
+          const validation = MessageSchema.safeParse(msg);
+          if (!validation.success) return null;
+          let metadata = {};
+          try {
+            metadata =
+              typeof msg.metadata === 'string'
+                ? JSON.parse(msg.metadata)
+                : msg.metadata || {};
+          } catch {
+            // ignore
+          }
+          return {
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            metadata,
+            tokenCount: msg.token_count,
+            createdAt: msg.created_at,
+          };
+        })
+        .filter((m): m is NonNullable<typeof m> => m !== null);
 
       const countResult = await db.execute({
         sql: `SELECT COUNT(*) as count FROM messages WHERE thread_id = ?`,
@@ -109,27 +114,31 @@ export async function GET(
     } else {
       // Format messages for Upstash
       messages = Array.isArray(messages)
-        ? messages.map((msg) => {
-            if (typeof msg !== 'object' || msg === null) return msg;
-            const m = msg as Record<string, unknown>;
-            let metadata: Record<string, unknown> = {};
-            try {
-              metadata =
-                typeof m.metadata === 'string'
-                  ? JSON.parse(m.metadata as string)
-                  : m.metadata || {};
-            } catch {
-              // ignore
-            }
-            return {
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              metadata,
-              tokenCount: m.token_count,
-              createdAt: m.created_at,
-            };
-          })
+        ? messages
+            .map((msg) => {
+              if (typeof msg !== 'object' || msg === null) return msg;
+              const m = msg as Record<string, unknown>;
+              const validation = MessageSchema.safeParse(m);
+              if (!validation.success) return null;
+              let metadata: Record<string, unknown> = {};
+              try {
+                metadata =
+                  typeof m.metadata === 'string'
+                    ? JSON.parse(m.metadata as string)
+                    : m.metadata || {};
+              } catch {
+                // ignore
+              }
+              return {
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                metadata,
+                tokenCount: m.token_count,
+                createdAt: m.created_at,
+              };
+            })
+            .filter((m): m is NonNullable<typeof m> => m !== null)
         : [];
     }
 
@@ -157,10 +166,22 @@ export async function POST(
     const body = await request.json();
     const { role, content, metadata = {} } = body;
 
-    // Validate required fields
-    if (!role || !content) {
+    // Validate required fields and schema
+    const validation = MessageSchema.safeParse({
+      id: '', // Will be generated
+      memory_thread_id: id,
+      role,
+      content,
+      created_at: new Date().toISOString(),
+      metadata: JSON.stringify({
+        ...metadata,
+        source: 'ai-sdk-ui',
+        timestamp: new Date().toISOString(),
+      }),
+    });
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Role and content are required' },
+        { error: validation.error.flatten().fieldErrors },
         { status: 400 }
       );
     }

@@ -10,9 +10,8 @@ import {
   deleteItem,
   getData,
   TableRow,
-  TableInsert,
-  TableUpdate,
 } from '@/lib/memory/upstash/supabase-adapter';
+import { AppCodeBlockSchema } from '@/db/libsql/validation';
 
 const table = 'app_code_blocks';
 
@@ -69,14 +68,22 @@ export async function GET(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
 export async function POST(req: NextRequest) {
   try {
-    const data = (await req.json()) as TableInsert<'app_code_blocks'>;
+    const data = await req.json();
+    const parsed = AppCodeBlockSchema.safeParse(data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     const now = new Date().toISOString();
     const provider = getMemoryProvider();
     if (provider === 'upstash') {
       const created = await createItem<'app_code_blocks'>(table, {
-        ...data,
+        ...parsed.data,
         created_at: now,
         updated_at: now,
       });
@@ -87,12 +94,12 @@ export async function POST(req: NextRequest) {
     const result = await db.execute({
       sql: 'INSERT INTO app_code_blocks (id, app_id, language, code, description, [order], created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       args: [
-        data.id ?? null,
-        data.app_id,
-        data.language,
-        data.code,
-        data.description ?? null,
-        data.order ?? 0,
+        parsed.data.id ?? null,
+        parsed.data.app_id,
+        parsed.data.language,
+        parsed.data.code,
+        parsed.data.description ?? null,
+        parsed.data.order ?? 0,
         now,
         now,
       ],
@@ -105,15 +112,20 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const data = (await req.json()) as TableUpdate<'app_code_blocks'> & {
-      id: string;
-    };
+    const data = await req.json();
     if (!data.id)
       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const parsed = AppCodeBlockSchema.safeParse(data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     const now = new Date().toISOString();
     const provider = getMemoryProvider();
     if (provider === 'upstash') {
-      const { id, ...updateData } = data;
+      const { id, ...updateData } = parsed.data;
       const updated = await updateItem<'app_code_blocks'>(table, id, {
         ...updateData,
         updated_at: now,
@@ -125,13 +137,13 @@ export async function PUT(req: NextRequest) {
     const result = await db.execute({
       sql: 'UPDATE app_code_blocks SET app_id=?, language=?, code=?, description=?, [order]=?, updated_at=? WHERE id=?',
       args: [
-        data.app_id,
-        data.language,
-        data.code,
-        data.description ?? null,
-        data.order ?? 0,
+        parsed.data.app_id,
+        parsed.data.language,
+        parsed.data.code,
+        parsed.data.description ?? null,
+        parsed.data.order ?? 0,
         now,
-        data.id,
+        parsed.data.id,
       ],
     });
     return NextResponse.json(result.rows[0]);

@@ -18,7 +18,7 @@ import {
 // Helper functions for Upstash operations
 /**
  * Updates an agent in Upstash
- *
+ * @/lib/memory/factory.ts
  * @param id - Agent ID
  * @param updates - Updates to apply
  * @returns Updated agent
@@ -46,7 +46,7 @@ async function updateAgentInUpstash(
 
 /**
  * Deletes an agent from Upstash
- *
+ * @/lib/memory/factory.ts
  * @param id - Agent ID
  * @returns Whether deletion was successful
  */
