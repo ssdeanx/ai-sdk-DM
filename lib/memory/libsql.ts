@@ -689,3 +689,4 @@ export async function deleteGqlCache(id: string): Promise<boolean> {
 }
 
 export { createLibSQLClient as getLibSQLClient };
+export { isLibSQLAvailable as checkLibSQLAvailability };

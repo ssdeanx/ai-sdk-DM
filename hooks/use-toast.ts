@@ -9,6 +9,7 @@
 
 // Inspired by react-hot-toast library
 import * as React from 'react';
+import { ToastAction as ToastActionComponent } from '@/components/ui/toast';
 
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
 
@@ -482,21 +483,31 @@ toast.permanent = (props: ToastOptions) => {
  * Create a toast with an action
  */
 toast.action = (props: ToastOptions & { action: ToastAction }) => {
-  const { action, ...rest } = props;
-
-  // Create a proper React element for the toast action
-  const actionElement: ToastActionElement = {
-    onClick: () => {
-      action.onClick();
-      dispatch({ type: 'DISMISS_TOAST', toastId: undefined });
+  const id = genId();
+  const createdAt = Date.now();
+  // Use React.createElement to avoid JSX syntax issues in non-TSX file
+  const actionElement = React.createElement(
+    ToastActionComponent,
+    {
+      className: props.action.className,
+      onClick: props.action.onClick,
+      altText: props.action.label, // required by ToastActionProps
     },
-  };
-
-  return toast({
-    ...rest,
-    action: actionElement,
+    props.action.label
+  ) as unknown as import('@/components/ui/toast').ToastActionElement;
+  dispatch({
+    type: 'ADD_TOAST',
+    toast: {
+      ...props,
+      id,
+      createdAt,
+      action: actionElement,
+    },
   });
-}; /**
+  return id;
+};
+
+/**
  * Enhanced toast hook
  */
 function useToast() {

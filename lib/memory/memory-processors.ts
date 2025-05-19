@@ -1,4 +1,4 @@
-import type { Message } from './memory';
+import type { Message } from '../../db/libsql/validation';
 
 // A function that transforms a message array
 export type MessageProcessor = (messages: Message[]) => Message[];
