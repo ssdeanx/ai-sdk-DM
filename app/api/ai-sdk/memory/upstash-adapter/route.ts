@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { checkUpstashAvailability } from '@/lib/memory/upstash';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { z } from 'zod';
+
+const TestTableSchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  created_at: z.string(),
+});
 
 /**
  * GET /api/ai-sdk/memory/upstash-adapter
@@ -54,8 +62,14 @@ export async function GET(): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    // Generated on 2024-07-15T10:30:00
-    // TODO: 2024-07-15T10:30:00 - Implement proper error logging using upstashLogger
+    upstashLogger.error(
+      'GET /api/ai-sdk/memory/upstash-adapter failed',
+      JSON.stringify({
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+        route: 'GET /api/ai-sdk/memory/upstash-adapter',
+      })
+    );
     return NextResponse.json(
       {
         enabled: false,
@@ -65,6 +79,7 @@ export async function GET(): Promise<NextResponse> {
     );
   }
 }
+
 /**
  * POST /api/ai-sdk/memory/upstash-adapter
  *
@@ -80,7 +95,7 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(
   _request: Request,
-  { params }: { params: Record<string, string> }
+  { _params }: { _params: Record<string, string> }
 ): Promise<NextResponse> {
   try {
     // Check if Upstash adapter is enabled
@@ -127,39 +142,42 @@ export async function POST(
       created_at: new Date().toISOString(),
     };
 
-    type TestData = typeof testData;
-
     // Use a test table that won't affect production data
-    // Assuming the custom adapter's upsert method returns a promise resolving to an object
-    // like { data: YourType[] | null, error: PostgrestError | null },
-    // and does not support further chaining of .select().single().
-    const response = await supabase
-      .from('_test_upstash_adapter')
-      .upsert([testData]);
-
-    const error = response.error;
-    const data =
-      response.data && Array.isArray(response.data) && response.data.length > 0
-        ? response.data[0]
-        : null;
-
-    if (error) {
-      if (error.code === '42P01') {
+    // The Upstash TableClient upsert returns the upserted row or throws on error
+    let upsertedRow;
+    try {
+      upsertedRow = await supabase
+        .from<typeof testData>('_test_upstash_adapter', TestTableSchema)
+        .upsert(testData);
+    } catch (err) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'code' in err &&
+        (err as { code?: string }).code === '42P01'
+      ) {
         return NextResponse.json({
           success: true,
           message: 'Upstash adapter is working (test table not available)',
         });
       }
-
-      throw error;
+      throw err;
     }
 
     return NextResponse.json({
       success: true,
       message: 'Upstash adapter is working',
-      data,
+      data: upsertedRow,
     });
   } catch (error) {
+    upstashLogger.error(
+      'POST /api/ai-sdk/memory/upstash-adapter failed',
+      JSON.stringify({
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+        route: 'POST /api/ai-sdk/memory/upstash-adapter',
+      })
+    );
     return NextResponse.json(
       {
         success: false,

@@ -3,6 +3,7 @@ import { getUpstashClient as getSupabaseClient } from '@/lib/memory/supabase'; /
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { createTrace } from '@/lib/langfuse-integration';
 import type { SupabaseClient as StandardSupabaseClient } from '@supabase/supabase-js';
+
 /**
  * GitHub OAuth callback handler
  * This route is called by Supabase after a user authenticates with GitHub.
@@ -10,7 +11,8 @@ import type { SupabaseClient as StandardSupabaseClient } from '@supabase/supabas
  * @param request - The Next.js request object.
  * @returns {Promise<NextResponse>} A redirect response.
  */
-export async function GET(request: Request) {
+
+export async function GET(request: Request): Promise<NextResponse> {
   // Generated on 2025-05-18
   const trace = await createTrace({
     name: 'auth-callback-github',

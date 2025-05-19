@@ -28,8 +28,8 @@ export async function GET(request: Request) {
 
     // If personaId is provided, get score for that specific persona
     if (personaId) {
-      const { persona, score } =
-        await personaManager.getPersonaWithScore(personaId);
+      const persona = await personaManager.getPersonaById(personaId);
+      const score = await personaScoreManager.getScore(personaId);
 
       if (!persona) {
         return NextResponse.json(
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     // Get personas for each score
     const personaScores = await Promise.all(
       scores.map(async (score) => {
-        const persona = await personaManager.getPersona(score.persona_id);
+        const persona = await personaManager.getPersonaById(score.persona_id);
         return {
           score,
           persona: persona
@@ -81,9 +81,8 @@ export async function GET(request: Request) {
     );
   }
 }
-
 /**
- * POST /api/agents/personas/scores
+ * POST /api/ai-sdk/agents/personas/scores
  * Update score for a persona
  */
 export async function POST(request: Request) {
@@ -99,7 +98,7 @@ export async function POST(request: Request) {
     }
 
     // Check if persona exists
-    const persona = await personaManager.getPersona(personaId);
+    const persona = await personaManager.getPersonaById(personaId);
     if (!persona) {
       return NextResponse.json({ error: 'Persona not found' }, { status: 404 });
     }
@@ -128,7 +127,7 @@ export async function POST(request: Request) {
 }
 
 /**
- * GET /api/agents/personas/scores/top
+ * GET /api/ai-sdk/agents/personas/scores/top
  * Get top performing personas
  */
 export async function GET_top(request: Request) {
@@ -159,7 +158,7 @@ export async function GET_top(request: Request) {
 }
 
 /**
- * GET /api/agents/personas/scores/most-used
+ * GET /api/ai-sdk/agents/personas/scores/most-used
  * Get most used personas
  */
 export async function GET_mostUsed(request: Request) {
@@ -171,13 +170,13 @@ export async function GET_mostUsed(request: Request) {
     const mostUsedPersonas = await personaManager.getMostUsedPersonas(limit);
 
     return NextResponse.json(
-      mostUsedPersonas.map(({ persona, score }) => ({
+      mostUsedPersonas.map(({ persona, usageCount }) => ({
         persona: {
           id: persona.id,
           name: persona.name,
           description: persona.description,
         },
-        score,
+        score: usageCount, // Map usageCount to score for consistent response structure
       }))
     );
   } catch (error) {
@@ -190,7 +189,7 @@ export async function GET_mostUsed(request: Request) {
 }
 
 /**
- * POST /api/agents/personas/scores/feedback
+ * POST /api/ai-sdk/agents/personas/scores/feedback
  * Record user feedback for a persona
  */
 export async function POST_feedback(request: Request) {
@@ -226,7 +225,7 @@ export async function POST_feedback(request: Request) {
 }
 
 /**
- * POST /api/agents/personas/scores/recommend
+ * POST /api/ai-sdk/agents/personas/scores/recommend
  * Get a persona recommendation based on context
  */
 export async function POST_recommend(request: Request) {

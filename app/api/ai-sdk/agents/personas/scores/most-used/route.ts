@@ -18,17 +18,16 @@ export async function GET(request: Request) {
     const mostUsedPersonas = await personaManager.getMostUsedPersonas(limit);
 
     return NextResponse.json(
-      mostUsedPersonas.map(({ persona, score }) => ({
+      mostUsedPersonas.map(({ persona, usageCount }) => ({
         persona: {
           id: persona.id,
           name: persona.name,
           description: persona.description,
         },
-        score,
+        score: usageCount,
       }))
     );
   } catch (error) {
-    console.error('Error fetching most used personas:', error);
     return NextResponse.json(
       { error: 'Failed to fetch most used personas' },
       { status: 500 }
