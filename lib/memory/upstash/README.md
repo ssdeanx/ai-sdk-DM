@@ -7,6 +7,7 @@
 > **CRITICAL BLOCKER (Updated):**
 >
 > The Upstash adapter and factory remain **not production-ready** due to:
+>
 > - Pervasive use of `any`, unsafe type assertions, and generic string table names in `supabase-adapter-factory.ts`, `supabase-adapter.ts`, and `redis-store.ts`.
 > - Type system incompatibility with Supabase/Upstash generics, especially for composite keys and fallback logic.
 > - The current implementation cannot be safely used as a drop-in replacement for Supabase in backend API routes.
@@ -70,24 +71,24 @@ This section mirrors the canonical knowledge graph in `upstash.json` and serves 
 
 Below is a deduplicated list of all available tools (from the knowledge graph's onboarding:tool-list), with usage notes, when/how/why to use, and relationships. Use these for onboarding, automation, troubleshooting, and continuous improvement.
 
-| Tool ID                | When to Use                                      | How to Use / Notes                                                                 | Why / Relationships / Connections |
-|------------------------|--------------------------------------------------|------------------------------------------------------------------------------------|-----------------------------------|
-| add_documentation      | Onboarding new libs/APIs, after refactors        | Provide name & URL. Optionally add tags/topics.                                    | Keeps docs up-to-date. Related: update_documentation, search_documentation |
-| update_documentation   | After API/library/workflow changes               | Specify doc to update and new content/URL.                                         | Prevents outdated docs. Related: add_documentation, search_documentation |
-| think                  | Before major changes, debugging, migration       | Write out reasoning, hypotheses, next steps. Use as digital rubber duck.           | Improves code quality. Related: debuggingapproach, sequentialthinking |
-| open_project           | Onboarding, troubleshooting, multi-repo work     | Specify project/workspace to open.                                                 | Ensures context alignment. Related: set_profile, get_profile_context |
-| read_context           | Reviewing legacy code, onboarding, refactoring   | Specify path, file types, recurse.                                                 | Enables deep code analysis. Related: get_chunk_count, generate_outline |
-| get_chunk_count        | Before reading/analyzing large files/dirs        | Provide same params as read_context.                                               | Prevents timeouts. Related: read_context |
-| set_profile            | Switching work types (backend/frontend, etc)     | Specify profile name/settings.                                                     | Optimizes context/tools. Related: get_profile_context, open_project |
-| get_profile_context    | After setting/switching profiles                 | Call after set_profile.                                                            | Gathers context for migration. Related: set_profile |
-| generate_outline       | Onboarding, reviewing, refactoring code          | Specify file path.                                                                 | Understand file structure. Related: read_context |
-| search_documentation   | Troubleshooting, onboarding, migration           | Provide query string.                                                              | Finds best practices. Related: add_documentation, update_documentation, list_documentation |
-| list_documentation     | Onboarding, auditing, updating docs              | Call without params for full list.                                                 | Audits docs. Related: search_documentation, add_documentation |
-| get_library_docs       | Integrating/updating libs, troubleshooting       | Resolve library ID, then fetch docs.                                               | Latest best practices. Related: resolve_library_id |
-| resolve_library_id     | Before fetching docs for new/updated package     | Provide npm package name.                                                          | Ensures correct docs. Related: get_library_docs |
-| write_to_terminal      | Running scripts/tests/deployments, migrations    | Provide command string/params.                                                     | Automates CLI tasks. Related: read_terminal_output, send_control_character |
-| read_terminal_output   | After running scripts/tests/deployments          | Specify terminal session/command.                                                  | Validates automation. Related: write_to_terminal |
-| send_control_character | Stopping/controlling scripts/processes           | Specify control char & terminal session.                                           | Manages automation. Related: write_to_terminal, read_terminal_output |
+| Tool ID                | When to Use                                    | How to Use / Notes                                                       | Why / Relationships / Connections                                                          |
+| ---------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| add_documentation      | Onboarding new libs/APIs, after refactors      | Provide name & URL. Optionally add tags/topics.                          | Keeps docs up-to-date. Related: update_documentation, search_documentation                 |
+| update_documentation   | After API/library/workflow changes             | Specify doc to update and new content/URL.                               | Prevents outdated docs. Related: add_documentation, search_documentation                   |
+| think                  | Before major changes, debugging, migration     | Write out reasoning, hypotheses, next steps. Use as digital rubber duck. | Improves code quality. Related: debuggingapproach, sequentialthinking                      |
+| open_project           | Onboarding, troubleshooting, multi-repo work   | Specify project/workspace to open.                                       | Ensures context alignment. Related: set_profile, get_profile_context                       |
+| read_context           | Reviewing legacy code, onboarding, refactoring | Specify path, file types, recurse.                                       | Enables deep code analysis. Related: get_chunk_count, generate_outline                     |
+| get_chunk_count        | Before reading/analyzing large files/dirs      | Provide same params as read_context.                                     | Prevents timeouts. Related: read_context                                                   |
+| set_profile            | Switching work types (backend/frontend, etc)   | Specify profile name/settings.                                           | Optimizes context/tools. Related: get_profile_context, open_project                        |
+| get_profile_context    | After setting/switching profiles               | Call after set_profile.                                                  | Gathers context for migration. Related: set_profile                                        |
+| generate_outline       | Onboarding, reviewing, refactoring code        | Specify file path.                                                       | Understand file structure. Related: read_context                                           |
+| search_documentation   | Troubleshooting, onboarding, migration         | Provide query string.                                                    | Finds best practices. Related: add_documentation, update_documentation, list_documentation |
+| list_documentation     | Onboarding, auditing, updating docs            | Call without params for full list.                                       | Audits docs. Related: search_documentation, add_documentation                              |
+| get_library_docs       | Integrating/updating libs, troubleshooting     | Resolve library ID, then fetch docs.                                     | Latest best practices. Related: resolve_library_id                                         |
+| resolve_library_id     | Before fetching docs for new/updated package   | Provide npm package name.                                                | Ensures correct docs. Related: get_library_docs                                            |
+| write_to_terminal      | Running scripts/tests/deployments, migrations  | Provide command string/params.                                           | Automates CLI tasks. Related: read_terminal_output, send_control_character                 |
+| read_terminal_output   | After running scripts/tests/deployments        | Specify terminal session/command.                                        | Validates automation. Related: write_to_terminal                                           |
+| send_control_character | Stopping/controlling scripts/processes         | Specify control char & terminal session.                                 | Manages automation. Related: write_to_terminal, read_terminal_output                       |
 
 **Best Practices:**
 
@@ -101,20 +102,20 @@ Below is a deduplicated list of all available tools (from the knowledge graph's 
 
 The following table summarizes the status, todos, tags, API routes, and reasoning tools for each Upstash entity. For full details, see `upstash.json`.
 
-| File                      | Status      | Todos (Key)                                              | Tags (Key)                | API Routes (Key)                | Reasoning Tools (Key)                |
-|---------------------------|-------------|----------------------------------------------------------|---------------------------|----------------------------------|--------------------------------------|
-| agent-state-store.ts      | incomplete  | Remove all any, console; add query, tests, type safety   | upstash, agent-state, ... | /api/ai-sdk/agents, ...          | debuggingapproach, metacognitivemonitoring, codesmells |
-| redis-store.ts            | incomplete  | Remove any, console; add query, tests, helpers           | upstash, redis, ...       | /api/ai-sdk/threads, ...         | debuggingapproach, sequentialthinking, codesmells      |
-| vector-store.ts           | incomplete  | Remove console; add query, tests, type safety, logging   | upstash, vector, ...      | /api/ai-sdk/embeddings, ...      | scientificmethod, decisionframework, codesmells        |
-| upstash-logger.ts         | incomplete  | Remove any, console; add type-safe parsing, tests        | upstash, logging, ...     | /api/ai-sdk/logs, ...            | metacognitivemonitoring, codesmells                   |
-| upstashClients.ts         | incomplete  | Fix Query config: { url, token } is not valid for QueryConfig (see get_errors) | upstash, client, ...      | /api/ai-sdk/*                    | debuggingapproach, metacognitivemonitoring            |
-| upstashTypes.ts           | incomplete  | Expand types for RediSearch/query, add granular types    | upstash, types, ...       |                                  | debuggingapproach, metacognitivemonitoring, codesmells |
-| memoryStore.ts            | incomplete  | Remove any, console; add query, tests, error handling    | upstash, memory, ...      | /api/ai-sdk/threads, ...         | debuggingapproach, decisionframework, codesmells       |
-| stream-processor.ts       | incomplete  | Remove any, console; add query, tests, error handling    | upstash, streaming, ...   | /api/ai-sdk/streams, ...         | sequentialthinking, scientificmethod, codesmells       |
-| memory-processor.ts       | incomplete  | Add query for streaming/semantic search, add tests       | upstash, memory, ...      |                                  | debuggingapproach, codesmells                          |
-| supabase-adapter.ts       | incomplete  | Fix Query API, add CRUD, error handling, tests           | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
-| supabase-adapter-factory.ts| incomplete | Fix TableRow is not generic type errors (see get_errors) | upstash, supabase, ...    |                                  | debuggingapproach, codesmells                          |
-| index.ts                  | incomplete  | Check for missing/broken exports from dependencies (see get_errors) | upstash, barrel, ...      | /api/ai-sdk/*                    | debuggingapproach, codesmells                          |
+| File                        | Status     | Todos (Key)                                                                    | Tags (Key)                | API Routes (Key)            | Reasoning Tools (Key)                                  |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------ | ------------------------- | --------------------------- | ------------------------------------------------------ |
+| agent-state-store.ts        | incomplete | Remove all any, console; add query, tests, type safety                         | upstash, agent-state, ... | /api/ai-sdk/agents, ...     | debuggingapproach, metacognitivemonitoring, codesmells |
+| redis-store.ts              | incomplete | Remove any, console; add query, tests, helpers                                 | upstash, redis, ...       | /api/ai-sdk/threads, ...    | debuggingapproach, sequentialthinking, codesmells      |
+| vector-store.ts             | incomplete | Remove console; add query, tests, type safety, logging                         | upstash, vector, ...      | /api/ai-sdk/embeddings, ... | scientificmethod, decisionframework, codesmells        |
+| upstash-logger.ts           | incomplete | Remove any, console; add type-safe parsing, tests                              | upstash, logging, ...     | /api/ai-sdk/logs, ...       | metacognitivemonitoring, codesmells                    |
+| upstashClients.ts           | incomplete | Fix Query config: { url, token } is not valid for QueryConfig (see get_errors) | upstash, client, ...      | /api/ai-sdk/\*              | debuggingapproach, metacognitivemonitoring             |
+| upstashTypes.ts             | incomplete | Expand types for RediSearch/query, add granular types                          | upstash, types, ...       |                             | debuggingapproach, metacognitivemonitoring, codesmells |
+| memoryStore.ts              | incomplete | Remove any, console; add query, tests, error handling                          | upstash, memory, ...      | /api/ai-sdk/threads, ...    | debuggingapproach, decisionframework, codesmells       |
+| stream-processor.ts         | incomplete | Remove any, console; add query, tests, error handling                          | upstash, streaming, ...   | /api/ai-sdk/streams, ...    | sequentialthinking, scientificmethod, codesmells       |
+| memory-processor.ts         | incomplete | Add query for streaming/semantic search, add tests                             | upstash, memory, ...      |                             | debuggingapproach, codesmells                          |
+| supabase-adapter.ts         | incomplete | Fix Query API, add CRUD, error handling, tests                                 | upstash, supabase, ...    |                             | debuggingapproach, codesmells                          |
+| supabase-adapter-factory.ts | incomplete | Fix TableRow is not generic type errors (see get_errors)                       | upstash, supabase, ...    |                             | debuggingapproach, codesmells                          |
+| index.ts                    | incomplete | Check for missing/broken exports from dependencies (see get_errors)            | upstash, barrel, ...      | /api/ai-sdk/\*              | debuggingapproach, codesmells                          |
 
 **Legend:** See `upstash.json` for full tag and route lists. All files must:
 
@@ -313,19 +314,19 @@ UPSTASH_LOGGER_MAX_LENGTH=1000 # Default max log entries
 ## Feature Coverage Table
 
 | File                        | Type Safety | Logging | @upstash/query | RediSearch | CRUD | Vector | Streaming | Tests | Supabase Fallback |
-|-----------------------------|:-----------:|:-------:|:--------------:|:----------:|:----:|:------:|:---------:|:-----:|:-----------------:|
-| upstashClients.ts           |     ⚠️      |   ✅    |      ⚠️        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
-| upstashTypes.ts             |     ✅      |   ❌    |      ❌        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
-| upstash-logger.ts           |     ⚠️      |   ✅    |      ❌        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
-| redis-store.ts              |     ⚠️      |   ⚠️    |      ⚠️        |     ⚠️     |  ✅  |   ❌   |     ❌    |   ❌  |        ❌         |
-| vector-store.ts             |     ✅      |   ⚠️    |      ⚠️        |     ⚠️     |  ❌  |   ✅   |     ❌    |   ❌  |        ❌         |
-| supabase-adapter.ts         |     ✅      |   ✅    |      ⚠️        |     ⚠️     |  ⚠️  |   ✅   |     ❌    |   ❌  |        ✅         |
-| supabase-adapter-factory.ts |     ⚠️      |   ❌    |      ⚠️        |     ⚠️     |  ⚠️  |   ⚠️   |     ❌    |   ❌  |        ✅         |
-| stream-processor.ts         |     ⚠️      |   ⚠️    |      ⚠️        |     ❌     |  ❌  |   ❌   |     ✅    |   ❌  |        ❌         |
-| memoryStore.ts              |     ⚠️      |   ⚠️    |      ⚠️        |     ❌     |  ✅  |   ⚠️   |     ⚠️    |   ❌  |        ✅         |
-| memory-processor.ts         |     ✅      |   ✅    |      ⚠️        |     ❌     |  ❌  |   ⚠️   |     ✅    |   ❌  |        ✅         |
-| agent-state-store.ts        |     ⚠️      |   ⚠️    |      ⚠️        |     ❌     |  ✅  |   ❌   |     ❌    |   ❌  |        ✅         |
-| index.ts                    |     ⚠️      |   ❌    |      ❌        |     ❌     |  ❌  |   ❌   |     ❌    |   ❌  |        ❌         |
+| --------------------------- | :---------: | :-----: | :------------: | :--------: | :--: | :----: | :-------: | :---: | :---------------: |
+| upstashClients.ts           |     ⚠️      |   ✅    |       ⚠️       |     ❌     |  ❌  |   ❌   |    ❌     |  ❌   |        ❌         |
+| upstashTypes.ts             |     ✅      |   ❌    |       ❌       |     ❌     |  ❌  |   ❌   |    ❌     |  ❌   |        ❌         |
+| upstash-logger.ts           |     ⚠️      |   ✅    |       ❌       |     ❌     |  ❌  |   ❌   |    ❌     |  ❌   |        ❌         |
+| redis-store.ts              |     ⚠️      |   ⚠️    |       ⚠️       |     ⚠️     |  ✅  |   ❌   |    ❌     |  ❌   |        ❌         |
+| vector-store.ts             |     ✅      |   ⚠️    |       ⚠️       |     ⚠️     |  ❌  |   ✅   |    ❌     |  ❌   |        ❌         |
+| supabase-adapter.ts         |     ✅      |   ✅    |       ⚠️       |     ⚠️     |  ⚠️  |   ✅   |    ❌     |  ❌   |        ✅         |
+| supabase-adapter-factory.ts |     ⚠️      |   ❌    |       ⚠️       |     ⚠️     |  ⚠️  |   ⚠️   |    ❌     |  ❌   |        ✅         |
+| stream-processor.ts         |     ⚠️      |   ⚠️    |       ⚠️       |     ❌     |  ❌  |   ❌   |    ✅     |  ❌   |        ❌         |
+| memoryStore.ts              |     ⚠️      |   ⚠️    |       ⚠️       |     ❌     |  ✅  |   ⚠️   |    ⚠️     |  ❌   |        ✅         |
+| memory-processor.ts         |     ✅      |   ✅    |       ⚠️       |     ❌     |  ❌  |   ⚠️   |    ✅     |  ❌   |        ✅         |
+| agent-state-store.ts        |     ⚠️      |   ⚠️    |       ⚠️       |     ❌     |  ✅  |   ❌   |    ❌     |  ❌   |        ✅         |
+| index.ts                    |     ⚠️      |   ❌    |       ❌       |     ❌     |  ❌  |   ❌   |    ❌     |  ❌   |        ❌         |
 
 Legend: ✅ = Complete, ⚠️ = Needs work, ❌ = Not present
 
@@ -351,7 +352,11 @@ Legend: ✅ = Complete, ⚠️ = Needs work, ❌ = Not present
 - Example:
 
   ```ts
-  import { getRedisClient, getVectorClient, getUpstashQueryClient } from './upstashClients';
+  import {
+    getRedisClient,
+    getVectorClient,
+    getUpstashQueryClient,
+  } from './upstashClients';
   const redis = getRedisClient();
   const vector = getVectorClient();
   const query = getUpstashQueryClient();
@@ -378,7 +383,10 @@ Legend: ✅ = Complete, ⚠️ = Needs work, ❌ = Not present
   import { getUpstashQueryClient } from './upstashClients';
   const query = getUpstashQueryClient();
   const threads = query.createCollection<Thread>('threads');
-  const threadsByUser = threads.createIndex({ name: 'threads_by_user', terms: ['userId'] });
+  const threadsByUser = threads.createIndex({
+    name: 'threads_by_user',
+    terms: ['userId'],
+  });
   const userThreads = await threadsByUser.match({ userId: '123' });
   ```
 
@@ -394,7 +402,10 @@ Legend: ✅ = Complete, ⚠️ = Needs work, ❌ = Not present
   import { getUpstashQueryClient } from './upstashClients';
   const query = getUpstashQueryClient();
   const vectors = query.createCollection<VectorDocument>('vectors');
-  const vectorsByDoc = vectors.createIndex({ name: 'vectors_by_doc', terms: ['document_id'] });
+  const vectorsByDoc = vectors.createIndex({
+    name: 'vectors_by_doc',
+    terms: ['document_id'],
+  });
   const docVectors = await vectorsByDoc.match({ document_id: 'doc1' });
   ```
 
@@ -449,12 +460,22 @@ import { Query } from '@upstash/query';
 import { Redis } from '@upstash/redis';
 
 type User = { id: string; name: string; organization: string; email: string };
-const q = new Query({ redis: Redis.fromEnv({ automaticDeserialization: false }) });
+const q = new Query({
+  redis: Redis.fromEnv({ automaticDeserialization: false }),
+});
 const users = q.createCollection<User>('users');
-const usersByOrg = users.createIndex({ name: 'users_by_organization', terms: ['organization'] });
+const usersByOrg = users.createIndex({
+  name: 'users_by_organization',
+  terms: ['organization'],
+});
 
 // Add a user
-await users.set('user1', { id: 'user1', name: 'Alice', organization: 'Upstash', email: 'alice@upstash.com' });
+await users.set('user1', {
+  id: 'user1',
+  name: 'Alice',
+  organization: 'Upstash',
+  email: 'alice@upstash.com',
+});
 
 // Query by organization
 const upstashUsers = await usersByOrg.match({ organization: 'Upstash' });
@@ -464,20 +485,33 @@ const upstashUsers = await usersByOrg.match({ organization: 'Upstash' });
 
 ```ts
 const deployments = q.createCollection<Deployment>('deployments');
-const deploymentsByOrg = deployments.createIndex({ name: 'deployments_by_org', terms: ['organization'] });
+const deploymentsByOrg = deployments.createIndex({
+  name: 'deployments_by_org',
+  terms: ['organization'],
+});
 const results = await deploymentsByOrg.match({ organization: 'Upstash' });
 // Range query example (numeric or lexicographic)
-const rangeResults = await deploymentsByOrg.range({ organization: 'Upstash' }, { time: { gte: 1700000000000 } });
+const rangeResults = await deploymentsByOrg.range(
+  { organization: 'Upstash' },
+  { time: { gte: 1700000000000 } }
+);
 ```
 
 ### 3. Hybrid Search with Vectors and Metadata
 
 ```ts
 // Use Upstash Vector for similarity search, then filter with @upstash/query
-const vectorResults = await vectorClient.query({ vector, topK: 10, includeMetadata: true });
+const vectorResults = await vectorClient.query({
+  vector,
+  topK: 10,
+  includeMetadata: true,
+});
 const query = getUpstashQueryClient();
 const vectors = query.createCollection<VectorDocument>('vectors');
-const vectorsByDoc = vectors.createIndex({ name: 'vectors_by_doc', terms: ['document_id'] });
+const vectorsByDoc = vectors.createIndex({
+  name: 'vectors_by_doc',
+  terms: ['document_id'],
+});
 const docVectors = await vectorsByDoc.match({ document_id: 'doc1' });
 ```
 
@@ -512,7 +546,7 @@ const docVectors = await vectorsByDoc.match({ document_id: 'doc1' });
 - **Example Types:**
 
   ```ts
-  type Metadata = { title: string; genre: "sci-fi" | "fantasy"; year: number };
+  type Metadata = { title: string; genre: 'sci-fi' | 'fantasy'; year: number };
   const index = new Index<Metadata>();
   ```
 
@@ -532,8 +566,8 @@ const docVectors = await vectorsByDoc.match({ document_id: 'doc1' });
 
   ```ts
   type User = { id: string; org: string };
-  const users = q.createCollection<User>("users");
-  const byOrg = users.createIndex({ name: "by_org", terms: ["org"] });
+  const users = q.createCollection<User>('users');
+  const byOrg = users.createIndex({ name: 'by_org', terms: ['org'] });
   ```
 
 - **Common Use Cases:** Secondary indexes, advanced filtering, hybrid search, typesafe queries.

@@ -16,7 +16,11 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "forceConsistentCasingInFileNames": true,
-    "typeRoots": ["./node_modules/@types", "./db/supabase/validations", "./db/libsql/validation.ts"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./db/supabase/validations",
+      "./db/libsql/validation.ts"
+    ],
     "types": ["node"],
     "baseUrl": ".",
     "plugins": [

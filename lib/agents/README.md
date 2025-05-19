@@ -5,6 +5,7 @@
 When you (AI assistant) join a new chat about `/lib/agents`, use the following pattern to enrich your responses:
 
 1. **Background**: This folder implements the Agent framework for the DeanmachinesAI project:
+
    - **BaseAgent**: Core agent class with lifecycle hooks, tool initialization, and run logic
    - **AgentRegistry**: Loads agent configurations from Supabase and manages agent instances
    - **agent-service**: Orchestrates agent execution with memory, tools, and AI providers
@@ -12,6 +13,7 @@ When you (AI assistant) join a new chat about `/lib/agents`, use the following p
    - **Persona System**: Dynamic persona management with customizable system prompts and model settings
 
 2. **Your Role**: Provide code snippets, refactor suggestions, and troubleshooting steps tailored to:
+
    - Agent implementation patterns and best practices
    - Registry and service flow optimizations
    - Multi-agent orchestration techniques
@@ -19,6 +21,7 @@ When you (AI assistant) join a new chat about `/lib/agents`, use the following p
    - Dynamic persona configuration
 
 3. **Goals**:
+
    - Clarify file responsibilities and data flows (Supabase → Agent → Memory → Tools → AI)
    - Offer step-by-step guidance for adding/updating agents, hooks, or multi-agent features
    - Maintain consistency with existing architecture and TypeScript types (`agent.types.ts`)
@@ -26,6 +29,7 @@ When you (AI assistant) join a new chat about `/lib/agents`, use the following p
    - Explain state management techniques for persistent memory and context window optimization
 
 4. **Constraints**:
+
    - Avoid large-scale refactors unless explicitly requested
    - Align code with Supabase-driven configs and LibSQL memory patterns
    - Use clear, concise explanations and minimal examples
@@ -128,16 +132,19 @@ lib/agents/
 ## 3. Agent Loading & Execution Flow
 
 1. **Registry Initialization** (`registry.ts`):
+
    - Connect to Supabase via `createSupabaseClient()`.
    - Load all `agents` rows.
    - For each agent, load its tool configs and instantiate `BaseAgent(config, tools)`.
 
 2. **Running an Agent** (`agent-service.ts`):
+
    - Call `runAgent(agentId, threadId, optionalInput)`.
    - Service fetches agent & model configs, loads tools, and manages memory thread.
    - Delegates to either `BaseAgent.run()` or inline logic to stream/generate response.
 
 3. **Memory Management** (`db.ts` / `memory.ts`):
+
    - Uses LibSQL client for threads and messages.
    - Persists messages and agent state for context.
 
@@ -264,7 +271,7 @@ class OrchestratorAgent extends BaseAgent {
     super(config, tools);
 
     // Register worker agents
-    workers.forEach(worker => {
+    workers.forEach((worker) => {
       this.workerAgents.set(worker.config.id, worker);
     });
   }
@@ -319,15 +326,18 @@ A routing agent analyzes user queries and directs them to the most appropriate s
 
 ```typescript
 // Example routing logic
-async function routeQuery(query: string, agents: BaseAgent[]): Promise<BaseAgent> {
+async function routeQuery(
+  query: string,
+  agents: BaseAgent[]
+): Promise<BaseAgent> {
   // Generate embeddings for the query
   const queryEmbedding = await generateEmbedding(query);
 
   // Generate embeddings for each agent's description
   const agentEmbeddings = await Promise.all(
-    agents.map(async agent => ({
+    agents.map(async (agent) => ({
       agent,
-      embedding: await generateEmbedding(agent.config.description)
+      embedding: await generateEmbedding(agent.config.description),
     }))
   );
 
@@ -353,16 +363,19 @@ For tasks with independent sub-components, implement parallel processing:
 
 ```typescript
 // Example parallel processing implementation
-async function processInParallel(query: string, agents: BaseAgent[]): Promise<AIResponse[]> {
+async function processInParallel(
+  query: string,
+  agents: BaseAgent[]
+): Promise<AIResponse[]> {
   // Create subtasks for each agent
-  const subtasks = agents.map(agent => ({
+  const subtasks = agents.map((agent) => ({
     agent,
-    input: query
+    input: query,
   }));
 
   // Execute subtasks in parallel
   const results = await Promise.all(
-    subtasks.map(async subtask => {
+    subtasks.map(async (subtask) => {
       try {
         return await subtask.agent.run(subtask.input);
       } catch (error) {
@@ -439,7 +452,8 @@ class DynamicPersonaManager {
     const roleTemplate = this.promptTemplates.get(role) || '';
 
     // Get intent-specific instructions
-    const intentInstructions = this.promptTemplates.get(`${role}_${intent}`) || '';
+    const intentInstructions =
+      this.promptTemplates.get(`${role}_${intent}`) || '';
 
     // Get tone modifiers
     const toneModifiers = this.promptTemplates.get(`tone_${tone}`) || '';
@@ -457,9 +471,18 @@ class DynamicPersonaManager {
 
   private loadPromptTemplates(): void {
     // Example templates
-    this.promptTemplates.set('support_agent', 'You are a helpful support agent for our product.');
-    this.promptTemplates.set('support_agent_troubleshooting', 'Focus on diagnosing and solving technical issues.');
-    this.promptTemplates.set('tone_friendly', 'Use a warm, approachable tone with simple language.');
+    this.promptTemplates.set(
+      'support_agent',
+      'You are a helpful support agent for our product.'
+    );
+    this.promptTemplates.set(
+      'support_agent_troubleshooting',
+      'Focus on diagnosing and solving technical issues.'
+    );
+    this.promptTemplates.set(
+      'tone_friendly',
+      'Use a warm, approachable tone with simple language.'
+    );
     // Load more templates from database
   }
 }
@@ -478,15 +501,15 @@ export const personas = customProvider({
   languageModels: {
     'support-agent-friendly': openai('gpt-4o', {
       temperature: 0.7,
-      system: "You are a friendly and empathetic support agent...",
+      system: 'You are a friendly and empathetic support agent...',
     }),
     'support-agent-technical': openai('gpt-4o', {
       temperature: 0.3,
-      system: "You are a precise and technical support agent...",
+      system: 'You are a precise and technical support agent...',
     }),
     'creative-storyteller': openai('gpt-4o', {
       temperature: 0.9,
-      system: "You are a master storyteller, weave captivating narratives...",
+      system: 'You are a master storyteller, weave captivating narratives...',
     }),
   },
   fallbackProvider: openai,
@@ -530,9 +553,11 @@ export const personas = customProvider({
 ## 6. Onboarding Steps for a New Agent Persona
 
 1. **Supabase Configuration**:
+
    - Add row to `agents` table with `id`, `name`, `description`, `model_id`, `tool_ids`, `system_prompt`.
 
 2. **Code Verification**:
+
    - Run `agentRegistry.init()` to load new agent.
    - Call `agentRegistry.getAgent(newId).run(prompt)` to exercise.
 
@@ -577,4 +602,4 @@ export const personas = customProvider({
 
 ---
 
-*End of `/lib/agents/README.md`*
+_End of `/lib/agents/README.md`_

@@ -6,8 +6,10 @@
  */
 
 // Mock environment variables for testing
-process.env.UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || 'https://test-redis-url.upstash.io';
-process.env.UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || 'test-token';
+process.env.UPSTASH_REDIS_REST_URL =
+  process.env.UPSTASH_REDIS_REST_URL || 'https://test-redis-url.upstash.io';
+process.env.UPSTASH_REDIS_REST_TOKEN =
+  process.env.UPSTASH_REDIS_REST_TOKEN || 'test-token';
 process.env.MEMORY_PROVIDER = 'upstash'; // Test with Upstash first
 
 // Import required modules
@@ -24,7 +26,7 @@ const testAgent = {
   description: 'Agent for testing Upstash integration',
   modelId: 'gemini-2.0-flash',
   systemPrompt: 'You are a test agent',
-  toolIds: []
+  toolIds: [],
 };
 
 // Helper function to create a test agent
@@ -32,13 +34,15 @@ async function createTestAgent() {
   const response = await nodeFetch(`${BASE_URL}`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(testAgent)
+    body: JSON.stringify(testAgent),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create test agent: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to create test agent: ${response.status} ${response.statusText}`
+    );
   }
 
   return await response.json();
@@ -49,7 +53,7 @@ async function testGetAgent(agentId) {
   console.log(`Testing GET /api/ai-sdk/agents/${agentId}...`);
 
   const response = await nodeFetch(`${BASE_URL}/${agentId}`, {
-    method: 'GET'
+    method: 'GET',
   });
 
   if (!response.ok) {
@@ -65,7 +69,9 @@ async function testGetAgent(agentId) {
   }
 
   if (agent.name !== testAgent.name) {
-    throw new Error(`Agent name mismatch: expected ${testAgent.name}, got ${agent.name}`);
+    throw new Error(
+      `Agent name mismatch: expected ${testAgent.name}, got ${agent.name}`
+    );
   }
 
   console.log('GET test passed');
@@ -78,15 +84,15 @@ async function testPatchAgent(agentId) {
 
   const updateData = {
     name: `Updated Test Agent ${Date.now()}`,
-    description: 'Updated description'
+    description: 'Updated description',
   };
 
   const response = await nodeFetch(`${BASE_URL}/${agentId}`, {
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(updateData)
+    body: JSON.stringify(updateData),
   });
 
   if (!response.ok) {
@@ -98,11 +104,15 @@ async function testPatchAgent(agentId) {
 
   // Verify updated data
   if (updatedAgent.name !== updateData.name) {
-    throw new Error(`Updated name mismatch: expected ${updateData.name}, got ${updatedAgent.name}`);
+    throw new Error(
+      `Updated name mismatch: expected ${updateData.name}, got ${updatedAgent.name}`
+    );
   }
 
   if (updatedAgent.description !== updateData.description) {
-    throw new Error(`Updated description mismatch: expected ${updateData.description}, got ${updatedAgent.description}`);
+    throw new Error(
+      `Updated description mismatch: expected ${updateData.description}, got ${updatedAgent.description}`
+    );
   }
 
   console.log('PATCH test passed');
@@ -114,7 +124,7 @@ async function testDeleteAgent(agentId) {
   console.log(`Testing DELETE /api/ai-sdk/agents/${agentId}...`);
 
   const response = await nodeFetch(`${BASE_URL}/${agentId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
   });
 
   if (!response.ok) {
@@ -132,7 +142,7 @@ async function testDeleteAgent(agentId) {
   // Verify agent no longer exists
   try {
     const getResponse = await nodeFetch(`${BASE_URL}/${agentId}`, {
-      method: 'GET'
+      method: 'GET',
     });
 
     if (getResponse.ok) {
@@ -143,8 +153,10 @@ async function testDeleteAgent(agentId) {
       throw new Error(`Expected 404 status, got ${getResponse.status}`);
     }
   } catch (error) {
-    if (error.message !== 'Agent still exists after deletion' &&
-        error.message !== `Expected 404 status, got ${getResponse.status}`) {
+    if (
+      error.message !== 'Agent still exists after deletion' &&
+      error.message !== `Expected 404 status, got ${getResponse.status}`
+    ) {
       throw error;
     }
   }
@@ -231,7 +243,7 @@ async function runAllTests() {
 }
 
 // Run tests
-runAllTests().catch(error => {
+runAllTests().catch((error) => {
   console.error('Test failed:', error);
   process.exit(1);
 });

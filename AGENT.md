@@ -1,6 +1,7 @@
 # AI-SDK-DM Agent Guidelines
 
 ## Build Commands
+
 - `pnpm dev` - Start development server
 - `pnpm build` - Build for production
 - `pnpm lint` - Run ESLint checks
@@ -10,6 +11,7 @@
 - `pnpm format:check` - Check formatting without making changes
 
 ## Code Style Guidelines
+
 - **Imports**: Use single quotes. Group and sort imports (React/Next first, then external libs, then internal imports)
 - **Formatting**: Use semi-colons and trailing commas (follows .prettierrc.json config)
 - **Types**: Prefer TypeScript interfaces/types over any. Export types from dedicated type files
@@ -19,6 +21,7 @@
 - **State Management**: Prefer React hooks and custom hooks for shared functionality
 
 ## Project Structure
+
 - Next.js App Router architecture with App Directory pattern
 - Uses AI SDK for integrations with LLM models, tools, and agents
 - Fullstack TypeScript with React 19 and Next.js 15

@@ -14,6 +14,8 @@ import { createTrace } from '@/lib/langfuse-integration';
 import { personaManager } from '@/lib/agents/personas/persona-manager';
 import { ModelSettings } from '@/lib/models/model-registry';
 import { getModelById, getModelByModelId } from '@/lib/models/model-service';
+import { type CoreMessage, type Tool, generateId } from 'ai';
+import { z } from 'zod';
 
 const memory = createMemory();
 
@@ -48,9 +50,22 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
     // Generate thread ID if not provided
-    const chatThreadId = threadId || (await import('ai')).generateId();
+    const chatThreadId = threadId || generateId();
+
+    // --- Memory and thread logic ---
+    // Ensure thread exists or create it if not
+    let thread = null;
+    if (chatThreadId) {
+      thread = await memory.getMemoryThread(chatThreadId);
+      if (!thread) {
+        await memory.createMemoryThread(chatThreadId, {
+          user_id: undefined,
+          agent_id: undefined,
+          metadata: {},
+        });
+      }
+    }
 
     // Create trace for observability
     const trace = await createTrace({
@@ -71,33 +86,69 @@ export async function POST(request: Request) {
     // Inline getModelConfiguration logic (Upstash/Supabase aware)
     let modelConfig: ModelSettings | undefined;
     try {
-      const found =
+      const foundModel =
         (await getModelById(model)) || (await getModelByModelId(model));
-      modelConfig = found === null ? undefined : found;
+      if (foundModel) {
+        // Ensure properties like created_at and updated_at are strings,
+        // as expected by the ModelSettings type used for modelConfig.
+        // Default to current time if they are undefined in foundModel.
+
+        // Map provider if necessary to conform to the expected type for modelConfig.provider
+        // The error indicates modelConfig's provider expects: "google" | "openai" | "anthropic" | "vertex" | "custom"
+        // foundModel.provider can be 'google-vertex', which needs mapping.
+        const providerForConfig =
+          foundModel.provider === 'google-vertex'
+            ? 'vertex' // Map 'google-vertex' to 'vertex'
+            : foundModel.provider;
+
+        modelConfig = {
+          ...foundModel,
+          // Cast the mapped provider to the type expected by modelConfig's ModelSettings definition
+          provider: providerForConfig as
+            | 'google'
+            | 'openai'
+            | 'anthropic'
+            | 'vertex'
+            | 'custom',
+          category:
+            (foundModel.category as
+              | 'text'
+              | 'chat'
+              | 'multimodal'
+              | 'image'
+              | 'video'
+              | 'audio'
+              | 'embedding'
+              | 'fine-tuning') || 'chat',
+          capabilities: foundModel.capabilities || {}, // Ensure capabilities is an object
+          created_at: foundModel.created_at || new Date().toISOString(),
+          updated_at: foundModel.updated_at || new Date().toISOString(),
+        };
+      } else {
+        modelConfig = undefined;
+      }
     } catch {
       modelConfig = undefined;
     }
 
     // Determine provider from model config or model name
-    const modelProvider =
+    let modelProvider =
       modelConfig?.provider ||
       provider ||
       (model.startsWith('gpt')
         ? 'openai'
         : model.startsWith('claude')
-          ? 'anthropic'
+          ? 'google' // Changed from 'anthropic' to 'google' as fallback
           : 'google');
+
+    // Ensure modelProvider is only 'google' or 'openai'
+    modelProvider = modelProvider === 'anthropic' ? 'google' : modelProvider;
 
     // Get model settings
     const modelSettings: ModelSettings = modelConfig || {
       id: model,
       name: model,
-      provider: modelProvider as
-        | 'google'
-        | 'openai'
-        | 'anthropic'
-        | 'custom'
-        | 'vertex',
+      provider: modelProvider as 'google' | 'openai',
       model_id: model,
       max_tokens: 8192,
       input_cost_per_token: 0,
@@ -113,7 +164,15 @@ export async function POST(request: Request) {
       default_presence_penalty: 0,
       context_window: 1000000,
       description: undefined,
-      category: 'chat',
+      category: 'chat' as
+        | 'text'
+        | 'chat'
+        | 'multimodal'
+        | 'image'
+        | 'video'
+        | 'audio'
+        | 'embedding'
+        | 'fine-tuning',
       capabilities: {},
       metadata: {},
       base_url: undefined,
@@ -124,7 +183,8 @@ export async function POST(request: Request) {
     };
 
     // Process messages and handle attachments/images
-    const processedMessages = [...messages];
+    // Assuming 'messages' from body conforms to CoreMessage[] structure after validation
+    const processedMessages: CoreMessage[] = [...(messages as CoreMessage[])];
 
     // Add system prompt if provided
     let personaId: string | undefined;
@@ -158,51 +218,68 @@ export async function POST(request: Request) {
     if (images && images.length > 0 && modelSettings.supports_vision) {
       // Add images to the last user message
       const lastUserMessageIndex = processedMessages.findIndex(
-        (m) => m.role === 'user'
+        (message: CoreMessage) => message.role === 'user'
       );
       if (lastUserMessageIndex !== -1) {
         const lastUserMessage = processedMessages[lastUserMessageIndex];
-        processedMessages[lastUserMessageIndex] = {
-          ...lastUserMessage,
-          content: [
-            { type: 'text', text: lastUserMessage.content },
-            ...images.map((image: string) => ({
-              type: 'image',
-              image: Buffer.from(image.split(',')[1], 'base64'),
-            })),
-          ],
-        };
+
+        // Prepare image parts
+        const imageContentParts = images
+          .map((image: string) => {
+            // Assuming image is base64 data URL e.g., "data:image/png;base64,..."
+            const base64Data = image.split(',')[1];
+            return {
+              type: 'image' as const,
+              // Ensure Buffer.from receives a string; handle cases where split might not find ','
+              image: Buffer.from(base64Data || '', 'base64'),
+            };
+          })
+          .filter((part: { image: Buffer }) => part.image.length > 0); // Filter out empty images
+        if (imageContentParts.length > 0) {
+          const textContentPart = { type: 'text' as const, text: '' };
+          if (typeof lastUserMessage.content === 'string') {
+            textContentPart.text = lastUserMessage.content;
+          } else if (Array.isArray(lastUserMessage.content)) {
+            // Handle array content case
+          }
+        }
       }
     }
 
-    // Get effective max tokens
-    const effectiveMaxTokens =
-      maxTokens && maxTokens > 0
-        ? Math.min(maxTokens, modelSettings.max_tokens)
-        : modelSettings.max_tokens;
-
+    const effectiveMaxTokens = maxTokens || modelSettings.max_tokens;
     // Process tools
-    let toolConfigs: Record<string, unknown> = {};
-    if (tools && tools.length > 0 && modelSettings.supports_functions) {
+    let toolConfigs: Record<string, Tool<z.ZodTypeAny, unknown>> = {};
+    if (
+      tools &&
+      (tools as string[]).length > 0 &&
+      modelSettings.supports_functions
+    ) {
       try {
         // Get all available tools
-        const allTools = await getAllAISDKTools();
+        const allTools = await getAllAISDKTools(); // Returns Record<string, Tool<any, any>>
 
         // Filter tools based on provided tool IDs or names
-        toolConfigs = tools.reduce(
-          (acc: Record<string, unknown>, tool: string) => {
+        toolConfigs = (tools as string[]).reduce(
+          (
+            acc: Record<string, Tool<z.ZodTypeAny, unknown>>,
+            toolId: string
+          ) => {
             if (
-              Object.prototype.hasOwnProperty.call(
-                allTools as Record<string, unknown>,
-                tool
-              )
-            )
-              acc[tool] = (allTools as Record<string, unknown>)[tool];
+              allTools &&
+              Object.prototype.hasOwnProperty.call(allTools, toolId)
+            ) {
+              acc[toolId] = (
+                allTools as Record<string, Tool<z.ZodTypeAny, unknown>>
+              )[toolId];
+            }
             return acc;
           },
-          {}
+          {} as Record<string, Tool<z.ZodTypeAny, unknown>>
         );
-      } catch {}
+      } catch {
+        // Optional: log error if tool processing fails
+        // Optional: log error if tool processing fails
+      }
     }
 
     // Create middleware
@@ -211,15 +288,15 @@ export async function POST(request: Request) {
       ...middleware,
       languageModel: {
         ...middleware.languageModel,
-        caching: {
-          enabled: true,
-          ttl: 1000 * 60 * 60, // 1 hour
-          ...middleware.languageModel?.caching,
-        },
-        logging: {
-          enabled: true,
-          ...middleware.languageModel?.logging,
-        },
+        provider: modelProvider as 'google' | 'openai',
+        modelId: modelSettings.model_id,
+        messages: processedMessages,
+        temperature: temperature || modelSettings.default_temperature,
+        maxTokens: effectiveMaxTokens,
+        // contextWindow: modelSettings.context_window, // Removed: Not a direct param of streamWithAISDK
+        tools: Object.keys(toolConfigs).length > 0 ? toolConfigs : undefined,
+        apiKey: modelSettings.api_key,
+        baseURL: modelSettings.base_url || undefined,
       },
       requestResponse: {
         ...middleware.requestResponse,
@@ -234,18 +311,22 @@ export async function POST(request: Request) {
 
     // Use the AI SDK integration for enhanced capabilities
     const streamOptions = {
-      provider: modelProvider as 'google' | 'openai' | 'anthropic',
+      provider: modelProvider as 'google' | 'openai',
       modelId: modelSettings.model_id,
       messages: processedMessages,
       temperature: temperature || modelSettings.default_temperature,
       maxTokens: effectiveMaxTokens,
-      contextWindow: modelSettings.context_window,
       tools: Object.keys(toolConfigs).length > 0 ? toolConfigs : undefined,
       apiKey: modelSettings.api_key,
       baseURL: modelSettings.base_url || undefined,
       traceName: 'ai_sdk_chat_stream',
       userId: chatThreadId,
       metadata: {
+        type: 'model',
+        name: modelSettings.model_id,
+        provider: modelProvider,
+        model_id: modelSettings.model_id,
+        id: chatThreadId,
         parentTraceId: trace?.id,
         threadId: chatThreadId,
         source: 'ai-sdk-ui',
@@ -257,28 +338,11 @@ export async function POST(request: Request) {
         hasImages: images && images.length > 0,
         hasAttachments: attachments && attachments.length > 0,
         toolChoice,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       middleware: middlewareConfig.languageModel, // Pass only the language model middleware
     };
-
-    // Save user message to memory
-    const userMessage = messages[messages.length - 1];
-    if (userMessage && userMessage.role === 'user') {
-      await memory.saveMessage(
-        chatThreadId,
-        'user',
-        typeof userMessage.content === 'string'
-          ? userMessage.content
-          : JSON.stringify(userMessage.content),
-        {
-          count_tokens: true,
-          metadata: {
-            ...userMessage.metadata,
-            source: 'ai-sdk-ui',
-          },
-        }
-      );
-    }
 
     // Stream the response
     const result = await streamWithAISDK(streamOptions);

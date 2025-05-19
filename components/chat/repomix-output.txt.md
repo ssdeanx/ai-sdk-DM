@@ -1,21 +1,25 @@
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+5. Multiple file entries, each consisting of:
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -24,6 +28,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: components/chat
@@ -37,6 +42,7 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
+
 ```
 components/chat/ai-image-generator.tsx
 components/chat/ai-sdk-chat.tsx
@@ -70,6 +76,7 @@ components/chat/visualization-with-tracing.tsx
 # Files
 
 ## File: components/chat/ai-sdk-chatHelper.module.css
+
 ```css
 .parseErrorRoot {
 .parseErrorTitle {
@@ -80,6 +87,7 @@ components/chat/visualization-with-tracing.tsx
 ```
 
 ## File: components/chat/canvasDisplay.module.css
+
 ```css
 .canvasDisplayRoot {
 .canvas {
@@ -88,6 +96,7 @@ components/chat/visualization-with-tracing.tsx
 ```
 
 ## File: components/chat/file-upload.tsx
+
 ```typescript
 import type React from "react"
 import { useRef } from "react"
@@ -121,6 +130,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
 ```
 
 ## File: components/chat/middleware-config.tsx
+
 ```typescript
 // components/chat/middleware-config.tsx
 import { useState } from 'react'
@@ -156,6 +166,7 @@ interface MiddlewareConfigProps {
 ```
 
 ## File: components/chat/three-viewer.tsx
+
 ```typescript
 import { useRef, useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
@@ -259,6 +270,7 @@ className=
 ```
 
 ## File: components/chat/tracing-visualization.tsx
+
 ```typescript
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -337,6 +349,7 @@ className=
 ```
 
 ## File: components/chat/ai-image-generator.tsx
+
 ```typescript
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -386,6 +399,7 @@ disabled=
 ```
 
 ## File: components/chat/browser-display.tsx
+
 ```typescript
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -416,6 +430,7 @@ onLoad=
 ```
 
 ## File: components/chat/canvasDisplay.tsx
+
 ```typescript
 import React, { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -463,6 +478,7 @@ const prompt = () =>
 ```
 
 ## File: components/chat/chat-sidebar.tsx
+
 ```typescript
 import { useState } from "react"
 import {
@@ -517,6 +533,7 @@ onValueChange=
 ```
 
 ## File: components/chat/computer-use.tsx
+
 ```typescript
 import { useState, useRef } from "react"
 import { motion } from "framer-motion"
@@ -545,6 +562,7 @@ className=
 ```
 
 ## File: components/chat/data-table.tsx
+
 ```typescript
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -615,6 +633,7 @@ onChange=
 ```
 
 ## File: components/chat/data-visualization.tsx
+
 ```typescript
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -774,6 +793,7 @@ className=
 ```
 
 ## File: components/chat/interactive-form.tsx
+
 ```typescript
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -854,6 +874,7 @@ onCheckedChange=
 ```
 
 ## File: components/chat/interactive-map.tsx
+
 ```typescript
 import { useState, useRef, useEffect, useLayoutEffect } from "react"
 import { motion } from "framer-motion"
@@ -914,6 +935,7 @@ zoomControl={false} // Set to false as a separate ZoomControl component is used
 ```
 
 ## File: components/chat/openai-assistant-chat.tsx
+
 ```typescript
 import { useState, useRef, useEffect } from 'react';
 import { useAssistant, Message } from '@ai-sdk/react';
@@ -992,6 +1014,7 @@ const renderContent = (content: string) =>
 ```
 
 ## File: components/chat/screen-share.tsx
+
 ```typescript
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -1021,6 +1044,7 @@ className=
 ```
 
 ## File: components/chat/visualization-with-tracing.tsx
+
 ```typescript
 import { useState, useEffect } from "react"
 import { DataVisualization } from "./data-visualization"
@@ -1058,6 +1082,7 @@ const handleRefresh = async () =>
 ```
 
 ## File: components/chat/audio-player.tsx
+
 ```typescript
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -1125,6 +1150,7 @@ className=
 ```
 
 ## File: components/chat/chat-message.tsx
+
 ```typescript
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -1184,6 +1210,7 @@ const getGradientColors = () =>
 ```
 
 ## File: components/chat/code-block.tsx
+
 ```typescript
 import { useState } from "react"
 import { Check, Copy, Terminal } from "lucide-react"
@@ -1205,6 +1232,7 @@ className=
 ```
 
 ## File: components/chat/image-display.tsx
+
 ```typescript
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -1225,6 +1253,7 @@ className=
 ```
 
 ## File: components/chat/mermaid-diagram.tsx
+
 ```typescript
 import { useEffect, useRef, useState } from "react"
 import { Loader2, Copy, Check, Maximize, Minimize, Download } from "lucide-react"
@@ -1250,6 +1279,7 @@ className=
 ```
 
 ## File: components/chat/model-viewer.tsx
+
 ```typescript
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
@@ -1291,6 +1321,7 @@ className=
 ```
 
 ## File: components/chat/ai-sdk-chatHelper.tsx
+
 ```typescript
 // Helper for chat content rendering and parsing
 import React from 'react';
@@ -1343,6 +1374,7 @@ const ParseErrorDisplay: React.FC<ParseErrorDisplayProps> = ({ componentName, er
 ```
 
 ## File: components/chat/enhanced-chat.tsx
+
 ```typescript
 import { SelectItem } from "@/components/ui/select"
 import { SelectContent } from "@/components/ui/select"
@@ -1462,6 +1494,7 @@ placeholder="https://example.com"
 ```
 
 ## File: components/chat/ai-sdk-chat.tsx
+
 ```typescript
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat, Message } from 'ai/react';

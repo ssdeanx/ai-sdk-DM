@@ -14,7 +14,18 @@
       "@id": "lib/memory/upstash/agent-state-store.ts",
       "@type": ["CodeFile"],
       "path": "lib/memory/upstash/agent-state-store.ts",
-      "exports": ["saveAgentState", "loadAgentState", "listThreadAgentStates", "deleteAgentState", "deleteThreadAgentStates", "createAgentState", "getAllAgentStates", "AgentStateStoreError", "AgentStateSchema", "StoredAgentStateSchema"],
+      "exports": [
+        "saveAgentState",
+        "loadAgentState",
+        "listThreadAgentStates",
+        "deleteAgentState",
+        "deleteThreadAgentStates",
+        "createAgentState",
+        "getAllAgentStates",
+        "AgentStateStoreError",
+        "AgentStateSchema",
+        "StoredAgentStateSchema"
+      ],
       "features": [
         "Agent state management in Redis",
         "Zod schema validation for agent state objects",
@@ -26,7 +37,13 @@
       "types": ["AgentState", "StoredAgentState", "AgentStateStoreError"],
       "zodSchemas": ["AgentStateSchema", "StoredAgentStateSchema"],
       "commands": [
-        "hset", "hget", "hdel", "hscan", "@upstash/query", "RediSearch (FT.SEARCH)", "fallback: supabase upsert/select/delete"
+        "hset",
+        "hget",
+        "hdel",
+        "hscan",
+        "@upstash/query",
+        "RediSearch (FT.SEARCH)",
+        "fallback: supabase upsert/select/delete"
       ],
       "tasksCompleted": [
         "Initial implementation",
@@ -126,20 +143,62 @@
         "migration-status"
       ],
       "connections": [
-        { "with": "memoryStore.ts", "purpose": "agent state CRUD and fallback integration" },
-        { "with": "upstash-logger.ts", "purpose": "logging for all agent state ops" },
-        { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility for agent state" },
-        { "with": "upstashTypes.ts", "purpose": "type safety and Zod validation for agent state" },
-        { "with": "stream-processor.ts", "purpose": "streaming agent state changes for analytics and observability" },
-        { "with": "tools.json", "purpose": "agent state analytics and tool execution logging" },
-        { "with": "otel-tracing.ts", "purpose": "OpenTelemetry tracing for agent state ops" },
-        { "with": "langfuse-integration.ts", "purpose": "Langfuse observability and metrics for agent state" },
-        { "with": "README.md", "purpose": "project onboarding and knowledge graph documentation" },
-        { "with": "lib/README.md", "purpose": "backend onboarding and architecture" },
-        { "with": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "with": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "with": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "with": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+        {
+          "with": "memoryStore.ts",
+          "purpose": "agent state CRUD and fallback integration"
+        },
+        {
+          "with": "upstash-logger.ts",
+          "purpose": "logging for all agent state ops"
+        },
+        {
+          "with": "supabase-adapter.ts",
+          "purpose": "fallback and compatibility for agent state"
+        },
+        {
+          "with": "upstashTypes.ts",
+          "purpose": "type safety and Zod validation for agent state"
+        },
+        {
+          "with": "stream-processor.ts",
+          "purpose": "streaming agent state changes for analytics and observability"
+        },
+        {
+          "with": "tools.json",
+          "purpose": "agent state analytics and tool execution logging"
+        },
+        {
+          "with": "otel-tracing.ts",
+          "purpose": "OpenTelemetry tracing for agent state ops"
+        },
+        {
+          "with": "langfuse-integration.ts",
+          "purpose": "Langfuse observability and metrics for agent state"
+        },
+        {
+          "with": "README.md",
+          "purpose": "project onboarding and knowledge graph documentation"
+        },
+        {
+          "with": "lib/README.md",
+          "purpose": "backend onboarding and architecture"
+        },
+        {
+          "with": "onboarding:get-library-docs",
+          "purpose": "fetch up-to-date docs for any package or integration"
+        },
+        {
+          "with": "onboarding:resolve-library-id",
+          "purpose": "resolve npm package names for doc lookup"
+        },
+        {
+          "with": "onboarding:git_files",
+          "purpose": "view and search project source for onboarding and troubleshooting"
+        },
+        {
+          "with": "context7",
+          "purpose": "dynamic documentation and context lookup for any package or API"
+        }
       ],
       "apiRoutes": [
         "/api/ai-sdk/agents",
@@ -211,7 +270,55 @@
       "@type": ["CodeFile"],
       "path": "lib/memory/upstash/index.ts",
       "exports": [
-        "getRedisClient", "getVectorClient", "checkUpstashAvailability", "createRedisThread", "getRedisThreadById", "updateRedisThread", "listRedisThreads", "deleteRedisThread", "createRedisMessage", "getRedisMessageById", "getRedisMessagesByThreadId", "deleteRedisMessage", "upsertEmbeddings", "searchSimilarEmbeddings", "getEmbeddingsByIds", "deleteEmbeddingsByIds", "resetVectorIndex", "getVectorIndexInfo", "logInfo", "logWarn", "logError", "logDebug", "getLogs", "deleteLogs", "clearLogs", "saveAgentState", "loadAgentState", "listThreadAgentStates", "deleteAgentState", "deleteThreadAgentStates", "createAgentState", "getAllAgentStates", "MemoryProcessor", "MemoryProcessorError", "RedisClientError", "VectorClientError", "streamProcessor", "StreamProcessor", "StreamProcessorError", "getData", "getItemById", "createItem", "updateItem", "deleteItem", "vectorSearch", "upsertSupabaseVectors", "VectorDataSchema", "VectorSearchOptionsSchema", "createSupabaseClient"
+        "getRedisClient",
+        "getVectorClient",
+        "checkUpstashAvailability",
+        "createRedisThread",
+        "getRedisThreadById",
+        "updateRedisThread",
+        "listRedisThreads",
+        "deleteRedisThread",
+        "createRedisMessage",
+        "getRedisMessageById",
+        "getRedisMessagesByThreadId",
+        "deleteRedisMessage",
+        "upsertEmbeddings",
+        "searchSimilarEmbeddings",
+        "getEmbeddingsByIds",
+        "deleteEmbeddingsByIds",
+        "resetVectorIndex",
+        "getVectorIndexInfo",
+        "logInfo",
+        "logWarn",
+        "logError",
+        "logDebug",
+        "getLogs",
+        "deleteLogs",
+        "clearLogs",
+        "saveAgentState",
+        "loadAgentState",
+        "listThreadAgentStates",
+        "deleteAgentState",
+        "deleteThreadAgentStates",
+        "createAgentState",
+        "getAllAgentStates",
+        "MemoryProcessor",
+        "MemoryProcessorError",
+        "RedisClientError",
+        "VectorClientError",
+        "streamProcessor",
+        "StreamProcessor",
+        "StreamProcessorError",
+        "getData",
+        "getItemById",
+        "createItem",
+        "updateItem",
+        "deleteItem",
+        "vectorSearch",
+        "upsertSupabaseVectors",
+        "VectorDataSchema",
+        "VectorSearchOptionsSchema",
+        "createSupabaseClient"
       ],
       "features": [
         "Barrel export for Upstash memory module",
@@ -220,22 +327,45 @@
         "Ensures type safety and up-to-date exports"
       ],
       "commands": [
-        "hset", "hget", "hdel", "hscan", "@upstash/query", "RediSearch (FT.SEARCH)", "fallback: supabase upsert/select/delete"
+        "hset",
+        "hget",
+        "hdel",
+        "hscan",
+        "@upstash/query",
+        "RediSearch (FT.SEARCH)",
+        "fallback: supabase upsert/select/delete"
       ],
       "tasksCompleted": [
-        "Initial barrel export", "Added new exports as features grew"
+        "Initial barrel export",
+        "Added new exports as features grew"
       ],
       "tasksPending": [
-        "Remove/replace all broken exports (see README errors)", "Ensure all exports are up-to-date and type-safe", "Add documentation for new/advanced exports", "Check for missing/broken exports from dependencies (see get_errors)"
+        "Remove/replace all broken exports (see README errors)",
+        "Ensure all exports are up-to-date and type-safe",
+        "Add documentation for new/advanced exports",
+        "Check for missing/broken exports from dependencies (see get_errors)"
       ],
       "consumers": ["lib/memory/memory.ts", "API: /api/memory/*"],
       "dependencies": [
-        "agent-state-store.ts", "memory-processor.ts", "memoryStore.ts", "redis-store.ts", "stream-processor.ts", "supabase-adapter-factory.ts", "supabase-adapter.ts", "upstash-logger.ts", "upstashClients.ts", "upstashTypes.ts", "vector-store.ts"
+        "agent-state-store.ts",
+        "memory-processor.ts",
+        "memoryStore.ts",
+        "redis-store.ts",
+        "stream-processor.ts",
+        "supabase-adapter-factory.ts",
+        "supabase-adapter.ts",
+        "upstash-logger.ts",
+        "upstashClients.ts",
+        "upstashTypes.ts",
+        "vector-store.ts"
       ],
       "testFiles": ["tests/upstash/index.test.ts"],
       "docs": ["README.md#index.ts"],
       "examples": ["How to import all Upstash memory features"],
-      "changelog": ["Initial barrel export", "Added new exports as features grew"],
+      "changelog": [
+        "Initial barrel export",
+        "Added new exports as features grew"
+      ],
       "todo": [
         "Remove/replace all broken exports (see README errors)",
         "Ensure all exports are up-to-date and type-safe",
@@ -284,20 +414,62 @@
         "migration-status"
       ],
       "connections": [
-        { "with": "agent-state-store.ts", "purpose": "barrel export for agent state operations" },
-        { "with": "memory-processor.ts", "purpose": "barrel export for memory processing" },
-        { "with": "memoryStore.ts", "purpose": "barrel export for memory CRUD" },
-        { "with": "redis-store.ts", "purpose": "barrel export for Redis operations" },
-        { "with": "stream-processor.ts", "purpose": "barrel export for streaming operations" },
-        { "with": "supabase-adapter.ts", "purpose": "barrel export for Supabase fallback" },
-        { "with": "upstash-logger.ts", "purpose": "barrel export for logging utilities" },
-        { "with": "upstashClients.ts", "purpose": "barrel export for Upstash clients" },
-        { "with": "upstashTypes.ts", "purpose": "barrel export for shared types and schemas" },
-        { "with": "vector-store.ts", "purpose": "barrel export for vector operations" },
-        { "with": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "with": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "with": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "with": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+        {
+          "with": "agent-state-store.ts",
+          "purpose": "barrel export for agent state operations"
+        },
+        {
+          "with": "memory-processor.ts",
+          "purpose": "barrel export for memory processing"
+        },
+        {
+          "with": "memoryStore.ts",
+          "purpose": "barrel export for memory CRUD"
+        },
+        {
+          "with": "redis-store.ts",
+          "purpose": "barrel export for Redis operations"
+        },
+        {
+          "with": "stream-processor.ts",
+          "purpose": "barrel export for streaming operations"
+        },
+        {
+          "with": "supabase-adapter.ts",
+          "purpose": "barrel export for Supabase fallback"
+        },
+        {
+          "with": "upstash-logger.ts",
+          "purpose": "barrel export for logging utilities"
+        },
+        {
+          "with": "upstashClients.ts",
+          "purpose": "barrel export for Upstash clients"
+        },
+        {
+          "with": "upstashTypes.ts",
+          "purpose": "barrel export for shared types and schemas"
+        },
+        {
+          "with": "vector-store.ts",
+          "purpose": "barrel export for vector operations"
+        },
+        {
+          "with": "onboarding:get-library-docs",
+          "purpose": "fetch up-to-date docs for any package or integration"
+        },
+        {
+          "with": "onboarding:resolve-library-id",
+          "purpose": "resolve npm package names for doc lookup"
+        },
+        {
+          "with": "onboarding:git_files",
+          "purpose": "view and search project source for onboarding and troubleshooting"
+        },
+        {
+          "with": "context7",
+          "purpose": "dynamic documentation and context lookup for any package or API"
+        }
       ],
       "onboardingTools": [
         "onboarding:get-library-docs",
@@ -360,18 +532,50 @@
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
         { "type": "fallback", "target": "lib/memory/supabase.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+        {
+          "type": "onboarding:get-library-docs",
+          "purpose": "fetch up-to-date docs for any package or integration"
+        },
+        {
+          "type": "onboarding:resolve-library-id",
+          "purpose": "resolve npm package names for doc lookup"
+        },
+        {
+          "type": "onboarding:git_files",
+          "purpose": "view and search project source for onboarding and troubleshooting"
+        },
+        {
+          "type": "context7",
+          "purpose": "dynamic documentation and context lookup for any package or API"
+        }
       ],
       "connections": [
-        { "with": "memoryStore.ts", "purpose": "thread/message CRUD, search, and RediSearch" },
-        { "with": "upstash-logger.ts", "purpose": "logging for all thread/message ops" },
-        { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility" }
+        {
+          "with": "memoryStore.ts",
+          "purpose": "thread/message CRUD, search, and RediSearch"
+        },
+        {
+          "with": "upstash-logger.ts",
+          "purpose": "logging for all thread/message ops"
+        },
+        {
+          "with": "supabase-adapter.ts",
+          "purpose": "fallback and compatibility"
+        }
       ],
       "commands": [
-        "hset", "hget", "hdel", "hscan", "zadd", "zrem", "zrange", "zrevrange", "RediSearch (FT.SEARCH)", "@upstash/query", "pipeline", "fallback: supabase upsert/select/delete"
+        "hset",
+        "hget",
+        "hdel",
+        "hscan",
+        "zadd",
+        "zrem",
+        "zrange",
+        "zrevrange",
+        "RediSearch (FT.SEARCH)",
+        "@upstash/query",
+        "pipeline",
+        "fallback: supabase upsert/select/delete"
       ],
       "tasksCompleted": [
         "Replaced uuidv4 with generateId from 'ai' for all ID generation",
@@ -448,19 +652,48 @@
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
         { "type": "fallback", "target": "lib/memory/supabase.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+        {
+          "type": "onboarding:get-library-docs",
+          "purpose": "fetch up-to-date docs for any package or integration"
+        },
+        {
+          "type": "onboarding:resolve-library-id",
+          "purpose": "resolve npm package names for doc lookup"
+        },
+        {
+          "type": "onboarding:git_files",
+          "purpose": "view and search project source for onboarding and troubleshooting"
+        },
+        {
+          "type": "context7",
+          "purpose": "dynamic documentation and context lookup for any package or API"
+        }
       ],
       "connections": [
-        { "with": "memoryStore.ts", "purpose": "embedding storage/search for all entities" },
+        {
+          "with": "memoryStore.ts",
+          "purpose": "embedding storage/search for all entities"
+        },
         { "with": "upstash-logger.ts", "purpose": "logging for vector ops" },
-        { "with": "supabase-adapter.ts", "purpose": "fallback and compatibility" },
-        { "with": "memory-processor.ts", "purpose": "semantic/streaming search for all entities" }
+        {
+          "with": "supabase-adapter.ts",
+          "purpose": "fallback and compatibility"
+        },
+        {
+          "with": "memory-processor.ts",
+          "purpose": "semantic/streaming search for all entities"
+        }
       ],
       "commands": [
-        "upsert", "query", "delete", "info", "reset", "@upstash/query", "RediSearch (FT.SEARCH)", "pipeline", "fallback: supabase upsert/select/delete"
+        "upsert",
+        "query",
+        "delete",
+        "info",
+        "reset",
+        "@upstash/query",
+        "RediSearch (FT.SEARCH)",
+        "pipeline",
+        "fallback: supabase upsert/select/delete"
       ],
       "tasksCompleted": [
         "Replaced uuidv4 with generateId from 'ai' for all ID generation",
@@ -528,18 +761,41 @@
         { "type": "api-route", "target": "app/api/ai-sdk/users" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstashClients.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+        {
+          "type": "onboarding:get-library-docs",
+          "purpose": "fetch up-to-date docs for any package or integration"
+        },
+        {
+          "type": "onboarding:resolve-library-id",
+          "purpose": "resolve npm package names for doc lookup"
+        },
+        {
+          "type": "onboarding:git_files",
+          "purpose": "view and search project source for onboarding and troubleshooting"
+        },
+        {
+          "type": "context7",
+          "purpose": "dynamic documentation and context lookup for any package or API"
+        }
       ],
       "connections": [
-        { "with": "agent-state-store.ts", "purpose": "logging for agent state ops" },
-        { "with": "redis-store.ts", "purpose": "logging for thread/message ops" },
+        {
+          "with": "agent-state-store.ts",
+          "purpose": "logging for agent state ops"
+        },
+        {
+          "with": "redis-store.ts",
+          "purpose": "logging for thread/message ops"
+        },
         { "with": "vector-store.ts", "purpose": "logging for vector ops" }
       ],
       "commands": [
-        "xadd", "xread", "xrange", "xdel", "@upstash/query", "pipeline"
+        "xadd",
+        "xread",
+        "xrange",
+        "xdel",
+        "@upstash/query",
+        "pipeline"
       ],
       "tasksCompleted": [
         "Replaced uuidv4 with generateId from 'ai' for all log IDs",
@@ -599,18 +855,41 @@
         { "type": "api-route", "target": "app/api/ai-sdk/tools" },
         { "type": "uses", "target": "lib/memory/upstash/upstashTypes.ts" },
         { "type": "uses", "target": "lib/memory/upstash/upstash-logger.ts" },
-        { "type": "onboarding:get-library-docs", "purpose": "fetch up-to-date docs for any package or integration" },
-        { "type": "onboarding:resolve-library-id", "purpose": "resolve npm package names for doc lookup" },
-        { "type": "onboarding:git_files", "purpose": "view and search project source for onboarding and troubleshooting" },
-        { "type": "context7", "purpose": "dynamic documentation and context lookup for any package or API" }
+        {
+          "type": "onboarding:get-library-docs",
+          "purpose": "fetch up-to-date docs for any package or integration"
+        },
+        {
+          "type": "onboarding:resolve-library-id",
+          "purpose": "resolve npm package names for doc lookup"
+        },
+        {
+          "type": "onboarding:git_files",
+          "purpose": "view and search project source for onboarding and troubleshooting"
+        },
+        {
+          "type": "context7",
+          "purpose": "dynamic documentation and context lookup for any package or API"
+        }
       ],
       "connections": [
         { "with": "redis-store.ts", "purpose": "client management for Redis" },
-        { "with": "vector-store.ts", "purpose": "client management for VectorDB" },
-        { "with": "supabase-adapter.ts", "purpose": "Upstash-first client selection and fallback" }
+        {
+          "with": "vector-store.ts",
+          "purpose": "client management for VectorDB"
+        },
+        {
+          "with": "supabase-adapter.ts",
+          "purpose": "Upstash-first client selection and fallback"
+        }
       ],
       "commands": [
-        "Redis.fromEnv", "Index", "Query", "validate config (Zod)", "health checks", "@upstash/query"
+        "Redis.fromEnv",
+        "Index",
+        "Query",
+        "validate config (Zod)",
+        "health checks",
+        "@upstash/query"
       ],
       "tasksCompleted": [
         "Type-safe, robust, singleton clients for Redis, Vector, and Query",
@@ -686,9 +965,7 @@
   "meta": {
     "source": "auto-generated from README.md, memory.json, and codebase as of 2025-05-15",
     "updateStrategy": "automated extraction and continuous update via CI/CD and AI agent workflows",
-    "intendedUse": [
-      "Continuous improvement and documentation enforcement"
-    ],
+    "intendedUse": ["Continuous improvement and documentation enforcement"],
     "diamondCore": "A diamond core file is one that is absolutely central to the Upstash memory system's integrity, reliability, and extensibility. Bugs or design flaws here have system-wide impact. These files require the highest level of review, testing, and documentation.",
     "backup": "LibSQL and Supabase are backup/fallback backends. All features must work with Upstash as primary, and degrade gracefully to backup if needed."
   },
@@ -740,14 +1017,22 @@
           "name": "Rubber Ducking",
           "summary": "Rubber ducking is the practice of explaining your code, logic, or problem step-by-step to an inanimate object or another person. This process forces you to clarify your thinking, often revealing hidden bugs or misunderstandings.",
           "application": "When stuck or debugging, write out your reasoning in the notepad, as comments, or in the knowledge graph. For Upstash/Supabase/LibSQL integration, use rubber ducking to walk through the data flow between adapters (e.g., supabase-adapter.ts to supabase.ts to memory.ts/db.ts/libsql.ts) and spot mismatches or missing logic.",
-          "bestFor": ["Debugging complex bugs", "Explaining code to others", "Onboarding new contributors"],
+          "bestFor": [
+            "Debugging complex bugs",
+            "Explaining code to others",
+            "Onboarding new contributors"
+          ],
           "howToUse": "Start by describing the problem or feature as if teaching it to someone new. For integration, narrate how a request flows from the API through supabase-adapter.ts, into supabase.ts, and down to memory.ts/db.ts/libsql.ts. Note any unclear steps or assumptions—these are likely sources of bugs or missing features."
         },
         {
           "name": "First Principles Thinking",
           "summary": "First principles thinking means breaking down a problem into its most basic elements and reasoning up from there, rather than relying on analogy or existing patterns.",
           "application": "Use for architectural decisions, refactoring, or when existing solutions are insufficient. For Upstash/Supabase/LibSQL, break down the requirements for memory, vector, and logging into their core primitives, then design the integration from scratch, ensuring each adapter and backend is used optimally.",
-          "bestFor": ["Major refactors", "Designing new features", "Fixing systemic issues"],
+          "bestFor": [
+            "Major refactors",
+            "Designing new features",
+            "Fixing systemic issues"
+          ],
           "howToUse": "Start by describing the problem or feature as if teaching it to someone new. For integration, narrate how a request flows from the API through supabase-adapter.ts, into supabase.ts, and down to memory.ts/db.ts/libsql.ts. Note any unclear steps or assumptions—these are likely sources of bugs or missing features."
         },
         {

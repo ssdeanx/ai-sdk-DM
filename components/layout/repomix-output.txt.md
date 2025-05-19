@@ -1,21 +1,25 @@
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+5. Multiple file entries, each consisting of:
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -24,6 +28,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: components/layout
@@ -37,6 +42,7 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
+
 ```
 components/layout/dashboard-layout.tsx
 components/layout/main-nav.tsx
@@ -49,6 +55,7 @@ components/layout/top-navbar.tsx
 # Files
 
 ## File: components/layout/sidebar.tsx
+
 ```typescript
 import type React from "react"
 import { useState, useEffect } from "react"
@@ -90,6 +97,7 @@ const toggleSubmenu = (title: string) =>
 ```
 
 ## File: components/layout/main-nav.tsx
+
 ```typescript
 import { useCallback, useState, useEffect, memo } from "react"
 import Link from "next/link"
@@ -225,15 +233,22 @@ onChange=
 ```
 
 ## File: components/layout/mode-toggle.tsx
+
 ```typescript
-import { motion } from "framer-motion"
-import { Moon, Sun, Laptop } from "lucide-react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { motion } from 'framer-motion';
+import { Moon, Sun, Laptop } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 ```
 
 ## File: components/layout/dashboard-layout.tsx
+
 ```typescript
 import type React from "react"
 import { useState, useEffect, createContext, useContext, useRef, useCallback, memo } from "react"
@@ -352,6 +367,7 @@ const handleScroll = () =>
 ```
 
 ## File: components/layout/top-navbar.tsx
+
 ```typescript
 import { useState, useEffect, useRef, memo } from "react"
 import Link from "next/link"
@@ -517,6 +533,7 @@ const toggleItem = (item: string) =>
 ```
 
 ## File: components/layout/main-sidebar.tsx
+
 ```typescript
 import type React from "react"
 import { useState, useEffect, useRef, useCallback, memo } from "react"

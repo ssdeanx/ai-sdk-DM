@@ -27,7 +27,7 @@
 
     /* Custom gradient colors */
     --gradient-start: 142 83% 53%; /* Neon green */
-    --gradient-end: 199 83% 58%;   /* Neon blue */
+    --gradient-end: 199 83% 58%; /* Neon blue */
     --gradient-accent: 169 89% 48%; /* Teal accent */
 
     /* Custom animation speeds */
@@ -59,7 +59,7 @@
 
     /* Custom gradient colors - dark mode */
     --gradient-start: 142 70% 40%; /* Neon green - dark mode */
-    --gradient-end: 199 70% 45%;   /* Neon blue - dark mode */
+    --gradient-end: 199 70% 45%; /* Neon blue - dark mode */
     --gradient-accent: 169 76% 35%; /* Teal accent - dark mode */
   }
 }
@@ -70,7 +70,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   /* Custom scrollbar */
@@ -122,14 +124,22 @@
   }
 
   .gradient-border::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(to right, hsl(var(--gradient-start)), hsl(var(--gradient-end)));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    background: linear-gradient(
+      to right,
+      hsl(var(--gradient-start)),
+      hsl(var(--gradient-end))
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
@@ -141,7 +151,7 @@
   }
 
   .animated-underline::after {
-    content: "";
+    content: '';
     position: absolute;
     width: 0;
     height: 2px;
@@ -219,7 +229,10 @@
 
   /* Glow text effect */
   .glow-text-green {
-    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3), 0 0 30px rgba(74, 222, 128, 0.1);
+    text-shadow:
+      0 0 10px rgba(74, 222, 128, 0.5),
+      0 0 20px rgba(74, 222, 128, 0.3),
+      0 0 30px rgba(74, 222, 128, 0.1);
   }
 
   /* Typing animation */
@@ -227,7 +240,9 @@
     overflow: hidden;
     border-right: 2px solid #4ade80;
     white-space: nowrap;
-    animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+    animation:
+      typing 3s steps(40, end),
+      blink-caret 0.75s step-end infinite;
   }
 
   @keyframes typing {
@@ -256,7 +271,9 @@
 }
 @layer utilities {
   .glow-text-green {
-    text-shadow: 0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3);
+    text-shadow:
+      0 0 10px rgba(74, 222, 128, 0.5),
+      0 0 20px rgba(74, 222, 128, 0.3);
   }
 
   .animate-fadeIn {
@@ -271,7 +288,9 @@
     overflow: hidden;
     border-right: 2px solid #4ade80;
     white-space: nowrap;
-    animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+    animation:
+      typing 3s steps(40, end),
+      blink-caret 0.75s step-end infinite;
   }
 
   @keyframes fadeIn {

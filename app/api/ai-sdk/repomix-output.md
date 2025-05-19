@@ -1,21 +1,25 @@
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+5. Multiple file entries, each consisting of:
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -24,6 +28,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: app/api/ai-sdk
@@ -38,6 +43,7 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
+
 ```
 app/api/ai-sdk/agents/[id]/route.ts
 app/api/ai-sdk/agents/[id]/run/route.ts
@@ -82,6 +88,7 @@ app/api/ai-sdk/tools/route.ts
 # Files
 
 ## File: app/api/ai-sdk/auth/callback/admin-github/route.ts
+
 ```typescript
 import { NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/memory/supabase'
@@ -116,6 +123,7 @@ const forwardedHost = request.headers.get('x-forwarded-host') // original origin
 ```
 
 ## File: app/api/ai-sdk/auth/callback/github/route.ts
+
 ```typescript
 import { NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/memory/supabase'
@@ -142,6 +150,7 @@ const forwardedHost = request.headers.get('x-forwarded-host') // original origin
 ```
 
 ## File: app/api/ai-sdk/auth/signin/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -154,6 +163,7 @@ export async function POST(request: Request)
 ```
 
 ## File: app/api/ai-sdk/auth/signup/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -177,6 +187,7 @@ name: name || email.split("@")[0], // Optional: pass additional user metadata
 ```
 
 ## File: app/api/ai-sdk/code/route.ts
+
 ```typescript
 // API route for CRUD operations on app_code_blocks (AppBuilder code blocks)
 import { NextRequest, NextResponse } from 'next/server';
@@ -211,6 +222,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/content/route.ts
+
 ```typescript
 // Content API route for CRUD operations
 import { NextRequest, NextResponse } from 'next/server';
@@ -223,6 +235,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/crud/[table]/route.ts
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import { getData, createItem, updateItem, deleteItem, TableName } from '@/lib/memory/supabase';
@@ -236,6 +249,7 @@ export async function DELETE(req: NextRequest,
 ```
 
 ## File: app/api/ai-sdk/files/route.ts
+
 ```typescript
 // filepath: app/api/ai-sdk/files/route.ts
 import { NextRequest, NextResponse } from 'next/server';
@@ -251,6 +265,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/integrations/route.ts
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
@@ -272,13 +287,14 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/memory/config/route.ts
+
 ```typescript
 import { NextResponse } from 'next/server';
 import { checkUpstashAvailability } from '@/lib/memory/upstash';
 import { isMemoryAvailable, getMemoryProvider } from '@/lib/memory/factory';
 /**
  * GET /api/memory/config
- * 
+ *
  * Returns the current memory provider configuration
  */
 export async function GET()
@@ -295,13 +311,14 @@ provider: 'libsql', // Default to LibSQL
 ```
 
 ## File: app/api/ai-sdk/memory/upstash-adapter/route.ts
+
 ```typescript
 import { NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { checkUpstashAvailability } from '@/lib/memory/upstash';
 /**
  * GET /api/memory/upstash-adapter
- * 
+ *
  * Returns information about the Upstash adapter configuration
  */
 export async function GET()
@@ -312,7 +329,7 @@ export async function GET()
 ⋮----
 /**
  * POST /api/memory/upstash-adapter
- * 
+ *
  * Test the Upstash adapter by performing a simple operation
  */
 export async function POST(request: Request)
@@ -330,11 +347,12 @@ if (error.code === '42P01') { // undefined_table
 ```
 
 ## File: app/api/ai-sdk/memory/upstash-config/route.ts
+
 ```typescript
 import { NextResponse } from 'next/server';
 /**
  * GET /api/memory/upstash-config
- * 
+ *
  * Returns the Upstash adapter configuration
  * This endpoint is safe to call from the client as it only returns
  * public URLs without tokens
@@ -353,6 +371,7 @@ export async function GET()
 ```
 
 ## File: app/api/ai-sdk/observability/costs/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -411,6 +430,7 @@ function getMockModelCosts(timeRange: string)
 ```
 
 ## File: app/api/ai-sdk/observability/evaluations/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -481,6 +501,7 @@ previousScore: overallScore - (Math.random() * 0.1 - 0.05), // Slight variation 
 ```
 
 ## File: app/api/ai-sdk/observability/metrics/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -538,6 +559,7 @@ dataPoints = 30 // Daily for 30 days
 ```
 
 ## File: app/api/ai-sdk/observability/performance/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -608,6 +630,7 @@ const dailyPattern = Math.sin(timeOffset * Math.PI * 2) * 0.2 // 20% variation b
 ```
 
 ## File: app/api/ai-sdk/observability/traces/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "@/lib/memory/supabase"
@@ -675,6 +698,7 @@ const duration = Math.floor(Math.random() * 60000) + 1000 // 1-61 seconds
 ```
 
 ## File: app/api/ai-sdk/system/route.ts
+
 ```typescript
 // System Metrics API route for CRUD operations
 import { NextRequest, NextResponse } from 'next/server';
@@ -687,15 +711,17 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/terminal/route.ts
+
 ```typescript
 // filepath: app/api/ai-sdk/terminal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-export async function POST(req: NextRequest)
+export async function POST(req: NextRequest);
 ```
 
 ## File: app/api/ai-sdk/assistant/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { AssistantResponse } from "ai";
@@ -761,6 +787,7 @@ async function executeSearchTool(args:
 ```
 
 ## File: app/api/ai-sdk/dashboard/route.ts
+
 ```typescript
 // Dashboard API route for CRUD operations (apps table)
 import { NextRequest, NextResponse } from 'next/server';
@@ -795,6 +822,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/models/[id]/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { getItemById, updateItem, deleteItem, getDrizzleClient } from "@/lib/memory/supabase"
@@ -836,6 +864,7 @@ export async function DELETE(request: Request,
 ```
 
 ## File: app/api/ai-sdk/models/route.ts
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
@@ -848,6 +877,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/models/seed/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { seedDefaultModels } from "@/lib/services/model-service";
@@ -864,6 +894,7 @@ export async function POST(request: Request)
 ```
 
 ## File: app/api/ai-sdk/providers/route.ts
+
 ```typescript
 // Providers API route for CRUD operations
 import { NextRequest, NextResponse } from 'next/server';
@@ -879,6 +910,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/settings/route.ts
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
@@ -893,6 +925,7 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/system/status/route.ts
+
 ```typescript
 import { NextResponse } from "next/server"
 import { isSupabaseAvailable } from "@/lib/memory/supabase"
@@ -917,6 +950,7 @@ export async function GET()
 ```
 
 ## File: app/api/ai-sdk/threads/[id]/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
@@ -925,7 +959,7 @@ import { getMemoryProvider } from '@/lib/memory/factory';
 import { getItemById, updateItem, deleteItem, getData, UpstashAdapterError } from '@/lib/memory/upstash/supabase-adapter';
 /**
  * GET /api/ai-sdk/threads/[id]
- * 
+ *
  * Fetch a specific thread and optionally its messages
  */
 export async function GET(
@@ -944,7 +978,7 @@ export async function GET(
 ⋮----
 /**
  * PATCH /api/ai-sdk/threads/[id]
- * 
+ *
  * Update a specific thread
  */
 export async function PATCH(
@@ -958,7 +992,7 @@ export async function PATCH(
 ⋮----
 /**
  * DELETE /api/ai-sdk/threads/[id]
- * 
+ *
  * Delete a specific thread and all its messages
  */
 export async function DELETE(
@@ -975,6 +1009,7 @@ export async function DELETE(
 ```
 
 ## File: app/api/ai-sdk/apps/[id]/route.ts
+
 ```typescript
 import { handleApiError } from '@/lib/api-error-handler';
 import { getLibSQLClient } from '@/lib/memory/db';
@@ -995,6 +1030,7 @@ export async function DELETE(req: Request)
 ```
 
 ## File: app/api/ai-sdk/threads/[id]/messages/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -1011,7 +1047,7 @@ import {
 import { getLibSQLClient } from "@/lib/memory/db";
 /**
  * GET /api/ai-sdk/threads/[id]/messages
- * 
+ *
  * Fetch messages for a specific thread
  */
 export async function GET(
@@ -1027,7 +1063,7 @@ export async function GET(
 ⋮----
 /**
  * POST /api/ai-sdk/threads/[id]/messages
- * 
+ *
  * Add a message to a specific thread
  */
 export async function POST(
@@ -1039,6 +1075,7 @@ export async function POST(
 ```
 
 ## File: app/api/ai-sdk/apps/route.ts
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api-error-handler';
@@ -1070,10 +1107,11 @@ export async function DELETE(req: NextRequest)
 ```
 
 ## File: app/api/ai-sdk/chat/route.ts
+
 ```typescript
 /**
  * AI SDK Chat API Route
- * 
+ *
  * This route handles chat requests using the AI SDK integration.
  * It supports multiple providers (Google, OpenAI, Anthropic) and
  * includes features like tool execution, middleware, and tracing.
@@ -1089,7 +1127,7 @@ import { getModelById, getModelByModelId } from "@/lib/models/model-service";
 ⋮----
 /**
  * POST /api/ai-sdk/chat
- * 
+ *
  * Process a chat request using the AI SDK
  */
 export async function POST(request: Request)
@@ -1142,6 +1180,7 @@ middleware: middlewareConfig.languageModel // Pass only the language model middl
 ```
 
 ## File: app/api/ai-sdk/threads/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
@@ -1152,7 +1191,7 @@ import { getMemoryProvider } from '@/lib/memory/factory';
 import { getData, createItem, type TableRow, type QueryOptions, type FilterOptions } from '@/lib/memory/upstash/supabase-adapter';
 /**
  * GET /api/ai-sdk/threads
- * 
+ *
  * Fetch all threads for AI SDK UI
  */
 export async function GET(request: Request)
@@ -1175,7 +1214,7 @@ metadata: parsedMetadata as unknown as import('@/types/supabase').Json, // Cast 
 ⋮----
 /**
  * POST /api/ai-sdk/threads
- * 
+ *
  * Create a new thread for AI SDK UI
  */
 export async function POST(request: Request)
@@ -1186,6 +1225,7 @@ export async function POST(request: Request)
 ```
 
 ## File: app/api/ai-sdk/tools/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { getLibSQLClient } from "@/lib/memory/db";
@@ -1268,6 +1308,7 @@ description: `Implementation for tool: ${name}`, // Optional: add a description
 ```
 
 ## File: app/api/ai-sdk/tools/execute/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -1299,6 +1340,7 @@ type ToolExecutionRow = {
 ```
 
 ## File: app/api/ai-sdk/agents/[id]/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -1482,6 +1524,7 @@ export async function DELETE(
 ```
 
 ## File: app/api/ai-sdk/agents/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/api-error-handler";
@@ -1726,6 +1769,7 @@ export async function DELETE(request: Request)
 ```
 
 ## File: app/api/ai-sdk/agents/[id]/run/route.ts
+
 ```typescript
 import { NextResponse } from "next/server";
 import { createDataStreamResponse, generateId } from 'ai';

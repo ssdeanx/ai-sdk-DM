@@ -16,6 +16,7 @@ The following files in this folder have been patched to export their tools using
 - github-client.ts
 
 **If you add new tool files, follow this pattern:**
+
 1. Import `createAISDKTools` from `./ai-sdk`.
 2. Export your tool as `export const <name>Tools = createAISDKTools(new <ClassName>())` or similar.
 

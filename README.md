@@ -171,18 +171,21 @@ LANGFUSE_HOST=https://us.cloud.langfuse.com
 The project uses Supabase Authentication for user management with support for both email/password and GitHub OAuth authentication methods.
 
 1. **Configure Supabase Auth Settings**:
+
    - In your Supabase dashboard, go to Authentication > Settings
    - Set your Site URL to match your deployment URL (e.g., `http://localhost:3000` for local development)
    - Add any additional redirect URLs under "Redirect URLs"
    - Configure email templates and other auth settings as needed
 
 2. **GitHub OAuth Setup**:
+
    - Create a GitHub OAuth App in your GitHub account settings
    - Set the callback URL to `http://localhost:3000/api/auth/callback/github` (for development)
    - Configure the GitHub provider in your Supabase dashboard with your Client ID and Secret
    - See detailed instructions in `docs/github-oauth-setup.md`
 
 3. **Authentication Flow**:
+
    - The project includes callback routes at `/auth/callback` and `/api/auth/callback/github` that handle OAuth flows
    - Admin-specific authentication is handled by `/api/auth/callback/admin-github`
    - The server-side Supabase client in `utils/supabase/server.ts` manages secure authentication operations
@@ -312,17 +315,20 @@ The project uses Supabase Authentication for user management with support for bo
 ### Backend
 
 - **Supabase**: Stores application data (models, tools, agents, settings)
+
   - PostgreSQL database with Drizzle ORM integration
   - Schema defined in `db/supabase/schema.ts`
   - Migrations managed with Drizzle in `drizzle/migrations/supabase/`
 
 - **LibSQL**: Stores agent memory and conversation history
+
   - SQLite-compatible database with Drizzle ORM integration
   - Schema defined in `db/libsql/schema.ts`
   - Migrations managed with Drizzle in `drizzle/migrations/libsql/`
   - HNSW vector index for semantic search
 
 - **AI SDK Integration**: Integrates with various AI providers
+
   - Primary: Google AI (Gemini)
   - Secondary: OpenAI, Anthropic
   - Abstraction layer in `lib/ai.ts` and `lib/ai-integration.ts`
@@ -330,6 +336,7 @@ The project uses Supabase Authentication for user management with support for bo
   - Provider-specific implementations with unified interface
 
 - **Memory System**: Manages conversation history and embeddings
+
   - Thread management in `lib/memory/memory.ts`
   - Message persistence with token counting and embeddings
   - Vector search capabilities for semantic retrieval
@@ -347,10 +354,12 @@ The project uses Supabase Authentication for user management with support for bo
 ### Frontend
 
 - **Next.js**: React framework with App Router
+
   - Dashboard routes in `app/(dashboard)/`
   - Chat interface in `app/chat/ai-sdk/`
 
 - **React Hooks**: Custom hooks for data management
+
   - `use-supabase-crud.ts`: CRUD operations via API routes
   - `use-supabase-direct.ts`: Direct Supabase client operations
   - `use-supabase-fetch.ts`: Data fetching from API routes
@@ -368,6 +377,7 @@ The project uses Supabase Authentication for user management with support for bo
 The AI SDK chat implementation follows a comprehensive flow from frontend to backend:
 
 1. **Frontend Component** (`components/chat/ai-sdk-chat.tsx`):
+
    - Uses `useChat` hook from `@ai-sdk/react`
    - Manages UI state, message history, and user interactions
    - Handles file attachments and image uploads
@@ -376,6 +386,7 @@ The AI SDK chat implementation follows a comprehensive flow from frontend to bac
    - Offers model and temperature configuration
 
 2. **API Endpoint** (`app/api/chat/ai-sdk/route.ts`):
+
    - Receives requests from the frontend
    - Validates input parameters
    - Processes messages and attachments
@@ -384,18 +395,21 @@ The AI SDK chat implementation follows a comprehensive flow from frontend to bac
    - Streams responses back to the client
 
 3. **Thread Management** (`app/api/chat/ai-sdk/threads/`):
+
    - Creates and manages chat threads
    - Lists available threads with pagination
    - Updates thread metadata
    - Deletes threads with cascade
 
 4. **Message Management** (`app/api/chat/ai-sdk/threads/[id]/messages/`):
+
    - Adds messages to threads
    - Retrieves message history
    - Counts tokens for context management
    - Generates embeddings for semantic search
 
 5. **AI SDK Integration** (`lib/ai-sdk-integration.ts`):
+
    - Provides unified interface for multiple AI providers
    - Handles streaming and generation
    - Configures tools and function calling
@@ -549,28 +563,28 @@ Each model configuration includes:
 
 ```typescript
 interface ModelSettings {
-  id: string;                        // Unique identifier
-  name: string;                      // Display name
-  provider: ModelProvider;           // "google", "openai", "anthropic", etc.
-  model_id: string;                  // Provider-specific model ID
-  max_tokens: number;                // Maximum output tokens
-  input_cost_per_token: number;      // Cost per input token
-  output_cost_per_token: number;     // Cost per output token
-  supports_vision: boolean;          // Supports image inputs
-  supports_functions: boolean;       // Supports function calling
-  supports_streaming: boolean;       // Supports streaming responses
-  default_temperature: number;       // Default temperature setting
-  default_top_p: number;             // Default top-p setting
+  id: string; // Unique identifier
+  name: string; // Display name
+  provider: ModelProvider; // "google", "openai", "anthropic", etc.
+  model_id: string; // Provider-specific model ID
+  max_tokens: number; // Maximum output tokens
+  input_cost_per_token: number; // Cost per input token
+  output_cost_per_token: number; // Cost per output token
+  supports_vision: boolean; // Supports image inputs
+  supports_functions: boolean; // Supports function calling
+  supports_streaming: boolean; // Supports streaming responses
+  default_temperature: number; // Default temperature setting
+  default_top_p: number; // Default top-p setting
   default_frequency_penalty: number; // Default frequency penalty
-  default_presence_penalty: number;  // Default presence penalty
-  context_window: number;            // Maximum context window size
-  status: "active" | "inactive";     // Model status
-  base_url?: string | null;          // Optional custom base URL
-  api_key?: string;                  // API key (stored securely)
-  description?: string;              // Model description
-  category?: ModelCategory;          // "text", "vision", "multimodal", etc.
-  capabilities?: ModelCapabilities;  // Detailed capability flags
-  metadata?: Record<string, any>;    // Additional metadata
+  default_presence_penalty: number; // Default presence penalty
+  context_window: number; // Maximum context window size
+  status: 'active' | 'inactive'; // Model status
+  base_url?: string | null; // Optional custom base URL
+  api_key?: string; // API key (stored securely)
+  description?: string; // Model description
+  category?: ModelCategory; // "text", "vision", "multimodal", etc.
+  capabilities?: ModelCapabilities; // Detailed capability flags
+  metadata?: Record<string, any>; // Additional metadata
 }
 ```
 
@@ -579,16 +593,19 @@ interface ModelSettings {
 The provider integration system (`lib/ai.ts`, `lib/ai-integration.ts`) provides a unified interface for working with different AI providers:
 
 - **Google AI**: Primary provider with Gemini models
+
   - Implementation: `lib/google-ai.ts`
   - Supports: Text generation, vision, function calling, streaming
   - Models: Gemini 2.5 Pro, Gemini 2.0 Pro, Gemini 2.0 Flash, etc.
 
 - **OpenAI**: Secondary provider
+
   - Implementation: `lib/openai-ai.ts`
   - Supports: Text generation, vision, function calling, streaming
   - Models: GPT-4.1, GPT-4o, GPT-4 Turbo, GPT-3.5 Turbo, etc.
 
 - **Anthropic**: Secondary provider
+
   - Implementation: `lib/anthropic-ai.ts`
   - Supports: Text generation, vision, function calling, streaming
   - Models: Claude 3.5 Opus, Claude 3.5 Sonnet, Claude 3 Opus, etc.
@@ -610,15 +627,23 @@ export const models = pgTable('models', {
   provider: text('provider').notNull(),
   model_id: text('model_id').notNull(),
   max_tokens: integer('max_tokens').notNull().default(4096),
-  input_cost_per_token: numeric('input_cost_per_token').notNull().default('0.0'),
-  output_cost_per_token: numeric('output_cost_per_token').notNull().default('0.0'),
+  input_cost_per_token: numeric('input_cost_per_token')
+    .notNull()
+    .default('0.0'),
+  output_cost_per_token: numeric('output_cost_per_token')
+    .notNull()
+    .default('0.0'),
   supports_vision: boolean('supports_vision').notNull().default(false),
   supports_functions: boolean('supports_functions').notNull().default(false),
   supports_streaming: boolean('supports_streaming').notNull().default(true),
   default_temperature: numeric('default_temperature').notNull().default('0.7'),
   default_top_p: numeric('default_top_p').notNull().default('1.0'),
-  default_frequency_penalty: numeric('default_frequency_penalty').notNull().default('0.0'),
-  default_presence_penalty: numeric('default_presence_penalty').notNull().default('0.0'),
+  default_frequency_penalty: numeric('default_frequency_penalty')
+    .notNull()
+    .default('0.0'),
+  default_presence_penalty: numeric('default_presence_penalty')
+    .notNull()
+    .default('0.0'),
   context_window: integer('context_window').notNull().default(8192),
   description: text('description'),
   category: text('category').notNull().default('text'),
@@ -629,7 +654,7 @@ export const models = pgTable('models', {
   status: text('status').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+});
 ```
 
 ### Performance Tracking
@@ -651,7 +676,7 @@ export const model_performance = pgTable('model_performance', {
   total_tokens: integer('total_tokens').notNull(),
   error_count: integer('error_count').notNull(),
   metadata: jsonb('metadata').default({}),
-})
+});
 
 // Model cost tracking
 export const model_costs = pgTable('model_costs', {
@@ -667,7 +692,7 @@ export const model_costs = pgTable('model_costs', {
   outputTokens: integer('outputTokens').notNull(),
   requests: integer('requests').notNull(),
   metadata: jsonb('metadata').default({}),
-})
+});
 ```
 
 ### Provider Usage Example
@@ -772,6 +797,7 @@ export default function ChatPage() {
 Add new models through the models page in the dashboard or using the API:
 
 1. **Using the UI**:
+
    - Navigate to `/models` in the dashboard
    - Click "Add Model" and fill in the required fields
    - Save the model to make it available for agents
@@ -788,8 +814,8 @@ Add new models through the models page in the dashboard or using the API:
        provider: 'google',
        modelId: 'gemini-1.5-pro',
        apiKey: 'your-api-key',
-       status: 'active'
-     })
+       status: 'active',
+     }),
    });
    ```
 
@@ -800,19 +826,23 @@ Add new models through the models page in the dashboard or using the API:
    import { getDrizzleClient } from '@/lib/memory/drizzle';
 
    const db = getDrizzleClient();
-   const result = await db.insert(models).values({
-     id: crypto.randomUUID(),
-     name: 'My Custom Model',
-     provider: 'google',
-     model_id: 'gemini-1.5-pro',
-     api_key: 'your-api-key',
-     status: 'active',
-   }).returning();
+   const result = await db
+     .insert(models)
+     .values({
+       id: crypto.randomUUID(),
+       name: 'My Custom Model',
+       provider: 'google',
+       model_id: 'gemini-1.5-pro',
+       api_key: 'your-api-key',
+       status: 'active',
+     })
+     .returning();
    ```
 
 ### Creating Custom Tools
 
 1. **Using the UI**:
+
    - Navigate to `/tools` in the dashboard
    - Click "Add Tool" and fill in the required fields
    - Define the parameters schema in JSON Schema format
@@ -832,12 +862,12 @@ Add new models through the models page in the dashboard or using the API:
          type: 'object',
          properties: {
            param1: { type: 'string', description: 'First parameter' },
-           param2: { type: 'number', description: 'Second parameter' }
+           param2: { type: 'number', description: 'Second parameter' },
          },
-         required: ['param1']
+         required: ['param1'],
        }),
-       category: 'utility'
-     })
+       category: 'utility',
+     }),
    });
    ```
 
@@ -846,6 +876,7 @@ Add new models through the models page in the dashboard or using the API:
 ### Creating Custom Agents
 
 1. **Using the UI**:
+
    - Navigate to `/agents` in the dashboard
    - Click "Add Agent" and fill in the required fields
    - Select a model and tools for the agent
@@ -864,8 +895,8 @@ Add new models through the models page in the dashboard or using the API:
        description: 'A custom agent for specific tasks',
        modelId: 'model-id',
        toolIds: ['tool-id-1', 'tool-id-2'],
-       systemPrompt: 'You are a helpful assistant...'
-     })
+       systemPrompt: 'You are a helpful assistant...',
+     }),
    });
    ```
 
@@ -878,15 +909,18 @@ Add new models through the models page in the dashboard or using the API:
 Deploy to Vercel with the following configuration:
 
 1. **Environment Variables**:
+
    - Add all environment variables from your `.env.local` file
    - Ensure database connection strings are properly configured
 
 2. **Build Settings**:
+
    - Build Command: `pnpm build`
    - Output Directory: `.next`
    - Install Command: `pnpm install`
 
 3. **Database Setup**:
+
    - Run migrations before deployment:
 
      ```bash
@@ -923,7 +957,7 @@ For containerized deployment:
      app:
        build: .
        ports:
-         - "3000:3000"
+         - '3000:3000'
        env_file:
          - .env.local
        depends_on:
@@ -931,7 +965,7 @@ For containerized deployment:
      supabase:
        image: supabase/supabase-local
        ports:
-         - "54322:5432"
+         - '54322:5432'
    ```
 
 ---

@@ -7,7 +7,6 @@ import {
   updateItem,
   deleteItem,
   getData,
-  UpstashAdapterError,
 } from '@/lib/memory/upstash/supabase-adapter';
 
 /**
@@ -60,7 +59,7 @@ export async function GET(
         }
         return NextResponse.json(formattedThread);
       } catch (err) {
-        if (!(err instanceof UpstashAdapterError)) throw err;
+        if (!(err instanceof Error)) throw err;
         // Fallback to LibSQL
       }
     }
@@ -131,7 +130,6 @@ export async function GET(
     return handleApiError(error);
   }
 }
-
 /**
  * PATCH /api/ai-sdk/threads/[id]
  *
@@ -173,7 +171,7 @@ export async function PATCH(
           updatedAt: updated.updated_at,
         });
       } catch (err) {
-        if (!(err instanceof UpstashAdapterError)) throw err;
+        if (!(err instanceof Error)) throw err;
         // Fallback to LibSQL
       }
     }
@@ -240,7 +238,7 @@ export async function DELETE(
         // await deleteItem('messages', { thread_id: id });
         return NextResponse.json({ success: !!deleted });
       } catch (err) {
-        if (!(err instanceof UpstashAdapterError)) throw err;
+        if (!(err instanceof Error)) throw err;
         // Fallback to LibSQL
       }
     }

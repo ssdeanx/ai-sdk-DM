@@ -1,21 +1,25 @@
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+5. Multiple file entries, each consisting of:
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -24,6 +28,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: components/appBuilder
@@ -38,6 +43,7 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
+
 ```
 components/appBuilder/appBuilderContainer.tsx
 components/appBuilder/canvasDisplay.tsx
@@ -53,6 +59,7 @@ components/appBuilder/terminalBlock.tsx
 # Files
 
 ## File: components/appBuilder/chatinputMessage.tsx
+
 ```typescript
 import React, { useState, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
@@ -70,11 +77,13 @@ onChange=
 ```
 
 ## File: components/appBuilder/codeBlock.module.css
+
 ```css
 .appbuilder-codeblock {
 ```
 
 ## File: components/appBuilder/FileTree.tsx
+
 ```typescript
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronRight, FileText, Folder, Plus, Trash2, Edit2, RefreshCw } from 'lucide-react';
@@ -116,11 +125,13 @@ className=
 ```
 
 ## File: components/appBuilder/terminalBlock.module.css
+
 ```css
 .appbuilder-terminalblock {
 ```
 
 ## File: components/appBuilder/appBuilderContainer.tsx
+
 ```typescript
 // components/appBuilder/appBuilderContainer.tsx
 import React, { useState } from 'react'
@@ -153,6 +164,7 @@ setTerminalContent(prev
 ```
 
 ## File: components/appBuilder/codeBlock.tsx
+
 ```typescript
 import React, { useState, useCallback } from 'react'
 import { foldGutter } from '@codemirror/language'
@@ -188,6 +200,7 @@ export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
 ```
 
 ## File: components/appBuilder/terminalBlock.tsx
+
 ```typescript
 import React, { useRef, useEffect } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -227,6 +240,7 @@ export const AppBuilderTerminalBlock: React.FC<AppBuilderTerminalBlockProps> = (
 ```
 
 ## File: components/appBuilder/canvasDisplay.tsx
+
 ```typescript
 import React, { useRef, useEffect, useState } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
@@ -265,6 +279,7 @@ if (mode === 'code')
 ```
 
 ## File: components/appBuilder/chatBar.tsx
+
 ```typescript
 import React, { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';

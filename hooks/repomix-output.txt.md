@@ -4,21 +4,25 @@ The content has been processed where empty lines have been removed, content has 
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+5. Multiple file entries, each consisting of:
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -27,6 +31,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: hooks
@@ -40,6 +45,7 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
+
 ```
 hooks/use-chat.ts
 hooks/use-executor.ts
@@ -57,14 +63,15 @@ hooks/use-upstash-adapter.ts
 # Files
 
 ## File: hooks/use-media-query.ts
+
 ````typescript
 import { useEffect, useState } from "react"
 /**
  * Custom hook for responsive design that detects if a media query matches
- * 
+ *
  * @param query - CSS media query string
  * @returns boolean indicating if the media query matches
- * 
+ *
  * @example
  * ```tsx
  * const isMobile = useMediaQuery("(max-width: 768px)")
@@ -86,7 +93,8 @@ const listener = (event: MediaQueryListEvent) =>
 ````
 
 ## File: hooks/use-memory-provider.ts
-````typescript
+
+```typescript
 /**
  * Hook for determining the current memory provider
  *
@@ -197,17 +205,19 @@ export function isUpstashVectorAvailable(): boolean
 return false; // Default to false, will be updated by the hook
 ⋮----
 // In server environment, we can check environment variables directly
-````
+```
 
 ## File: hooks/use-mobile.tsx
-````typescript
+
+```typescript
 export function useIsMobile()
 ⋮----
 const onChange = () =>
-````
+```
 
 ## File: hooks/use-upstash-adapter.ts
-````typescript
+
+```typescript
 /**
  * Hook for accessing Upstash adapter configuration
  *
@@ -315,10 +325,11 @@ export function isUpstashRedisAvailable(): boolean
  * @returns Whether Upstash Vector is available
  */
 export function isUpstashVectorAvailable(): boolean
-````
+```
 
 ## File: hooks/use-executor.ts
-````typescript
+
+```typescript
 import { useState, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { LRUCache } from 'lru-cache'
@@ -353,8 +364,8 @@ const executeAgent = async (message: string, history: any[] = [], retryCount = 0
 // Handle non-retryable error
 ⋮----
 const executeAgentWithStream = async (
-    message: string, 
-    history: any[] = [], 
+    message: string,
+    history: any[] = [],
     onChunk: (chunk: string) => void
 ) =>
 ⋮----
@@ -367,10 +378,11 @@ const executeAgentWithStream = async (
 export function useToolExecutor(
 ⋮----
 const executeTool = async (parameters: Record<string, any>) =>
-````
+```
 
 ## File: hooks/use-toast.ts
-````typescript
+
+```typescript
 /**
  * Enhanced toast hook with advanced features
  * Supports multiple toast types, actions, and toast queue management
@@ -583,10 +595,11 @@ const resume = () => dispatch(
  * Enhanced toast hook
  */
 function useToast()
-````
+```
 
 ## File: hooks/use-chat.ts
-````typescript
+
+```typescript
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { nanoid } from 'nanoid'
 import { toast } from "sonner"
@@ -740,10 +753,11 @@ const fetchMessages = async (threadId: string) =>
 // Call progress callback if provided
 ⋮----
 // Export middleware creation functions for use in the application
-````
+```
 
 ## File: hooks/use-supabase-realtime.ts
-````typescript
+
+```typescript
 /**
  * Hook for Supabase real-time subscriptions
  * Provides real-time updates for Supabase tables with automatic reconnection,
@@ -906,10 +920,11 @@ export function useSupabaseRealtime<T extends z.ZodType<any, any> = z.ZodAny>(
 const onPayload = (p: RealtimePostgresChangesPayload<any>) =>
 ⋮----
 // presence
-````
+```
 
 ## File: hooks/use-supabase-direct.ts
-````typescript
+
+```typescript
 /**
  * Hook for direct Supabase CRUD operations
  * This hook provides direct database operations using the Supabase client
@@ -1539,10 +1554,11 @@ const withTransaction = async <R>(
 // Cache management
 ⋮----
 // Direct access to Supabase client
-````
+```
 
 ## File: hooks/use-supabase-crud.ts
-````typescript
+
+```typescript
 /**
  * Hook for enhanced Supabase CRUD + Storage operations
  * - Typed table selects (filter/order/paginate)
@@ -1700,10 +1716,11 @@ const isUpstashAdapter = (client: any): client is UpstashSupabaseClient =>
 // This is because the Upstash adapter might not support storage operations
 ⋮----
 // auto‐fetch on mount
-````
+```
 
 ## File: hooks/use-supabase-fetch.ts
-````typescript
+
+```typescript
 /**
  * Enhanced hook for fetching data from a Next.js API route that, in turn,
  * talks to Supabase or Upstash (via the Upstash adapter).  Supports:
@@ -1879,4 +1896,4 @@ JSON.stringify(queryParams),   // safe because queryParams is shallow
 /* -------------------------------------------------------------- */
 const fetchMore = () =>
 const refetch = ()
-````
+```

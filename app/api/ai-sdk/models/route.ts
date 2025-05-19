@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import createSupabaseClient from '@/lib/memory/upstash/supabase-adapter-factory';
+import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { z } from 'zod';
-import { models } from '@/db/supabase/schema';
-import { InferModel } from 'drizzle-orm';
-import { ModelSettingsSchema } from '@/lib/models/model-registry';
+import { ModelSchema } from '@/db/supabase/validation';
 
 const table = 'models';
 const adapter = createSupabaseClient();
-
-/**
- * Type for a model row (from Drizzle schema)
- */
-type ModelRow = InferModel<typeof models>;
 
 /**
  * GET /api/ai-sdk/models
@@ -23,13 +15,26 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (id) {
-      const item = await adapter.from(table).getById(id);
+      const item = await adapter.from(table, null).getById(id);
       if (!item)
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      return NextResponse.json(item);
+      const parsed = ModelSchema.safeParse(item);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: parsed.error.format() },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(parsed.data);
     }
-    const items = await adapter.from(table).getAll();
-    return NextResponse.json(items);
+    const items = await adapter.from(table, null).getAll();
+    const models = items
+      .map((item: unknown) => {
+        const parsed = ModelSchema.safeParse(item);
+        return parsed.success ? parsed.data : null;
+      })
+      .filter(Boolean);
+    return NextResponse.json(models);
   } catch (error) {
     await upstashLogger.error(
       'models',
@@ -45,35 +50,31 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/ai-sdk/models
- * Create a new model (type safe, validated)
+ * Create a new model (schema validated)
  */
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    // Validate input using Zod schema
-    const parsed = ModelSettingsSchema.omit({
+    const parsed = ModelSchema.omit({
       id: true,
       created_at: true,
       updated_at: true,
-    }).parse(data);
+    }).safeParse(data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
     const now = new Date().toISOString();
-    // Convert numeric fields to string for DB compatibility
-    const toDbString = (v: number | undefined) =>
-      v !== undefined ? v.toString() : undefined;
-    const created = await adapter.from(table).create({
-      ...parsed,
-      input_cost_per_token: toDbString(parsed.input_cost_per_token),
-      output_cost_per_token: toDbString(parsed.output_cost_per_token),
-      default_temperature: toDbString(parsed.default_temperature),
-      default_top_p: toDbString(parsed.default_top_p),
-      default_frequency_penalty: toDbString(parsed.default_frequency_penalty),
-      default_presence_penalty: toDbString(parsed.default_presence_penalty),
+    const id = data.id || crypto.randomUUID();
+    const created = await adapter.from(table, null).create({
+      ...parsed.data,
+      id,
       created_at: now,
       updated_at: now,
     });
-    await upstashLogger.info('models', 'Model created', {
-      modelId: created.id,
-    });
+    await upstashLogger.info('models', 'Model created', { modelId: id });
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     await upstashLogger.error(
@@ -83,33 +84,29 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }
 
 /**
  * PUT /api/ai-sdk/models
- * Update a model (type safe, validated)
+ * Update a model (schema validated)
  */
 export async function PUT(req: NextRequest) {
   try {
     const data = await req.json();
     if (!data.id)
       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    // Validate input using Zod schema (partial for update)
-    const parsed = ModelSettingsSchema.partial().parse(data);
-    // Convert numeric fields to string for DB compatibility
-    const toDbString = (v: number | undefined) =>
-      v !== undefined ? v.toString() : undefined;
-    const updated = await adapter.from(table).update(data.id, {
-      ...parsed,
-      input_cost_per_token: toDbString(parsed.input_cost_per_token),
-      output_cost_per_token: toDbString(parsed.output_cost_per_token),
-      default_temperature: toDbString(parsed.default_temperature),
-      default_top_p: toDbString(parsed.default_top_p),
-      default_frequency_penalty: toDbString(parsed.default_frequency_penalty),
-      default_presence_penalty: toDbString(parsed.default_presence_penalty),
+    const parsed = ModelSchema.partial().safeParse(data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
+    const updated = await adapter.from(table, null).update(data.id, {
+      ...parsed.data,
       updated_at: new Date().toISOString(),
     });
     await upstashLogger.info('models', 'Model updated', { modelId: data.id });
@@ -122,7 +119,7 @@ export async function PUT(req: NextRequest) {
     );
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }
@@ -136,7 +133,7 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const deleted = await adapter.from(table).delete(id);
+    const deleted = await adapter.from(table, null).delete(id);
     await upstashLogger.info('models', 'Model deleted', { modelId: id });
     return NextResponse.json({ success: deleted });
   } catch (error) {
@@ -147,8 +144,7 @@ export async function DELETE(req: NextRequest) {
     );
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }
-// Generated on 2025-05-17 by ssdeanx

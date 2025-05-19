@@ -5,6 +5,7 @@
 When you (AI assistant) join a new chat about `/lib/memory`, use this prompt-enrichment template:
 
 1. **Background**: This folder implements the memory and persistence layer for AI agents in the DeanmachinesAI project:
+
    - **LibSQL/Turso** for conversational history, embeddings storage, HNSW vector indexing, and thread state.
    - **Supabase** for configuration, vector search (pgvector with HNSW indexes), workflow management, and loading model, agent, and tool configurations that drive memory behavior.
    - **Redis** integration for caching, real-time data, and session management.
@@ -12,12 +13,14 @@ When you (AI assistant) join a new chat about `/lib/memory`, use this prompt-enr
    - **Observability** system with comprehensive tracing, metrics, and cost tracking.
 
 2. **Your Role**: Provide code examples, debugging steps, and performance suggestions for memory operations and database interactions, considering all storage systems:
+
    - **Supabase**: Reference API routes under `app/api/*` (e.g. `/api/threads`, `/api/agents`) and TypeScript definitions in `types/supabase.ts` for schema generation and type safety.
    - **LibSQL**: Low-latency memory reads/writes, caching (LRU), and vector search via HNSW indices.
    - **Redis**: Caching strategies, real-time updates, and session management.
    - **Drizzle ORM**: Type-safe database operations with schema validation and query building.
 
 3. **Goals**:
+
    - Explain file responsibilities and data flow (Supabase config → AgentService → memory layer → LibSQL tables).
    - Guide adding or optimizing memory features (pagination, caching, vector-store integration).
    - Recommend best practices for context management: token limits, summarization, conversational pruning, and vector recall.
@@ -26,6 +29,7 @@ When you (AI assistant) join a new chat about `/lib/memory`, use this prompt-enr
    - Show how to integrate with the observability system for tracing and metrics.
 
 4. **Constraints**:
+
    - Avoid major architectural refactors unless requested.
    - Preserve statelessness and transaction safety via `transaction()` helper.
    - Keep explanations concise and focused on memory logic.
@@ -90,26 +94,31 @@ lib/
 ## File-by-File Status & Detailed TODO Checklist
 
 ### db.ts
+
 - [x] Type-safe LibSQL client and helpers
 - [x] Error handling and transaction support
 - [ ] Add/expand tests for query/transaction helpers
 
 ### drizzle.ts
+
 - [x] Type-safe Drizzle ORM integration
 - [x] Supabase support
 - [ ] Add/expand tests for Drizzle queries and model config
 
 ### libsql.ts
+
 - [x] Raw memory operations (get/add/delete thread/message)
 - [x] Fast key/value access
 - [ ] Add/expand tests for memory ops
 
 ### memory.ts
+
 - [x] High-level memory API (threads, messages, embeddings, state, summarization, semantic search)
 - [x] Orchestrates all memory flows
 - [ ] Add/expand tests for thread/message/semantic search
 
 ### supabase.ts
+
 - [x] Supabase client with Drizzle integration
 - [x] Upstash adapter support and fallback logic
 - [ ] Fix all type errors in CRUD and cache logic (see get_errors)
@@ -118,21 +127,25 @@ lib/
 - [ ] Add/expand tests for CRUD and vector search
 
 ### vector-store.ts
+
 - [x] HNSW index, vector search, embedding storage
 - [x] Type safety
 - [ ] Add/expand tests for vector search and info
 
 ### store-embedding.ts
+
 - [x] Batch embedding save
 - [x] Type safety
 - [ ] Add/expand tests for batch embedding
 
 ### memory-processors.ts
+
 - [x] Message processing pipeline (pruning, filtering)
 - [x] Type safety
 - [ ] Add/expand tests for message processing
 
 ### factory.ts
+
 - [x] Memory provider factory, adapter pattern
 - [x] Type safety
 - [ ] Remove unused exports (see get_errors)
@@ -140,6 +153,7 @@ lib/
 - [ ] Add/expand tests for memory provider factory
 
 ### index.ts
+
 - [x] Barrel export
 - [ ] Ensure all exports are up-to-date and type-safe
 
@@ -147,18 +161,18 @@ lib/
 
 ## Feature Coverage Table
 
-| File                | Type Safety | CRUD | Vector | Caching | Fallback | Tests | Error Handling |
-|---------------------|:-----------:|:----:|:------:|:-------:|:--------:|:-----:|:--------------:|
-| db.ts               |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
-| drizzle.ts          |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
-| libsql.ts           |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
-| memory.ts           |     ✅      |  ✅  |   ✅   |   ⚠️    |    ✅    |   ⚠️  |      ✅        |
-| supabase.ts         |     ⚠️      |  ✅  |   ✅   |   ✅    |    ✅    |   ⚠️  |      ⚠️        |
-| vector-store.ts     |     ✅      |  ❌  |   ✅   |   ❌    |    ❌    |   ⚠️  |      ✅        |
-| store-embedding.ts  |     ✅      |  ❌  |   ✅   |   ❌    |    ❌    |   ⚠️  |      ✅        |
-| memory-processors.ts|     ✅      |  ❌  |   ❌   |   ❌    |    ❌    |   ⚠️  |      ✅        |
-| factory.ts          |     ⚠️      |  ✅  |   ✅   |   ⚠️    |    ✅    |   ⚠️  |      ✅        |
-| index.ts            |     ✅      |  ❌  |   ❌   |   ❌    |    ❌    |   ❌  |      ❌        |
+| File                 | Type Safety | CRUD | Vector | Caching | Fallback | Tests | Error Handling |
+| -------------------- | :---------: | :--: | :----: | :-----: | :------: | :---: | :------------: |
+| db.ts                |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |  ⚠️   |       ✅       |
+| drizzle.ts           |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |  ⚠️   |       ✅       |
+| libsql.ts            |     ✅      |  ✅  |   ❌   |   ❌    |    ❌    |  ⚠️   |       ✅       |
+| memory.ts            |     ✅      |  ✅  |   ✅   |   ⚠️    |    ✅    |  ⚠️   |       ✅       |
+| supabase.ts          |     ⚠️      |  ✅  |   ✅   |   ✅    |    ✅    |  ⚠️   |       ⚠️       |
+| vector-store.ts      |     ✅      |  ❌  |   ✅   |   ❌    |    ❌    |  ⚠️   |       ✅       |
+| store-embedding.ts   |     ✅      |  ❌  |   ✅   |   ❌    |    ❌    |  ⚠️   |       ✅       |
+| memory-processors.ts |     ✅      |  ❌  |   ❌   |   ❌    |    ❌    |  ⚠️   |       ✅       |
+| factory.ts           |     ⚠️      |  ✅  |   ✅   |   ⚠️    |    ✅    |  ⚠️   |       ✅       |
+| index.ts             |     ✅      |  ❌  |   ❌   |   ❌    |    ❌    |  ❌   |       ❌       |
 
 Legend: ✅ = Complete, ⚠️ = Needs work, ❌ = Not present
 
@@ -389,12 +403,14 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.1 Preparation
 
 1. **Backup your data**:
+
    ```bash
    # Create a backup of your Supabase database
    supabase db dump -f backup.sql
    ```
 
 2. **Update Supabase CLI**:
+
    ```bash
    # Update Supabase CLI to the latest version
    npm install -g supabase@latest
@@ -409,10 +425,12 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.2 Schema Updates
 
 1. **Update schema definitions**:
+
    - Update `db/supabase/schema.ts` with new tables, columns, or indexes
    - Update `types/supabase.ts` with corresponding TypeScript types
 
 2. **Generate migration files**:
+
    ```bash
    # Generate migration files for schema changes
    pnpm migrate:generate:supabase upgrade_supabase_schema
@@ -425,6 +443,7 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.3 Database Extensions
 
 1. **Enable required extensions**:
+
    ```sql
    -- Enable pgvector extension for vector operations
    CREATE EXTENSION IF NOT EXISTS vector;
@@ -454,16 +473,19 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.4 Apply Migrations
 
 1. **Apply migrations to development environment**:
+
    ```bash
    # Apply migrations to local Supabase instance
    pnpm migrate:up:supabase
    ```
 
 2. **Verify migrations**:
+
    - Check that all tables, columns, and indexes are created correctly
    - Run tests to ensure functionality works as expected
 
 3. **Apply migrations to production**:
+
    ```bash
    # Set production database URL
    export DATABASE_URL=your_production_database_url
@@ -475,12 +497,14 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.5 Update Connection Pooling
 
 1. **Configure session pooler**:
+
    - Update `.env.local` with session pooler URL:
      ```
      SESSION_POOL_URL=postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres?pgbouncer=true
      ```
 
 2. **Configure transaction pooler**:
+
    - Update `.env.local` with transaction pooler URL:
      ```
      DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
@@ -493,12 +517,14 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.6 Enable Real-time Features
 
 1. **Configure real-time subscriptions**:
+
    ```sql
    -- Enable real-time for specific tables
    ALTER PUBLICATION supabase_realtime ADD TABLE documents, agents, workflows;
    ```
 
 2. **Set up webhooks**:
+
    - Configure webhooks in Supabase dashboard for database events
    - Create webhook handlers in Next.js API routes
 
@@ -509,6 +535,7 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.7 Set Up Automatic Embeddings
 
 1. **Create trigger functions**:
+
    ```sql
    -- Create function to queue embedding generation
    CREATE OR REPLACE FUNCTION queue_embedding_generation()
@@ -529,6 +556,7 @@ To perform a complete Supabase upgrade, follow these steps:
    ```
 
 2. **Create triggers**:
+
    ```sql
    -- Create trigger for document inserts
    CREATE TRIGGER generate_embedding_on_insert
@@ -545,6 +573,7 @@ To perform a complete Supabase upgrade, follow these steps:
    ```
 
 3. **Set up Edge Function**:
+
    - Create an Edge Function for embedding generation
    - Deploy the Edge Function to Supabase
 
@@ -561,12 +590,14 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.8 Update Client Code
 
 1. **Update Supabase client**:
+
    ```bash
    # Update Supabase JS client
    pnpm add @supabase/supabase-js@latest
    ```
 
 2. **Update hooks**:
+
    - Update `useSupabaseDirect`, `useSupabaseFetch`, and `useSupabaseCrud` hooks
    - Implement `useSupabaseRealtime` hook for real-time updates
 
@@ -579,6 +610,7 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.9 Testing and Verification
 
 1. **Test database connections**:
+
    ```typescript
    // Test Supabase connection
    const isAvailable = await isSupabaseAvailable();
@@ -586,11 +618,15 @@ To perform a complete Supabase upgrade, follow these steps:
 
    // Test transaction client
    const transactionClient = getSupabaseTransactionClient();
-   const { data, error } = await transactionClient.from('settings').select('*').limit(1);
+   const { data, error } = await transactionClient
+     .from('settings')
+     .select('*')
+     .limit(1);
    console.log('Transaction client working:', !error);
    ```
 
 2. **Test real-time subscriptions**:
+
    - Create a test component that uses `useSupabaseRealtime`
    - Verify that events are received when data changes
 
@@ -602,11 +638,13 @@ To perform a complete Supabase upgrade, follow these steps:
 #### 8.6.10 Monitoring and Maintenance
 
 1. **Set up monitoring**:
+
    - Configure database connection logging
    - Set up transaction logging
    - Monitor query performance
 
 2. **Implement maintenance tasks**:
+
    ```sql
    -- Schedule database maintenance
    SELECT cron.schedule(
@@ -674,7 +712,10 @@ HyDE uses an LLM to generate a hypothetical answer before performing vector sear
 
 ```typescript
 // Example HyDE implementation
-async function hydeSearch(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
+async function hydeSearch(
+  query: string,
+  options: SearchOptions = {}
+): Promise<SearchResult[]> {
   // Generate a hypothetical document that would answer the query
   const hypotheticalDocument = await generateText({
     model: openai('gpt-4o'),
@@ -696,7 +737,10 @@ Query expansion adds related terms to improve recall:
 
 ```typescript
 // Example query expansion implementation
-async function expandedSearch(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
+async function expandedSearch(
+  query: string,
+  options: SearchOptions = {}
+): Promise<SearchResult[]> {
   // Generate expanded query with related terms
   const expandedQuery = await generateText({
     model: openai('gpt-4o'),
@@ -725,12 +769,16 @@ Cross-encoders process query and document pairs for more accurate relevance scor
 
 ```typescript
 // Example cross-encoder re-ranking implementation
-async function crossEncoderRerank(query: string, initialResults: SearchResult[], topK: number = 5): Promise<SearchResult[]> {
+async function crossEncoderRerank(
+  query: string,
+  initialResults: SearchResult[],
+  topK: number = 5
+): Promise<SearchResult[]> {
   // Get document content for each result
-  const documents = initialResults.map(result => result.content);
+  const documents = initialResults.map((result) => result.content);
 
   // Create query-document pairs
-  const pairs = documents.map(doc => ({ query, document: doc }));
+  const pairs = documents.map((doc) => ({ query, document: doc }));
 
   // Score pairs using cross-encoder model
   const scores = await crossEncoderModel.score(pairs);
@@ -738,13 +786,11 @@ async function crossEncoderRerank(query: string, initialResults: SearchResult[],
   // Combine scores with initial results
   const scoredResults = initialResults.map((result, i) => ({
     ...result,
-    score: scores[i]
+    score: scores[i],
   }));
 
   // Sort by new scores and return top K
-  return scoredResults
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+  return scoredResults.sort((a, b) => b.score - a.score).slice(0, topK);
 }
 ```
 
@@ -760,7 +806,7 @@ function reciprocalRankFusion(
   k: number = 60
 ): SearchResult[] {
   // Create a map to store combined scores
-  const scoreMap = new Map<string, { result: SearchResult, score: number }>();
+  const scoreMap = new Map<string, { result: SearchResult; score: number }>();
 
   // Process vector search results
   vectorResults.forEach((result, i) => {
@@ -779,7 +825,7 @@ function reciprocalRankFusion(
       const existing = scoreMap.get(id)!;
       scoreMap.set(id, {
         result: existing.result,
-        score: existing.score + score
+        score: existing.score + score,
       });
     } else {
       scoreMap.set(id, { result, score });
@@ -789,7 +835,7 @@ function reciprocalRankFusion(
   // Convert map to array and sort by score
   return Array.from(scoreMap.values())
     .sort((a, b) => b.score - a.score)
-    .map(item => item.result);
+    .map((item) => item.result);
 }
 ```
 
@@ -814,9 +860,10 @@ ${document}`,
   });
 
   // Split by section breaks
-  return response.text.split('[SECTION_BREAK]')
-    .map(chunk => chunk.trim())
-    .filter(chunk => chunk.length > 0);
+  return response.text
+    .split('[SECTION_BREAK]')
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0);
 }
 ```
 
@@ -827,14 +874,15 @@ Create chunks at multiple levels of granularity:
 ```typescript
 // Example hierarchical chunking implementation
 function hierarchicalChunking(document: string): {
-  paragraphs: string[],
-  sections: string[],
-  document: string
+  paragraphs: string[];
+  sections: string[];
+  document: string;
 } {
   // Split into paragraphs
-  const paragraphs = document.split('\n\n')
-    .map(p => p.trim())
-    .filter(p => p.length > 0);
+  const paragraphs = document
+    .split('\n\n')
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
 
   // Group paragraphs into sections (e.g., every 3 paragraphs)
   const sections = [];
@@ -846,7 +894,7 @@ function hierarchicalChunking(document: string): {
   return {
     paragraphs,
     sections,
-    document
+    document,
   };
 }
 ```
@@ -857,24 +905,24 @@ Combine vector search with traditional keyword search for better results:
 
 ```typescript
 // Example hybrid search implementation
-async function hybridSearch(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
+async function hybridSearch(
+  query: string,
+  options: SearchOptions = {}
+): Promise<SearchResult[]> {
   // Perform vector search
-  const vectorResults = await vectorSearch(
-    await generateEmbedding(query),
-    { ...options, limit: options.limit || 20 }
-  );
+  const vectorResults = await vectorSearch(await generateEmbedding(query), {
+    ...options,
+    limit: options.limit || 20,
+  });
 
   // Perform keyword search (BM25)
-  const keywordResults = await keywordSearch(
-    query,
-    { ...options, limit: options.limit || 20 }
-  );
+  const keywordResults = await keywordSearch(query, {
+    ...options,
+    limit: options.limit || 20,
+  });
 
   // Combine results using reciprocal rank fusion
-  const combinedResults = reciprocalRankFusion(
-    vectorResults,
-    keywordResults
-  );
+  const combinedResults = reciprocalRankFusion(vectorResults, keywordResults);
 
   // Return top results
   return combinedResults.slice(0, options.limit || 10);
@@ -986,13 +1034,13 @@ CREATE TABLE documents (
 
 The `vector` data type requires specifying the number of dimensions. Choose the appropriate dimension size based on your embedding model:
 
-| Model | Dimensions |
-|-------|------------|
-| OpenAI text-embedding-3-small | 1536 |
-| OpenAI text-embedding-3-large | 3072 |
-| Google text-embedding-gecko | 768 |
-| Supabase/gte-small | 384 |
-| Cohere embed-english-v3.0 | 1024 |
+| Model                         | Dimensions |
+| ----------------------------- | ---------- |
+| OpenAI text-embedding-3-small | 1536       |
+| OpenAI text-embedding-3-large | 3072       |
+| Google text-embedding-gecko   | 768        |
+| Supabase/gte-small            | 384        |
+| Cohere embed-english-v3.0     | 1024       |
 
 #### 11.2.2 Storing Vectors
 
@@ -1000,7 +1048,10 @@ To store vectors in the database:
 
 ```typescript
 // Generate a vector using Transformers.js
-const generateEmbedding = await pipeline('feature-extraction', 'Supabase/gte-small');
+const generateEmbedding = await pipeline(
+  'feature-extraction',
+  'Supabase/gte-small'
+);
 const output = await generateEmbedding(text, {
   pooling: 'mean',
   normalize: true,
@@ -1021,11 +1072,11 @@ const { data, error } = await supabase.from('documents').insert({
 
 Supabase supports three distance operators for vector similarity search:
 
-| Operator | Description | Operator Class |
-|----------|-------------|---------------|
-| <-> | Euclidean distance | vector_l2_ops |
-| <#> | Negative inner product | vector_ip_ops |
-| <=> | Cosine distance | vector_cosine_ops |
+| Operator | Description            | Operator Class    |
+| -------- | ---------------------- | ----------------- |
+| <->      | Euclidean distance     | vector_l2_ops     |
+| <#>      | Negative inner product | vector_ip_ops     |
+| <=>      | Cosine distance        | vector_cosine_ops |
 
 To perform a similarity search, create a Postgres function:
 
@@ -1065,7 +1116,7 @@ const queryEmbedding = await generateEmbedding(searchQuery);
 const { data: documents } = await supabase.rpc('match_documents', {
   query_embedding: queryEmbedding,
   match_threshold: 0.78,
-  match_count: 10
+  match_count: 10,
 });
 ```
 
@@ -1154,7 +1205,7 @@ const taskId = await createScheduledTask(
   {
     description: 'Performs daily database maintenance',
     isActive: true,
-    metadata: { priority: 'high', category: 'maintenance' }
+    metadata: { priority: 'high', category: 'maintenance' },
   }
 );
 ```
@@ -1165,7 +1216,7 @@ const taskId = await createScheduledTask(
 // Update a scheduled task
 await updateScheduledTask(taskId, {
   cronExpression: '0 1 * * *', // Change to 1 AM
-  isActive: true
+  isActive: true,
 });
 
 // Run a task immediately
@@ -1262,26 +1313,29 @@ The project provides a high-level API for transaction management:
 
 ```typescript
 // Execute operations within a transaction
-await withTransaction(async (client, transactionId) => {
-  // Perform database operations
-  const { data, error } = await client
-    .from('users')
-    .update({ name: 'New Name' })
-    .eq('id', userId);
+await withTransaction(
+  async (client, transactionId) => {
+    // Perform database operations
+    const { data, error } = await client
+      .from('users')
+      .update({ name: 'New Name' })
+      .eq('id', userId);
 
-  // Log queries if needed
-  await logDatabaseQuery(
-    transactionId,
-    'UPDATE users SET name = $1 WHERE id = $2',
-    'update',
-    { executionTimeMs: 15, rowCount: 1 }
-  );
+    // Log queries if needed
+    await logDatabaseQuery(
+      transactionId,
+      'UPDATE users SET name = $1 WHERE id = $2',
+      'update',
+      { executionTimeMs: 15, rowCount: 1 }
+    );
 
-  return data;
-}, {
-  transactionType: 'write',
-  metadata: { userId, action: 'update-profile' }
-});
+    return data;
+  },
+  {
+    transactionType: 'write',
+    metadata: { userId, action: 'update-profile' },
+  }
+);
 ```
 
 #### 11.4.4 Transaction Monitoring
@@ -1379,27 +1433,27 @@ The project implements an automated system for embedding generation and updates 
 
 - **Edge Functions**: Generate embeddings via external APIs (OpenAI, Google)
 
-   ```typescript
-   // Edge Function to generate embeddings
-   async function generateEmbedding(text: string) {
-     const response = await openai.embeddings.create({
-       model: 'text-embedding-3-small',
-       input: text,
-     });
-     return response.data[0].embedding;
-   }
-   ```
+  ```typescript
+  // Edge Function to generate embeddings
+  async function generateEmbedding(text: string) {
+    const response = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text,
+    });
+    return response.data[0].embedding;
+  }
+  ```
 
 - **Scheduled Tasks**: Process embedding jobs automatically with pg_cron
 
-   ```sql
-   -- Schedule embedding processing every minute
-   SELECT cron.schedule(
-     'process-embedding-jobs',
-     '* * * * *',
-     $$SELECT util.process_embedding_jobs()$$
-   );
-   ```
+  ```sql
+  -- Schedule embedding processing every minute
+  SELECT cron.schedule(
+    'process-embedding-jobs',
+    '* * * * *',
+    $$SELECT util.process_embedding_jobs()$$
+  );
+  ```
 
 This system ensures that embeddings are always kept in sync with content changes, with automatic retries for failed jobs.
 
@@ -1423,13 +1477,13 @@ For production vector workloads, the application follows these best practices:
 The project provides guidance for selecting the appropriate compute add-on based on your vector workload:
 
 | Compute Add-on | Max Vectors (1536d) | QPS (1536d) | RAM Usage | Total RAM |
-|---------------|-------------------|------------|-----------|----------|
-| Small         | 100,000           | 25         | 1.5 GB    | 2 GB     |
-| Medium        | 250,000           | 60         | 3.5 GB    | 4 GB     |
-| Large         | 500,000           | 120        | 7 GB      | 8 GB     |
-| XL            | 1,000,000         | 250        | 13 GB     | 16 GB    |
-| 2XL           | 1,000,000         | 350        | 15 GB     | 32 GB    |
-| 4XL           | 1,000,000         | 500        | 15 GB     | 64 GB    |
+| -------------- | ------------------- | ----------- | --------- | --------- |
+| Small          | 100,000             | 25          | 1.5 GB    | 2 GB      |
+| Medium         | 250,000             | 60          | 3.5 GB    | 4 GB      |
+| Large          | 500,000             | 120         | 7 GB      | 8 GB      |
+| XL             | 1,000,000           | 250         | 13 GB     | 16 GB     |
+| 2XL            | 1,000,000           | 350         | 15 GB     | 32 GB     |
+| 4XL            | 1,000,000           | 500         | 15 GB     | 64 GB     |
 
 For optimal performance, ensure your vector database fits in RAM to avoid disk I/O bottlenecks.
 
@@ -1506,12 +1560,14 @@ The Redis wrapper can be accessed directly from SQL queries or through the Supab
 
 ```typescript
 // Example of using Redis from Supabase
-const { data, error } = await supabase.from('redis_cache')
+const { data, error } = await supabase
+  .from('redis_cache')
   .select('value')
   .eq('key', 'cached_data');
 
 // Example of setting Redis data
-const { error } = await supabase.from('redis_cache')
+const { error } = await supabase
+  .from('redis_cache')
   .insert({ key: 'cached_data', value: JSON.stringify(data) });
 ```
 
@@ -1559,7 +1615,7 @@ The project includes three custom hooks for Supabase integration:
      dataKey: 'documents',
      queryParams: { category: 'technical' },
      enabled: true,
-     maxRetries: 3
+     maxRetries: 3,
    });
    ```
 
@@ -1569,24 +1625,26 @@ The project includes three custom hooks for Supabase integration:
    const { create, update, remove, isLoading, error } = useSupabaseCrud({
      resourceName: 'documents',
      endpoint: '/api/documents',
-     onSuccess: () => toast({ title: 'Success', description: 'Operation completed' })
+     onSuccess: () =>
+       toast({ title: 'Success', description: 'Operation completed' }),
    });
    ```
 
 3. **`useSupabaseDirect`**: Direct Supabase client operations with transformation support
 
    ```typescript
-   const { loading, error, items, getAll, getById, create, update, remove } = useSupabaseDirect({
-     tableName: 'documents',
-     transformBeforeSave: (data) => ({
-       ...data,
-       updated_at: new Date().toISOString()
-     }),
-     transformAfterFetch: (data) => ({
-       ...data,
-       formattedDate: new Date(data.created_at).toLocaleDateString()
-     })
-   });
+   const { loading, error, items, getAll, getById, create, update, remove } =
+     useSupabaseDirect({
+       tableName: 'documents',
+       transformBeforeSave: (data) => ({
+         ...data,
+         updated_at: new Date().toISOString(),
+       }),
+       transformAfterFetch: (data) => ({
+         ...data,
+         formattedDate: new Date(data.created_at).toLocaleDateString(),
+       }),
+     });
    ```
 
 ### 11.9 Workflow Integration
@@ -1598,14 +1656,14 @@ The project includes a Supabase workflow provider for managing multi-step AI pro
 const workflow = await workflowProvider.createWorkflow({
   name: 'Document Processing',
   description: 'Process and analyze documents',
-  metadata: { priority: 'high' }
+  metadata: { priority: 'high' },
 });
 
 // Add steps to the workflow
 await workflowProvider.addWorkflowStep(workflow.id, {
   agentId: 'document-analyzer',
   input: { documentId: '123' },
-  metadata: { requiresApproval: true }
+  metadata: { requiresApproval: true },
 });
 ```
 
@@ -1633,15 +1691,18 @@ The project includes a comprehensive observability system for monitoring AI mode
 The following tables have been added to the Supabase schema to support observability:
 
 - **Tracing Tables**:
+
   - `traces`: Stores high-level trace information for AI model interactions
   - `spans`: Stores detailed timing information for specific operations within a trace
   - `events`: Stores discrete events that occur during a trace
 
 - **Metrics Tables**:
+
   - `system_metrics`: Stores system health metrics like CPU usage, memory usage, etc.
   - `model_performance`: Stores performance metrics for AI models like latency, tokens per second, etc.
 
 - **Cost Tables**:
+
   - `model_costs`: Stores cost information for AI model usage
 
 - **Evaluation Tables**:
@@ -1692,4 +1753,4 @@ The following API routes are available for the observability system:
 
 ---
 
-*End of `/lib/memory/README.md`*
+_End of `/lib/memory/README.md`_

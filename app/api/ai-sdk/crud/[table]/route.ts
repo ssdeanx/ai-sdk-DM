@@ -4,25 +4,92 @@ import {
   createItem,
   updateItem,
   deleteItem,
-  TableName,
-} from '@/lib/memory/supabase';
+} from '@/lib/memory/upstash/supabase-adapter';
+import { z } from 'zod';
+import {
+  MemoryThreadSchema,
+  MessageSchema,
+  EmbeddingSchema,
+  AgentStateSchema,
+  GqlCacheSchema,
+  FileSchema,
+  TerminalSessionSchema,
+} from '@/db/libsql/validation';
+import {
+  AppSchema as SupabaseAppSchema,
+  IntegrationSchema as SupabaseIntegrationSchema,
+  WorkflowSchema as SupabaseWorkflowSchema,
+  ModelSchema,
+  ProviderSchema,
+  AgentPersonaSchema,
+  AgentSchema,
+  ToolSchema,
+  WorkflowStepSchema,
+  AgentToolSchema,
+  SettingSchema,
+  BlogPostSchema,
+  MdxDocumentSchema,
+} from '@/db/supabase/validation';
 
-// Allowed tables for CRUD
+// Allowed tables for CRUD (expand as needed)
 const ALLOWED_TABLES = [
   'apps',
+  'integrations',
+  'workflows',
   'models',
-  'settings',
+  'providers',
+  'agent_personas',
   'agents',
   'tools',
-  'workflows',
-  'networks',
+  'workflow_steps',
+  'agent_tools',
+  'settings',
+  'blog_posts',
+  'mdx_documents',
+  'memory_threads',
+  'messages',
+  'embeddings',
+  'agent_states',
+  'gql_cache',
+  'files',
+  'terminal_sessions',
 ];
 
-function getTableName(param: string): TableName {
+// Table to Zod schema mapping (source of truth: validation files)
+const TABLE_SCHEMAS: Record<string, z.ZodTypeAny> = {
+  apps: SupabaseAppSchema,
+  integrations: SupabaseIntegrationSchema,
+  workflows: SupabaseWorkflowSchema,
+  models: ModelSchema,
+  providers: ProviderSchema,
+  agent_personas: AgentPersonaSchema,
+  agents: AgentSchema,
+  tools: ToolSchema,
+  workflow_steps: WorkflowStepSchema,
+  agent_tools: AgentToolSchema,
+  settings: SettingSchema,
+  blog_posts: BlogPostSchema,
+  mdx_documents: MdxDocumentSchema,
+  memory_threads: MemoryThreadSchema,
+  messages: MessageSchema,
+  embeddings: EmbeddingSchema,
+  agent_states: AgentStateSchema,
+  gql_cache: GqlCacheSchema,
+  files: FileSchema,
+  terminal_sessions: TerminalSessionSchema,
+};
+
+function getTableName(param: string): string {
   if (!ALLOWED_TABLES.includes(param)) {
     throw new Error('Table not allowed');
   }
-  return param as TableName;
+  return param;
+}
+
+function getTableSchema(table: string) {
+  const schema = TABLE_SCHEMAS[table];
+  if (!schema) throw new Error(`No Zod schema for table: ${table}`);
+  return schema;
 }
 
 export async function GET(
@@ -32,7 +99,15 @@ export async function GET(
   try {
     const table = getTableName(params.table);
     const data = await getData(table);
-    return NextResponse.json({ [table]: data });
+    const schema = getTableSchema(table);
+    const validated = z.array(schema).safeParse(data);
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validated.error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ [table]: validated.data });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
@@ -47,14 +122,28 @@ export async function POST(
 ) {
   try {
     const table = getTableName(params.table);
+    const schema = getTableSchema(table);
     const body = await req.json();
     const now = new Date().toISOString();
+    // Remove id, created_at, updated_at from input before validation
+    const rest = { ...body };
+    delete rest.id;
+    delete rest.created_at;
+    delete rest.updated_at;
+    const parsed = schema.parse(rest);
     const item = await createItem(table, {
-      ...body,
+      ...parsed,
       created_at: now,
       updated_at: now,
     });
-    return NextResponse.json(item, { status: 201 });
+    const validated = schema.safeParse(item);
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validated.error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(validated.data, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
@@ -69,17 +158,29 @@ export async function PUT(
 ) {
   try {
     const table = getTableName(params.table);
+    const schema = getTableSchema(table);
     const url = new URL(req.url);
     const id = url.pathname.split('/').pop();
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     const body = await req.json();
+    // For PUT, allow partial update: only validate present fields
+    let parsed;
+    if (schema instanceof z.ZodObject) {
+      parsed = schema.partial().parse(body);
+    } else {
+      parsed = schema.parse(body);
+    }
     const updated = await updateItem(table, id, {
-      ...body,
+      ...parsed,
       updated_at: new Date().toISOString(),
     });
-    if (!updated)
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(updated);
+    const validated = schema.safeParse(updated);
+    if (!validated.success)
+      return NextResponse.json(
+        { error: 'Validation failed', details: validated.error.errors },
+        { status: 400 }
+      );
+    return NextResponse.json(validated.data);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
@@ -98,7 +199,7 @@ export async function DELETE(
     const id = url.pathname.split('/').pop();
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     const result = await deleteItem(table, id);
-    if (!result.success)
+    if (!result)
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -108,3 +209,4 @@ export async function DELETE(
     );
   }
 }
+// Generated on 2025-05-18 - CRUD now fully synced with validation schemas for all core tables.

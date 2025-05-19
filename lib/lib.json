@@ -17,25 +17,53 @@
     { "DiamondCore": { "@id": "proj:DiamondCoreDesignation" } },
     { "path": { "@id": "proj:filePath" } },
     { "exports": { "@id": "proj:exportsList", "@container": "@list" } },
-    { "features": { "@id": "proj:featureDescriptionList", "@container": "@list" } },
+    {
+      "features": {
+        "@id": "proj:featureDescriptionList",
+        "@container": "@list"
+      }
+    },
     { "types": { "@id": "proj:definedTypeList", "@container": "@set" } },
     { "zodSchemas": { "@id": "proj:zodSchemaList", "@container": "@set" } },
-    { "consumers": { "@id": "proj:consumerList", "@container": "@set", "@type": "@id" } },
+    {
+      "consumers": {
+        "@id": "proj:consumerList",
+        "@container": "@set",
+        "@type": "@id"
+      }
+    },
     { "dependencies": { "@id": "proj:dependencyList", "@container": "@set" } },
     { "status": { "@id": "proj:currentStatus" } },
     { "errors": { "@id": "proj:errorMessages", "@container": "@list" } },
-    { "relationships": { "@id": "proj:codeRelationships", "@container": "@list" } },
+    {
+      "relationships": {
+        "@id": "proj:codeRelationships",
+        "@container": "@list"
+      }
+    },
     { "relationshipKind": { "@id": "proj:relationshipKind" } },
     { "relationshipTarget": { "@id": "schema:target", "@type": "@id" } },
-    { "observations": { "@id": "proj:developerObservations", "@container": "@list" } },
+    {
+      "observations": {
+        "@id": "proj:developerObservations",
+        "@container": "@list"
+      }
+    },
     { "usageNotes": { "@id": "proj:usageNotes" } },
     { "fileOnboarding": { "@id": "proj:fileOnboardingNotes" } },
     { "troubleshooting": { "@id": "proj:troubleshootingNotes" } },
-    { "fileMentalModels": { "@id": "proj:associatedMentalModels", "@container": "@set" } },
+    {
+      "fileMentalModels": {
+        "@id": "proj:associatedMentalModels",
+        "@container": "@set"
+      }
+    },
     { "graphOnboarding": { "@id": "proj:graphOnboardingInformation" } },
     { "purpose": { "@id": "proj:purposeStatement" } },
     { "audience": { "@id": "proj:targetAudience" } },
-    { "corePrinciples": { "@id": "proj:corePrinciples", "@container": "@list" } },
+    {
+      "corePrinciples": { "@id": "proj:corePrinciples", "@container": "@list" }
+    },
     { "steps": { "@id": "proj:onboardingSteps", "@container": "@list" } },
     { "graphMentalModels": { "@id": "proj:graphMentalModelsCollection" } },
     { "models": { "@id": "proj:modelList", "@container": "@list" } },
@@ -72,7 +100,14 @@
       "@id": "lib/ai-sdk-integration.ts",
       "@type": ["CodeFile", "DiamondCore"],
       "path": "lib/ai-sdk-integration.ts",
-      "exports": ["AISDKOptionsSchema", "AISDKOptions", "AISDKIntegrationError", "getAllAISDKTools", "createCustomAISDKProvider", "streamWithAISDK"],
+      "exports": [
+        "AISDKOptionsSchema",
+        "AISDKOptions",
+        "AISDKIntegrationError",
+        "getAllAISDKTools",
+        "createCustomAISDKProvider",
+        "streamWithAISDK"
+      ],
       "features": [
         "Unified AI SDK interface for Google, OpenAI, Anthropic",
         "Zod schema validation for all options",
@@ -81,7 +116,13 @@
       ],
       "types": ["AISDKOptions"],
       "zodSchemas": ["AISDKOptionsSchema"],
-      "consumers": ["ai-sdk-tracing.ts", "ai.ts", "tracing.ts", "tools.ts", "middleware.ts"],
+      "consumers": [
+        "ai-sdk-tracing.ts",
+        "ai.ts",
+        "tracing.ts",
+        "tools.ts",
+        "middleware.ts"
+      ],
       "dependencies": ["zod", "LanguageModelV1Middleware", "Provider"],
       "status": "errors-present",
       "errors": [
@@ -102,13 +143,25 @@
       "usageNotes": "Use as the entry point for AI SDK integration. Always validate options with Zod. Integrate with tracing and middleware for observability.",
       "onboarding": "See README.md for AI SDK integration patterns and error handling best practices.",
       "troubleshooting": "Check for type errors and missing observability hooks. Use get_errors after every edit.",
-      "mentalModels": ["First Principles Thinking", "Feedback Loops", "Rubber Ducking"]
+      "mentalModels": [
+        "First Principles Thinking",
+        "Feedback Loops",
+        "Rubber Ducking"
+      ]
     },
     {
       "@id": "lib/ai-sdk-tracing.ts",
       "@type": ["CodeFile", "DiamondCore"],
       "path": "lib/ai-sdk-tracing.ts",
-      "exports": ["getProviderWithTracing", "streamAIWithTracing", "generateAIWithTracing", "streamTextWithTracing", "generateTextWithTracing", "getGoogleAIWithTracing", "getOpenAIWithTracing"],
+      "exports": [
+        "getProviderWithTracing",
+        "streamAIWithTracing",
+        "generateAIWithTracing",
+        "streamTextWithTracing",
+        "generateTextWithTracing",
+        "getGoogleAIWithTracing",
+        "getOpenAIWithTracing"
+      ],
       "features": [
         "Comprehensive tracing for AI operations",
         "Integration with Langfuse and OpenTelemetry",
@@ -142,7 +195,15 @@
       "@id": "lib/ai.ts",
       "@type": ["CodeFile", "DiamondCore"],
       "path": "lib/ai.ts",
-      "exports": ["getGoogleAI", "getOpenAI", "getAnthropic", "getGoogleVertex", "getProviderByName", "generateAIResponse", "streamAIResponse"],
+      "exports": [
+        "getGoogleAI",
+        "getOpenAI",
+        "getAnthropic",
+        "getGoogleVertex",
+        "getProviderByName",
+        "generateAIResponse",
+        "streamAIResponse"
+      ],
       "features": [
         "High-level provider/model abstraction",
         "Supabase and Upstash model config integration",
@@ -151,7 +212,14 @@
       "types": ["AIProvider"],
       "zodSchemas": [],
       "consumers": ["ai-sdk-integration.ts", "ai-integration.ts", "tracing.ts"],
-      "dependencies": ["Supabase", "Upstash", "createGoogleGenerativeAI", "createOpenAI", "createAnthropic", "createVertex"],
+      "dependencies": [
+        "Supabase",
+        "Upstash",
+        "createGoogleGenerativeAI",
+        "createOpenAI",
+        "createAnthropic",
+        "createVertex"
+      ],
       "status": "errors-present",
       "errors": [
         "Unexpected any in messages, tools, and onChunk",
@@ -170,13 +238,28 @@
       "usageNotes": "Use for all high-level AI provider/model operations. Always validate configs and handle errors robustly.",
       "onboarding": "See README.md for provider abstraction and onboarding steps.",
       "troubleshooting": "Check for type errors, config issues, and missing observability hooks.",
-      "mentalModels": ["First Principles Thinking", "Occam's Razor", "Feedback Loops"]
+      "mentalModels": [
+        "First Principles Thinking",
+        "Occam's Razor",
+        "Feedback Loops"
+      ]
     },
     {
       "@id": "lib/ai-integration.ts",
       "@type": ["CodeFile"],
       "path": "lib/ai-integration.ts",
-      "exports": ["getGoogleAI", "getOpenAI", "getAnthropic", "getGoogleVertex", "streamAIResponse", "generateAIResponse", "countTokens", "generateEmbedding", "saveEmbedding", "performVectorSearch"],
+      "exports": [
+        "getGoogleAI",
+        "getOpenAI",
+        "getAnthropic",
+        "getGoogleVertex",
+        "streamAIResponse",
+        "generateAIResponse",
+        "countTokens",
+        "generateEmbedding",
+        "saveEmbedding",
+        "performVectorSearch"
+      ],
       "features": [
         "Low-level AI SDK streaming/generation",
         "Token counting and embedding generation",
@@ -185,7 +268,14 @@
       "types": [],
       "zodSchemas": [],
       "consumers": ["ai.ts", "memory/*", "tools.ts"],
-      "dependencies": ["createGoogleGenerativeAI", "createOpenAI", "createAnthropic", "createVertex", "js-tiktoken", "@xenova/transformers"],
+      "dependencies": [
+        "createGoogleGenerativeAI",
+        "createOpenAI",
+        "createAnthropic",
+        "createVertex",
+        "js-tiktoken",
+        "@xenova/transformers"
+      ],
       "status": "errors-present",
       "errors": [
         "Unexpected any in messages, tools, and embeddingModel",
@@ -209,7 +299,19 @@
       "@id": "lib/tracing.ts",
       "@type": ["CodeFile", "DiamondCore"],
       "path": "lib/tracing.ts",
-      "exports": ["initializeTracing", "trace", "span", "generation", "event", "score", "prompt", "dataset", "evaluationRun", "userFeedback", "shutdown"],
+      "exports": [
+        "initializeTracing",
+        "trace",
+        "span",
+        "generation",
+        "event",
+        "score",
+        "prompt",
+        "dataset",
+        "evaluationRun",
+        "userFeedback",
+        "shutdown"
+      ],
       "features": [
         "Unified tracing interface for Langfuse and OpenTelemetry",
         "Trace, span, generation, and event logging",
@@ -217,8 +319,18 @@
       ],
       "types": [],
       "zodSchemas": [],
-      "consumers": ["ai-sdk-tracing.ts", "middleware.ts", "otel-tracing.ts", "langfuse-integration.ts"],
-      "dependencies": ["Langfuse", "OpenTelemetry", "ai-sdk-tracing.ts", "otel-tracing.ts"],
+      "consumers": [
+        "ai-sdk-tracing.ts",
+        "middleware.ts",
+        "otel-tracing.ts",
+        "langfuse-integration.ts"
+      ],
+      "dependencies": [
+        "Langfuse",
+        "OpenTelemetry",
+        "ai-sdk-tracing.ts",
+        "otel-tracing.ts"
+      ],
       "status": "errors-present",
       "errors": [
         "Unexpected any in metadata, modelParameters, input, output",
@@ -242,7 +354,16 @@
       "@id": "lib/otel-tracing.ts",
       "@type": ["CodeFile"],
       "path": "lib/otel-tracing.ts",
-      "exports": ["storeTraceDataInUpstash", "getTraceDataFromUpstash", "initializeOTel", "createOTelSpan", "startOTelSpan", "shutdownOTel", "SpanKind", "SpanStatusCode"],
+      "exports": [
+        "storeTraceDataInUpstash",
+        "getTraceDataFromUpstash",
+        "initializeOTel",
+        "createOTelSpan",
+        "startOTelSpan",
+        "shutdownOTel",
+        "SpanKind",
+        "SpanStatusCode"
+      ],
       "features": [
         "OpenTelemetry tracing integration",
         "Trace storage and retrieval in Upstash Redis",
@@ -275,7 +396,18 @@
       "@id": "lib/langfuse-integration.ts",
       "@type": ["CodeFile"],
       "path": "lib/langfuse-integration.ts",
-      "exports": ["createTrace", "createGeneration", "createSpan", "startSpan", "logEvent", "scoreGeneration", "logPrompt", "createDataset", "logUserFeedback", "logEvaluationRun"],
+      "exports": [
+        "createTrace",
+        "createGeneration",
+        "createSpan",
+        "startSpan",
+        "logEvent",
+        "scoreGeneration",
+        "logPrompt",
+        "createDataset",
+        "logUserFeedback",
+        "logEvaluationRun"
+      ],
       "features": [
         "Langfuse tracing and observability integration",
         "Trace, span, generation, and event logging",
@@ -305,7 +437,20 @@
       "@type": ["CodeFile"],
       "path": "lib/middleware.ts",
       "exports": [
-        "RequestMiddleware", "ResponseMiddleware", "createMiddleware", "createCachingMiddleware", "createLoggingMiddleware", "createReasoningMiddleware", "createSimulationMiddleware", "createDefaultSettingsMiddleware", "createMiddlewareFromOptions", "createContextInjectionMiddleware", "createContentFilteringMiddleware", "createErrorHandlingMiddleware", "createRequestResponseMiddlewareFromOptions", "createCompleteMiddleware"
+        "RequestMiddleware",
+        "ResponseMiddleware",
+        "createMiddleware",
+        "createCachingMiddleware",
+        "createLoggingMiddleware",
+        "createReasoningMiddleware",
+        "createSimulationMiddleware",
+        "createDefaultSettingsMiddleware",
+        "createMiddlewareFromOptions",
+        "createContextInjectionMiddleware",
+        "createContentFilteringMiddleware",
+        "createErrorHandlingMiddleware",
+        "createRequestResponseMiddlewareFromOptions",
+        "createCompleteMiddleware"
       ],
       "features": [
         "Composable and type-safe middleware factories for AI SDK and API routes",
@@ -314,9 +459,18 @@
         "Request/response middleware for context injection, filtering, and error handling",
         "Integration-ready for Upstash-backed API and memory routes"
       ],
-      "types": ["RequestMiddleware", "ResponseMiddleware", "LanguageModelV1Middleware"],
+      "types": [
+        "RequestMiddleware",
+        "ResponseMiddleware",
+        "LanguageModelV1Middleware"
+      ],
       "consumers": [
-        "lib/ai-sdk-integration.ts", "lib/ai-sdk-tracing.ts", "lib/ai.ts", "lib/ai-integration.ts", "lib/tracing.ts", "lib/langfuse-integration.ts"
+        "lib/ai-sdk-integration.ts",
+        "lib/ai-sdk-tracing.ts",
+        "lib/ai.ts",
+        "lib/ai-integration.ts",
+        "lib/tracing.ts",
+        "lib/langfuse-integration.ts"
       ],
       "dependencies": ["zod", "LRUCache", "ReadableStream", "TransformStream"],
       "status": "incomplete",
@@ -364,9 +518,7 @@
       "dependencies": ["NextResponse", "Supabase"],
       "status": "complete",
       "errors": [],
-      "relationships": [
-        { "type": "api", "target": "app/api/*" }
-      ],
+      "relationships": [{ "type": "api", "target": "app/api/*" }],
       "observations": [
         "All API errors should be handled centrally for consistency.",
         "Supabase error codes are mapped to HTTP responses."
@@ -392,9 +544,7 @@
       "status": "complete",
       "errors": [],
       "relationships": [],
-      "observations": [
-        "Utility functions should be pure and type-safe."
-      ],
+      "observations": ["Utility functions should be pure and type-safe."],
       "usageNotes": "Use for class merging and general utilities.",
       "onboarding": "See README.md for utility usage.",
       "troubleshooting": "Check for type errors in utility functions.",
@@ -404,7 +554,18 @@
       "@id": "lib/tools.ts",
       "@type": ["CodeFile", "DiamondCore"],
       "path": "lib/tools.ts",
-      "exports": ["webTools", "codeTools", "dataTools", "fileTools", "apiTools", "ragTools", "toolCategories", "getAllBuiltInTools", "loadCustomTools", "jsonSchemaToZod"],
+      "exports": [
+        "webTools",
+        "codeTools",
+        "dataTools",
+        "fileTools",
+        "apiTools",
+        "ragTools",
+        "toolCategories",
+        "getAllBuiltInTools",
+        "loadCustomTools",
+        "jsonSchemaToZod"
+      ],
       "features": [
         "Schema utilities: JSON Schema to Zod conversion",
         "Tool validation and aggregation helpers",
@@ -412,7 +573,12 @@
       ],
       "types": [],
       "zodSchemas": [],
-      "consumers": ["ai-sdk-integration.ts", "tools/*", "toolRegistry.ts", "toolInitializer.ts"],
+      "consumers": [
+        "ai-sdk-integration.ts",
+        "tools/*",
+        "toolRegistry.ts",
+        "toolInitializer.ts"
+      ],
       "dependencies": ["zod", "getLibSQLClient", "Tool"],
       "status": "errors-present",
       "errors": [
@@ -451,9 +617,7 @@
         { "type": "provider", "target": "lib/ai.ts" },
         { "type": "ai-integration", "target": "lib/ai-integration.ts" }
       ],
-      "observations": [
-        "Model config must be type-safe and observable."
-      ],
+      "observations": ["Model config must be type-safe and observable."],
       "usageNotes": "Use for Google AI model config and provider logic.",
       "onboarding": "See README.md for provider integration.",
       "troubleshooting": "Check for missing or invalid model configs.",
@@ -463,7 +627,12 @@
       "@id": "lib/openai-ai.ts",
       "@type": ["CodeFile"],
       "path": "lib/openai-ai.ts",
-      "exports": ["getOpenAI", "getModelConfig", "streamOpenAI", "generateOpenAI"],
+      "exports": [
+        "getOpenAI",
+        "getModelConfig",
+        "streamOpenAI",
+        "generateOpenAI"
+      ],
       "features": [
         "OpenAI provider integration",
         "Model config loading from Supabase",
@@ -472,18 +641,19 @@
       "types": [],
       "zodSchemas": [],
       "consumers": ["ai.ts", "ai-integration.ts"],
-      "dependencies": ["createOpenAI", "streamText", "generateText", "getSupabaseClient"],
-      "status": "errors-present",
-      "errors": [
-        "Unexpected console statements in error handling"
+      "dependencies": [
+        "createOpenAI",
+        "streamText",
+        "generateText",
+        "getSupabaseClient"
       ],
+      "status": "errors-present",
+      "errors": ["Unexpected console statements in error handling"],
       "relationships": [
         { "type": "provider", "target": "lib/ai.ts" },
         { "type": "ai-integration", "target": "lib/ai-integration.ts" }
       ],
-      "observations": [
-        "All provider logic must be type-safe and observable."
-      ],
+      "observations": ["All provider logic must be type-safe and observable."],
       "usageNotes": "Use for OpenAI model config and streaming/generation logic.",
       "onboarding": "See README.md for OpenAI integration.",
       "troubleshooting": "Check for missing or invalid model configs and error handling.",
@@ -493,7 +663,12 @@
       "@id": "lib/anthropic-ai.ts",
       "@type": ["CodeFile"],
       "path": "lib/anthropic-ai.ts",
-      "exports": ["getAnthropic", "getModelConfig", "streamAnthropic", "generateAnthropic"],
+      "exports": [
+        "getAnthropic",
+        "getModelConfig",
+        "streamAnthropic",
+        "generateAnthropic"
+      ],
       "features": [
         "Anthropic provider integration",
         "Model config loading from Supabase",
@@ -502,18 +677,19 @@
       "types": [],
       "zodSchemas": [],
       "consumers": ["ai.ts", "ai-integration.ts"],
-      "dependencies": ["createAnthropic", "streamText", "generateText", "getSupabaseClient"],
-      "status": "errors-present",
-      "errors": [
-        "Unexpected console statements in error handling"
+      "dependencies": [
+        "createAnthropic",
+        "streamText",
+        "generateText",
+        "getSupabaseClient"
       ],
+      "status": "errors-present",
+      "errors": ["Unexpected console statements in error handling"],
       "relationships": [
         { "type": "provider", "target": "lib/ai.ts" },
         { "type": "ai-integration", "target": "lib/ai-integration.ts" }
       ],
-      "observations": [
-        "All provider logic must be type-safe and observable."
-      ],
+      "observations": ["All provider logic must be type-safe and observable."],
       "usageNotes": "Use for Anthropic model config and streaming/generation logic.",
       "onboarding": "See README.md for Anthropic integration.",
       "troubleshooting": "Check for missing or invalid model configs and error handling.",
@@ -523,7 +699,12 @@
       "@id": "lib/vertex-ai.ts",
       "@type": ["CodeFile"],
       "path": "lib/vertex-ai.ts",
-      "exports": ["getGoogleVertex", "getModelConfig", "streamGoogleVertex", "generateGoogleVertex"],
+      "exports": [
+        "getGoogleVertex",
+        "getModelConfig",
+        "streamGoogleVertex",
+        "generateGoogleVertex"
+      ],
       "features": [
         "Google Vertex AI provider integration",
         "Model config loading from Supabase or defaults",
@@ -532,18 +713,19 @@
       "types": [],
       "zodSchemas": [],
       "consumers": ["ai.ts", "ai-integration.ts"],
-      "dependencies": ["createVertex", "streamText", "generateText", "getSupabaseClient"],
-      "status": "errors-present",
-      "errors": [
-        "Unexpected console statements in error handling"
+      "dependencies": [
+        "createVertex",
+        "streamText",
+        "generateText",
+        "getSupabaseClient"
       ],
+      "status": "errors-present",
+      "errors": ["Unexpected console statements in error handling"],
       "relationships": [
         { "type": "provider", "target": "lib/ai.ts" },
         { "type": "ai-integration", "target": "lib/ai-integration.ts" }
       ],
-      "observations": [
-        "All provider logic must be type-safe and observable."
-      ],
+      "observations": ["All provider logic must be type-safe and observable."],
       "usageNotes": "Use for Vertex AI model config and streaming/generation logic.",
       "onboarding": "See README.md for Vertex AI integration.",
       "troubleshooting": "Check for missing or invalid model configs and error handling.",
@@ -554,18 +736,14 @@
       "@type": ["CodeFile"],
       "path": "lib/model-registry.ts",
       "exports": [],
-      "features": [
-        "Model registry for provider/model abstraction (WIP)"
-      ],
+      "features": ["Model registry for provider/model abstraction (WIP)"],
       "types": [],
       "zodSchemas": [],
       "consumers": [],
       "dependencies": [],
       "status": "incomplete",
       "errors": [],
-      "relationships": [
-        { "type": "provider", "target": "lib/ai.ts" }
-      ],
+      "relationships": [{ "type": "provider", "target": "lib/ai.ts" }],
       "observations": [
         "Model registry is planned for unified provider/model access."
       ],
@@ -599,16 +777,46 @@
   "mentalModels": {
     "description": "A curated set of mental models for backend system development, debugging, and improvement. Use these models to break down complex problems, verify assumptions, and drive continuous improvement.",
     "models": [
-      { "name": "Rubber Ducking", "summary": "Explain your code, logic, or problem step-by-step to clarify thinking and reveal hidden bugs." },
-      { "name": "First Principles Thinking", "summary": "Break down a problem into its most basic elements and reason up from there." },
-      { "name": "Feedback Loops", "summary": "Make a change, test it, gather results, and iterate for continuous improvement." },
-      { "name": "5 Whys", "summary": "Ask 'why?' repeatedly to drill down to the root cause of a problem." },
-      { "name": "Inversion", "summary": "Think about what would cause your system to fail, and design to avoid those outcomes." },
-      { "name": "Occam's Razor", "summary": "The simplest solution is usually best. Avoid unnecessary complexity, especially in integration code." },
-      { "name": "Mindmaps & Hill Charts", "summary": "Visual tools for mapping out dependencies, progress, and relationships." },
-      { "name": "Parkinson's Law", "summary": "Work expands to fill the time available. Set clear deadlines and constraints to keep work focused and efficient." },
-      { "name": "Lean Startup", "summary": "Build, measure, and learn quickly. For integrations, ship small, test, and iterate." },
-      { "name": "Circle of Competence", "summary": "Know what you understand well and when to seek help or research." }
+      {
+        "name": "Rubber Ducking",
+        "summary": "Explain your code, logic, or problem step-by-step to clarify thinking and reveal hidden bugs."
+      },
+      {
+        "name": "First Principles Thinking",
+        "summary": "Break down a problem into its most basic elements and reason up from there."
+      },
+      {
+        "name": "Feedback Loops",
+        "summary": "Make a change, test it, gather results, and iterate for continuous improvement."
+      },
+      {
+        "name": "5 Whys",
+        "summary": "Ask 'why?' repeatedly to drill down to the root cause of a problem."
+      },
+      {
+        "name": "Inversion",
+        "summary": "Think about what would cause your system to fail, and design to avoid those outcomes."
+      },
+      {
+        "name": "Occam's Razor",
+        "summary": "The simplest solution is usually best. Avoid unnecessary complexity, especially in integration code."
+      },
+      {
+        "name": "Mindmaps & Hill Charts",
+        "summary": "Visual tools for mapping out dependencies, progress, and relationships."
+      },
+      {
+        "name": "Parkinson's Law",
+        "summary": "Work expands to fill the time available. Set clear deadlines and constraints to keep work focused and efficient."
+      },
+      {
+        "name": "Lean Startup",
+        "summary": "Build, measure, and learn quickly. For integrations, ship small, test, and iterate."
+      },
+      {
+        "name": "Circle of Competence",
+        "summary": "Know what you understand well and when to seek help or research."
+      }
     ]
   },
   "navigation": {
@@ -618,7 +826,10 @@
     "byType": "Find types and Zod schemas in each file and referenced in each file's 'exports'.",
     "byStatus": "Track progress using the 'status' and 'features' fields for each entity.",
     "integrationNotes": "The backend system connects AI SDK, tracing, tools, memory, and observability. When integrating new features, ensure all adapters and backends are mapped in the knowledge graph, and use mental models to guide troubleshooting and design.",
-    "insightAccumulation": { "@value": "Every time you reference or use this knowledge graph, you accumulate insights about file relationships, error patterns, and wiring strategies. This builds stronger context awareness for both agents and humans, enabling more accurate troubleshooting, smarter code navigation, and continuous improvement. Insight accumulation is a key differentiator of modern knowledge graphs (2025), supporting real-time decision making, error reduction, and adaptive learning across the tool system.", "@language": "en" }
+    "insightAccumulation": {
+      "@value": "Every time you reference or use this knowledge graph, you accumulate insights about file relationships, error patterns, and wiring strategies. This builds stronger context awareness for both agents and humans, enabling more accurate troubleshooting, smarter code navigation, and continuous improvement. Insight accumulation is a key differentiator of modern knowledge graphs (2025), supporting real-time decision making, error reduction, and adaptive learning across the tool system.",
+      "@language": "en"
+    }
   },
   "taskList": {
     "completed": [

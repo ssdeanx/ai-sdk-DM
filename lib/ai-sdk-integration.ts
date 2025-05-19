@@ -27,7 +27,6 @@ import { getModelById, getModelByModelId } from './models/model-service';
 import { getAllBuiltInTools, loadCustomTools } from './tools';
 import { agenticTools } from './tools/agentic';
 
-
 /**
  * AI SDK Integration Module
  *

@@ -3,12 +3,14 @@ import {
   getItemById,
   updateItem,
   deleteItem,
-  getDrizzleClient,
-} from '@/lib/memory/supabase';
+} from '@/lib/memory/upstash/supabase-adapter';
+import { getDrizzleClient } from '@/lib/memory/supabase';
 import type { Model } from '@/types/models';
 import { handleApiError } from '@/lib/api-error-handler';
 import { models } from '@/db/supabase/schema';
 import { eq } from 'drizzle-orm';
+
+const db = process.env.USE_DRIZZLE === 'true' ? getDrizzleClient() : null;
 
 export async function GET(
   request: Request,
@@ -18,9 +20,8 @@ export async function GET(
     const { id } = params;
 
     // Try using Drizzle first
-    if (process.env.USE_DRIZZLE === 'true') {
+    if (db) {
       try {
-        const db = getDrizzleClient();
         const result = await db
           .select()
           .from(models)
@@ -36,16 +37,16 @@ export async function GET(
 
         return NextResponse.json(result[0]);
       } catch (drizzleError) {
+        // eslint-disable-next-line no-console
         console.error(
           'Error using Drizzle, falling back to Supabase:',
           drizzleError
         );
-        // Continue to Supabase fallback
       }
     }
 
-    // Fall back to Supabase client
-    const model = await getItemById<Model>('models', id);
+    // Fall back to Upstash/Supabase adapter
+    const model = await getItemById('models', id);
 
     if (!model) {
       return NextResponse.json({ error: 'Model not found' }, { status: 404 });
@@ -77,40 +78,58 @@ export async function PUT(
       updates.status = body.status as 'active' | 'inactive';
 
     // Try using Drizzle first
-    if (process.env.USE_DRIZZLE === 'true') {
+    if (db) {
       try {
-        const db = getDrizzleClient();
-
-        // Update the model
-        await db.update(models).set(updates).where(eq(models.id, id));
-
-        // Get the updated model
+        // Remove created_at/updated_at and convert numeric fields to string for Drizzle
+        const safeUpdates = { ...updates };
+        delete safeUpdates.created_at;
+        delete safeUpdates.updated_at;
+        if (safeUpdates.input_cost_per_token !== undefined)
+          safeUpdates.input_cost_per_token = String(
+            safeUpdates.input_cost_per_token
+          );
+        if (safeUpdates.output_cost_per_token !== undefined)
+          safeUpdates.output_cost_per_token = String(
+            safeUpdates.output_cost_per_token
+          );
+        if (safeUpdates.default_temperature !== undefined)
+          safeUpdates.default_temperature = String(
+            safeUpdates.default_temperature
+          );
+        if (safeUpdates.default_top_p !== undefined)
+          safeUpdates.default_top_p = String(safeUpdates.default_top_p);
+        if (safeUpdates.default_frequency_penalty !== undefined)
+          safeUpdates.default_frequency_penalty = String(
+            safeUpdates.default_frequency_penalty
+          );
+        if (safeUpdates.default_presence_penalty !== undefined)
+          safeUpdates.default_presence_penalty = String(
+            safeUpdates.default_presence_penalty
+          );
+        await db.update(models).set(safeUpdates).where(eq(models.id, id));
         const result = await db
           .select()
           .from(models)
           .where(eq(models.id, id))
           .limit(1);
-
         if (result.length === 0) {
           return NextResponse.json(
             { error: 'Model not found' },
             { status: 404 }
           );
         }
-
         return NextResponse.json(result[0]);
       } catch (drizzleError) {
+        // eslint-disable-next-line no-console
         console.error(
           'Error using Drizzle, falling back to Supabase:',
           drizzleError
         );
-        // Continue to Supabase fallback
       }
     }
 
-    // Fall back to Supabase client
-    const model = await updateItem<Model>('models', id, updates);
-
+    // Fall back to Upstash/Supabase adapter
+    const model = await updateItem('models', id, updates);
     return NextResponse.json(model);
   } catch (error) {
     return handleApiError(error);
@@ -123,33 +142,22 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
-
     // Try using Drizzle first
-    if (process.env.USE_DRIZZLE === 'true') {
+    if (db) {
       try {
-        const db = getDrizzleClient();
-
-        // Delete the model
         await db.delete(models).where(eq(models.id, id));
-
-        return NextResponse.json({
-          success: true,
-        });
+        return NextResponse.json({ success: true });
       } catch (drizzleError) {
+        // eslint-disable-next-line no-console
         console.error(
           'Error using Drizzle, falling back to Supabase:',
           drizzleError
         );
-        // Continue to Supabase fallback
       }
     }
-
-    // Fall back to Supabase client
+    // Fall back to Upstash/Supabase adapter
     const success = await deleteItem('models', id);
-
-    return NextResponse.json({
-      success,
-    });
+    return NextResponse.json({ success });
   } catch (error) {
     return handleApiError(error);
   }

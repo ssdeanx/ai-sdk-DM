@@ -47,10 +47,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "agent_states_memory_thread_id_agent_id_pk": {
-          "columns": [
-            "memory_thread_id",
-            "agent_id"
-          ],
+          "columns": ["memory_thread_id", "agent_id"],
           "name": "agent_states_memory_thread_id_agent_id_pk"
         }
       },
@@ -194,9 +191,7 @@
       "indexes": {
         "apps_name_unique": {
           "name": "apps_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": true
         }
       },
@@ -725,9 +720,7 @@
       "indexes": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },

@@ -29,16 +29,19 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 ### AI SDK Tracing & Middleware Refactor: Canonical Types, Error-Proofing, and Logging
 
 - **Major Refactor of Tracing and Middleware Modules:**
+
   - Refactored all core tracing and middleware modules (`lib/ai-sdk-tracing.ts`, `lib/tracing.ts`, `lib/langfuse-integration.ts`, `lib/otel-tracing.ts`, `lib/middleware.ts`) to remove all `any` types and direct `console`/`log` usage.
   - Updated all function signatures to use canonical, type-safe project types for messages, tools, and metadata.
   - Ensured all tracing, span, and event logic uses robust, type-safe project tracing infrastructure (Langfuse, OpenTelemetry).
   - All logging now uses the project-standard logger (e.g., `upstashLogger`).
 
 - **Canonical Tool Type Adoption:**
+
   - Removed all legacy/incorrect `ToolDefinition` usages in favor of the canonical `Tool` type from project validation/memory types (e.g., `db/supabase/validation.ts`, `db/libsql/validation.ts`).
   - Updated all tracing, middleware, and provider/model integrations to use the correct imports and type-safe tool/message types throughout.
 
 - **Error-Proofing and Robustness:**
+
   - All core tracing and middleware files are now error-free except for remaining import issues in `lib/ai-sdk-tracing.ts` (user will complete these).
   - Confirmed that `ai-integration.ts`, `ai-sdk-tracing.ts`, `langfuse-integration.ts`, `middleware.ts`, `otel-tracing.ts`, and `tracing.ts` are now error-free after refactor (except for known import issues).
 
@@ -95,6 +98,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 ### Embedding CRUD Operations
 
 - **Completed: Create & Get Operations (`db/libsql/crud.ts`):**
+
   - Implemented robust `createEmbedding` operation that:
     - Validates input using `EmbeddingSchema`
     - Inserts embedding data using Drizzle ORM
@@ -106,6 +110,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
     - Handles vector data conversion correctly
 
 - **Pending: Update & Delete Operations (`db/libsql/crud.ts`):**
+
   - Need to implement `updateEmbedding` with proper vector handling
   - Need to implement `deleteEmbedding` with proper error handling
   - Both operations should maintain type safety and validation patterns established in create/get operations
@@ -342,6 +347,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 
 - Audited and refactored the core persistence layer for robust, type-safe CRUD operations across both Supabase and Upstash adapters.
 - Refactored `lib/memory/supabase.ts` and `lib/memory/upstash/supabase-adapter.ts`:
+
   - Fixed type errors in all CRUD helpers, primary key helpers, and table typing.
   - Integrated `upstashLogger` for robust error logging in all relevant code paths.
   - Removed unsafe type assertions where possible and documented composite primary key support.
@@ -364,6 +370,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 - Implemented a production-grade, VSCode-like app builder UI in Next.js/React using shadcn/ui, CodeMirror, and AI SDK.
 - Main layout: left FileTree (with full CRUD, context menu, keyboard navigation), center Canvas/Code/Terminal display (CodeMirror-based, editable), right ChatBar (AI chat, code ops), bottom Terminal panel (interactive, command execution).
 - All components are now fully wired:
+
   - FileTree CRUD and file open/save logic connected to `/api/ai-sdk/files` backend route (GET/POST/PUT/DELETE).
   - CanvasDisplay supports code, terminal, and canvas modes; code mode is editable and supports JS, TS, JSON, and Markdown (with language switcher).
   - Markdown language support added to CodeMirror (using `@codemirror/lang-markdown`).
@@ -372,6 +379,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
   - All error handling uses `upstashLogger` for robust production logging.
 
 - **Component wiring and structure:**
+
   - `AppBuilderContainer`: Orchestrates layout and state, wires FileTree, CanvasDisplay, ChatBar, and Terminal together. Handles file open/save, command execution, and chat-to-code/terminal ops.
   - `FileTree`: Handles file/folder CRUD, context menu, keyboard navigation, and API integration. Notifies container on file select, triggers refresh on CRUD.
   - `CanvasDisplay`: Main code/canvas/terminal area. Uses CodeMirror for code editing (JS/TS/JSON/Markdown), supports language switching, and is fully editable. Receives file content from FileTree and updates via onChange. Handles markdown as a first-class language.
@@ -416,6 +424,7 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 - Noted that frontend integration for new/updated API routes is incomplete and pending.
 
 - **Current ai-sdk API routes (as of this release):**
+
   - `agents/route.ts`
   - `agents/[id]/route.ts`
   - `agents/[id]/run/route.ts`

@@ -30,9 +30,11 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(item);
       }
       if (app_id) {
-        const items = await getData<'app_code_blocks'>(table, {
-          match: { app_id },
-        });
+        // Fetch all items and filter in memory as QueryOptions may not support 'where' for Upstash
+        const allItems = await getData<'app_code_blocks'>(table);
+        const items = allItems.filter(
+          (item: TableRow<'app_code_blocks'>) => item.app_id === app_id
+        );
         return NextResponse.json(items);
       }
       const items = await getData<'app_code_blocks'>(table);
@@ -67,7 +69,6 @@ export async function GET(req: NextRequest) {
     return handleApiError(error);
   }
 }
-
 export async function POST(req: NextRequest) {
   try {
     const data = (await req.json()) as TableInsert<'app_code_blocks'>;

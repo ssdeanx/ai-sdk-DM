@@ -5,6 +5,7 @@
 When you (AI assistant) join a new chat about `/lib`, use the following context-enrichment pattern:
 
 1. **Background**: `/lib` contains the core backend modules for the DeanmachinesAI project (formerly ai-sdk-DM):
+
    - **AI Integration**: Provider abstraction, AI SDK integration, and tracing (`ai.ts`, `ai-sdk-integration.ts`, `ai-sdk-tracing.ts`)
    - **Agents**: Autonomous agent framework with multi-agent orchestration (`agents/`)
    - **Memory**: Sophisticated persistence layer with LibSQL, Supabase, and Redis integration (`memory/`)
@@ -13,6 +14,7 @@ When you (AI assistant) join a new chat about `/lib`, use the following context-
    - **Observability**: Comprehensive tracing and metrics for monitoring and optimization
 
 2. **Your Role**: Provide code suggestions, documentation, and troubleshooting tailored to these modules, with focus on:
+
    - AI SDK integration patterns and best practices
    - Agent implementation and orchestration techniques
    - Memory and persistence strategies
@@ -21,6 +23,7 @@ When you (AI assistant) join a new chat about `/lib`, use the following context-
    - Observability and tracing integration
 
 3. **Goals**:
+
    - Quickly orient on file responsibilities and folder structure
    - Offer actionable steps to add, update, or debug components
    - Maintain consistency with existing architecture and TypeScript conventions
@@ -31,6 +34,7 @@ When you (AI assistant) join a new chat about `/lib`, use the following context-
    - Illustrate advanced RAG techniques and vector search optimization
 
 4. **Constraints**:
+
    - Do not propose refactors unless requested
    - Align examples with Supabase-driven config and LibSQL memory
    - Use clear, concise explanations and code snippets
@@ -85,6 +89,7 @@ lib/
 ## 3. Onboarding & Getting Started
 
 1. **Environment Setup**:
+
    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase client)
    - `DATABASE_URL` (Supabase Postgres connection for Drizzle)
    - `LIBSQL_DATABASE_URL`, `LIBSQL_AUTH_TOKEN` (LibSQL memory)
@@ -93,6 +98,7 @@ lib/
    - `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` (Optional, for tracing)
 
 2. **Database Initialization**:
+
    - Run Drizzle migrations for both databases:
 
    ```sh
@@ -106,40 +112,45 @@ lib/
    ```
 
 3. **Seed Data (Optional)**:
+
    - Use files in `lib/mock-data/` to populate baseline agents, models, and tools.
    - Run the seed script: `pnpm seed:dev` (creates sample agents, models, and tools)
 
 4. **Load Agents**:
+
    - Initialize the agent registry to load configurations from Supabase:
 
    ```typescript
-   import { agentRegistry } from "./agents/registry"
-   await agentRegistry.init()
+   import { agentRegistry } from './agents/registry';
+   await agentRegistry.init();
    ```
 
 5. **Run an Agent**:
+
    - Execute an agent with a thread ID and input prompt:
 
    ```typescript
-   import { runAgent } from "./agents/agent-service"
-   const response = await runAgent("agent-id", "thread-id", "Your prompt here")
+   import { runAgent } from './agents/agent-service';
+   const response = await runAgent('agent-id', 'thread-id', 'Your prompt here');
    ```
 
 6. **Invoke Tools Directly** (for testing):
+
    - Load and execute tools without going through an agent:
 
    ```typescript
-   import { getAllBuiltInTools, loadCustomTools } from "./tools/index"
-   const tools = { ...getAllBuiltInTools(), ...(await loadCustomTools()) }
-   const result = await tools.web_search({ query: "example" })
+   import { getAllBuiltInTools, loadCustomTools } from './tools/index';
+   const tools = { ...getAllBuiltInTools(), ...(await loadCustomTools()) };
+   const result = await tools.web_search({ query: 'example' });
    ```
 
 7. **Use Advanced Features**:
+
    - Implement middleware for enhanced capabilities:
 
    ```typescript
-   import { wrapLanguageModel } from 'ai'
-   import { google } from '@ai-sdk/google'
+   import { wrapLanguageModel } from 'ai';
+   import { google } from '@ai-sdk/google';
 
    const wrappedModel = wrapLanguageModel({
      model: google('gemini-1.5-pro'),
@@ -147,9 +158,9 @@ lib/
        transformParams: ({ params }) => ({
          ...params,
          temperature: 0.3,
-       })
-     }
-   })
+       }),
+     },
+   });
    ```
 
 ---
@@ -233,25 +244,25 @@ const middlewares = createMiddlewareFromOptions({
   caching: {
     enabled: true,
     ttl: 60_000, // 1 minute cache TTL
-    maxSize: 100 // Maximum cache size
+    maxSize: 100, // Maximum cache size
   },
   logging: {
     enabled: true,
     logParams: true,
-    logResults: true
+    logResults: true,
   },
   reasoning: {
     enabled: true,
     tagName: 'think',
-    startWithReasoning: false
+    startWithReasoning: false,
   },
   simulation: {
-    enabled: false
+    enabled: false,
   },
   defaultSettings: {
     temperature: 0.7,
-    maxTokens: 1000
-  }
+    maxTokens: 1000,
+  },
 });
 ```
 
@@ -270,10 +281,10 @@ const contextMiddleware = createMiddleware({
     return {
       messages: [
         { role: 'system', content: 'Additional context: ...' },
-        ...messages
-      ]
+        ...messages,
+      ],
     };
-  }
+  },
 });
 
 // Response filtering middleware
@@ -284,10 +295,10 @@ const filterMiddleware = createMiddleware({
     return {
       response: {
         ...response,
-        text: response.text().replace(/sensitive/g, '[redacted]')
-      }
+        text: response.text().replace(/sensitive/g, '[redacted]'),
+      },
     };
-  }
+  },
 });
 
 // Error handling middleware
@@ -297,19 +308,19 @@ const errorMiddleware = createMiddleware({
     console.error('Model error:', error);
     if (error.message.includes('rate limit')) {
       // Wait and retry
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return runAgain();
     }
     // Let the error propagate
     return { error };
-  }
+  },
 });
 
 // Use middleware in streamText or generateText
 const result = await streamText({
   model,
   messages,
-  middleware: [contextMiddleware, filterMiddleware, errorMiddleware]
+  middleware: [contextMiddleware, filterMiddleware, errorMiddleware],
 });
 ```
 
@@ -322,14 +333,14 @@ You can compose multiple middleware together for complex behavior:
 const combinedLMMiddleware = [
   createCachingMiddleware({ enabled: true }),
   createLoggingMiddleware({ enabled: true }),
-  createReasoningMiddleware({ enabled: true })
+  createReasoningMiddleware({ enabled: true }),
 ];
 
 // Combine request-response middleware
 const combinedRRMiddleware = [
   contextMiddleware,
   filterMiddleware,
-  errorMiddleware
+  errorMiddleware,
 ];
 
 // Use in AI SDK integration
@@ -339,8 +350,8 @@ const result = await streamWithAISDK({
   messages,
   middleware: {
     languageModel: combinedLMMiddleware,
-    request: combinedRRMiddleware
-  }
+    request: combinedRRMiddleware,
+  },
 });
 ```
 
@@ -358,14 +369,14 @@ const result = await generateText({
     getWeatherNYC: {
       description: 'Get weather in New York',
       parameters: z.object({}),
-      execute: async () => fetchWeather('New York')
+      execute: async () => fetchWeather('New York'),
     },
     getWeatherSF: {
       description: 'Get weather in San Francisco',
       parameters: z.object({}),
-      execute: async () => fetchWeather('San Francisco')
-    }
-  }
+      execute: async () => fetchWeather('San Francisco'),
+    },
+  },
 });
 ```
 
@@ -410,9 +421,9 @@ const result = await generateText({
 
     // Return the fixed tool call
     return result.toolCalls.find(
-      newToolCall => newToolCall.toolName === toolCall.toolName
+      (newToolCall) => newToolCall.toolName === toolCall.toolName
     );
-  }
+  },
 });
 ```
 

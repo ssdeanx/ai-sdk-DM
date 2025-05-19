@@ -4,21 +4,25 @@ The content has been processed where empty lines have been removed, content has 
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
 4. Repository files (if enabled)
-4. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+5. Multiple file entries, each consisting of:
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -27,6 +31,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: lib/models
@@ -40,6 +45,7 @@ The content is organized as follows:
 ## Additional Info
 
 # Directory Structure
+
 ```
 lib/models/model-registry.ts
 lib/models/model-service.ts
@@ -48,6 +54,7 @@ lib/models/model-service.ts
 # Files
 
 ## File: lib/models/model-registry.ts
+
 ```typescript
 /**
  * Model Registry
@@ -201,6 +208,7 @@ public registerMiddleware(modelId: string, middleware: LanguageModelV1Middleware
 ```
 
 ## File: lib/models/model-service.ts
+
 ```typescript
 /**
  * Model Service
