@@ -3,7 +3,6 @@ import { handleApiError } from '@/lib/api-error-handler';
 import { createTrace } from '@/lib/langfuse-integration';
 import { agentRegistry } from '@/lib/agents/registry';
 import { personaManager } from '@/lib/agents/personas/persona-manager';
-import { getSupabaseClient } from '@/lib/memory/supabase';
 import { getMemoryProvider } from '@/lib/memory/factory';
 import {
   getData,
@@ -14,6 +13,7 @@ import {
 } from '@/lib/memory/upstash/supabase-adapter';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { z } from 'zod';
+import { getSupabaseClient } from '@/lib/memory';
 
 // Define a type for the agent from registry which might have different property names
 interface RegistryAgent {

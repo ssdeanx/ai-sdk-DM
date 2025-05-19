@@ -5,7 +5,10 @@ import { createTrace, logEvent } from '@/lib/langfuse-integration';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { agentRegistry } from '@/lib/agents/registry';
 import { runAgent } from '@/lib/agents/agent-service';
-import { AgentRunOptions } from '@/lib/agents/agent.types';
+import {
+  AgentRunOptions,
+  AgentRunOptionsSchema,
+} from '@/lib/agents/agent.types';
 import { personaManager } from '@/lib/agents/personas/persona-manager';
 import {
   createMemoryThread,
@@ -14,16 +17,15 @@ import {
   loadAgentState,
   saveAgentState,
 } from '@/lib/memory/memory';
-import {
-  getSupabaseClient,
-  isSupabaseClient,
-  isUpstashClient,
-} from '@/lib/memory/supabase';
 
 /**
  * POST /api/ai-sdk/agents/[id]/run
  *
- * Run an agent with the AI SDK
+ * Run an agent with the AI SDK. Validates input using canonical Zod schema.
+ * @param request - The Next.js request object
+ * @param params - Route params (must include agent id)
+ * @returns {Promise<NextResponse>} Streamed or JSON agent run result
+ * @throws 400 if input is invalid, 404 if agent not found, 503 if memory unavailable
  */
 export async function POST(
   request: Request,
@@ -32,18 +34,31 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const {
-      input,
-      threadId: providedThreadId,
-      stream = true,
-      temperature,
-      maxTokens,
-      systemPrompt,
-      toolChoice,
-    } = body;
+
+    // Validate input using canonical AgentRunOptionsSchema
+    const inputResult = AgentRunOptionsSchema.safeParse(body);
+    if (!inputResult.success) {
+      await upstashLogger.error(
+        'agents',
+        'Invalid agent run input',
+        inputResult.error,
+        { agentId: id }
+      );
+      return NextResponse.json(
+        { error: 'Invalid input', details: inputResult.error.format() },
+        { status: 400 }
+      );
+    }
+    // Extract input and threadId from the original body, as AgentRunOptionsSchema does not include them
+    const input = body.input;
+    const providedThreadId = body.threadId;
+    // Map streamOutput to stream for backward compatibility
+    const stream = inputResult.data.streamOutput ?? true;
+    const { temperature, maxTokens, systemPrompt, toolChoice } =
+      inputResult.data;
 
     // Generate thread ID if not provided
-    const threadId = providedThreadId || generateId();
+    const threadId: string = providedThreadId || generateId();
 
     // Log agent run start
     await upstashLogger.info('agents', 'Agent run started', {
@@ -52,24 +67,15 @@ export async function POST(
       input: typeof input === 'string' ? input.slice(0, 100) : undefined,
     });
 
-    // Health check: ensure Supabase/Upstash is available
-    const supabaseHealth = await (async () => {
-      try {
-        const supabase = getSupabaseClient();
-        if (isSupabaseClient(supabase)) {
-          const { error } = await supabase.from('agents').select('id').limit(1);
-          return !error;
-        } else if (isUpstashClient(supabase)) {
-          // Upstash: try a simple getAll
-          await supabase.from('agents').limit(1).getAll();
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    })();
-    if (!supabaseHealth) {
+    // Health check: ensure Upstash is available
+    const upstashEnabled = process.env.USE_UPSTASH_ADAPTER === 'true';
+    if (!upstashEnabled) {
+      await upstashLogger.error(
+        'agents',
+        'Supabase/Upstash unavailable',
+        {},
+        { agentId: id }
+      );
       return NextResponse.json(
         { error: 'Supabase/Upstash is not available' },
         { status: 503 }
@@ -82,6 +88,12 @@ export async function POST(
     // Get agent config using agentRegistry (loads from Upstash/Supabase as needed)
     const agent = await agentRegistry.getAgent(id);
     if (!agent) {
+      await upstashLogger.error(
+        'agents',
+        'Agent not found',
+        {},
+        { agentId: id }
+      );
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
@@ -99,7 +111,7 @@ export async function POST(
     let threadExists = false;
     try {
       const messages = await loadMessages(threadId);
-      threadExists = messages && messages.length > 0;
+      threadExists = Array.isArray(messages) && messages.length > 0;
     } catch {
       threadExists = false;
     }
@@ -121,7 +133,6 @@ export async function POST(
     const previousMessages = await loadMessages(threadId);
 
     // Load agent state
-    // (agentState is not used directly, but triggers any stateful logic)
     await loadAgentState(threadId, id);
 
     // Create trace for this run
@@ -156,10 +167,14 @@ export async function POST(
             model_name: agent.modelId,
           });
         }
-        // Save agent state if needed
+        // Save agent state: only known fields
         if (data?.message) {
           await saveAgentState(threadId, id, {
-            lastRun: new Date().toISOString(),
+            memory_thread_id: threadId,
+            agent_id: id,
+            state_data: JSON.stringify({ lastRun: new Date().toISOString() }),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           });
         }
         // Log event

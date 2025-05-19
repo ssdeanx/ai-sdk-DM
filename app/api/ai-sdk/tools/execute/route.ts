@@ -4,7 +4,7 @@ import { getAllBuiltInTools, loadCustomTools } from '@/lib/tools';
 import { agenticTools } from '@/lib/tools/agentic';
 import { getAllAISDKTools } from '@/lib/ai-sdk-integration';
 import { getMemoryProvider } from '@/lib/memory/factory';
-import { v4 as uuidv4 } from 'uuid';
+import { generateId } from 'ai';
 import { z } from 'zod';
 
 // Local type for dynamic tool execution
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-    const executionId = uuidv4();
+    const executionId = generateId();
     const startTime = Date.now();
     let result;
     try {

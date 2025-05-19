@@ -40,8 +40,6 @@ export async function GET() {
       // Do not include tokens in the response
     });
   } catch (error) {
-    console.error('Error getting Upstash adapter configuration:', error);
-
     return NextResponse.json(
       {
         enabled: false,

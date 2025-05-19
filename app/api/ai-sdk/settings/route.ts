@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { settings } from '@/db/supabase/schema';
+import { SettingSchema } from '@/db/supabase/validation';
 
 const table = 'settings';
 const adapter = createSupabaseClient();
@@ -16,15 +17,43 @@ export async function GET(req: NextRequest) {
       .getById(`${category}:${key}`); // Composite key
     if (!item)
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(item);
+    const parsed = SettingSchema.safeParse(item);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(parsed.data);
   }
   const items = await adapter.from(table, schema).getAll();
-  return NextResponse.json(items);
+  const settings = items
+    .map((item: unknown) => {
+      const parsed = SettingSchema.safeParse(item);
+      return parsed.success ? parsed.data : null;
+    })
+    .filter(Boolean);
+  return NextResponse.json(settings);
 }
 
 export async function POST(req: NextRequest) {
   const data = await req.json();
-  const created = await adapter.from(table, schema).create(data);
+  const parsed = SettingSchema.omit({
+    created_at: true,
+    updated_at: true,
+  }).safeParse(data);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.format() },
+      { status: 400 }
+    );
+  }
+  const now = new Date().toISOString();
+  const created = await adapter.from(table, schema).create({
+    ...parsed.data,
+    created_at: now,
+    updated_at: now,
+  });
   return NextResponse.json(created, { status: 201 });
 }
 
@@ -35,9 +64,19 @@ export async function PUT(req: NextRequest) {
       { error: 'Missing category or key' },
       { status: 400 }
     );
+  const parsed = SettingSchema.partial().safeParse(data);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.format() },
+      { status: 400 }
+    );
+  }
   const updated = await adapter
     .from(table, schema)
-    .update(`${data.category}:${data.key}`, data);
+    .update(`${data.category}:${data.key}`, {
+      ...parsed.data,
+      updated_at: new Date().toISOString(),
+    });
   return NextResponse.json(updated);
 }
 

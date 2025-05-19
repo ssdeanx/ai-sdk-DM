@@ -34,8 +34,6 @@ export async function GET() {
       error: isAvailable ? undefined : 'Memory provider is not available',
     });
   } catch (error) {
-    console.error('Error getting memory provider configuration:', error);
-
     return NextResponse.json(
       {
         provider: 'libsql', // Default to LibSQL

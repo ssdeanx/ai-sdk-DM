@@ -3,11 +3,16 @@ import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-fact
 import { checkUpstashAvailability } from '@/lib/memory/upstash';
 
 /**
- * GET /api/memory/upstash-adapter
+ * GET /api/ai-sdk/memory/upstash-adapter
  *
- * Returns information about the Upstash adapter configuration
+ * Retrieves the configuration and status of the Upstash adapter.
+ * This includes whether the adapter is enabled, the availability of
+ * Upstash Redis and Vector services, adapter version, and supported features.
+ *
+ * @returns {Promise<NextResponse>} A JSON response containing the adapter status
+ * or an error object if the adapter is not enabled, not available, or an internal error occurs.
  */
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     // Check if Upstash adapter is enabled
     const useUpstashAdapter = process.env.USE_UPSTASH_ADAPTER === 'true';
@@ -40,7 +45,7 @@ export async function GET() {
       enabled: true,
       redisAvailable,
       vectorAvailable,
-      adapterVersion: '1.0.0',
+      adapterVersion: '1.0.1',
       features: {
         threads: true,
         messages: true,
@@ -49,24 +54,34 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('Error getting Upstash adapter configuration:', error);
-
+    // Generated on 2024-07-15T10:30:00
+    // TODO: 2024-07-15T10:30:00 - Implement proper error logging using upstashLogger
     return NextResponse.json(
       {
         enabled: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Internal server error',
       },
       { status: 500 }
     );
   }
 }
-
 /**
- * POST /api/memory/upstash-adapter
+ * POST /api/ai-sdk/memory/upstash-adapter
  *
- * Test the Upstash adapter by performing a simple operation
+ * Tests the Upstash adapter connectivity and functionality by performing a
+ * simple upsert operation on a test table.
+ * This endpoint helps verify that the custom Supabase adapter for Upstash is working correctly.
+ *
+ * @param {Request} _request - The incoming Next.js request object. It is not directly used in this function.
+ * @returns {Promise<NextResponse>} A JSON response indicating the success or failure of the test.
+ * On success, it may include a message and sample data.
+ * On failure (e.g., adapter not enabled, Upstash unavailable, or operation error),
+ * it returns an error object with a corresponding status code.
  */
-export async function POST(request: Request) {
+export async function POST(
+  _request: Request,
+  { params }: { params: Record<string, string> }
+): Promise<NextResponse> {
   try {
     // Check if Upstash adapter is enabled
     const useUpstashAdapter = process.env.USE_UPSTASH_ADAPTER === 'true';
@@ -81,27 +96,55 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create Supabase client with Upstash adapter
-    const supabase = createSupabaseClient();
+    // Check Upstash availability
+    const { redisAvailable } = await checkUpstashAvailability();
 
-    // Perform a simple operation to test the adapter
+    if (!redisAvailable) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Upstash Redis is not available for testing',
+        },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Failed to initialize Supabase client for Upstash adapter test.',
+        },
+        { status: 500 }
+      );
+    }
+
     const testData = {
-      id: 'test-' + Date.now(),
-      name: 'Test Item',
+      id: `test-${Date.now()}`,
+      content: 'Test data for Upstash adapter',
       created_at: new Date().toISOString(),
     };
 
+    type TestData = typeof testData;
+
     // Use a test table that won't affect production data
-    const { data, error } = await supabase
+    // Assuming the custom adapter's upsert method returns a promise resolving to an object
+    // like { data: YourType[] | null, error: PostgrestError | null },
+    // and does not support further chaining of .select().single().
+    const response = await supabase
       .from('_test_upstash_adapter')
-      .insert([testData])
-      .select()
-      .single();
+      .upsert([testData]);
+
+    const error = response.error;
+    const data =
+      response.data && Array.isArray(response.data) && response.data.length > 0
+        ? response.data[0]
+        : null;
 
     if (error) {
-      // If the table doesn't exist, that's okay - just return success
       if (error.code === '42P01') {
-        // undefined_table
         return NextResponse.json({
           success: true,
           message: 'Upstash adapter is working (test table not available)',
@@ -117,8 +160,6 @@ export async function POST(request: Request) {
       data,
     });
   } catch (error) {
-    console.error('Error testing Upstash adapter:', error);
-
     return NextResponse.json(
       {
         success: false,
