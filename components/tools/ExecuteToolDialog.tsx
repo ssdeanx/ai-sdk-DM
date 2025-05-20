@@ -41,7 +41,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ToolExecutor } from './tool-executor';
+import { ToolExecutor } from './ToolExecuter';
 
 interface ToolCardProps {
   tool: {

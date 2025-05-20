@@ -25,6 +25,41 @@ import {
 import { Agent } from '@/db/supabase/validation';
 import { Loader2 } from 'lucide-react';
 import { modelRegistry } from '@/lib/models/model-registry';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { createAvatar } from '@dicebear/core';
+import { identicon } from '@dicebear/collection';
+import { adventurer } from '@dicebear/collection';
+import { avataaars } from '@dicebear/collection';
+import { bottts } from '@dicebear/collection';
+import { croodles } from '@dicebear/collection';
+import { micah } from '@dicebear/collection';
+import { miniavs } from '@dicebear/collection';
+import { openPeeps } from '@dicebear/collection';
+import { personas } from '@dicebear/collection';
+import { pixelArt } from '@dicebear/collection';
+import { pixelArtNeutral } from '@dicebear/collection';
+import { shapes } from '@dicebear/collection';
+import { thumbs } from '@dicebear/collection';
+
+const dicebearStyles = [
+  { key: 'identicon', label: 'Identicon', style: identicon },
+  { key: 'adventurer', label: 'Adventurer', style: adventurer },
+  { key: 'avataaars', label: 'Avataaars', style: avataaars },
+  { key: 'bottts', label: 'Bottts', style: bottts },
+  { key: 'croodles', label: 'Croodles', style: croodles },
+  { key: 'micah', label: 'Micah', style: micah },
+  { key: 'miniavs', label: 'Miniavs', style: miniavs },
+  { key: 'openPeeps', label: 'OpenPeeps', style: openPeeps },
+  { key: 'personas', label: 'Personas', style: personas },
+  { key: 'pixelArt', label: 'Pixel Art', style: pixelArt },
+  {
+    key: 'pixelArtNeutral',
+    label: 'Pixel Art Neutral',
+    style: pixelArtNeutral,
+  },
+  { key: 'shapes', label: 'Shapes', style: shapes },
+  { key: 'thumbs', label: 'Thumbs', style: thumbs },
+];
 
 interface CreateAgentDialogProps {
   isOpen: boolean;
@@ -45,6 +80,8 @@ export function CreateAgentDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [avatarStyle, setAvatarStyle] = useState('identicon');
+  const [avatarSvg, setAvatarSvg] = useState<string>('');
 
   useEffect(() => {
     // Load models from the model registry
@@ -52,6 +89,20 @@ export function CreateAgentDialog({
     setModels(allModels.map((m) => ({ id: m.id, name: m.name })));
   }, []);
 
+  useEffect(() => {
+    const styleObj =
+      dicebearStyles.find((s) => s.key === avatarStyle) || dicebearStyles[0];
+    const avatar = createAvatar(styleObj.style as typeof thumbs, {
+      seed: name || 'agent',
+      size: 64,
+      backgroundColor: ['#fff', '#000'],
+    });
+    if (typeof avatar === 'string') {
+      setAvatarSvg(avatar);
+    } else if (avatar instanceof Promise) {
+      avatar.then((svg: string) => setAvatarSvg(svg));
+    }
+  }, [avatarStyle, name]);
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = 'Name is required';
@@ -109,6 +160,33 @@ export function CreateAgentDialog({
               Configure your AI agent with the details below.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex flex-col items-center mb-4">
+            <Avatar className="h-16 w-16 mb-2">
+              <AvatarImage src={avatarSvg} alt="Agent Avatar" />
+              <AvatarFallback>AI</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {dicebearStyles.map((styleObj) => (
+                <button
+                  key={styleObj.key}
+                  type="button"
+                  className={`rounded-full border-2 p-1 ${avatarStyle === styleObj.key ? 'border-primary' : 'border-gray-700'}`}
+                  onClick={() => setAvatarStyle(styleObj.key)}
+                  aria-label={`Choose ${styleObj.label} avatar`}
+                >
+                  <img
+                    src={createAvatar(styleObj.style, {
+                      seed: name || 'agent',
+                      size: 32,
+                    }).toDataUri()}
+                    alt={styleObj.label}
+                    className="h-8 w-8 rounded-full"
+                  />
+                </button>
+              ))}
+            </div>{' '}
+          </div>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

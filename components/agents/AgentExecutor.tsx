@@ -22,6 +22,55 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAgentExecutor } from '@/hooks/use-executor';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { generateId } from 'ai';
+import { toolRegistry } from '@/lib/tools/toolRegistry';
+
+/**
+ * Renders the result of a tool call, using the tool's custom renderer if available.
+ * @param toolResult - The result returned by the tool.
+ * @param toolCall - The tool call info (name, parameters).
+ */
+interface ToolWithRender {
+  renderResult?: (result: unknown) => React.ReactElement;
+}
+function ToolResultRenderer({
+  toolResult,
+  toolCall,
+}: {
+  toolResult: string | null | undefined;
+  toolCall?: { name: string };
+}): React.ReactElement | null {
+  const [toolDef, setToolDef] = useState<ToolWithRender | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (toolCall?.name) {
+        const def = await toolRegistry.getTool(toolCall.name);
+        if (mounted) setToolDef(def as ToolWithRender);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [toolCall?.name]);
+  if (!toolResult) return null;
+  if (
+    toolDef &&
+    typeof toolDef === 'object' &&
+    toolDef !== null &&
+    typeof toolDef.renderResult === 'function'
+  ) {
+    return toolDef.renderResult(toolResult);
+  }
+  // Fallback: pretty-print JSON
+  return (
+    <div className="mt-2 p-2 border rounded-md bg-background/80">
+      <div className="text-xs font-medium mb-1">Tool result:</div>
+      <div className="text-xs overflow-x-auto">
+        <pre className="text-xs">{JSON.stringify(toolResult, null, 2)}</pre>
+      </div>
+    </div>
+  );
+}
 
 // Canonical Message type for agent chat
 export interface Message
@@ -30,7 +79,7 @@ export interface Message
     name: string;
     parameters: Record<string, unknown>;
   };
-  toolResult?: unknown;
+  toolResult?: string | null;
 }
 
 export interface AgentExecutorProps {
@@ -157,7 +206,7 @@ export function AgentExecutor({
       <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full max-h-[500px] p-4">
           <div className="space-y-4">
-            {messages.map((message, index) => (
+            {messages.map((message: Message, index) => (
               <div
                 key={index}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -190,8 +239,9 @@ export function AgentExecutor({
                           : 'bg-muted'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-
+                    <div className="whitespace-pre-wrap">
+                      {message.content?.toString() || ''}
+                    </div>
                     {message.toolCall && (
                       <div className="mt-2 p-2 border rounded-md bg-background/80">
                         <div className="text-xs font-medium mb-1">
@@ -208,25 +258,17 @@ export function AgentExecutor({
                         </div>
                       </div>
                     )}
-
                     {message.toolResult && (
-                      <div className="mt-2 p-2 border rounded-md bg-background/80">
-                        <div className="text-xs font-medium mb-1">
-                          Tool result:
-                        </div>
-                        <div className="text-xs overflow-x-auto">
-                          <pre className="text-xs">
-                            {JSON.stringify(message.toolResult, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
+                      <ToolResultRenderer
+                        toolResult={message.toolResult}
+                        toolCall={message.toolCall}
+                      />
                     )}
                   </div>
                 </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
-
             {isExecuting && (
               <div className="flex justify-start">
                 <div className="flex max-w-[80%]">

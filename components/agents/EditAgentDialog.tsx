@@ -26,6 +26,41 @@ import {
 import { Loader2 } from 'lucide-react';
 import { AgentSchema, type Agent } from '@/db/supabase/validation';
 import { modelRegistry } from '@/lib/models/model-registry';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { createAvatar } from '@dicebear/core';
+import { identicon } from '@dicebear/collection';
+import { adventurer } from '@dicebear/collection';
+import { avataaars } from '@dicebear/collection';
+import { bottts } from '@dicebear/collection';
+import { croodles } from '@dicebear/collection';
+import { micah } from '@dicebear/collection';
+import { miniavs } from '@dicebear/collection';
+import { openPeeps } from '@dicebear/collection';
+import { personas } from '@dicebear/collection';
+import { pixelArt } from '@dicebear/collection';
+import { pixelArtNeutral } from '@dicebear/collection';
+import { shapes } from '@dicebear/collection';
+import { thumbs } from '@dicebear/collection';
+
+const dicebearStyles = [
+  { key: 'identicon', label: 'Identicon', style: identicon },
+  { key: 'adventurer', label: 'Adventurer', style: adventurer },
+  { key: 'avataaars', label: 'Avataaars', style: avataaars },
+  { key: 'bottts', label: 'Bottts', style: bottts },
+  { key: 'croodles', label: 'Croodles', style: croodles },
+  { key: 'micah', label: 'Micah', style: micah },
+  { key: 'miniavs', label: 'Miniavs', style: miniavs },
+  { key: 'openPeeps', label: 'OpenPeeps', style: openPeeps },
+  { key: 'personas', label: 'Personas', style: personas },
+  { key: 'pixelArt', label: 'Pixel Art', style: pixelArt },
+  {
+    key: 'pixelArtNeutral',
+    label: 'Pixel Art Neutral',
+    style: pixelArtNeutral,
+  },
+  { key: 'shapes', label: 'Shapes', style: shapes },
+  { key: 'thumbs', label: 'Thumbs', style: thumbs },
+];
 
 interface EditAgentDialogProps {
   isOpen: boolean;
@@ -46,6 +81,8 @@ export function EditAgentDialog({
   const [system_prompt, setSystemPrompt] = useState(agent.system_prompt || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [avatarStyle, setAvatarStyle] = useState('identicon');
+  const [avatarSvg, setAvatarSvg] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -54,8 +91,24 @@ export function EditAgentDialog({
       setModelId(agent.model_id);
       setSystemPrompt(agent.system_prompt || '');
       setErrors({});
+      setAvatarStyle('identicon');
     }
   }, [isOpen, agent]);
+
+  useEffect(() => {
+    const styleObj =
+      dicebearStyles.find((s) => s.key === avatarStyle) || dicebearStyles[0];
+    const avatar = createAvatar(styleObj.style, {
+      seed: agent.id || name || 'agent',
+      size: 64,
+      backgroundColor: ['#fff', '#000'],
+    });
+    if (typeof avatar === 'string') {
+      setAvatarSvg(avatar);
+    } else if (avatar instanceof Promise) {
+      avatar.then((svg: string) => setAvatarSvg(svg));
+    }
+  }, [avatarStyle, agent.id, name]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -71,8 +124,7 @@ export function EditAgentDialog({
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
-      // Validate payload with canonical schema
-      const updatedAgent: Agent = agentSchema.parse({
+      const updatedAgent: Agent = AgentSchema.parse({
         ...agent,
         name,
         description,
@@ -81,7 +133,7 @@ export function EditAgentDialog({
       });
       await onUpdateAgent(updatedAgent);
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         const zodErrors: Record<string, string> = {};
         err.errors.forEach((e) => {
@@ -93,6 +145,13 @@ export function EditAgentDialog({
       setIsSubmitting(false);
     }
   };
+  type ModelType = { id: string; displayName?: string; name?: string };
+  const models: ModelType[] = Array.isArray(modelRegistry)
+    ? (modelRegistry as ModelType[])
+    : Object.values(
+        (modelRegistry as unknown as { models: Record<string, ModelType> })
+          .models || {}
+      );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -104,6 +163,33 @@ export function EditAgentDialog({
               Update your AI agent details below.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex flex-col items-center mb-4">
+            <Avatar className="h-16 w-16 mb-2">
+              <AvatarImage src={avatarSvg} alt="Agent Avatar" />
+              <AvatarFallback>AI</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {dicebearStyles.map((styleObj) => (
+                <button
+                  key={styleObj.key}
+                  type="button"
+                  className={`rounded-full border-2 p-1 ${avatarStyle === styleObj.key ? 'border-primary' : 'border-gray-700'}`}
+                  onClick={() => setAvatarStyle(styleObj.key)}
+                  aria-label={`Choose ${styleObj.label} avatar`}
+                >
+                  <img
+                    src={createAvatar(styleObj.style, {
+                      seed: agent.id || name || 'agent',
+                      size: 32,
+                    }).toDataUri()}
+                    alt={styleObj.label}
+                    className="h-8 w-8 rounded-full"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -160,9 +246,9 @@ export function EditAgentDialog({
                   <SelectValue placeholder="Select model" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-900 border-gray-800">
-                  {modelRegistry.map((model) => (
+                  {models.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
-                      {model.displayName || model.id}
+                      {model.displayName || model.name || model.id}
                     </SelectItem>
                   ))}
                 </SelectContent>

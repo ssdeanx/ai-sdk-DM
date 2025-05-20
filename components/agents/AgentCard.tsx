@@ -25,22 +25,39 @@ import {
 import { createAvatar } from '@dicebear/core';
 import { identicon } from '@dicebear/collection';
 import { formatDistanceToNow } from 'date-fns';
-import { Agent } from '@/db/supabase/validation';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Agent, AgentPersona, Tool } from '@/db/supabase/validation';
 
 /**
  * Component for displaying an agent card with options to edit, delete, or chat with the agent.
  * @param agent - The agent data to display.
  * @param onDelete - Callback function to handle agent deletion.
  * @param onUpdate - Callback function to handle agent updates.
+ * @param model - (Optional) The model object for this agent.
+ * @param tools - (Optional) The tools assigned to this agent.
+ * @param persona - (Optional) The persona object for this agent.
  */
 export function AgentCard({
   agent,
   onDelete,
   onUpdate,
+  model,
+  tools,
+  persona,
 }: {
   agent: Agent;
   onDelete: (id: string) => Promise<void>;
   onUpdate: (agent: Agent) => Promise<void>;
+  model?: { id: string; name: string; provider?: string };
+  tools?: Tool[];
+  persona?: AgentPersona;
 }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -50,7 +67,7 @@ export function AgentCard({
 
   useEffect(() => {
     (async () => {
-      const svg = await createAvatar(identicon, {
+      const svg = createAvatar(identicon, {
         seed: agent.id || agent.name || 'agent',
         size: 64,
         backgroundColor: ['#fff', '#000'],
@@ -70,6 +87,51 @@ export function AgentCard({
     router.push(`/chat?agent=${agent.id}`);
   };
 
+  const renderToolBadges = () => {
+    if (tools && tools.length > 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="cursor-pointer">
+                {tools.length} Tool{tools.length > 1 ? 's' : ''}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-xs">
+                {tools.map((tool) => (
+                  <div key={tool.id}>{tool.name}</div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    return null;
+  };
+
+  const renderPersonaBadge = () => {
+    if (persona) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="cursor-pointer">
+                Persona
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-xs font-semibold">{persona.name}</div>
+              <div className="text-xs text-gray-400">{persona.description}</div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       <Card className="glass-card gradient-border border-2 border-transparent hover:border-primary transition-all duration-200 shadow-lg">
@@ -83,7 +145,7 @@ export function AgentCard({
                 draggable={false}
               />
             ) : (
-              <div className="w-full h-full bg-muted rounded-full" />
+              <Skeleton className="w-full h-full rounded-full" />
             )}
           </div>
           <CardTitle className="text-lg font-bold text-white text-center gradient-text">
@@ -95,12 +157,36 @@ export function AgentCard({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-            <span className="px-2 py-1 rounded bg-gray-800 text-xs text-gray-300">
-              Model:{' '}
-              <span className="font-semibold text-primary">
-                {agent.model_id || 'Unknown'}
-              </span>
-            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="px-2 py-1 rounded bg-gray-800 text-xs text-gray-300 cursor-pointer">
+                    Model:{' '}
+                    <span className="font-semibold text-primary">
+                      {model ? model.name : agent.model_id || 'Unknown'}
+                    </span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-xs">
+                    {model ? (
+                      <>
+                        <div className="font-semibold">{model.name}</div>
+                        {model.provider && (
+                          <div className="text-gray-400">
+                            Provider: {model.provider}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div>Model ID: {agent.model_id}</div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {renderToolBadges()}
+            {renderPersonaBadge()}
           </div>
           {agent.system_prompt && (
             <div className="text-xs text-gray-500 italic text-center mb-2 line-clamp-2">
@@ -111,6 +197,14 @@ export function AgentCard({
             Created:{' '}
             {agent.created_at
               ? formatDistanceToNow(new Date(agent.created_at), {
+                  addSuffix: true,
+                })
+              : 'Unknown'}
+          </div>
+          <div className="text-xs text-gray-500 text-center">
+            Updated:{' '}
+            {agent.updated_at
+              ? formatDistanceToNow(new Date(agent.updated_at), {
                   addSuffix: true,
                 })
               : 'Unknown'}
