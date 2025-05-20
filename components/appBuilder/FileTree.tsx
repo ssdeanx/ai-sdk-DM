@@ -23,6 +23,7 @@ export interface FileNode {
 interface FileTreeProps {
   rootPath?: string;
   onFileSelect?: (file: FileNode) => void;
+  onRefresh?: () => void;
   className?: string;
 }
 
@@ -321,13 +322,18 @@ export const FileTree: React.FC<FileTreeProps> = ({
   rootPath = '',
   onFileSelect,
   className,
+  onRefresh,
 }) => {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+  // Internal refresh function
+  const internalRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  // Use the provided onRefresh prop if available, else use the internal refresh
+  const handleRefresh = onRefresh ? onRefresh : internalRefresh;
 
   useEffect(() => {
     setLoading(true);
@@ -341,7 +347,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
     <div className={cn('overflow-auto h-full', className)}>
       <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted">
         <span className="font-bold text-xs">Files</span>
-        <Button variant="ghost" size="icon-sm" onClick={refresh}>
+        <Button variant="ghost" size="icon-sm" onClick={handleRefresh}>
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
@@ -356,7 +362,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
             node={node}
             level={0}
             onFileSelect={onFileSelect}
-            onRefresh={refresh}
+            onRefresh={handleRefresh}
           />
         ))}
       </div>

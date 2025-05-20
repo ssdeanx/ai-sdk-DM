@@ -1,14 +1,24 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send } from 'lucide-react';
 import { useChat, Message as AIChatMessage } from '@ai-sdk/react'; // Import useChat and Message type
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { parseCommand } from '@/lib/commandParser';
+import { Agent, AgentPersona } from '@/db/supabase/validation';
 
 // Re-export Message type for external use if needed, or align with AI SDK's type
 export type Message = AIChatMessage;
+
+interface ExtendedChatMessage extends AIChatMessage {
+  advancedOptions: {
+    mode: 'default' | 'agent' | 'persona' | 'microagent';
+    agent?: string;
+    persona?: string;
+  };
+}
 
 /**
  * Props for the ChatBar component.
@@ -92,23 +102,82 @@ export function ChatBar({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [advancedMode, setAdvancedMode] = useState<
+    'default' | 'agent' | 'persona' | 'microagent'
+  >('default');
+  const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
+  const [availablePersonas, setAvailablePersonas] = useState<AgentPersona[]>(
+    []
+  );
+  const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [selectedPersona, setSelectedPersona] = useState<string>('');
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]); // messages state is now managed by useChat
+
+  useEffect(() => {
+    if (advancedMode === 'agent') {
+      fetch('/api/ai-sdk/agents')
+        .then((res) => res.json())
+        .then((data) => setAvailableAgents(data))
+        .catch((err) =>
+          upstashLogger.error(
+            'chatBar',
+            'Error fetching agents',
+            err instanceof Error ? err : { error: err }
+          )
+        );
+    } else if (advancedMode === 'persona' || advancedMode === 'microagent') {
+      fetch('/api/ai-sdk/agents/personas')
+        .then((res) => res.json())
+        .then((data) => setAvailablePersonas(data))
+        .catch((err) =>
+          upstashLogger.error(
+            'chatBar',
+            'Error fetching personas',
+            err instanceof Error ? err : { error: err }
+          )
+        );
+    }
+  }, [advancedMode]);
 
   // Modify handleSubmit to use append from useChat
   const handleSend = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-
+    let contentToSend = input;
+    if (
+      input.startsWith('/') ||
+      input.startsWith('@') ||
+      input.startsWith('#')
+    ) {
+      try {
+        const parsed = await parseCommand(input.trim());
+        if (parsed.type === 'command') {
+          contentToSend = `Command detected: ${parsed.command} with args: ${parsed.args.join(', ')}`;
+        }
+      } catch (err) {
+        upstashLogger.error(
+          'chatBar',
+          'parseCommand error',
+          err instanceof Error ? err : { error: err }
+        );
+      }
+    }
     // useChat's append function sends the user message and handles the assistant response
     await append({
       role: 'user',
-      content: input,
-    });
-
-    // useChat manages the input state internally, so no need to clear manually here
-    // setInput(''); // This line is removed
+      content: contentToSend,
+      advancedOptions: {
+        mode: advancedMode,
+        agent: advancedMode === 'agent' ? selectedAgent : undefined,
+        persona:
+          advancedMode === 'persona' || advancedMode === 'microagent'
+            ? selectedPersona
+            : undefined,
+      },
+    } as ExtendedChatMessage);
   };
 
   return (
@@ -128,6 +197,56 @@ export function ChatBar({
           )
         )}
         <div ref={messagesEndRef} />
+      </div>
+      <div className="mb-2 flex items-center gap-2">
+        <label htmlFor="advancedModeSelect" className="text-sm text-white">
+          Mode:
+        </label>
+        <select
+          id="advancedModeSelect"
+          value={advancedMode}
+          onChange={(e) =>
+            setAdvancedMode(
+              e.target.value as 'default' | 'agent' | 'persona' | 'microagent'
+            )
+          }
+          className="bg-zinc-800 text-white p-1 rounded"
+        >
+          <option value="default">Default</option>
+          <option value="agent">Agent</option>
+          <option value="persona">Persona</option>
+          <option value="microagent">Microagent</option>
+        </select>
+        {advancedMode === 'agent' && (
+          <select
+            aria-label="Select Agent"
+            value={selectedAgent}
+            onChange={(e) => setSelectedAgent(e.target.value)}
+            className="bg-zinc-800 text-white p-1 rounded"
+          >
+            <option value="">Select Agent</option>
+            {availableAgents.map((agent: Agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {(advancedMode === 'persona' || advancedMode === 'microagent') && (
+          <select
+            aria-label="Select Persona"
+            value={selectedPersona}
+            onChange={(e) => setSelectedPersona(e.target.value)}
+            className="bg-zinc-800 text-white p-1 rounded"
+          >
+            <option value="">Select Persona</option>
+            {availablePersonas.map((persona: AgentPersona) => (
+              <option key={persona.id} value={persona.id}>
+                {persona.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <form
         onSubmit={handleSend}

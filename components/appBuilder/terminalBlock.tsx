@@ -4,6 +4,9 @@ import React, { useRef, useEffect } from 'react';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { CanvasAddon } from '@xterm/addon-canvas';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 
 interface AppBuilderTerminalBlockProps {
   /** Initial content to display in the terminal (static mode) */
@@ -21,6 +24,8 @@ export const AppBuilderTerminalBlock: React.FC<
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const cmdBufferRef = useRef<string>('');
+  const commandHistoryRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
 
   // Initialize terminal once
   useEffect(() => {
@@ -40,7 +45,7 @@ export const AppBuilderTerminalBlock: React.FC<
       if (interactive) {
         term.write('$ ');
       }
-      // Key handling for interactive or delegated command execution
+      // Key handling for interactive command execution
       term.onKey(({ key, domEvent }) => {
         const printable =
           !domEvent.altKey &&
@@ -50,6 +55,11 @@ export const AppBuilderTerminalBlock: React.FC<
         if (domEvent.key === 'Enter') {
           term.write('\r\n');
           const cmd = cmdBufferRef.current;
+          // Save command in history if non-empty
+          if (cmd.trim() !== '') {
+            commandHistoryRef.current.push(cmd);
+          }
+          historyIndexRef.current = commandHistoryRef.current.length;
           cmdBufferRef.current = '';
           if (interactive) {
             // Execute command via backend
@@ -80,6 +90,39 @@ export const AppBuilderTerminalBlock: React.FC<
             term.write('\b \b');
             cmdBufferRef.current = cmdBufferRef.current.slice(0, -1);
           }
+        } else if (domEvent.key === 'ArrowUp') {
+          // Navigate up in command history
+          if (
+            commandHistoryRef.current.length > 0 &&
+            historyIndexRef.current > 0
+          ) {
+            historyIndexRef.current -= 1;
+            const historyCmd =
+              commandHistoryRef.current[historyIndexRef.current];
+            // Clear current line and reprint prompt and command
+            term.write('\r\x1b[K');
+            term.write('$ ' + historyCmd);
+            cmdBufferRef.current = historyCmd;
+          }
+        } else if (domEvent.key === 'ArrowDown') {
+          // Navigate down in command history
+          if (
+            commandHistoryRef.current.length > 0 &&
+            historyIndexRef.current < commandHistoryRef.current.length - 1
+          ) {
+            historyIndexRef.current += 1;
+            const historyCmd =
+              commandHistoryRef.current[historyIndexRef.current];
+            term.write('\r\x1b[K');
+            term.write('$ ' + historyCmd);
+            cmdBufferRef.current = historyCmd;
+          } else {
+            // If at the end, clear the line
+            historyIndexRef.current = commandHistoryRef.current.length;
+            term.write('\r\x1b[K');
+            term.write('$ ');
+            cmdBufferRef.current = '';
+          }
         } else if (printable) {
           term.write(key);
           cmdBufferRef.current += key;
@@ -104,5 +147,24 @@ export const AppBuilderTerminalBlock: React.FC<
     }
   }, [content, interactive]);
 
-  return <div ref={containerRef} className={`w-full ${className}`} />;
+  return (
+    <Card className={className}>
+      <CardHeader className="flex justify-end">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            if (termRef.current) {
+              termRef.current.clear();
+            }
+          }}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div ref={containerRef} className="w-full" />
+      </CardContent>
+    </Card>
+  );
 };

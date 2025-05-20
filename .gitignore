@@ -43,3 +43,7 @@ repomix-hooks.txt*
 /docs/*.md
 /llm-docs/*.md
 
+.cursor
+.vibe-tools
+.vibe-tools/*
+./.env*

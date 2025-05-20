@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -373,11 +373,52 @@ async function execute(params) {
     fetchApps();
   }
 
+  const [initialCode, setInitialCode] = useState('');
+
+  // Fetch existing app code from the apps route, if available; for demo, we use the first app if it exists
+  const fetchApp = async () => {
+    try {
+      const res = await fetch('/api/ai-sdk/apps');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.apps && data.apps.length > 0) {
+          setInitialCode(data.apps[0].code);
+        }
+      } else {
+        console.error('Failed to fetch apps');
+      }
+    } catch (error) {
+      console.error('Error fetching app data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchApp();
+  }, []);
+
+  // onSave handler that updates app code via the apps route
+  const handleSave = async (newCode: string) => {
+    try {
+      const res = await fetch('/api/ai-sdk/apps', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: newCode }),
+      });
+      if (!res.ok) {
+        console.error('Failed to update app code');
+      } else {
+        console.log('App code updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating app code:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {/* --- AI Chat + Output Section --- */}
       <div className="h-[calc(100vh-4rem)] mb-6">
-        <AppBuilderContainer />
+        <AppBuilderContainer initialCode={initialCode} onSave={handleSave} />
       </div>
       {/* --- Existing App Builder UI --- */}
       <div className="flex items-center justify-between">

@@ -11,8 +11,10 @@ import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import CodeMirror from '@uiw/react-codemirror';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
-import { Copy, Maximize, Minimize } from 'lucide-react';
+import { Copy, Maximize, Minimize, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import prettier from 'prettier/standalone';
+import parserTypescript from 'prettier/parser-typescript';
 
 export interface AppBuilderCodeBlockProps {
   code: string;
@@ -30,6 +32,23 @@ export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
   className = '',
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleFormat = useCallback(async () => {
+    try {
+      const formatted = await prettier.format(code, {
+        parser: language === 'json' ? 'json' : 'typescript',
+        plugins: language === 'json' ? [] : [parserTypescript],
+        singleQuote: true,
+        semi: true,
+        trailingComma: 'es5',
+      });
+      if (onChange) {
+        onChange(formatted);
+      }
+    } catch (error) {
+      console.error('Formatting error: ', error);
+    }
+  }, [code, language, onChange]);
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(code);
@@ -65,6 +84,14 @@ export const AppBuilderCodeBlock: React.FC<AppBuilderCodeBlockProps> = ({
             className="text-zinc-300 hover:text-white"
           >
             <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleFormat}
+            className="text-zinc-300 hover:text-white"
+          >
+            <Code className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"

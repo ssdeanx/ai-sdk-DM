@@ -29,7 +29,7 @@ export function IntegrationCard({
 }: IntegrationCardProps) {
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-      <Card className="h-full overflow-hidden border border-border/50 bg-background/50 backdrop-blur-sm hover:border-primary/20 hover:shadow-md transition-all">
+      <Card className="h-full overflow-hidden border border-border/50 bg-background/50 backdrop-blur-sm hover:border-primary/20 hover:shadow-md transition-all glass-card">
         <CardHeader className="flex flex-row items-center gap-4 pb-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary">
             {icon}
