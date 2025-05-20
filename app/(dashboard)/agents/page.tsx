@@ -26,7 +26,6 @@ import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DataTable } from '@/components/ui/data-table';
 import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Card,
@@ -82,21 +81,20 @@ import * as z from 'zod';
 interface Agent {
   id: string;
   name: string;
-  description: string;
-  model_id: string;
-  tool_ids: string[];
-  system_prompt?: string;
-  created_at: string;
-  updated_at: string;
-  model?: string;
-  tools?: string[];
+  description?: string;
+  modelId: string;
+  toolIds?: string[];
+  systemPrompt?: string;
+  personaId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Model {
   id: string;
   name: string;
   provider: string;
-  model_id: string;
+  modelId: string;
 }
 
 interface Tool {
@@ -105,19 +103,23 @@ interface Tool {
   description: string;
 }
 
-// Define the form schema
+// Canonical agent form schema
 const agentFormSchema = z.object({
   name: z.string().min(2, {
     message: 'Name must be at least 2 characters.',
   }),
-  description: z.string().min(10, {
-    message: 'Description must be at least 10 characters.',
-  }),
+  description: z
+    .string()
+    .min(10, {
+      message: 'Description must be at least 10 characters.',
+    })
+    .optional(),
   modelId: z.string({
     required_error: 'Please select a model.',
   }),
   toolIds: z.array(z.string()).optional(),
   systemPrompt: z.string().optional(),
+  personaId: z.string().uuid().optional(),
 });
 
 export default function AgentsPage() {
@@ -135,59 +137,48 @@ export default function AgentsPage() {
       modelId: '',
       toolIds: [],
       systemPrompt: '',
+      personaId: '',
     },
   });
 
   const {
     data: agents,
     isLoading,
-    refresh,
+    refetch,
   } = useSupabaseFetch<Agent>({
-    endpoint: '/api/agents',
+    endpoint: '/api/ai-sdk/agents',
     resourceName: 'Agents',
     dataKey: 'agents',
   });
 
   const { data: models, isLoading: isLoadingModels } = useSupabaseFetch<Model>({
-    endpoint: '/api/models',
+    endpoint: '/api/ai-sdk/models',
     resourceName: 'Models',
     dataKey: 'models',
   });
 
   const { data: tools, isLoading: isLoadingTools } = useSupabaseFetch<Tool>({
-    endpoint: '/api/tools',
+    endpoint: '/api/ai-sdk/tools',
     resourceName: 'Tools',
     dataKey: 'tools',
   });
 
-  const { create, update, remove } = useSupabaseCrud<Agent>({
-    resourceName: 'Agent',
-    endpoint: '/api/agents',
-    onSuccess: () => {
-      setOpen(false);
-      form.reset();
-      setEditingAgent(null);
-      refresh();
-    },
-  });
-
   async function onSubmit(values: z.infer<typeof agentFormSchema>) {
-    if (editingAgent) {
-      await update(editingAgent.id, {
-        name: values.name,
-        description: values.description,
-        model_id: values.modelId,
-        tool_ids: values.toolIds || [],
-        system_prompt: values.systemPrompt,
+    try {
+      const method = editingAgent ? 'PATCH' : 'POST';
+      const url = editingAgent
+        ? `/api/ai-sdk/agents/${editingAgent.id}`
+        : '/api/ai-sdk/agents';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
       });
-    } else {
-      await create({
-        name: values.name,
-        description: values.description,
-        model_id: values.modelId,
-        tool_ids: values.toolIds || [],
-        system_prompt: values.systemPrompt,
-      });
+      if (!res.ok) throw new Error('Failed to save agent');
+      await refetch();
+      toast({ title: 'Success', description: 'Agent saved.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to save agent.' });
     }
   }
 
@@ -196,15 +187,23 @@ export default function AgentsPage() {
     form.reset({
       name: agent.name,
       description: agent.description,
-      modelId: agent.model_id,
-      toolIds: agent.tool_ids,
-      systemPrompt: agent.system_prompt || '',
+      modelId: agent.modelId,
+      toolIds: agent.toolIds,
+      systemPrompt: agent.systemPrompt || '',
+      personaId: agent.personaId || '',
     });
     setOpen(true);
   }
 
   async function handleDelete(id: string) {
-    await remove(id);
+    try {
+      const res = await fetch(`/api/ai-sdk/agents/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete agent');
+      await refetch();
+      toast({ title: 'Success', description: 'Agent deleted.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete agent.' });
+    }
   }
 
   function handleRun(agent: Agent) {
@@ -216,12 +215,13 @@ export default function AgentsPage() {
   }
 
   async function handleDuplicate(agent: Agent) {
-    await create({
+    await onSubmit({
       name: `${agent.name} (Copy)`,
       description: agent.description,
-      model_id: agent.model_id,
-      tool_ids: agent.tool_ids,
-      system_prompt: agent.system_prompt,
+      modelId: agent.modelId,
+      toolIds: agent.toolIds,
+      systemPrompt: agent.systemPrompt,
+      personaId: agent.personaId,
     });
 
     toast({
@@ -249,18 +249,19 @@ export default function AgentsPage() {
       ),
     },
     {
-      accessorKey: 'model',
+      accessorKey: 'modelId',
       header: 'Model',
+      cell: ({ row }) => <div>{row.original.modelId}</div>,
     },
     {
-      accessorKey: 'tools',
+      accessorKey: 'toolIds',
       header: 'Tools',
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
-          {row.original.tools && row.original.tools.length > 0 ? (
-            row.original.tools.map((tool, index) => (
+          {row.original.toolIds && row.original.toolIds.length > 0 ? (
+            row.original.toolIds.map((toolId, index) => (
               <Badge key={index} variant="outline" className="text-xs">
-                {tool}
+                {toolId}
               </Badge>
             ))
           ) : (
@@ -371,6 +372,7 @@ export default function AgentsPage() {
                         modelId: '',
                         toolIds: [],
                         systemPrompt: '',
+                        personaId: '',
                       });
                     }}
                   >
@@ -578,6 +580,25 @@ export default function AgentsPage() {
                               </FormItem>
                             )}
                           />
+                          <FormField
+                            control={form.control}
+                            name="personaId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Persona ID</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter persona ID"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Optional persona ID for this agent
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </TabsContent>
                       </Tabs>
 
@@ -690,7 +711,7 @@ export default function AgentsPage() {
                           <Database className="h-4 w-4 mr-2 text-muted-foreground" />
                           <span className="text-muted-foreground">Model:</span>
                           <span className="ml-1 font-medium">
-                            {agent.model || 'None'}
+                            {agent.modelId || 'None'}
                           </span>
                         </div>
 
@@ -701,14 +722,14 @@ export default function AgentsPage() {
                               Tools:
                             </span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {agent.tools && agent.tools.length > 0 ? (
-                                agent.tools.map((tool, index) => (
+                              {agent.toolIds && agent.toolIds.length > 0 ? (
+                                agent.toolIds.map((toolId, index) => (
                                   <Badge
                                     key={index}
                                     variant="outline"
                                     className="text-xs"
                                   >
-                                    {tool}
+                                    {toolId}
                                   </Badge>
                                 ))
                               ) : (
@@ -725,7 +746,7 @@ export default function AgentsPage() {
                       <div className="flex w-full justify-between items-center">
                         <div className="text-xs text-muted-foreground">
                           Updated{' '}
-                          {new Date(agent.updated_at).toLocaleDateString()}
+                          {new Date(agent.updatedAt || '').toLocaleDateString()}
                         </div>
                         <Button size="sm" onClick={() => handleRun(agent)}>
                           <Play className="h-4 w-4 mr-2" />
@@ -774,7 +795,7 @@ export default function AgentsPage() {
                       </Avatar>
                       <div className="rounded-lg p-4 bg-muted">
                         <div className="whitespace-pre-wrap">
-                          I'm ready to help you. What would you like me to do?
+                          I&apos;m ready to help you. What would you like me to do?
                         </div>
                       </div>
                     </div>
@@ -805,13 +826,13 @@ export default function AgentsPage() {
                           <div className="text-xs text-muted-foreground mb-2">
                             Thinking...
                           </div>
-                          I'll search for the latest research on AI safety.
+                          I&apos;ll search for the latest research on AI safety.
                           <div className="mt-2 p-2 border rounded-md bg-background">
                             <div className="text-xs font-medium mb-1">
                               Using tool: Web Search
                             </div>
                             <div className="text-xs">
-                              Searching for "latest research AI safety 2023"...
+                              Searching for &quot;latest research AI safety 2023&quot;...
                             </div>
                           </div>
                         </div>
@@ -827,22 +848,22 @@ export default function AgentsPage() {
                   <div>
                     <div className="text-sm font-medium">Model</div>
                     <div className="text-sm text-muted-foreground">
-                      {selectedAgent?.model || 'Unknown'}
+                      {selectedAgent?.modelId || 'Unknown'}
                     </div>
                   </div>
 
                   <div>
                     <div className="text-sm font-medium">Tools</div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {selectedAgent?.tools &&
-                      selectedAgent.tools.length > 0 ? (
-                        selectedAgent.tools.map((tool, index) => (
+                      {selectedAgent?.toolIds &&
+                      selectedAgent.toolIds.length > 0 ? (
+                        selectedAgent.toolIds.map((toolId, index) => (
                           <Badge
                             key={index}
                             variant="outline"
                             className="text-xs"
                           >
-                            {tool}
+                            {toolId}
                           </Badge>
                         ))
                       ) : (

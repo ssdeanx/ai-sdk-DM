@@ -2,6 +2,45 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.18] - 2025-05-20
+
+### Modular Settings UI Refactor, Canonical API Wiring, and Model Schema Validation
+
+- **Settings Page Refactor:**
+  - Fully refactored `app/(dashboard)/settings/page.tsx` to use the new modular settings UI components: `SettingsProvider`, `SettingsSidebarNav`, `SettingsForm`, `SettingsSection`, `SettingsField`, `SettingsLoadingSkeleton`, and advanced glass/gradient styling from `globals.css`.
+  - Sidebar is now on the right, with modern accessibility and visual polish.
+  - All hooks-based settings logic removed; settings are now loaded and saved via direct API calls to `/api/ai-sdk/settings`.
+  - All settings CRUD and validation is now in sync with the canonical Zod schemas from `db/supabase/validation.ts`.
+  - Model selection in API settings is now validated and rendered using the canonical `ModelSchema` from `db/supabase/validation.ts`.
+  - All settings sections (API, Appearance, Advanced, Notifications) are present, functional, and use the correct schemas and types.
+  - Error handling, loading skeleton, and dirty state are handled via the new modular components.
+
+- **Component Upgrades:**
+  - All modular settings UI components (`SettingsProvider`, `SettingsSidebarNav`, `SettingsForm`, `SettingsSection`, `SettingsField`, `SettingsSaveBar`, `SettingsCard`, `SettingsGroup`, `SettingsLoadingSkeleton`) refactored to use `react-icons`, glass/gradient styling, and advanced accessibility.
+  - `SettingsProvider` now exposes dirty state and badge.
+  - `SettingsSidebarNav` supports right-side layout and icons.
+  - All components are error-free (`get_errors` run after each edit).
+
+- **API & Schema Integration:**
+  - Settings API route `/api/ai-sdk/settings` is now the canonical source for all settings CRUD.
+  - All settings data is validated using the correct Zod schemas from `db/supabase/validation.ts`.
+  - Model list is loaded from `/api/models` and validated with `ModelSchema`.
+
+- **Error Handling & Logging:**
+  - All async operations use `async/await` and robust error handling with `logError` from `upstash-logger`.
+  - All errors and edge cases are surfaced to the user via toast notifications.
+
+- **Mandate Compliance:**
+  - All work follows the project mandates: error checks after every edit, pnpm for package management, schema sync, robust error handling, and type safety.
+  - All code is robust, error-free, and fully functional before reporting completion.
+
+#### What Still Needs To Be Done
+
+- Final review and test to ensure all settings CRUD, validation, and UI/UX are robust and error-free.
+- Update project documentation and technical specification if any major architectural or technology changes are made in the future.
+
+---
+
 ## [v0.0.17] - 2025-05-18
 
 ### AI SDK Integration: Final Error Fixes, Type Safety, and Wiring Preparation

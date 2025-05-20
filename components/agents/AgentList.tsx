@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { AgentCard } from '@/components/agents/agent-card';
+import { AgentCard } from '@/components/agents/AgentCard';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CreateAgentDialog } from '@/components/agents/create-agent-dialog';
-import type { Agent } from '@/types/agents';
+import { CreateAgentDialog } from '@/components/agents/CreateAgentDialog';
+import { type Agent } from '@/db/supabase/validation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 
 export function AgentsList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -19,12 +20,12 @@ export function AgentsList() {
 
   // Use the standardized hook for fetching agents
   const {
-    data: agents,
+    data: agents = [],
     isLoading,
     error,
-    refresh: fetchAgents,
+    refetch: fetchAgents, // canonicalize to 'refetch'
   } = useSupabaseFetch<Agent>({
-    endpoint: '/api/agents',
+    endpoint: '/api/ai-sdk/agents', // updated to canonical endpoint
     resourceName: 'Agents',
     dataKey: 'agents',
   });
@@ -36,7 +37,7 @@ export function AgentsList() {
 
   const handleCreateAgent = async (newAgent: Omit<Agent, 'id'>) => {
     try {
-      const response = await fetch('/api/agents', {
+      const response = await fetch('/api/ai-sdk/agents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +59,13 @@ export function AgentsList() {
 
       setIsDialogOpen(false);
     } catch (err) {
-      console.error('Failed to create agent:', err);
+      await upstashLogger.error(
+        'AgentList',
+        'Failed to create agent',
+        err instanceof Error
+          ? { message: err.message, stack: err.stack }
+          : { error: String(err) }
+      );
       toast({
         title: 'Error',
         description: 'Failed to create agent. Please try again.',
@@ -69,7 +76,7 @@ export function AgentsList() {
 
   const handleDeleteAgent = async (id: string) => {
     try {
-      const response = await fetch(`/api/agents/${id}`, {
+      const response = await fetch(`/api/ai-sdk/agents/${id}`, {
         method: 'DELETE',
       });
 
@@ -85,7 +92,13 @@ export function AgentsList() {
         description: 'Agent deleted successfully!',
       });
     } catch (err) {
-      console.error('Failed to delete agent:', err);
+      await upstashLogger.error(
+        'AgentList',
+        'Failed to delete agent',
+        err instanceof Error
+          ? { message: err.message, stack: err.stack }
+          : { error: String(err) }
+      );
       toast({
         title: 'Error',
         description: 'Failed to delete agent. Please try again.',
@@ -96,7 +109,7 @@ export function AgentsList() {
 
   const handleUpdateAgent = async (updatedAgent: Agent) => {
     try {
-      const response = await fetch(`/api/agents/${updatedAgent.id}`, {
+      const response = await fetch(`/api/ai-sdk/agents/${updatedAgent.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +129,13 @@ export function AgentsList() {
         description: 'Agent updated successfully!',
       });
     } catch (err) {
-      console.error('Failed to update agent:', err);
+      await upstashLogger.error(
+        'AgentList',
+        'Failed to update agent',
+        err instanceof Error
+          ? { message: err.message, stack: err.stack }
+          : { error: String(err) }
+      );
       toast({
         title: 'Error',
         description: 'Failed to update agent. Please try again.',

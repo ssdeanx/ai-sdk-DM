@@ -2,6 +2,9 @@
 
 import type React from 'react';
 
+// Use canonical Message type from db/libsql/validation
+import type { Message as CanonicalMessage } from '@/db/libsql/validation';
+
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,15 +20,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAgentExecutor } from '@/hooks/use-executor';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { generateId } from 'ai';
 
-export interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+// Canonical Message type for agent chat
+export interface Message
+  extends Omit<CanonicalMessage, 'id' | 'memory_thread_id' | 'created_at'> {
   toolCall?: {
     name: string;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
   };
-  toolResult?: any;
+  toolResult?: unknown;
 }
 
 export interface AgentExecutorProps {
@@ -76,6 +81,19 @@ export function AgentExecutor({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const mapToCanonicalMessages = (
+    msgs: Message[],
+    memoryThreadId: string
+  ): CanonicalMessage[] =>
+    msgs.map((msg) => ({
+      id: generateId(),
+      memory_thread_id: memoryThreadId,
+      created_at: new Date().toISOString(),
+      role: msg.role,
+      content: msg.content,
+      // Optionally map tool fields if needed
+    }));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -90,17 +108,32 @@ export function AgentExecutor({
     setInput('');
 
     try {
-      // Use our custom hook to execute the agent
-      const data = await executeAgent(input, messages);
-
-      // Add the agent's response to messages
-      setMessages((prev) => [...prev, ...data.messages]);
-
-      if (onExecutionComplete) {
-        onExecutionComplete([...messages, userMessage, ...data.messages]);
+      // Map local messages to canonical format for backend
+      const memoryThreadId = 'ui-thread'; // Use a static or generated thread id for now
+      const canonicalHistory = mapToCanonicalMessages(
+        [...messages, userMessage],
+        memoryThreadId
+      );
+      const data = await executeAgent(input, canonicalHistory);
+      if (
+        typeof data === 'object' &&
+        data &&
+        'role' in data &&
+        'content' in data
+      ) {
+        setMessages((prev) => [...prev, data as Message]);
+        if (onExecutionComplete) {
+          onExecutionComplete([...messages, userMessage, data as Message]);
+        }
       }
     } catch (error) {
-      console.error('Error executing agent:', error);
+      await upstashLogger.error(
+        'AgentExecutor',
+        'Error executing agent',
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { error: String(error) }
+      );
       // Error handling is done in the hook
     }
   };

@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Agent } from '@/types/agents';
+import { Agent } from '@/db/supabase/validation';
 import { Loader2 } from 'lucide-react';
+import { modelRegistry } from '@/lib/models/model-registry';
 
 interface CreateAgentDialogProps {
   isOpen: boolean;
@@ -38,62 +39,49 @@ export function CreateAgentDialog({
 }: CreateAgentDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState('assistant');
-  const [model, setModel] = useState('gpt-4');
+  const [model_id, setModelId] = useState('');
+  const [system_prompt, setSystemPrompt] = useState('');
+  const [persona_id, setPersonaId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    // Load models from the model registry
+    const allModels = Array.from(modelRegistry['models'].values());
+    setModels(allModels.map((m) => ({ id: m.id, name: m.name })));
+  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-
-    if (!type) {
-      newErrors.type = 'Type is required';
-    }
-
-    if (!model) {
-      newErrors.model = 'Model is required';
-    }
-
+    if (!name.trim()) newErrors.name = 'Name is required';
+    if (!description.trim()) newErrors.description = 'Description is required';
+    if (!model_id) newErrors.model_id = 'Model is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setIsSubmitting(true);
-
     try {
+      const now = new Date().toISOString();
       await onCreateAgent({
         name,
         description,
-        type,
-        model,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        model_id,
+        system_prompt,
+        persona_id,
+        created_at: now,
+        updated_at: now,
       });
-
-      // Reset form
       setName('');
       setDescription('');
-      setType('assistant');
-      setModel('gpt-4');
+      setModelId('');
+      setSystemPrompt('');
+      setPersonaId('');
       setErrors({});
-    } catch (error) {
-      console.error('Error creating agent:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -102,8 +90,9 @@ export function CreateAgentDialog({
   const handleClose = () => {
     setName('');
     setDescription('');
-    setType('assistant');
-    setModel('gpt-4');
+    setModelId('');
+    setSystemPrompt('');
+    setPersonaId('');
     setErrors({});
     onClose();
   };
@@ -161,61 +150,37 @@ export function CreateAgentDialog({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label
-                  htmlFor="type"
-                  className={errors.type ? 'text-red-500' : ''}
+            <div className="grid gap-2">
+              <Label
+                htmlFor="model_id"
+                className={errors.model_id ? 'text-red-500' : ''}
+              >
+                Model{' '}
+                {errors.model_id && <span className="text-red-500">*</span>}
+              </Label>
+              <Select value={model_id} onValueChange={setModelId}>
+                <SelectTrigger
+                  className={`bg-gray-900 border-gray-800 ${errors.model_id ? 'border-red-500' : ''}`}
                 >
-                  Type {errors.type && <span className="text-red-500">*</span>}
-                </Label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger
-                    className={`bg-gray-900 border-gray-800 ${errors.type ? 'border-red-500' : ''}`}
-                  >
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-800">
-                    <SelectItem value="assistant">Assistant</SelectItem>
-                    <SelectItem value="chatbot">Chatbot</SelectItem>
-                    <SelectItem value="researcher">Researcher</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.type && (
-                  <p className="text-red-500 text-sm">{errors.type}</p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label
-                  htmlFor="model"
-                  className={errors.model ? 'text-red-500' : ''}
-                >
-                  Model{' '}
-                  {errors.model && <span className="text-red-500">*</span>}
-                </Label>
-                <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger
-                    className={`bg-gray-900 border-gray-800 ${errors.model ? 'border-red-500' : ''}`}
-                  >
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-800">
-                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                    <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                    <SelectItem value="claude-3-sonnet">
-                      Claude 3 Sonnet
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-800">
+                  {models.length === 0 ? (
+                    <SelectItem value="" disabled>
+                      No models available
                     </SelectItem>
-                    <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.model && (
-                  <p className="text-red-500 text-sm">{errors.model}</p>
-                )}
-              </div>
+                  ) : (
+                    models.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {errors.model_id && (
+                <p className="text-red-500 text-sm">{errors.model_id}</p>
+              )}
             </div>
           </div>
 
