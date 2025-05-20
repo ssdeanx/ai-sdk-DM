@@ -362,7 +362,8 @@ export function InteractiveForm({
     <div
       className={cn(
         'relative rounded-lg overflow-hidden border border-border/50 shadow-md transition-all duration-300 bg-white dark:bg-gray-900 glass-card',
-        expanded && 'fixed inset-4 z-50 bg-white dark:bg-gray-900 flex flex-col',
+        expanded &&
+          'fixed inset-4 z-50 bg-white dark:bg-gray-900 flex flex-col',
         className
       )}
       onMouseEnter={() => setHovered(true)}

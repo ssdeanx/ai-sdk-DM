@@ -1,11 +1,5 @@
 'use client';
 
-import { AvatarImage } from '@/components/ui/avatar';
-
-import { AvatarFallback } from '@/components/ui/avatar';
-
-import { Avatar } from '@/components/ui/avatar';
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -18,49 +12,14 @@ import {
   Bot,
   Wrench,
   Database,
-  Send,
 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DataTable } from '@/components/ui/data-table';
 import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import type { ColumnDef } from '@tanstack/react-table';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -74,134 +33,74 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { CreateAgentDialog } from '@/components/agents/CreateAgentDialog';
+import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
+import { AgentExecutor } from '@/components/agents/AgentExecutor';
+import type { ColumnDef } from '@tanstack/react-table';
 
 interface Agent {
   id: string;
   name: string;
   description?: string;
-  modelId: string;
-  toolIds?: string[];
-  systemPrompt?: string;
-  personaId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  model_id: string;
+  tool_ids?: string[];
+  system_prompt?: string;
+  persona_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
-
-interface Model {
-  id: string;
-  name: string;
-  provider: string;
-  modelId: string;
-}
-
-interface Tool {
-  id: string;
-  name: string;
-  description: string;
-}
-
-// Canonical agent form schema
-const agentFormSchema = z.object({
-  name: z.string().min(2, {
-    message: 'Name must be at least 2 characters.',
-  }),
-  description: z
-    .string()
-    .min(10, {
-      message: 'Description must be at least 10 characters.',
-    })
-    .optional(),
-  modelId: z.string({
-    required_error: 'Please select a model.',
-  }),
-  toolIds: z.array(z.string()).optional(),
-  systemPrompt: z.string().optional(),
-  personaId: z.string().uuid().optional(),
-});
 
 export default function AgentsPage() {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  const form = useForm<z.infer<typeof agentFormSchema>>({
-    resolver: zodResolver(agentFormSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      modelId: '',
-      toolIds: [],
-      systemPrompt: '',
-      personaId: '',
-    },
-  });
-
+  // Fetch agents (live-updating)
   const {
-    data: agents,
+    data: agents = [],
     isLoading,
     refetch,
   } = useSupabaseFetch<Agent>({
     endpoint: '/api/ai-sdk/agents',
     resourceName: 'Agents',
     dataKey: 'agents',
+    realtime: true,
   });
 
-  const { data: models, isLoading: isLoadingModels } = useSupabaseFetch<Model>({
-    endpoint: '/api/ai-sdk/models',
-    resourceName: 'Models',
-    dataKey: 'models',
+  // CRUD hook for agents
+  const {
+    create: createAgent,
+    update: updateAgent,
+    remove: deleteAgent,
+    loading: isCrudLoading,
+    error: crudError,
+  } = useSupabaseCrud({ table: 'agents' });
+
+  // Realtime updates for agents
+  useSupabaseRealtime({
+    table: 'agents',
+    event: '*',
+    enabled: true,
+    onChange: refetch,
   });
-
-  const { data: tools, isLoading: isLoadingTools } = useSupabaseFetch<Tool>({
-    endpoint: '/api/ai-sdk/tools',
-    resourceName: 'Tools',
-    dataKey: 'tools',
-  });
-
-  async function onSubmit(values: z.infer<typeof agentFormSchema>) {
-    try {
-      const method = editingAgent ? 'PATCH' : 'POST';
-      const url = editingAgent
-        ? `/api/ai-sdk/agents/${editingAgent.id}`
-        : '/api/ai-sdk/agents';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
-      if (!res.ok) throw new Error('Failed to save agent');
-      await refetch();
-      toast({ title: 'Success', description: 'Agent saved.' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to save agent.' });
-    }
-  }
-
-  function handleEdit(agent: Agent) {
-    setEditingAgent(agent);
-    form.reset({
-      name: agent.name,
-      description: agent.description,
-      modelId: agent.modelId,
-      toolIds: agent.toolIds,
-      systemPrompt: agent.systemPrompt || '',
-      personaId: agent.personaId || '',
-    });
-    setOpen(true);
-  }
 
   async function handleDelete(id: string) {
     try {
-      const res = await fetch(`/api/ai-sdk/agents/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete agent');
+      await deleteAgent(id);
       await refetch();
       toast({ title: 'Success', description: 'Agent deleted.' });
-    } catch {
+    } catch (err) {
       toast({ title: 'Error', description: 'Failed to delete agent.' });
     }
   }
@@ -215,20 +114,33 @@ export default function AgentsPage() {
   }
 
   async function handleDuplicate(agent: Agent) {
-    await onSubmit({
-      name: `${agent.name} (Copy)`,
-      description: agent.description,
-      modelId: agent.modelId,
-      toolIds: agent.toolIds,
-      systemPrompt: agent.systemPrompt,
-      personaId: agent.personaId,
-    });
-
-    toast({
-      title: 'Agent duplicated',
-      description: `Created a copy of ${agent.name}`,
-    });
+    try {
+      await createAgent({
+        name: `${agent.name} (Copy)`,
+        description: agent.description ?? '',
+        model_id: agent.model_id,
+        tool_ids: agent.tool_ids,
+        system_prompt: agent.system_prompt,
+        persona_id: agent.persona_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      await refetch();
+      toast({
+        title: 'Agent duplicated',
+        description: `Created a copy of ${agent.name}`,
+      });
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to duplicate agent.' });
+    }
   }
+
+  const getSafeAgent = (agent: Agent): Required<Agent> => ({
+    ...agent,
+    description: agent.description ?? '',
+    created_at: agent.created_at ?? '',
+    updated_at: agent.updated_at ?? '',
+  });
 
   const columns: ColumnDef<Agent>[] = [
     {
@@ -249,17 +161,17 @@ export default function AgentsPage() {
       ),
     },
     {
-      accessorKey: 'modelId',
+      accessorKey: 'model_id',
       header: 'Model',
-      cell: ({ row }) => <div>{row.original.modelId}</div>,
+      cell: ({ row }) => <div>{row.original.model_id}</div>,
     },
     {
-      accessorKey: 'toolIds',
+      accessorKey: 'tool_ids',
       header: 'Tools',
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
-          {row.original.toolIds && row.original.toolIds.length > 0 ? (
-            row.original.toolIds.map((toolId, index) => (
+          {row.original.tool_ids && row.original.tool_ids.length > 0 ? (
+            row.original.tool_ids.map((toolId, index) => (
               <Badge key={index} variant="outline" className="text-xs">
                 {toolId}
               </Badge>
@@ -282,7 +194,7 @@ export default function AgentsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEdit(row.original)}>
+              <DropdownMenuItem onClick={() => setEditingAgent(row.original)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
@@ -361,263 +273,10 @@ export default function AgentsPage() {
                 </Tooltip>
               </TooltipProvider>
 
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    onClick={() => {
-                      setEditingAgent(null);
-                      form.reset({
-                        name: '',
-                        description: '',
-                        modelId: '',
-                        toolIds: [],
-                        systemPrompt: '',
-                        personaId: '',
-                      });
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Agent
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingAgent ? 'Edit Agent' : 'Create Agent'}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-4"
-                    >
-                      <Tabs defaultValue="basic" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                          <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                          <TabsTrigger value="tools">Tools</TabsTrigger>
-                          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="basic" className="space-y-4 pt-4">
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Name</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Research Assistant"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  A descriptive name for this agent
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder="Helps with research tasks and information gathering"
-                                    className="min-h-[80px]"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Describe what this agent does and how it
-                                  should be used
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="modelId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Model</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a model" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {isLoadingModels ? (
-                                      <SelectItem value="loading" disabled>
-                                        Loading models...
-                                      </SelectItem>
-                                    ) : models.length > 0 ? (
-                                      models.map((model) => (
-                                        <SelectItem
-                                          key={model.id}
-                                          value={model.id}
-                                        >
-                                          {model.name}
-                                        </SelectItem>
-                                      ))
-                                    ) : (
-                                      <SelectItem value="no-models" disabled>
-                                        No models available
-                                      </SelectItem>
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <FormDescription>
-                                  The AI model this agent will use
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </TabsContent>
-
-                        <TabsContent value="tools" className="space-y-4 pt-4">
-                          <FormField
-                            control={form.control}
-                            name="toolIds"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Tools</FormLabel>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                  {isLoadingTools ? (
-                                    <div className="col-span-full text-center p-4">
-                                      <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                                      Loading tools...
-                                    </div>
-                                  ) : tools.length > 0 ? (
-                                    tools.map((tool) => (
-                                      <div
-                                        key={tool.id}
-                                        className={`flex items-center p-3 rounded-md border cursor-pointer transition-colors ${
-                                          field.value?.includes(tool.id)
-                                            ? 'bg-primary/10 border-primary'
-                                            : 'hover:bg-accent'
-                                        }`}
-                                        onClick={() => {
-                                          const newValue =
-                                            field.value?.includes(tool.id)
-                                              ? field.value.filter(
-                                                  (id) => id !== tool.id
-                                                )
-                                              : [
-                                                  ...(field.value || []),
-                                                  tool.id,
-                                                ];
-                                          field.onChange(newValue);
-                                        }}
-                                      >
-                                        <div className="flex-1">
-                                          <div className="font-medium">
-                                            {tool.name}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground truncate">
-                                            {tool.description}
-                                          </div>
-                                        </div>
-                                        <div
-                                          className={`h-4 w-4 rounded-full border ${
-                                            field.value?.includes(tool.id)
-                                              ? 'bg-primary border-primary'
-                                              : 'border-muted-foreground'
-                                          }`}
-                                        >
-                                          {field.value?.includes(tool.id) && (
-                                            <div className="h-2 w-2 mx-auto my-auto rounded-full bg-white"></div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="col-span-full text-center p-4 text-muted-foreground">
-                                      No tools available
-                                    </div>
-                                  )}
-                                </div>
-                                <FormDescription>
-                                  Select the tools this agent can use
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </TabsContent>
-
-                        <TabsContent
-                          value="advanced"
-                          className="space-y-4 pt-4"
-                        >
-                          <FormField
-                            control={form.control}
-                            name="systemPrompt"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>System Prompt</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder="You are a helpful research assistant..."
-                                    className="min-h-[200px] font-mono text-sm"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Define the system prompt that sets the
-                                  behavior and capabilities of this agent
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="personaId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Persona ID</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Enter persona ID"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Optional persona ID for this agent
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </TabsContent>
-                      </Tabs>
-
-                      <div className="flex justify-end space-x-2 pt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button type="submit">
-                          {editingAgent ? 'Update Agent' : 'Create Agent'}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Agent
+              </Button>
             </div>
           </div>
         </motion.div>
@@ -681,7 +340,9 @@ export default function AgentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(agent)}>
+                            <DropdownMenuItem
+                              onClick={() => setEditingAgent(agent)}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
@@ -711,7 +372,7 @@ export default function AgentsPage() {
                           <Database className="h-4 w-4 mr-2 text-muted-foreground" />
                           <span className="text-muted-foreground">Model:</span>
                           <span className="ml-1 font-medium">
-                            {agent.modelId || 'None'}
+                            {agent.model_id || 'None'}
                           </span>
                         </div>
 
@@ -722,8 +383,8 @@ export default function AgentsPage() {
                               Tools:
                             </span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {agent.toolIds && agent.toolIds.length > 0 ? (
-                                agent.toolIds.map((toolId, index) => (
+                              {agent.tool_ids && agent.tool_ids.length > 0 ? (
+                                agent.tool_ids.map((toolId, index) => (
                                   <Badge
                                     key={index}
                                     variant="outline"
@@ -744,10 +405,12 @@ export default function AgentsPage() {
                     </CardContent>
                     <CardFooter className="border-t bg-muted/20 mt-auto">
                       <div className="flex w-full justify-between items-center">
-                        <div className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           Updated{' '}
-                          {new Date(agent.updatedAt || '').toLocaleDateString()}
-                        </div>
+                          {agent.updated_at
+                            ? new Date(agent.updated_at).toLocaleDateString()
+                            : ''}
+                        </span>
                         <Button size="sm" onClick={() => handleRun(agent)}>
                           <Play className="h-4 w-4 mr-2" />
                           Run
@@ -765,7 +428,7 @@ export default function AgentsPage() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Create your first agent to get started
                   </p>
-                  <Button onClick={() => setOpen(true)}>
+                  <Button onClick={() => setCreateOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Agent
                   </Button>
@@ -775,140 +438,46 @@ export default function AgentsPage() {
           </div>
         )}
 
-        {/* Agent Execution Dialog */}
-        <Dialog
-          open={!!selectedAgent}
-          onOpenChange={(open) => !open && setSelectedAgent(null)}
-        >
-          <DialogContent className="sm:max-w-[800px]">
-            <DialogHeader>
-              <DialogTitle>Running Agent: {selectedAgent?.name}</DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2 border rounded-md p-4 h-[400px] overflow-y-auto">
-                <div className="space-y-4">
-                  <div className="flex justify-start">
-                    <div className="flex gap-3 max-w-[80%]">
-                      <Avatar>
-                        <AvatarFallback>AI</AvatarFallback>
-                        <AvatarImage src="/placeholder.svg?height=40&width=40&text=AI" />
-                      </Avatar>
-                      <div className="rounded-lg p-4 bg-muted">
-                        <div className="whitespace-pre-wrap">
-                          I&apos;m ready to help you. What would you like me to do?
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        {/* Create Agent Dialog */}
+        <CreateAgentDialog
+          isOpen={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onCreateAgent={async (agent) => {
+            await refetch();
+            toast({ title: 'Success', description: 'Agent created.' });
+            setCreateOpen(false);
+          }}
+        />
 
-                  <div className="flex justify-end">
-                    <div className="flex gap-3 max-w-[80%] flex-row-reverse">
-                      <Avatar>
-                        <AvatarFallback>U</AvatarFallback>
-                        <AvatarImage src="/placeholder.svg?height=40&width=40" />
-                      </Avatar>
-                      <div className="rounded-lg p-4 bg-primary text-primary-foreground">
-                        <div className="whitespace-pre-wrap">
-                          Can you search for the latest research on AI safety?
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        {/* Edit Agent Dialog */}
+        {editingAgent && (
+          <EditAgentDialog
+            isOpen={true}
+            onClose={() => {
+              setEditOpen(false);
+              setEditingAgent(null);
+            }}
+            agent={getSafeAgent(editingAgent)}
+            onUpdateAgent={async (agent) => {
+              await refetch();
+              toast({ title: 'Success', description: 'Agent updated.' });
+              setEditOpen(false);
+              setEditingAgent(null);
+            }}
+          />
+        )}
 
-                  <div className="flex justify-start">
-                    <div className="flex gap-3 max-w-[80%]">
-                      <Avatar>
-                        <AvatarFallback>AI</AvatarFallback>
-                        <AvatarImage src="/placeholder.svg?height=40&width=40&text=AI" />
-                      </Avatar>
-                      <div className="rounded-lg p-4 bg-muted">
-                        <div className="whitespace-pre-wrap">
-                          <div className="text-xs text-muted-foreground mb-2">
-                            Thinking...
-                          </div>
-                          I&apos;ll search for the latest research on AI safety.
-                          <div className="mt-2 p-2 border rounded-md bg-background">
-                            <div className="text-xs font-medium mb-1">
-                              Using tool: Web Search
-                            </div>
-                            <div className="text-xs">
-                              Searching for &quot;latest research AI safety 2023&quot;...
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border rounded-md p-4 h-[400px] overflow-y-auto">
-                <h3 className="font-medium mb-2">Agent Details</h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm font-medium">Model</div>
-                    <div className="text-sm text-muted-foreground">
-                      {selectedAgent?.modelId || 'Unknown'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-sm font-medium">Tools</div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {selectedAgent?.toolIds &&
-                      selectedAgent.toolIds.length > 0 ? (
-                        selectedAgent.toolIds.map((toolId, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {toolId}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          No tools
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-sm font-medium">Execution Trace</div>
-                    <div className="mt-1 space-y-2">
-                      <div className="text-xs p-2 border rounded-md">
-                        <div className="font-medium">
-                          Step 1: Initial prompt processing
-                        </div>
-                        <div className="text-muted-foreground">Tokens: 128</div>
-                      </div>
-                      <div className="text-xs p-2 border rounded-md">
-                        <div className="font-medium">
-                          Step 2: Tool execution - Web Search
-                        </div>
-                        <div className="text-muted-foreground">Tokens: 256</div>
-                      </div>
-                      <div className="text-xs p-2 border rounded-md">
-                        <div className="font-medium">
-                          Step 3: Response generation
-                        </div>
-                        <div className="text-muted-foreground">Tokens: 384</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-4">
-              <Input placeholder="Enter your message..." className="flex-1" />
-              <Button>
-                <Send className="h-4 w-4 mr-2" />
-                Send
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Agent Executor Dialog */}
+        {selectedAgent && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Running Agent: {selectedAgent.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AgentExecutor agent={getSafeAgent(selectedAgent)} />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ErrorBoundary>
   );

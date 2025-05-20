@@ -18,8 +18,8 @@ The content is organized as follows:
 3. Directory structure
 4. Repository files (if enabled)
 5. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+   a. A header with the file path (## File: path/to/file)
+   b. The full contents of the file in a code block
 
 ## Usage Guidelines
 
@@ -500,7 +500,7 @@ import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-fact
 export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
-)
+);
 // Generated on 2025-05-19 - GET /api/ai-sdk/users/[id] route using Upstash/Supabase adapter, robust error handling, and canonical Zod validation.
 ```
 

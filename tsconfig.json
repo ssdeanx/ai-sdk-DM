@@ -18,8 +18,12 @@
     "forceConsistentCasingInFileNames": true,
     "typeRoots": [
       "./node_modules/@types",
+      "./types",
       "./db/supabase/validations",
-      "./db/libsql/validation.ts"
+      "./db/libsql/validation.ts",
+      "./hooks/use-supabase-realtime.ts",
+      "./hooks/use-supabase-fetch.ts",
+      "./hooks/use-supabase-crud.ts"
     ],
     "types": ["node"],
     "baseUrl": ".",
@@ -37,7 +41,13 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "eslint.config.ts"
+    "eslint.config.ts",
+    ".prettierrc.json",
+    "tailwind.config.ts",
+    "postcss.config.mjs",
+    "drizzle.libsql.config.ts",
+    "drizzle.supabase.config.ts",
+    "components.json"
   ],
   "exclude": ["node_modules"]
 }

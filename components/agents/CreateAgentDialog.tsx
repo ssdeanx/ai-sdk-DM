@@ -24,9 +24,8 @@ import {
 } from '@/components/ui/select';
 import { Agent } from '@/db/supabase/validation';
 import { Loader2 } from 'lucide-react';
-import { modelRegistry } from '@/lib/models/model-registry';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { createAvatar } from '@dicebear/core';
+import { createAvatar, type Style } from '@dicebear/core';
 import { identicon } from '@dicebear/collection';
 import { adventurer } from '@dicebear/collection';
 import { avataaars } from '@dicebear/collection';
@@ -40,8 +39,17 @@ import { pixelArt } from '@dicebear/collection';
 import { pixelArtNeutral } from '@dicebear/collection';
 import { shapes } from '@dicebear/collection';
 import { thumbs } from '@dicebear/collection';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
-const dicebearStyles = [
+interface DiceBearStyleEntry {
+  key: string;
+  label: string;
+  style: Style<object>;
+}
+
+const dicebearStyles: DiceBearStyleEntry[] = [
   { key: 'identicon', label: 'Identicon', style: identicon },
   { key: 'adventurer', label: 'Adventurer', style: adventurer },
   { key: 'avataaars', label: 'Avataaars', style: avataaars },
@@ -79,30 +87,55 @@ export function CreateAgentDialog({
   const [persona_id, setPersonaId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [avatarStyle, setAvatarStyle] = useState('identicon');
   const [avatarSvg, setAvatarSvg] = useState<string>('');
 
+  // CRUD hook for agents
+  const {
+    create: createAgent,
+    loading: isCreating,
+    error: createError,
+  } = useSupabaseCrud({ table: 'agents' });
+
+  // Realtime hook for models
+  useSupabaseRealtime({
+    table: 'models',
+    event: '*',
+    enabled: true,
+  });
+
+  // Fetch models from API using useSupabaseFetch
+  const { data: models = [], isLoading: isModelsLoading } = useSupabaseFetch<
+    Array<{ id: string; name: string }>
+  >({
+    endpoint: '/api/ai-sdk/models',
+    resourceName: 'Models',
+    dataKey: 'models',
+    realtime: true,
+  });
+
   useEffect(() => {
-    // Load models from the model registry
-    const allModels = Array.from(modelRegistry['models'].values());
-    setModels(allModels.map((m) => ({ id: m.id, name: m.name })));
-  }, []);
+    if (isOpen) {
+      setName('');
+      setDescription('');
+      setModelId('');
+      setSystemPrompt('');
+      setPersonaId('');
+      setAvatarStyle('identicon');
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const styleObj =
       dicebearStyles.find((s) => s.key === avatarStyle) || dicebearStyles[0];
-    const avatar = createAvatar(styleObj.style as typeof thumbs, {
+    const avatarInstance = createAvatar(styleObj.style, {
       seed: name || 'agent',
       size: 64,
       backgroundColor: ['#fff', '#000'],
     });
-    if (typeof avatar === 'string') {
-      setAvatarSvg(avatar);
-    } else if (avatar instanceof Promise) {
-      avatar.then((svg: string) => setAvatarSvg(svg));
-    }
+    setAvatarSvg(avatarInstance.toDataUri());
   }, [avatarStyle, name]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = 'Name is required';
@@ -118,7 +151,7 @@ export function CreateAgentDialog({
     setIsSubmitting(true);
     try {
       const now = new Date().toISOString();
-      await onCreateAgent({
+      await createAgent({
         name,
         description,
         model_id,
@@ -133,6 +166,19 @@ export function CreateAgentDialog({
       setSystemPrompt('');
       setPersonaId('');
       setErrors({});
+      onCreateAgent({
+        name,
+        description,
+        model_id,
+        system_prompt,
+        persona_id,
+        created_at: now,
+        updated_at: now,
+      });
+    } catch (err) {
+      setErrors({
+        form: err instanceof Error ? err.message : 'Failed to create agent',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -170,10 +216,9 @@ export function CreateAgentDialog({
               {dicebearStyles.map((styleObj) => (
                 <button
                   key={styleObj.key}
-                  type="button"
-                  className={`rounded-full border-2 p-1 ${avatarStyle === styleObj.key ? 'border-primary' : 'border-gray-700'}`}
-                  onClick={() => setAvatarStyle(styleObj.key)}
                   aria-label={`Choose ${styleObj.label} avatar`}
+                  type="button"
+                  onClick={() => setAvatarStyle(styleObj.key)}
                 >
                   <img
                     src={createAvatar(styleObj.style, {
@@ -185,7 +230,7 @@ export function CreateAgentDialog({
                   />
                 </button>
               ))}
-            </div>{' '}
+            </div>
           </div>
 
           <div className="grid gap-4 py-4">
@@ -201,7 +246,9 @@ export function CreateAgentDialog({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter agent name"
-                className={`bg-gray-900 border-gray-800 ${errors.name ? 'border-red-500' : ''}`}
+                className={`bg-gray-900 border-gray-800 ${
+                  errors.name ? 'border-red-500' : ''
+                }`}
               />
               {errors.name && (
                 <p className="text-red-500 text-sm">{errors.name}</p>
@@ -221,7 +268,9 @@ export function CreateAgentDialog({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter agent description"
-                className={`bg-gray-900 border-gray-800 min-h-[100px] ${errors.description ? 'border-red-500' : ''}`}
+                className={`bg-gray-900 border-gray-800 min-h-[100px] ${
+                  errors.description ? 'border-red-500' : ''
+                }`}
               />
               {errors.description && (
                 <p className="text-red-500 text-sm">{errors.description}</p>
@@ -236,14 +285,28 @@ export function CreateAgentDialog({
                 Model{' '}
                 {errors.model_id && <span className="text-red-500">*</span>}
               </Label>
-              <Select value={model_id} onValueChange={setModelId}>
+              <Select
+                value={model_id}
+                onValueChange={setModelId}
+                disabled={isModelsLoading}
+              >
                 <SelectTrigger
-                  className={`bg-gray-900 border-gray-800 ${errors.model_id ? 'border-red-500' : ''}`}
+                  className={`bg-gray-900 border-gray-800 ${
+                    errors.model_id ? 'border-red-500' : ''
+                  }`}
                 >
-                  <SelectValue placeholder="Select model" />
+                  <SelectValue
+                    placeholder={
+                      isModelsLoading ? 'Loading models...' : 'Select model'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-900 border-gray-800">
-                  {models.length === 0 ? (
+                  {isModelsLoading ? (
+                    <SelectItem value="" disabled>
+                      Loading models...
+                    </SelectItem>
+                  ) : models.length === 0 ? (
                     <SelectItem value="" disabled>
                       No models available
                     </SelectItem>
@@ -267,12 +330,12 @@ export function CreateAgentDialog({
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCreating}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={isSubmitting || isCreating}>
+              {isSubmitting || isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
@@ -282,6 +345,12 @@ export function CreateAgentDialog({
               )}
             </Button>
           </DialogFooter>
+          {createError && (
+            <p className="text-red-500 text-sm mt-2">{createError.message}</p>
+          )}
+          {errors.form && (
+            <p className="text-red-500 text-sm mt-2">{errors.form}</p>
+          )}
         </form>
       </DialogContent>
     </Dialog>

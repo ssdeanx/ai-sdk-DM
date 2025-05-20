@@ -1,7 +1,6 @@
 'use client';
 
 import type React from 'react';
-import { z } from 'zod';
 
 import { useState, useEffect } from 'react';
 import {
@@ -24,11 +23,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { AgentSchema, type Agent } from '@/db/supabase/validation';
-import { modelRegistry } from '@/lib/models/model-registry';
+import { type Agent } from '@/db/supabase/validation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { createAvatar } from '@dicebear/core';
-import { identicon } from '@dicebear/collection';
+import { identicon, pixelArtNeutral } from '@dicebear/collection';
+import { type Style } from '@dicebear/core';
 import { adventurer } from '@dicebear/collection';
 import { avataaars } from '@dicebear/collection';
 import { bottts } from '@dicebear/collection';
@@ -38,13 +37,21 @@ import { miniavs } from '@dicebear/collection';
 import { openPeeps } from '@dicebear/collection';
 import { personas } from '@dicebear/collection';
 import { pixelArt } from '@dicebear/collection';
-import { pixelArtNeutral } from '@dicebear/collection';
 import { shapes } from '@dicebear/collection';
 import { thumbs } from '@dicebear/collection';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
-const dicebearStyles = [
+interface DiceBearStyleEntry {
+  key: string;
+  label: string;
+  style: Style<object>;
+}
+const dicebearStyles: DiceBearStyleEntry[] = [
   { key: 'identicon', label: 'Identicon', style: identicon },
   { key: 'adventurer', label: 'Adventurer', style: adventurer },
+  { key: 'avataaars', label: 'Avataaars', style: avataaars },
   { key: 'avataaars', label: 'Avataaars', style: avataaars },
   { key: 'bottts', label: 'Bottts', style: bottts },
   { key: 'croodles', label: 'Croodles', style: croodles },
@@ -84,13 +91,34 @@ export function EditAgentDialog({
   const [avatarStyle, setAvatarStyle] = useState('identicon');
   const [avatarSvg, setAvatarSvg] = useState<string>('');
 
+  // CRUD hook for agents
+  const {
+    update: updateAgent,
+    loading: isUpdating,
+    error: updateError,
+  } = useSupabaseCrud({ table: 'agents' });
+
+  // Realtime hook for models
+  useSupabaseRealtime({
+    table: 'models',
+    event: '*',
+    enabled: true,
+  });
+
+  // Fetch models from API using useSupabaseFetch
+  const { data: models = [], isLoading: isModelsLoading } = useSupabaseFetch<
+    Array<{ id: string; name: string; displayName?: string }>
+  >({
+    endpoint: '/api/ai-sdk/models',
+    resourceName: 'Models',
+    dataKey: 'models',
+    realtime: true,
+  });
+
   useEffect(() => {
     if (isOpen) {
       setName(agent.name);
       setDescription(agent.description || '');
-      setModelId(agent.model_id);
-      setSystemPrompt(agent.system_prompt || '');
-      setErrors({});
       setAvatarStyle('identicon');
     }
   }, [isOpen, agent]);
@@ -98,16 +126,12 @@ export function EditAgentDialog({
   useEffect(() => {
     const styleObj =
       dicebearStyles.find((s) => s.key === avatarStyle) || dicebearStyles[0];
-    const avatar = createAvatar(styleObj.style, {
+    const avatarInstance = createAvatar(styleObj.style, {
       seed: agent.id || name || 'agent',
       size: 64,
       backgroundColor: ['#fff', '#000'],
     });
-    if (typeof avatar === 'string') {
-      setAvatarSvg(avatar);
-    } else if (avatar instanceof Promise) {
-      avatar.then((svg: string) => setAvatarSvg(svg));
-    }
+    setAvatarSvg(avatarInstance.toDataUri());
   }, [avatarStyle, agent.id, name]);
 
   const validateForm = () => {
@@ -124,34 +148,25 @@ export function EditAgentDialog({
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
-      const updatedAgent: Agent = AgentSchema.parse({
+      const updatedAgent = {
         ...agent,
         name,
         description,
         model_id,
         system_prompt,
-      });
-      await onUpdateAgent(updatedAgent);
+        updated_at: new Date().toISOString(),
+      };
+      await updateAgent(agent.id, updatedAgent);
+      onUpdateAgent(updatedAgent as Agent);
       onClose();
-    } catch (err: unknown) {
-      if (err instanceof z.ZodError) {
-        const zodErrors: Record<string, string> = {};
-        err.errors.forEach((e) => {
-          if (e.path[0]) zodErrors[e.path[0]] = e.message;
-        });
-        setErrors(zodErrors);
-      }
+    } catch (err) {
+      setErrors({
+        form: err instanceof Error ? err.message : 'Failed to update agent',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
-  type ModelType = { id: string; displayName?: string; name?: string };
-  const models: ModelType[] = Array.isArray(modelRegistry)
-    ? (modelRegistry as ModelType[])
-    : Object.values(
-        (modelRegistry as unknown as { models: Record<string, ModelType> })
-          .models || {}
-      );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -173,13 +188,12 @@ export function EditAgentDialog({
               {dicebearStyles.map((styleObj) => (
                 <button
                   key={styleObj.key}
-                  type="button"
-                  className={`rounded-full border-2 p-1 ${avatarStyle === styleObj.key ? 'border-primary' : 'border-gray-700'}`}
-                  onClick={() => setAvatarStyle(styleObj.key)}
                   aria-label={`Choose ${styleObj.label} avatar`}
+                  type="button"
+                  onClick={() => setAvatarStyle(styleObj.key)}
                 >
                   <img
-                    src={createAvatar(styleObj.style, {
+                    src={createAvatar(styleObj.style as Style<object>, {
                       seed: agent.id || name || 'agent',
                       size: 32,
                     }).toDataUri()}
@@ -239,18 +253,36 @@ export function EditAgentDialog({
                 Model{' '}
                 {errors.model_id && <span className="text-red-500">*</span>}
               </Label>
-              <Select value={model_id} onValueChange={setModelId}>
+              <Select
+                value={model_id}
+                onValueChange={setModelId}
+                disabled={isModelsLoading}
+              >
                 <SelectTrigger
                   className={`bg-gray-900 border-gray-800 ${errors.model_id ? 'border-red-500' : ''}`}
                 >
-                  <SelectValue placeholder="Select model" />
+                  <SelectValue
+                    placeholder={
+                      isModelsLoading ? 'Loading models...' : 'Select model'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-900 border-gray-800">
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.displayName || model.name || model.id}
+                  {isModelsLoading ? (
+                    <SelectItem value="" disabled>
+                      Loading models...
                     </SelectItem>
-                  ))}
+                  ) : models.length === 0 ? (
+                    <SelectItem value="" disabled>
+                      No models available
+                    </SelectItem>
+                  ) : (
+                    models.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.displayName || model.name || model.id}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.model_id && (
@@ -275,12 +307,12 @@ export function EditAgentDialog({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUpdating}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={isSubmitting || isUpdating}>
+              {isSubmitting || isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Updating...
@@ -290,6 +322,12 @@ export function EditAgentDialog({
               )}
             </Button>
           </DialogFooter>
+          {updateError && (
+            <p className="text-red-500 text-sm mt-2">{updateError.message}</p>
+          )}
+          {errors.form && (
+            <p className="text-red-500 text-sm mt-2">{errors.form}</p>
+          )}
         </form>
       </DialogContent>
     </Dialog>

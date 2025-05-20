@@ -28,10 +28,7 @@ export async function DELETE(
     const network = await networksTable.getById(id);
     if (network && typeof network === 'object' && 'agent_count' in network) {
       await networksTable.update(id, {
-        agent_count: Math.max(
-          0,
-          (network.agent_count || 1) - 1
-        ),
+        agent_count: Math.max(0, (network.agent_count || 1) - 1),
         updated_at: new Date().toISOString(),
       });
     }
@@ -65,10 +62,13 @@ export async function PUT(
     const supabase = createSupabaseClient();
     const table = supabase.from('network_agents', undefined);
     // Update the network agent, ensuring both id and agentId are used
-    const updated = await table.update({ network_id: id, agent_id: agentId }, {
-      role: parsed.role,
-      updated_at: new Date().toISOString(),
-    });
+    const updated = await table.update(
+      { network_id: id, agent_id: agentId },
+      {
+        role: parsed.role,
+        updated_at: new Date().toISOString(),
+      }
+    );
     const validated = NetworkAgentSchema.parse(updated);
     return NextResponse.json(validated);
   } catch (error) {

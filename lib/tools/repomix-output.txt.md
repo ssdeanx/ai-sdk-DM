@@ -5773,7 +5773,7 @@ async getAvailableCategories(): Promise<string[]>
 
 ## File: lib/tools/README.md
 
-````markdown
+`````markdown
 ## Chat Context & Prompt Guidelines 🤖 (☆ injected into the system prompt ☆)
 
 Whenever the assistant is asked about **`/lib/tools`**, prepend a summary like
@@ -6150,6 +6150,7 @@ export class ToolRegistry {
 // Export singleton instance
 export const toolRegistry = new ToolRegistry();
 ````
+`````
 
 #### 6.2 toolInitializer.ts
 
@@ -6378,4 +6379,7 @@ should reference an item ID (e.g. `rag-03`) and tick it here once merged._ 🚀
 
 _Keep both lists synced with PRs: move items from ⭐ → ✅ once merged. Aim high,
 iterate fast, and always keep the assistant's chat-context up to date._ 🚀
-````
+
+```
+
+```

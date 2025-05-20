@@ -221,7 +221,7 @@ export async function getByIdWithSupabaseDrizzle<
     );
     return null;
   }
-}/**
+} /**
  * Get all rows from a Supabase (Postgres) table using Drizzle and validate with Zod.
  */
 export async function getAllWithSupabaseDrizzle<

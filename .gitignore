@@ -47,3 +47,14 @@ repomix-hooks.txt*
 .vibe-tools
 .vibe-tools/*
 ./.env*
+
+dependencies.dot
+dependencies.png
+dependencies.svg
+.github/prompts/*.md
+.github/*.md
+.github/**/*.md
+.github/prompts/sys-instruct.md
+.github/prompts/research-with-rag.prompt.md
+.github/workflows/github-workflow.json
+scripts/create-admin-user.js
