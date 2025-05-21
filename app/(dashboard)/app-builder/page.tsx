@@ -50,17 +50,19 @@ import {
   Trash,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { z } from 'zod';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import ChatBar from '@/components/appBuilder/chatBar';
-import { CanvasDisplay } from '@/components/appBuilder/canvasDisplay';
 import { AppBuilderContainer } from '@/components/appBuilder/appBuilderContainer';
+import type { App } from 'types/supabase';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
-// Define the form schema
+// Use a form schema that matches the canonical App type, but only for fields used in the form
+// TODO: [2025-05-20] - If AppSchema changes, update this form schema to match backend
 const appFormSchema = z.object({
   name: z.string().min(2, {
     message: 'Name must be at least 2 characters.',
@@ -70,17 +72,6 @@ const appFormSchema = z.object({
   }),
   type: z.enum(['tool', 'workflow', 'agent']),
 });
-
-interface App {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  code: string;
-  parameters_schema?: string;
-  created_at: string;
-  updated_at: string;
-}
 
 export default function AppBuilderPage() {
   const { toast } = useToast();
@@ -104,35 +95,22 @@ export default function AppBuilderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Add state for canvas/terminal/code output
-  const [displayMode, setDisplayMode] = useState<
-    'terminal' | 'canvas' | 'code'
-  >('terminal');
-  const [displayContent, setDisplayContent] = useState('');
+  // Use canonical CRUD and realtime hooks for apps
+  const appCrud = useSupabaseCrud({ table: 'apps' });
+  useSupabaseRealtime({ table: 'apps', event: '*', enabled: true });
 
-  // App CRUD state
+  // Replace local state for apps with canonical CRUD state
   const [apps, setApps] = useState<App[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [connectionError, setConnectionError] = useState<boolean>(false);
 
-  // Example: handle chat message to update display (now used for output)
-  function handleChatMessage(
-    message: string,
-    _fullResponse?: { role: string; content: string }
-  ) {
-    setDisplayContent(message);
-    setDisplayMode('terminal'); // You can switch mode based on content if needed
-  }
-
-  // Fetch apps from the new API
+  // Fetch apps using the CRUD hook
   async function fetchApps() {
     setIsLoading(true);
     setConnectionError(false);
     try {
-      const res = await fetch('/api/ai-sdk/apps');
-      if (!res.ok) throw new Error('Failed to fetch apps');
-      const data = await res.json();
-      setApps(data.apps || []);
+      const data = await appCrud.fetchAll();
+      setApps(Array.isArray(data) ? data : []);
     } catch {
       setConnectionError(true);
       setApps([]);
@@ -143,7 +121,8 @@ export default function AppBuilderPage() {
 
   useEffect(() => {
     fetchApps();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appCrud]);
 
   const form = useForm<z.infer<typeof appFormSchema>>({
     resolver: zodResolver(appFormSchema),
@@ -157,9 +136,8 @@ export default function AppBuilderPage() {
   useEffect(() => {
     if (editingApp) {
       setCode(editingApp.code);
-
-      // Set parameters schema based on type and existing schema
-      if (editingApp.parameters_schema) {
+      // Ensure parameters_schema is a string
+      if (typeof editingApp.parameters_schema === 'string') {
         setParametersSchema(editingApp.parameters_schema);
       } else if (editingApp.type === 'tool') {
         setParametersSchema(`{
@@ -194,7 +172,6 @@ async function execute(params) {
 
   async function onSubmit(values: z.infer<typeof appFormSchema>) {
     setIsSubmitting(true);
-
     try {
       const appData = {
         name: values.name,
@@ -203,63 +180,28 @@ async function execute(params) {
         code,
         parametersSchema,
       };
-
       if (editingApp) {
-        // Update existing app
-        const response = await fetch(`/api/ai-sdk/apps/${editingApp.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(appData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to update app');
-        }
-
+        await appCrud.update(editingApp.id, appData);
         toast({
           title: 'App updated',
           description: `${values.name} has been updated successfully.`,
         });
       } else {
-        // Create new app
-        const response = await fetch('/api/ai-sdk/apps', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(appData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create app');
-        }
-
+        await appCrud.create(appData);
         toast({
           title: 'App created',
           description: `${values.name} has been created successfully.`,
         });
       }
-
-      // Refresh the apps list
       fetchApps();
-
-      // Close the dialog and reset form
       setOpen(false);
       form.reset();
       setEditingApp(null);
       setCode('');
-    } catch (error) {
-      // Optionally log error to a remote logger here
+    } catch {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error
-            ? error.message
-            : 'An error occurred while saving the app',
+        description: 'An error occurred while saving the app',
         variant: 'destructive',
       });
     } finally {
@@ -270,43 +212,29 @@ async function execute(params) {
   function handleEdit(app: App) {
     setEditingApp(app);
     form.reset({
-      name: app.name,
-      description: app.description,
+      name: app.name ?? '',
+      description: app.description ?? '',
       type:
         app.type === 'tool' || app.type === 'workflow' || app.type === 'agent'
           ? app.type
           : 'tool',
-    });
+    } as z.infer<typeof appFormSchema>);
     setOpen(true);
   }
 
   async function handleDelete(id: string) {
     setIsDeleting(true);
-
     try {
-      const response = await fetch(`/api/ai-sdk/apps/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete app');
-      }
-
+      await appCrud.remove(id);
       toast({
         title: 'App deleted',
         description: 'The app has been deleted successfully.',
       });
-
-      // Refresh the apps list
       fetchApps();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error
-            ? error.message
-            : 'An error occurred while deleting the app',
+        description: 'An error occurred while deleting the app',
         variant: 'destructive',
       });
     } finally {
@@ -384,11 +312,9 @@ async function execute(params) {
         if (data.apps && data.apps.length > 0) {
           setInitialCode(data.apps[0].code);
         }
-      } else {
-        console.error('Failed to fetch apps');
       }
-    } catch (error) {
-      console.error('Error fetching app data:', error);
+    } catch {
+      // Error fetching app data
     }
   };
 
@@ -405,12 +331,10 @@ async function execute(params) {
         body: JSON.stringify({ code: newCode }),
       });
       if (!res.ok) {
-        console.error('Failed to update app code');
-      } else {
-        console.log('App code updated successfully');
+        // Failed to update app code
       }
-    } catch (error) {
-      console.error('Error updating app code:', error);
+    } catch {
+      // Error updating app code
     }
   };
 

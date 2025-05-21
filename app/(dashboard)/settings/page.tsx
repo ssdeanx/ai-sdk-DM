@@ -30,7 +30,9 @@ function getTheme(theme: unknown): 'light' | 'dark' | 'system' {
 }
 
 // Helper to group settings array by category/key
-function groupSettings(settings: Setting[]): Record<string, Record<string, string>> {
+function groupSettings(
+  settings: Setting[]
+): Record<string, Record<string, string>> {
   const grouped: Record<string, Record<string, string>> = {};
   for (const item of settings) {
     if (!grouped[item.category]) grouped[item.category] = {};
@@ -75,14 +77,12 @@ export default function SettingsPage() {
     dataKey: 'settings',
   });
 
-  const {
-    data: models = [],
-    isLoading: modelsLoading,
-  } = useSupabaseFetch<Model>({
-    endpoint: '/api/ai-sdk/models',
-    resourceName: 'models',
-    dataKey: 'models',
-  });
+  const { data: models = [], isLoading: modelsLoading } =
+    useSupabaseFetch<Model>({
+      endpoint: '/api/ai-sdk/models',
+      resourceName: 'models',
+      dataKey: 'models',
+    });
 
   const loading = settingsLoading || modelsLoading;
   const groupedSettings = groupSettings(settingsData);
@@ -147,13 +147,20 @@ export default function SettingsPage() {
     accent_color: groupedSettings.appearance?.accent_color || 'violet',
   };
   const advancedDefaults = {
-    token_limit_warning: Number(groupedSettings.advanced?.token_limit_warning) || 3500,
+    token_limit_warning:
+      Number(groupedSettings.advanced?.token_limit_warning) || 3500,
     enable_embeddings: toBoolean(groupedSettings.advanced?.enable_embeddings),
-    enable_token_counting: toBoolean(groupedSettings.advanced?.enable_token_counting),
-    streaming_responses: toBoolean(groupedSettings.advanced?.streaming_responses),
+    enable_token_counting: toBoolean(
+      groupedSettings.advanced?.enable_token_counting
+    ),
+    streaming_responses: toBoolean(
+      groupedSettings.advanced?.streaming_responses
+    ),
   };
   const notificationDefaults = {
-    email_notifications: toBoolean(groupedSettings.notifications?.email_notifications),
+    email_notifications: toBoolean(
+      groupedSettings.notifications?.email_notifications
+    ),
     agent_completion_notifications: toBoolean(
       groupedSettings.notifications?.agent_completion_notifications
     ),
