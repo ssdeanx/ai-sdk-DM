@@ -11,7 +11,7 @@ import {
   updateItem,
 } from '@/lib/memory/upstash/supabase-adapter';
 import { getLibSQLClient } from '@/lib/memory/db';
-import { MessageSchema } from '@/db/libsql/validation';
+import { MessageSchema } from 'types/libsql';
 
 /**
  * GET /api/ai-sdk/threads/[id]/messages

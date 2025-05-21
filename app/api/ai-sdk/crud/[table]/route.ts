@@ -7,18 +7,9 @@ import {
 } from '@/lib/memory/upstash/supabase-adapter';
 import { z } from 'zod';
 import {
-  MemoryThreadSchema,
-  MessageSchema,
-  EmbeddingSchema,
-  AgentStateSchema,
-  GqlCacheSchema,
-  FileSchema,
-  TerminalSessionSchema,
-} from '@/db/libsql/validation';
-import {
-  AppSchema as SupabaseAppSchema,
-  IntegrationSchema as SupabaseIntegrationSchema,
-  WorkflowSchema as SupabaseWorkflowSchema,
+  AppSchema,
+  IntegrationSchema,
+  WorkflowSchema,
   ModelSchema,
   ProviderSchema,
   AgentPersonaSchema,
@@ -29,7 +20,16 @@ import {
   SettingSchema,
   BlogPostSchema,
   MdxDocumentSchema,
-} from '@/db/supabase/validation';
+} from 'types/supabase';
+import {
+  MemoryThreadSchema,
+  MessageSchema,
+  EmbeddingSchema,
+  AgentStateSchema,
+  GqlCacheSchema,
+  FileSchema,
+  TerminalSessionSchema,
+} from 'types/libsql';
 
 // Allowed tables for CRUD (expand as needed)
 const ALLOWED_TABLES = [
@@ -55,11 +55,11 @@ const ALLOWED_TABLES = [
   'terminal_sessions',
 ];
 
-// Table to Zod schema mapping (source of truth: validation files)
+// Table to Zod schema mapping (source of truth: types files)
 const TABLE_SCHEMAS: Record<string, z.ZodTypeAny> = {
-  apps: SupabaseAppSchema,
-  integrations: SupabaseIntegrationSchema,
-  workflows: SupabaseWorkflowSchema,
+  apps: AppSchema,
+  integrations: IntegrationSchema,
+  workflows: WorkflowSchema,
   models: ModelSchema,
   providers: ProviderSchema,
   agent_personas: AgentPersonaSchema,

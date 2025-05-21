@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { handleApiError } from '@/lib/api-error-handler';
-import { AppSchema } from '@/db/supabase/validation';
+import { AppSchema } from 'types/supabase';
 import { apps } from '@/db/supabase/schema';
 
 const adapter = createSupabaseClient();

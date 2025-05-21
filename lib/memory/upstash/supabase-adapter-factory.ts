@@ -7,6 +7,10 @@
  * @module supabase-adapter-factory
  */
 
+/*
+ NOTE: All table schemas used in this factory are imported from the canonical Supabase validation schemas defined in db/supabase/validation.ts, ensuring consistent type validation and a single source of truth for our Supabase database entities.
+*/
+
 import {
   entityApi,
   VectorQueryOptions,

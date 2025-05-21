@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { z } from 'zod';
 import { FaKey, FaPalette, FaCogs, FaBell } from 'react-icons/fa';
 import SettingsProvider from '@/components/settings/SettingsProvider';
@@ -11,18 +11,9 @@ import SettingsField from '@/components/settings/SettingsField';
 import SettingsLoadingSkeleton from '@/components/settings/SettingsLoadingSkeleton';
 import { useToast } from '@/hooks/use-toast';
 import { logError } from '@/lib/memory/upstash/upstash-logger';
-import { ModelSchema } from '@/db/supabase/validation';
+import { Model, Setting } from 'types/supabase';
+import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
 import '@/app/globals.css';
-
-// Define Model type locally
-interface Model {
-  id: string;
-  name: string;
-  provider: string;
-  modelId: string;
-  baseUrl?: string;
-  status: string;
-}
 
 // Helper to coerce string/boolean values to boolean
 function toBoolean(val: unknown): boolean {
@@ -38,13 +29,15 @@ function getTheme(theme: unknown): 'light' | 'dark' | 'system' {
     : 'system';
 }
 
-// Settings categories and keys
-const SETTINGS_CATEGORIES = [
-  'api',
-  'appearance',
-  'advanced',
-  'notifications',
-] as const;
+// Helper to group settings array by category/key
+function groupSettings(settings: Setting[]): Record<string, Record<string, string>> {
+  const grouped: Record<string, Record<string, string>> = {};
+  for (const item of settings) {
+    if (!grouped[item.category]) grouped[item.category] = {};
+    grouped[item.category][item.key] = item.value;
+  }
+  return grouped;
+}
 
 // Settings form schemas (define per category, or use SettingSchema for validation)
 const apiSettingsSchema = z.object({
@@ -71,58 +64,28 @@ const notificationSettingsSchema = z.object({
 export default function SettingsPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('api');
-  const [settings, setSettings] = useState<
-    Record<string, Record<string, string>>
-  >({});
-  const [loading, setLoading] = useState(true);
-  const [models, setModels] = useState<Model[]>([]);
 
-  useEffect(() => {
-    async function fetchAll() {
-      setLoading(true);
-      try {
-        // Fetch settings
-        const res = await fetch('/api/ai-sdk/settings');
-        const data = await res.json();
-        // Group by category
-        const grouped: Record<string, Record<string, string>> = {};
-        for (const item of data) {
-          if (SETTINGS_CATEGORIES.includes(item.category)) {
-            grouped[item.category] = grouped[item.category] || {};
-            grouped[item.category][item.key] = item.value;
-          }
-        }
-        setSettings(grouped);
-        // Fetch models
-        const modelsRes = await fetch('/api/models');
-        const modelsData = await modelsRes.json();
-        // Validate and parse models using ModelSchema
-        const validModels: Model[] = Array.isArray(modelsData.models)
-          ? modelsData.models
-              .map((m: unknown) => {
-                const parsed = ModelSchema.safeParse(m);
-                return parsed.success ? parsed.data : null;
-              })
-              .filter(Boolean)
-          : [];
-        setModels(validModels);
-      } catch (err) {
-        logError(
-          'settings-page',
-          'Failed to fetch settings/models',
-          err instanceof Error ? err : { error: String(err) }
-        );
-        toast({
-          title: 'Error',
-          description: 'Failed to load settings or models.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAll();
-  }, [toast]);
+  const {
+    data: settingsData = [],
+    isLoading: settingsLoading,
+    refetch: refetchSettings,
+  } = useSupabaseFetch<Setting>({
+    endpoint: '/api/ai-sdk/settings',
+    resourceName: 'settings',
+    dataKey: 'settings',
+  });
+
+  const {
+    data: models = [],
+    isLoading: modelsLoading,
+  } = useSupabaseFetch<Model>({
+    endpoint: '/api/ai-sdk/models',
+    resourceName: 'models',
+    dataKey: 'models',
+  });
+
+  const loading = settingsLoading || modelsLoading;
+  const groupedSettings = groupSettings(settingsData);
 
   async function handleSave(
     category: string,
@@ -150,17 +113,7 @@ export default function SettingsPage() {
         title: 'Settings saved',
         description: `${category.charAt(0).toUpperCase() + category.slice(1)} settings updated successfully.`,
       });
-      // Refetch settings
-      const res = await fetch('/api/ai-sdk/settings');
-      const data = await res.json();
-      const grouped: Record<string, Record<string, string>> = {};
-      for (const item of data) {
-        if (SETTINGS_CATEGORIES.includes(item.category)) {
-          grouped[item.category] = grouped[item.category] || {};
-          grouped[item.category][item.key] = item.value;
-        }
-      }
-      setSettings(grouped);
+      refetchSettings();
     } catch (err) {
       logError(
         'settings-page',
@@ -185,27 +138,27 @@ export default function SettingsPage() {
 
   // Normalized default values for each section
   const apiDefaults = {
-    google_api_key: settings.api?.google_api_key || '',
-    default_model_id: settings.api?.default_model_id || '',
+    google_api_key: groupedSettings.api?.google_api_key || '',
+    default_model_id: groupedSettings.api?.default_model_id || '',
   };
   const appearanceDefaults = {
-    theme: getTheme(settings.appearance?.theme),
-    enable_animations: toBoolean(settings.appearance?.enable_animations),
-    accent_color: settings.appearance?.accent_color || 'violet',
+    theme: getTheme(groupedSettings.appearance?.theme),
+    enable_animations: toBoolean(groupedSettings.appearance?.enable_animations),
+    accent_color: groupedSettings.appearance?.accent_color || 'violet',
   };
   const advancedDefaults = {
-    token_limit_warning: Number(settings.advanced?.token_limit_warning) || 3500,
-    enable_embeddings: toBoolean(settings.advanced?.enable_embeddings),
-    enable_token_counting: toBoolean(settings.advanced?.enable_token_counting),
-    streaming_responses: toBoolean(settings.advanced?.streaming_responses),
+    token_limit_warning: Number(groupedSettings.advanced?.token_limit_warning) || 3500,
+    enable_embeddings: toBoolean(groupedSettings.advanced?.enable_embeddings),
+    enable_token_counting: toBoolean(groupedSettings.advanced?.enable_token_counting),
+    streaming_responses: toBoolean(groupedSettings.advanced?.streaming_responses),
   };
   const notificationDefaults = {
-    email_notifications: toBoolean(settings.notifications?.email_notifications),
+    email_notifications: toBoolean(groupedSettings.notifications?.email_notifications),
     agent_completion_notifications: toBoolean(
-      settings.notifications?.agent_completion_notifications
+      groupedSettings.notifications?.agent_completion_notifications
     ),
     system_notifications: toBoolean(
-      settings.notifications?.system_notifications
+      groupedSettings.notifications?.system_notifications
     ),
   };
 
@@ -283,8 +236,8 @@ export default function SettingsPage() {
                   >
                     <option value="">Select a model</option>
                     {models?.map((model) => (
-                      <option key={model.id} value={model.modelId}>
-                        {model.name} ({model.provider})
+                      <option key={model.id} value={model.model_id}>
+                        {model.name} ({model.provider_id})
                       </option>
                     ))}
                   </select>

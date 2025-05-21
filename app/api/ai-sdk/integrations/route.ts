@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { IntegrationSchema } from '@/db/supabase/validation';
+import { IntegrationSchema } from 'types/supabase';
 
 const table = 'settings';
 const INTEGRATION_PREFIX = 'integration:';

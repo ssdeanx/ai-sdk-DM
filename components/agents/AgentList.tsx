@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CreateAgentDialog } from '@/components/agents/CreateAgentDialog';
-import { type Agent } from '@/db/supabase/validation';
+import { type Agent } from 'types/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';

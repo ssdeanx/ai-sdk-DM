@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Agent, AgentPersona, Tool } from '@/db/supabase/validation';
+import { Agent, AgentPersona, Tool } from 'types/supabase';
 
 /**
  * Component for displaying an agent card with options to edit, delete, or chat with the agent.

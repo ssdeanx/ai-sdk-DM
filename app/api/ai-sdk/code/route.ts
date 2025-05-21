@@ -11,7 +11,7 @@ import {
   getData,
   TableRow,
 } from '@/lib/memory/upstash/supabase-adapter';
-import { AppCodeBlockSchema } from '@/db/libsql/validation';
+import { AppCodeBlockSchema } from 'types/libsql';
 
 const table = 'app_code_blocks';
 

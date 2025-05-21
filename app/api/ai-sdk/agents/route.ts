@@ -5,6 +5,7 @@ import { generateId } from 'ai';
 import { z } from 'zod';
 import { getMemoryProvider } from '@/lib/memory/factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
+import { AgentSchema } from 'types/supabase';
 
 // Import Upstash adapter functions
 import {
@@ -14,6 +15,26 @@ import {
   updateItem,
   deleteItem,
 } from '@/lib/memory/upstash/supabase-adapter';
+
+// Utility to map API camelCase to DB snake_case for agent fields
+function mapAgentApiToDb(input: any) {
+  return {
+    ...input,
+    model_id: input.modelId,
+    tool_ids: input.toolIds,
+    system_prompt: input.systemPrompt,
+    persona_id: input.personaId,
+  };
+}
+function mapAgentDbToApi(input: any) {
+  return {
+    ...input,
+    modelId: input.model_id,
+    toolIds: input.tool_ids,
+    systemPrompt: input.system_prompt,
+    personaId: input.persona_id,
+  };
+}
 
 // Helper functions for Upstash operations
 /**
@@ -89,22 +110,22 @@ const AgentQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-const CreateAgentSchema = z.object({
-  name: z.string().min(1, { message: 'Name is required' }),
-  description: z.string().optional().default(''),
-  modelId: z.string().min(1, { message: 'Model ID is required' }),
-  toolIds: z.array(z.string()).optional().default([]),
-  systemPrompt: z.string().optional().default(''),
-});
+const CreateAgentSchema = AgentSchema.pick({
+  name: true,
+  description: true,
+  modelId: true,
+  toolIds: true,
+  systemPrompt: true,
+} as const).extend({ toolIds: z.array(z.string()).optional().default([]) });
 
-const UpdateAgentSchema = z.object({
-  name: z.string().min(1, { message: 'Name is required' }).optional(),
-  description: z.string().optional(),
-  modelId: z.string().optional(),
-  toolIds: z.array(z.string()).optional(),
-  systemPrompt: z.string().optional(),
-  personaId: z.string().uuid().optional(),
-});
+const UpdateAgentSchema = AgentSchema.pick({
+  name: true,
+  description: true,
+  modelId: true,
+  toolIds: true,
+  systemPrompt: true,
+  personaId: true,
+}).partial();
 
 const AgentParamsSchema = z.object({
   id: z.string().uuid({ message: 'Invalid agent ID format' }),
@@ -194,13 +215,13 @@ export async function GET(request: Request) {
             // Filter out null tools
             const validTools = tools.filter(Boolean);
 
-            return {
+            return mapAgentDbToApi({
               id: agent.id,
               name: agent.name,
               description: agent.description,
-              systemPrompt: agent.system_prompt,
-              createdAt: agent.created_at,
-              updatedAt: agent.updated_at,
+              system_prompt: agent.system_prompt,
+              created_at: agent.created_at,
+              updated_at: agent.updated_at,
               model: model
                 ? {
                     id: model.id,
@@ -209,7 +230,7 @@ export async function GET(request: Request) {
                   }
                 : null,
               tools: validTools,
-            };
+            });
           })
         );
 
@@ -286,13 +307,13 @@ export async function GET(request: Request) {
           args: [agent.id],
         });
 
-        return {
+        return mapAgentDbToApi({
           id: agent.id,
           name: agent.name,
           description: agent.description,
-          systemPrompt: agent.system_prompt,
-          createdAt: agent.created_at,
-          updatedAt: agent.updated_at,
+          system_prompt: agent.system_prompt,
+          created_at: agent.created_at,
+          updated_at: agent.updated_at,
           model: {
             id: agent.model_id,
             name: agent.model_name,
@@ -308,7 +329,7 @@ export async function GET(request: Request) {
                 ? JSON.parse(tool.parameters_schema)
                 : {},
           })),
-        };
+        });
       })
     );
 
@@ -386,15 +407,18 @@ export async function POST(request: Request) {
         const now = new Date().toISOString();
 
         // Create the agent in Upstash
-        await createItem('agents', {
-          id,
-          name,
-          description,
-          model_id: modelId,
-          system_prompt: systemPrompt,
-          created_at: now,
-          updated_at: now,
-        });
+        await createItem(
+          'agents',
+          mapAgentApiToDb({
+            id,
+            name,
+            description,
+            modelId,
+            systemPrompt,
+            created_at: now,
+            updated_at: now,
+          })
+        );
 
         // Add tools to agent
         for (const toolId of toolIds) {
@@ -586,12 +610,13 @@ export async function PATCH(request: Request) {
         }
 
         // Prepare update data
-        const updateData: Record<string, unknown> = {};
-        if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description;
-        if (modelId !== undefined) updateData.model_id = modelId;
-        if (systemPrompt !== undefined) updateData.system_prompt = systemPrompt;
-        if (personaId !== undefined) updateData.persona_id = personaId;
+        const updateData: Record<string, unknown> = mapAgentApiToDb({
+          name,
+          description,
+          model_id: modelId,
+          system_prompt: systemPrompt,
+          persona_id: personaId,
+        });
         updateData.updated_at = new Date().toISOString();
 
         // Update agent using the helper function
@@ -837,13 +862,11 @@ export async function PATCH(request: Request) {
     return handleApiError(error);
   }
 }
-
 /**
  * DELETE /api/ai-sdk/agents/:id
  *
  * Delete an agent
- */
-export async function DELETE(request: Request) {
+ */export async function DELETE(request: Request) {
   try {
     // Extract agent ID from URL
     const url = new URL(request.url);

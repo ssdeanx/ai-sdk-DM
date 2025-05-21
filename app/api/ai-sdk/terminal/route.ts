@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import * as tracing from '@/lib/tracing';
 import { SpanStatusCode } from '@/lib/otel-tracing';
-import { TerminalSessionSchema } from '@/db/libsql/validation';
+import { TerminalSessionSchema } from 'types/libsql';
 
 // Canonical Zod schema for terminal command input (from validation.ts)
 const TerminalCommandSchema = z.object({

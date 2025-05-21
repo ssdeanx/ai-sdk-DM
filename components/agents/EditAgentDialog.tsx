@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { type Agent } from '@/db/supabase/validation';
+import { type Agent, Model } from 'types/supabase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { createAvatar } from '@dicebear/core';
 import { identicon, pixelArtNeutral } from '@dicebear/collection';
@@ -106,14 +106,13 @@ export function EditAgentDialog({
   });
 
   // Fetch models from API using useSupabaseFetch
-  const { data: models = [], isLoading: isModelsLoading } = useSupabaseFetch<
-    Array<{ id: string; name: string; displayName?: string }>
-  >({
-    endpoint: '/api/ai-sdk/models',
-    resourceName: 'Models',
-    dataKey: 'models',
-    realtime: true,
-  });
+  const { data: models = [], isLoading: isModelsLoading } =
+    useSupabaseFetch<Model>({
+      endpoint: '/api/ai-sdk/models',
+      resourceName: 'Models',
+      dataKey: 'models',
+      realtime: true,
+    });
 
   useEffect(() => {
     if (isOpen) {
@@ -279,7 +278,7 @@ export function EditAgentDialog({
                   ) : (
                     models.map((model) => (
                       <SelectItem key={model.id} value={model.id}>
-                        {model.displayName || model.name || model.id}
+                        {model.name}
                       </SelectItem>
                     ))
                   )}

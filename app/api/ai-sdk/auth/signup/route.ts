@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUpstashClient as getSupabaseClient } from '@/lib/memory/supabase'; // Ensuring UserSchema is from db/supabase/validation.ts as Supabase is the auth provider
 import type { SupabaseClient as StandardSupabaseClient } from '@supabase/supabase-js';
-import { UserSchema } from '@/db/supabase/validation';
+import { UserSchema } from 'types/supabase';
 import { z } from 'zod';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { createTrace } from '@/lib/langfuse-integration';

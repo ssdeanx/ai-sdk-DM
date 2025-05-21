@@ -6,7 +6,7 @@ import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { getMemoryProvider } from '@/lib/memory/factory';
 import { getData, createItem } from '@/lib/memory/upstash/supabase-adapter';
 import { z } from 'zod';
-import { MemoryThreadSchema } from '@/db/libsql/validation';
+import { MemoryThreadSchema } from 'types/libsql';
 
 /**
  * GET /api/ai-sdk/threads

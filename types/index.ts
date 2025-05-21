@@ -1,4 +1,28 @@
-// Model types
+/*
+ * This file re-exports all TypeScript types from the types folder.
+ * The unified type definitions derived from our Zod validation schemas are re-exported
+ * for consistent use across the project.
+ * 
+ * Legacy manual types are also included for backward compatibility (deprecated).
+ */
+
+export * from './agents';
+export * from './blog';
+export * from './app_code_blocks';
+export * from './file';
+export * from './integrations';
+export * from './mdx';
+export * from './model-settings';
+export * from './models';
+export * from './nlpjs__nlp';
+export * from './personas';
+export * from './providers';
+export * from './schema';
+export * from './settings';
+export * from './terminal';
+export * from './tools';
+
+/* Legacy manually maintained interfaces (deprecated) */
 export interface ModelConfig {
   id: string;
   name: string;
@@ -11,7 +35,6 @@ export interface ModelConfig {
   updatedAt: string;
 }
 
-// Tool types
 export interface ToolDefinition {
   id: string;
   name: string;
@@ -21,7 +44,6 @@ export interface ToolDefinition {
   updatedAt: string;
 }
 
-// Agent types
 export interface AgentConfig {
   id: string;
   name: string;
@@ -35,7 +57,6 @@ export interface AgentConfig {
   updatedAt: string;
 }
 
-// Network types
 export interface NetworkConfig {
   id: string;
   name: string;
@@ -46,7 +67,6 @@ export interface NetworkConfig {
   updatedAt: string;
 }
 
-// Message types
 export interface Message {
   id: string;
   threadId: string;
@@ -57,7 +77,6 @@ export interface Message {
   createdAt: string;
 }
 
-// Thread types
 export interface Thread {
   id: string;
   name: string;
@@ -65,7 +84,6 @@ export interface Thread {
   updatedAt: string;
 }
 
-// Tool call types
 export interface ToolCall {
   id: string;
   threadId: string;

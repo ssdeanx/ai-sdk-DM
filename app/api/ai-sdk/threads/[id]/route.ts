@@ -8,7 +8,7 @@ import {
   deleteItem,
   getData,
 } from '@/lib/memory/upstash/supabase-adapter';
-import { MemoryThreadSchema, MessageSchema } from '@/db/libsql/validation';
+import { MemoryThreadSchema, MessageSchema } from 'types/libsql';
 
 /**
  * Interface for formatted thread

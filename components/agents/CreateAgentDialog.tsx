@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Agent } from '@/db/supabase/validation';
+import { Agent, Model } from 'types/supabase';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { createAvatar, type Style } from '@dicebear/core';
@@ -105,14 +105,13 @@ export function CreateAgentDialog({
   });
 
   // Fetch models from API using useSupabaseFetch
-  const { data: models = [], isLoading: isModelsLoading } = useSupabaseFetch<
-    Array<{ id: string; name: string }>
-  >({
-    endpoint: '/api/ai-sdk/models',
-    resourceName: 'Models',
-    dataKey: 'models',
-    realtime: true,
-  });
+  const { data: models = [], isLoading: isModelsLoading } =
+    useSupabaseFetch<Model>({
+      endpoint: '/api/ai-sdk/models',
+      resourceName: 'Models',
+      dataKey: 'models',
+      realtime: true,
+    });
 
   useEffect(() => {
     if (isOpen) {

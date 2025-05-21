@@ -2,8 +2,10 @@
 
 import type React from 'react';
 
-// Use canonical Message type from db/libsql/validation
-import type { Message as CanonicalMessage } from '@/db/libsql/validation';
+// Use canonical types from types/libsql and types/supabase
+import type { Message as CanonicalMessage } from 'types/libsql';
+import type { Agent as CanonicalAgent, Tool } from 'types/supabase';
+import { generateId } from 'ai';
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot } from 'lucide-react';
@@ -21,52 +23,48 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAgentExecutor } from '@/hooks/use-executor';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { generateId } from 'ai';
-import { toolRegistry } from '@/lib/tools/toolRegistry';
 import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
 import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
 /**
- * Renders the result of a tool call, using the tool's custom renderer if available.
+ * Renders the result of a tool call, using a local mapping or fallback pretty-print.
  * @param toolResult - The result returned by the tool.
  * @param toolCall - The tool call info (name, parameters).
+ * @param tools - List of tools fetched from the database.
  */
-interface ToolWithRender {
-  renderResult?: (result: unknown) => React.ReactElement;
-}
 function ToolResultRenderer({
   toolResult,
   toolCall,
+  tools,
 }: {
   toolResult: string | null | undefined;
   toolCall?: { name: string };
+  tools: Tool[];
 }): React.ReactElement | null {
-  const [toolDef, setToolDef] = useState<ToolWithRender | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (toolCall?.name) {
-        const def = await toolRegistry.getTool(toolCall.name);
-        if (mounted) setToolDef(def as ToolWithRender);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [toolCall?.name]);
-  if (!toolResult) return null;
-  if (
-    toolDef &&
-    typeof toolDef === 'object' &&
-    toolDef !== null &&
-    typeof toolDef.renderResult === 'function'
-  ) {
-    return toolDef.renderResult(toolResult);
+  if (!toolResult || !toolCall?.name) return null;
+  // Find the tool definition by name
+  const tool = tools.find((t) => t.name === toolCall.name);
+  // Local custom renderers by tool name (extend as needed)
+  const customRenderers: Record<
+    string,
+    (result: unknown, tool: Tool) => React.ReactElement
+  > = {
+    // Example: 'my-special-tool': (result, tool) => <div>Custom: {result}</div>,
+  };
+  if (tool && customRenderers[tool.name]) {
+    return customRenderers[tool.name](toolResult, tool);
   }
-  // Fallback: pretty-print JSON
+  // Fallback: pretty-print JSON with tool metadata
   return (
     <div className="mt-2 p-2 border rounded-md bg-background/80">
-      <div className="text-xs font-medium mb-1">Tool result:</div>
+      <div className="text-xs font-medium mb-1">
+        Tool result from <b>{toolCall.name}</b>:
+      </div>
+      {tool && (
+        <div className="text-xs mb-1 text-muted-foreground">
+          <span className="font-semibold">Description:</span> {tool.description}
+        </div>
+      )}
       <div className="text-xs overflow-x-auto">
         <pre className="text-xs">{JSON.stringify(toolResult, null, 2)}</pre>
       </div>
@@ -74,29 +72,24 @@ function ToolResultRenderer({
   );
 }
 
-// Canonical Message type for agent chat
-export interface Message
-  extends Omit<CanonicalMessage, 'id' | 'memory_thread_id' | 'created_at'> {
+// UI extension of canonical types
+export type Message = CanonicalMessage & {
   toolCall?: {
     name: string;
     parameters: Record<string, unknown>;
   };
   toolResult?: string | null;
-}
+};
 
-export interface AgentExecutorProps {
-  agent: {
-    id: string;
-    name: string;
-    description: string;
-    model_id: string;
-    tool_ids: string[];
-    system_prompt?: string;
-    model?: string;
+export type AgentExecutorProps = {
+  agent: CanonicalAgent & {
+    // Optionally allow UI fields for display, but not required by canonical type
+    tool_ids?: string[];
     tools?: string[];
+    model?: string;
   };
   onExecutionComplete?: (messages: Message[]) => void;
-}
+};
 
 export function AgentExecutor({
   agent,
@@ -105,6 +98,9 @@ export function AgentExecutor({
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
+      id: generateId(),
+      memory_thread_id: 'ui-thread',
+      created_at: new Date().toISOString(),
       role: 'assistant',
       content: `Hello! I'm ${agent.name}. How can I help you today?`,
     },
@@ -113,6 +109,8 @@ export function AgentExecutor({
 
   // Add hooks for CRUD and realtime (for future extensibility)
   const agentCrud = useSupabaseCrud({ table: 'agents' });
+  const toolCrud = useSupabaseCrud({ table: 'tools' });
+  const [tools, setTools] = useState<Tool[]>([]);
   useSupabaseRealtime({ table: 'agents', event: '*', enabled: true });
 
   // Use our custom hook for agent execution
@@ -126,28 +124,27 @@ export function AgentExecutor({
           role: 'system',
           content:
             'Sorry, I encountered an error while processing your request.',
+          id: generateId(),
+          memory_thread_id: 'ui-thread',
+          created_at: new Date().toISOString(),
         },
       ]);
     },
   });
 
+  // Fetch tools from the database
+  useEffect(() => {
+    if (toolCrud && toolCrud.fetchAll) {
+      toolCrud.fetchAll().then((data) => {
+        if (Array.isArray(data)) setTools(data as Tool[]);
+      });
+    }
+  }, [toolCrud]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const mapToCanonicalMessages = (
-    msgs: Message[],
-    memoryThreadId: string
-  ): CanonicalMessage[] =>
-    msgs.map((msg) => ({
-      id: generateId(),
-      memory_thread_id: memoryThreadId,
-      created_at: new Date().toISOString(),
-      role: msg.role,
-      content: msg.content,
-      // Optionally map tool fields if needed
-    }));
 
   // agentCrud: log the number of agents in the table
   useEffect(() => {
@@ -181,19 +178,16 @@ export function AgentExecutor({
     const userMessage: Message = {
       role: 'user',
       content: input,
+      id: generateId(),
+      memory_thread_id: 'ui-thread',
+      created_at: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
 
     try {
-      // Map local messages to canonical format for backend
-      const memoryThreadId = 'ui-thread'; // Use a static or generated thread id for now
-      const canonicalHistory = mapToCanonicalMessages(
-        [...messages, userMessage],
-        memoryThreadId
-      );
-      const data = await executeAgent(input, canonicalHistory);
+      const data = await executeAgent(input, [...messages, userMessage]);
       if (
         typeof data === 'object' &&
         data &&
@@ -292,6 +286,7 @@ export function AgentExecutor({
                       <ToolResultRenderer
                         toolResult={message.toolResult}
                         toolCall={message.toolCall}
+                        tools={tools}
                       />
                     )}
                   </div>
