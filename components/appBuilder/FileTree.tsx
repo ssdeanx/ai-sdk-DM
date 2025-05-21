@@ -1,5 +1,6 @@
 'use client';
-import React, { useEffect, useState, useRef, useCallback, use } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { z } from 'zod';
 import {
   ChevronDown,
   ChevronRight,
@@ -12,58 +13,17 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { File as SupabaseFile, FileSchema as SupabaseFileSchema } from '@/types/supabase';
+import { File as LibsqlFile, FileSchema as LibsqlFileSchema } from '@/types/libsql';
 
-export interface FileNode {
-  name: string;
-  path: string;
+/**
+ * FileNode is a UI-only type for tree rendering, derived from canonical File.
+ */
+export type CanonicalFile = SupabaseFile | LibsqlFile;
+export type CanonicalFileSchema = typeof SupabaseFileSchema | typeof LibsqlFileSchema;
+export interface FileNode extends CanonicalFile {
   isDir: boolean;
   children?: FileNode[];
-}
-
-interface FileTreeProps {
-  rootPath?: string;
-  onFileSelect?: (file: FileNode) => void;
-  onRefresh?: () => void;
-  className?: string;
-}
-
-// Helper to fetch file tree from API
-async function fetchFileTree(path = ''): Promise<FileNode[]> {
-  try {
-    const res = await fetch(
-      `/api/ai-sdk/files?path=${encodeURIComponent(path)}`
-    );
-    if (!res.ok) throw new Error('Failed to fetch file tree');
-    const data = await res.json();
-    // API returns { files: [...] }
-    if (Array.isArray(data.files)) return data.files;
-    return [];
-  } catch {
-    return [];
-  }
-}
-
-// File/folder CRUD helpers
-async function createFileOrFolder(path: string, isDir: boolean) {
-  await fetch('/api/ai-sdk/files', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path, isDir }),
-  });
-}
-async function renameFileOrFolder(oldPath: string, newPath: string) {
-  await fetch('/api/ai-sdk/files', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: oldPath, newPath }),
-  });
-}
-async function deleteFileOrFolder(path: string) {
-  await fetch('/api/ai-sdk/files', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path }),
-  });
 }
 
 const getIndentClass = (level: number) => `pl-${level * 4}`;
@@ -71,9 +31,12 @@ const getIndentClass = (level: number) => `pl-${level * 4}`;
 const FileTreeNode: React.FC<{
   node: FileNode;
   level: number;
-  onFileSelect?: (file: FileNode) => void;
+  onFileSelect?: (file: CanonicalFile) => void;
   onRefresh?: () => void;
-}> = ({ node, level, onFileSelect, onRefresh }) => {
+  create: (data: Partial<CanonicalFile>) => Promise<CanonicalFile>;
+  update: (id: string, data: Partial<CanonicalFile>) => Promise<CanonicalFile>;
+  remove: (id: string) => Promise<CanonicalFile | void>;
+}> = ({ node, level, onFileSelect, onRefresh, create, update, remove }) => {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -81,47 +44,10 @@ const FileTreeNode: React.FC<{
   const [creating, setCreating] = useState<null | 'file' | 'folder'>(null);
   const [newChildName, setNewChildName] = useState('');
   const hasChildren = node.isDir && node.children && node.children.length > 0;
-  const nodeRef = useRef<HTMLDivElement>(null);
-
-  // Keyboard navigation (basic)
-  useEffect(() => {
-    if (!nodeRef.current) return;
-    const currentRef = nodeRef.current;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && renaming) {
-        renameFileOrFolder(
-          node.path,
-          `${node.path.substring(0, node.path.lastIndexOf('/'))}/${newName}`
-        ).then(() => {
-          setRenaming(false);
-          if (onRefresh) onRefresh();
-        });
-      }
-      if (e.key === 'Escape' && renaming) {
-        setRenaming(false);
-        setNewName(node.name);
-      }
-    };
-    currentRef.addEventListener('keydown', handleKeyDown);
-    return () => currentRef.removeEventListener('keydown', handleKeyDown);
-  }, [renaming, node.name, node.path, newName, onRefresh]);
-
-  // Context menu close on click outside
-  useEffect(() => {
-    if (!showMenu) return;
-    const handleClick = (e: MouseEvent) => {
-      if (nodeRef.current && !nodeRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showMenu]);
 
   return (
     <div className="relative">
       <div
-        ref={nodeRef}
         className={cn(
           'flex items-center cursor-pointer select-none py-0.5 px-2 rounded hover:bg-accent group',
           getIndentClass(level)
@@ -148,11 +74,11 @@ const FileTreeNode: React.FC<{
         {node.isDir ? <Folder className="w-4 h-4 mr-1 text-blue-500" /> : null}
         {renaming ? (
           <>
-            <label className="sr-only" htmlFor={`rename-input-${node.path}`}>
+            <label className="sr-only" htmlFor={`rename-input-${node.id}`}>
               Rename file or folder
             </label>
             <input
-              id={`rename-input-${node.path}`}
+              id={`rename-input-${node.id}`}
               className="bg-transparent border-b border-border text-xs font-mono px-1 w-24 outline-none"
               value={newName}
               autoFocus
@@ -161,10 +87,7 @@ const FileTreeNode: React.FC<{
               onBlur={() => setRenaming(false)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  renameFileOrFolder(
-                    node.path,
-                    `${node.path.substring(0, node.path.lastIndexOf('/'))}/${newName}`
-                  ).then(() => {
+                  update(node.id, { name: newName }).then(() => {
                     setRenaming(false);
                     if (onRefresh) onRefresh();
                   });
@@ -217,7 +140,7 @@ const FileTreeNode: React.FC<{
             size="icon-sm"
             onClick={(e) => {
               e.stopPropagation();
-              deleteFileOrFolder(node.path).then(() => {
+              remove(node.id).then(() => {
                 if (onRefresh) onRefresh();
               });
             }}
@@ -264,7 +187,7 @@ const FileTreeNode: React.FC<{
             variant="ghost"
             size="sm"
             onClick={() => {
-              deleteFileOrFolder(node.path).then(() => {
+              remove(node.id).then(() => {
                 if (onRefresh) onRefresh();
               });
               setShowMenu(false);
@@ -285,10 +208,11 @@ const FileTreeNode: React.FC<{
             onBlur={() => setCreating(null)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                createFileOrFolder(
-                  `${node.path}/${newChildName}`,
-                  creating === 'folder'
-                ).then(() => {
+                create({
+                  name: newChildName,
+                  parent_id: node.id,
+                  type: creating === 'folder' ? 'folder' : 'file',
+                }).then(() => {
                   setCreating(null);
                   setNewChildName('');
                   if (onRefresh) onRefresh();
@@ -307,46 +231,94 @@ const FileTreeNode: React.FC<{
         node.children &&
         node.children.map((child) => (
           <FileTreeNode
-            key={child.path}
+            key={child.id}
             node={child}
             level={level + 1}
             onFileSelect={onFileSelect}
             onRefresh={onRefresh}
+            create={create}
+            update={update}
+            remove={remove}
           />
         ))}
     </div>
   );
 };
 
+/**
+ * Props for FileTree component.
+ * @property rootPath - Optional root path for the file tree.
+ * @property onFileSelect - Callback when a file is selected.
+ * @property className - Optional className for styling.
+ * @property onRefresh - Optional callback to trigger refresh.
+ * @property dbType - Backend selection for CRUD operations.
+ */
+export interface FileTreeProps {
+  rootPath?: string;
+  onFileSelect?: (file: CanonicalFile) => void;
+  className?: string;
+  onRefresh?: () => void;
+  dbType?: 'supabase' | 'libsql';
+}
+
+const getFileSchema = (dbType: 'supabase' | 'libsql') =>
+  dbType === 'libsql' ? LibsqlFileSchema : SupabaseFileSchema;
+
 export const FileTree: React.FC<FileTreeProps> = ({
   rootPath = '',
   onFileSelect,
   className,
   onRefresh,
+  dbType = 'supabase',
 }) => {
-  const [tree, setTree] = useState<FileNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [files, setFiles] = useState<CanonicalFile[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  // Internal refresh function
   const internalRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
-
-  // Use the provided onRefresh prop if available, else use the internal refresh
   const handleRefresh = onRefresh ? onRefresh : internalRefresh;
+  const FileSchema = getFileSchema(dbType);
 
-  useEffect(() => {
+  // Fetch all files from the correct API route
+  const fetchAll = useCallback(async () => {
     setLoading(true);
-    fetchFileTree(rootPath)
-      .then(setTree)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [rootPath, refreshKey]);
+    setError(null);
+    try {
+      const res = await fetch(`/api/ai-sdk/crud/files?dbType=${dbType}`);
+      if (!res.ok) throw new Error('Failed to fetch files');
+      const data = await res.json();
+      // Validate array of files
+      const parsed = z.array(FileSchema).safeParse(data);
+      if (!parsed.success) throw new Error('Invalid file data');
+      setFiles(parsed.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [dbType]);
 
-  return (
-    <div className={cn('overflow-auto h-full', className)}>
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted">
-        <span className="font-bold text-xs">Files</span>
+  // CRUD operations
+  const create = async (data: Partial<CanonicalFile>) => {
+    const res = await fetch(`/api/ai-sdk/crud/files?dbType=${dbType}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create file');
+    const file = await res.json();
+    const parsed = FileSchema.safeParse(file);
+    if (!parsed.success) throw new Error('Invalid file data');
+    await fetchAll();
+    return parsed.data;
+  };
+  const update = async (id: string, data: Partial<CanonicalFile>) => {
+    const res = await fetch(`/api/ai-sdk/crud/files/${id}?dbType=${dbType}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update file');
         <Button variant="ghost" size="icon-sm" onClick={handleRefresh}>
           <RefreshCw className="w-4 h-4" />
         </Button>
@@ -354,15 +326,18 @@ export const FileTree: React.FC<FileTreeProps> = ({
       {loading && (
         <div className="text-xs text-muted-foreground p-2">Loading...</div>
       )}
-      {error && <div className="text-xs text-red-500 p-2">{error}</div>}
+      {error && <div className="text-xs text-red-500 p-2">{String(error)}</div>}
       <div className="py-1">
         {tree.map((node) => (
           <FileTreeNode
-            key={node.path}
+            key={node.id}
             node={node}
             level={0}
             onFileSelect={onFileSelect}
             onRefresh={handleRefresh}
+            create={create}
+            update={update}
+            remove={remove}
           />
         ))}
       </div>

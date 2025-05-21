@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 // UI components from your shadnui UI library
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-// Import Integration type from your validation schema
-import { Integration } from '@/db/supabase/validation';
+// Import Integration type from canonical types
+import { Integration } from '@/types/supabase';
 
 // Import react-icons for provider icons
 import { FaGithub, FaGoogle, FaCloud } from 'react-icons/fa';
@@ -58,14 +58,33 @@ const IntegrationManager: React.FC = () => {
     fetchIntegrations();
   }, []);
 
+  // Define an interface for the form data
+  interface IntegrationFormData {
+    provider: string;
+    name?: string;
+    apiKey: string;
+    config?: string;
+  }
+
   // Add new function handleFormSubmit
-  const handleFormSubmit = async (data: Record<string, any>) => {
+  const handleFormSubmit = async (formData: Record<string, any>) => {
+    // Construct IntegrationFormData from formData, with type assertions
+    // This assumes that the InteractiveForm provides data that matches these types.
+    const integrationData: IntegrationFormData = {
+      provider: formData.provider as string,
+      name: formData.name as string | undefined,
+      apiKey: formData.apiKey as string,
+      config: formData.config as string | undefined, // config is expected to be a JSON string from the form
+    };
+
     // Build integration object according to Integration schema
     const newIntegration: Partial<Integration> = {
-      provider: data.provider,
-      name: data.name || data.provider,
-      credentials: { apiKey: data.apiKey },
-      config: data.config ? JSON.parse(data.config) : {},
+      provider: integrationData.provider,
+      name: integrationData.name || integrationData.provider,
+      credentials: { apiKey: integrationData.apiKey },
+      config: integrationData.config
+        ? JSON.parse(integrationData.config)
+        : undefined,
       status: 'active',
       user_id: 'current_user', // Placeholder
     };
@@ -205,5 +224,4 @@ const IntegrationManager: React.FC = () => {
     </div>
   );
 };
-
 export default IntegrationManager;

@@ -51,7 +51,6 @@ repomix-hooks.txt*
 dependencies.dot
 dependencies.png
 dependencies.svg
-.github/prompts/*.md
 .github/*.md
 .github/**/*.md
 .github/prompts/sys-instruct.md

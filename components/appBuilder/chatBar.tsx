@@ -7,7 +7,7 @@ import { Send } from 'lucide-react';
 import { useChat, Message as AIChatMessage } from '@ai-sdk/react'; // Import useChat and Message type
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { parseCommand } from '@/lib/commandParser';
-import { Agent, AgentPersona } from '@/db/supabase/validation';
+import { Agent, AgentPersona } from '@/types/supabase'; // Replace import with canonical types
 
 // Re-export Message type for external use if needed, or align with AI SDK's type
 export type Message = AIChatMessage;
