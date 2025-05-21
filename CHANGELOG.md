@@ -2,6 +2,43 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.19] - 2025-05-21
+
+### Canonical Types Unification, AppBuilder Refactor, and Real-Time Sync Foundation
+
+- **Type Unification:**
+  - All agent and tool dialogs/components (`AgentExecutor.tsx`, `EditAgentDialog.tsx`, `CreateAgentDialog.tsx`, `AgentList.tsx`, `AgentCard.tsx`) now import and use canonical types from `types/supabase.ts` and `types/libsql.ts`.
+  - Removed backend-only imports (e.g., `toolRegistry`) from frontend code; all frontend now uses canonical types and API/hooks only.
+  - Model selection and all type usage in dialogs/components is now fully type-safe and consistent with backend.
+
+- **AppBuilder Main Page Refactor:**
+  - The main AppBuilder page now uses canonical types, ai-sdk routes, and the project's hooks (`useSupabaseCrud`, `useSupabaseRealtime`) for all app CRUD and real-time updates.
+  - All API calls in the AppBuilder main page go through ai-sdk routes and hooks, not direct fetches or local types.
+
+- **Audit & Preparation for Subcomponent Refactor:**
+  - Audited all AppBuilder subcomponents (`FileTree`, `codeBlock`, `terminalBlock`, `canvasDisplay`, `chatBar`, `appBuilderContainer`) for correct usage of hooks, types, and routes.
+  - Validated that `FileTree.tsx`, `terminalBlock.tsx`, and `chatBar.tsx` currently have no type or syntax errors.
+  - Confirmed that `use-supabase-crud.ts`, `types/supabase.ts`, and `db/supabase/validation.ts` are error-free.
+
+- **Changelog & Documentation:**
+  - Added this entry to document the completion of type unification, dialog/component refactor, and AppBuilder main page wiring.
+  - Noted and left existing duplicate Markdown headings as per linter output.
+
+#### What Still Needs To Be Done
+
+- Refactor `FileTree.tsx` to:
+  - Use only canonical types from `types/supabase.ts` and/or `types/libsql.ts` for files/folders.
+  - Replace all direct fetches and local CRUD logic with `useSupabaseCrud` and `useSupabaseRealtime` for all file/folder CRUD and real-time updates.
+  - Ensure all state is backend-synced and real-time.
+  - Remove any backend-only or local type imports.
+  - Validate for errors after changes.
+- After `FileTree.tsx` is fully functional and error-free, proceed to refactor `terminalBlock.tsx`, `chatBar.tsx`, and other AppBuilder subcomponents in the same way.
+- Address type errors in `use-supabase-realtime.ts` related to use of `any` (for future, not blocking `FileTree`).
+- Continue to ensure all AppBuilder subcomponents are fully type-safe, real-time, and backend-synced using canonical types and hooks.
+- Update project documentation and technical specification if any major architectural or technology changes are made in the future.
+
+---
+
 ## [v0.0.18] - 2025-05-20
 
 ### Modular Settings UI Refactor, Canonical API Wiring, and Model Schema Validation

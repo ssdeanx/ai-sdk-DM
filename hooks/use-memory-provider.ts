@@ -69,7 +69,7 @@ export function useMemoryProvider(): MemoryProviderConfig {
     // Fetch memory provider configuration from the server
     async function fetchConfig() {
       try {
-        const response = await fetch('/api/memory/config', {
+        const response = await fetch('/api/ai-sdk/memory/config', {
           // Add cache control headers to prevent caching
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -93,16 +93,7 @@ export function useMemoryProvider(): MemoryProviderConfig {
           isReady: data.isReady || false,
           error: data.error,
         });
-
-        // Log configuration for debugging
-        console.log('Memory provider configuration:', {
-          provider: data.provider,
-          useUpstashAdapter: data.useUpstashAdapter,
-          isRedisAvailable: data.isRedisAvailable,
-          isVectorAvailable: data.isVectorAvailable,
-        });
       } catch (error) {
-        console.error('Error fetching memory provider configuration:', error);
         setConfig((prev) => ({
           ...prev,
           isReady: true,
@@ -110,7 +101,6 @@ export function useMemoryProvider(): MemoryProviderConfig {
         }));
       }
     }
-
     fetchConfig();
 
     // Refresh configuration every 5 minutes to detect changes

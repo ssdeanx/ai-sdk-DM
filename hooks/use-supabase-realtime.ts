@@ -41,6 +41,7 @@ export type PostgresChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 export type FilterOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in';
 
 interface UseSupabaseRealtimeOptions<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   T extends z.ZodType<Record<string, any>, any, any>,
 > {
   /* ------------------------ channel selection ----------------------- */
@@ -73,12 +74,14 @@ interface UseSupabaseRealtimeOptions<
   onPresenceJoin?: (
     key: string,
     newPresences: RealtimePresenceJoinPayload<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Record<string, any>
     >['newPresences']
   ) => void;
   onPresenceLeave?: (
     key: string,
     leftPresences: RealtimePresenceLeavePayload<
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Record<string, any>
     >['leftPresences']
   ) => void;
@@ -201,6 +204,7 @@ export const UseSupabaseRealtimeOptionsSchema = <
   });
 
 export function useSupabaseRealtime<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   T extends z.ZodType<Record<string, any>, any, any> = z.ZodAny,
 >(options: UseSupabaseRealtimeOptions<T>): UseSupabaseRealtimeReturn {
   // Validate options with Zod
@@ -463,57 +467,37 @@ export function useSupabaseRealtime<
           ? `${filter.column}=${filter.operator || 'eq'}.${filter.value}`
           : undefined;
 
-        // Use conditional logic to help TypeScript narrow types for ch.on() overloads
+        // Use paramsForChannel in ch.on() call
         if (event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.INSERT) {
           ch.on(
-            REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
-            {
-              event,
-              schema: tableSchema,
-              table: table!,
-              filter: postgresFilterString,
-            },
+            'postgres_changes' as const,
+            { ...paramsForChannel, filter: postgresFilterString },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         } else if (event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE) {
           ch.on(
-            REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
-            {
-              event,
-              schema: tableSchema,
-              table: table!,
-              filter: postgresFilterString,
-            },
+            'postgres_changes' as const,
+            { ...paramsForChannel, filter: postgresFilterString },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         } else if (event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.DELETE) {
           ch.on(
-            REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
-            {
-              event,
-              schema: tableSchema,
-              table: table!,
-              filter: postgresFilterString,
-            },
+            'postgres_changes' as const,
+            { ...paramsForChannel, filter: postgresFilterString },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         } else {
           // event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.ALL ('*')
           // In this branch, 'event' is narrowed to '*'
           ch.on(
-            REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
-            {
-              event,
-              schema: tableSchema,
-              table: table!,
-              filter: postgresFilterString,
-            },
+            'postgres_changes' as const,
+            { ...paramsForChannel, filter: postgresFilterString },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         }
       } else if (channelType === 'broadcast') {
         ch.on(
-          REALTIME_LISTEN_TYPES.BROADCAST,
+          'broadcast',
           { event: broadcastEventName },
           // Supabase broadcast payload is an object: { type: 'broadcast', event: string, payload: any }
           (payloadEnvelope: {
@@ -528,7 +512,7 @@ export function useSupabaseRealtime<
       } else {
         // presence
         ch.on(
-          REALTIME_LISTEN_TYPES.PRESENCE,
+          'presence',
           { event: REALTIME_PRESENCE_LISTEN_EVENTS.SYNC },
           () => {
             setLastEventTimestamp(Date.now());
@@ -536,16 +520,18 @@ export function useSupabaseRealtime<
           }
         )
           .on(
-            REALTIME_LISTEN_TYPES.PRESENCE,
+            'presence',
             { event: REALTIME_PRESENCE_LISTEN_EVENTS.JOIN },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (p: RealtimePresenceJoinPayload<Record<string, any>>) => {
               setLastEventTimestamp(Date.now());
               onPresenceJoin?.(p.key, p.newPresences);
             }
           )
           .on(
-            REALTIME_LISTEN_TYPES.PRESENCE,
+            'presence',
             { event: REALTIME_PRESENCE_LISTEN_EVENTS.LEAVE },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (p: RealtimePresenceLeavePayload<Record<string, any>>) => {
               setLastEventTimestamp(Date.now());
               onPresenceLeave?.(p.key, p.leftPresences);

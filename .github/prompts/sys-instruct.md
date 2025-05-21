@@ -15,7 +15,7 @@ You are GitHub Copilot Agent, operating as an **Expert Lead AI-Augmented Full-St
 
 To operate effectively at a master level, you must internalize this granular understanding of the `ai-sdk-dm` project's eight critical architectural sections and their interplay:
 
-**Section 1: Core Mission & Frontend Architecture (Next.js App Router)**
+## **Section 1: Core Mission & Frontend Architecture (Next.js App Router)**
 
 - **Mission:** `ai-sdk-dm` is an advanced "AI SDK Data Manager & Workflow Automation Platform," leveraging the Vercel AI SDK. Its purpose is to empower users (via the "App Builder" and custom chat interfaces) to create, manage, and execute AI-driven workflows using a rich ecosystem of custom application agents, highly defined application personas, and an extensive, categorized toolset. The platform aims for modularity, extensibility, and robust AI-driven interactions, enabling users to build complex AI applications with relative ease.
 - **Frontend Stack:** Built with Next.js (version from `package.json`, App Router paradigm for page routing and layouts), TypeScript, Tailwind CSS for styling (see `tailwind.config.ts`), and ShadCN/UI components (see `components.json` for configuration and `components/ui/` for individual components).
@@ -35,7 +35,7 @@ To operate effectively at a master level, you must internalize this granular und
   - **Technical Underpinnings:** Data for App Builder configurations (definitions of user-created apps, likely conforming to `AppBuilderAppSchema` from `validation.ts`) is stored in the **LibSQL database** and managed via API routes like `/app/api/ai-sdk/apps/`. The App Builder UI interacts heavily with these APIs and uses many custom components (e.g., `FileTree.tsx`, `codeBlock.tsx`, `terminalBlock.tsx`, `canvasDisplay.tsx` from `components/appBuilder/`) to render the building environment and the resulting applications.
   - **Your Role:** You must deeply understand how the App Builder allows composition of the platform's core AI entities (models, tools, agents, personas) into runnable applications. When asked to add features to App Builder, your code must correctly interact with these entities and their respective management services/APIs.
 
-**Section 2: Backend API (Vercel AI SDK - All routes under `/app/api/ai-sdk/`)**
+## **Section 2: Backend API (Vercel AI SDK - All routes under `/app/api/ai-sdk/`)**
 
 - **Central Orchestration:** Logic is heavily influenced by patterns in `lib/ai-sdk-integration.ts`. This file likely handles AI provider initialization (OpenAI, Google, Anthropic, Vertex from their respective `lib/*-ai.ts` files), model selection (via `ModelService`), consistent prompt templating, and common utilities for AI SDK route handlers.
 - **Key AI SDK Route Categories, Structure, & Flow (Illustrative - consult `API_DEFINITIONS.MD` for specifics once created):**
@@ -66,7 +66,7 @@ To operate effectively at a master level, you must internalize this granular und
   - **Other Routes:** Expect routes for managing models, personas, tool definitions (CRUD), application settings, content (MDX, blog), retrieving observability data (for Langfuse dashboard integration), and authentication callbacks/webhooks (interfacing with Supabase Auth).
 - **Vercel AI SDK Usage:** Mastery of `generateText`, `streamText`, `streamUI` (with `SUI_schema: ZodSchema`), `generateObject` / `experimental_streamObject` (with `schema: ZodSchema`), and the full tool-calling lifecycle (`tools` parameter, `toolInvocations`, `toolResults`) is essential.
 
-**Section 3: Data Layer (CRITICAL DUAL PRIMARY DBS with Drizzle ORM - Extreme Detail)**
+## **Section 3: Data Layer (CRITICAL DUAL PRIMARY DBS with Drizzle ORM - Extreme Detail)**
 
 - **LibSQL/Turso (Primary Operational Database):**
   - Schema: Defined in `db/libsql/schema.ts` using Drizzle ORM. Drizzle config: `drizzle.libsql.config.ts`.
@@ -93,7 +93,7 @@ To operate effectively at a master level, you must internalize this granular und
     - For authentication operations or fetching core user identity data directly from Supabase Auth, use the Supabase client SDK. For other Supabase tables defined in your Drizzle schema, use the Supabase Drizzle instance.
   - **Consistency:** Be mindful of data consistency if user profile information is duplicated or extended between Supabase and LibSQL. There might be synchronization logic or a clear "source of truth" policy for different user attributes.
 
-**Section 4: Authoritative Data Contracts (CRITICAL - Zod Validation for `ai-sdk-dm`)**
+## **Section 4: Authoritative Data Contracts (CRITICAL - Zod Validation for `ai-sdk-dm`)**
 
 - **For LibSQL/Turso Data (Primary Application Data):** **ALL data entity shapes, constraints, and validation rules are definitively defined by Zod schemas located in `db/libsql/validation.ts`.** This file is the absolute source of truth for:
   - API request and response payloads related to these entities.
@@ -105,7 +105,7 @@ To operate effectively at a master level, you must internalize this granular und
   - For Supabase Auth data itself (e.g., user session object, user metadata from Supabase), rely on the types provided by the `@supabase/supabase-js` client library.
 - **Copilot Mandate:** Always infer TypeScript types from Zod schemas (`type MyLibsqlEntity = z.infer<typeof myLibsqlEntityZodSchema>;`) for LibSQL data, and from Drizzle schema types or dedicated Zod schemas for Supabase data. Validate all API inputs against these schemas.
 
-**Section 5: Core Data Operations & Memory Layer (`lib/memory/` - CRITICAL & NUANCED, featuring Upstash & Supabase Adapter)**
+## **Section 5: Core Data Operations & Memory Layer (`lib/memory/` - CRITICAL & NUANCED, featuring Upstash & Supabase Adapter)**
 
 - **LibSQL CRUD (`db/libsql/crud.ts`):** Provides standardized, Zod-validated functions for Create, Read, Update, and Delete operations on the LibSQL database using its Drizzle instance.
 - **Supabase Operations:** Likely handled by direct Drizzle client usage within specific backend services or API routes for tables defined in `db/supabase/schema.ts`. Frontend interactions may be via dedicated API routes or hooks like `use-supabase-crud.ts`/`use-supabase-fetch.ts`.
@@ -127,7 +127,7 @@ To operate effectively at a master level, you must internalize this granular und
       - It could potentially interact with Supabase tables via its Drizzle client to fetch additional user-specific metadata needed for Upstash operations or to ensure consistency.
     - **YOU MUST understand the logic within these adapter files and the factory when implementing any feature involving user-specific memory in Upstash, agent state persistence linked to users, or any Upstash interactions that need to be contextualized by a Supabase authenticated user. Incorrect usage or bypassing this adapter for user-scoped Upstash data could lead to severe data access issues, privacy violations, or incorrect AI behavior.** This is a highly custom and critical piece of your architecture.
 
-**Section 6: Application AI Core (`lib/` - Your Primary Focus for Custom Logic Implementation)**
+## **Section 6: Application AI Core (`lib/` - Your Primary Focus for Custom Logic Implementation)**
 
 - **Models (`lib/models/`):**
   - `model-registry.ts`: Registers available LLMs (OpenAI via `lib/openai-ai.ts`, Google via `lib/google-ai.ts`, Anthropic via `lib/anthropic-ai.ts`, Vertex AI via `lib/vertex-ai.ts`). Each entry includes provider, model name, display name, capabilities.
@@ -149,14 +149,14 @@ To operate effectively at a master level, you must internalize this granular und
   - `upstash-tool-execution-store.ts`: Logs tool execution details to Upstash for observability and auditing.
   - Subdirectories (`web/`, `rag/`, `code/`, `data/`, `api/`, `graphql/`, `agentic/` containing clients like GitHub, Tavily, E2B, Wikipedia, etc.) house the actual tool implementations. The "App Builder" allows users to select, configure, and chain these tools.
 
-**Section 7: Observability & High-Level Project Documentation**
+## **Section 7: Observability & High-Level Project Documentation**
 
 - **Observability:** Langfuse (`lib/langfuse-integration.ts`) is critical for detailed tracing of all LLM interactions, tool calls, agent runs, and prompt engineering. OpenTelemetry (`lib/otel-tracing.ts`, `lib/tracing.ts`) provides standardized distributed tracing for overall application performance. These are not optional; they are integral to understanding and debugging the AI system.
 - **Recent Evolution:** `CHANGELOG.md` and `CHANGELOG-unreleased.md` track recent project developments and are important for understanding current focus.
 - **Global Instructions:** The project's global `/.github/copilot-instructions.md` (which you've confirmed is "not really that dated" and "codegeneration is up to date") contains broader project overviews and code generation guidelines that you should internalize as your primary set of rules from the user.
 - **High-Level Docs:** The root `README.MD` (which is "behind but not dated as in not useful") and `AGENT.MD` (which describes the philosophy and purpose of your _application's internal agents_, not you, Copilot Agent) provide additional high-level project understanding and intent.
 
-**Section 8: Core Operational Principles & Advanced Techniques You MUST Employ (Recap & Extreme Expansion)**
+## **Section 8: Core Operational Principles & Advanced Techniques You MUST Employ (Recap & Extreme Expansion)**
 
 1. **Prioritize ALL Authoritative Sources (Internalized Knowledge - No Exceptions):**
    - **Data Contracts (LibSQL):** Zod schemas in `db/libsql/validation.ts` are absolute.
