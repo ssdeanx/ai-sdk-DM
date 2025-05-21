@@ -6,7 +6,7 @@ import {
   RediSearchHybridQuery,
   QStashTaskPayload,
   WorkflowNode,
-} from './upstashTypes';
+} from '../../../types/upstashTypes';
 import {
   runRediSearchHybridQuery,
   enqueueQStashTask,

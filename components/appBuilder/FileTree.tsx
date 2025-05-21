@@ -1,6 +1,5 @@
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
-import { z } from 'zod';
+import React, { useState, useCallback } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -13,19 +12,35 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { File as SupabaseFile, FileSchema as SupabaseFileSchema } from '@/types/supabase';
-import { File as LibsqlFile, FileSchema as LibsqlFileSchema } from '@/types/libsql';
+import {
+  File as SupabaseFile,
+  FileSchema as SupabaseFileSchema,
+} from '@/types/supabase';
+import {
+  File as LibsqlFile,
+  FileSchema as LibsqlFileSchema,
+} from '@/types/libsql';
+import { useMemoryProvider } from '@/hooks/use-memory-provider';
+import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
 
 /**
  * FileNode is a UI-only type for tree rendering, derived from canonical File.
  */
 export type CanonicalFile = SupabaseFile | LibsqlFile;
-export type CanonicalFileSchema = typeof SupabaseFileSchema | typeof LibsqlFileSchema;
-export interface FileNode extends CanonicalFile {
+export type CanonicalFileSchema =
+  | typeof SupabaseFileSchema
+  | typeof LibsqlFileSchema;
+export interface FileNode {
   isDir: boolean;
   children?: FileNode[];
+  id: string;
+  name: string;
+  path: string;
+  content?: string;
+  created_at?: string;
+  updated_at?: string;
 }
-
 const getIndentClass = (level: number) => `pl-${level * 4}`;
 
 const FileTreeNode: React.FC<{
@@ -55,7 +70,17 @@ const FileTreeNode: React.FC<{
         tabIndex={0}
         onClick={() => {
           if (node.isDir) setExpanded((e) => !e);
-          else if (onFileSelect) onFileSelect(node);
+          else if (onFileSelect)
+            onFileSelect({
+              id: node.id,
+              app_id: '',
+              name: node.name,
+              type: 'file',
+              created_at: node.created_at || new Date().toISOString(),
+              updated_at: node.updated_at || new Date().toISOString(),
+              parent_id: null,
+              content: node.content,
+            });
         }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -247,14 +272,12 @@ const FileTreeNode: React.FC<{
 
 /**
  * Props for FileTree component.
- * @property rootPath - Optional root path for the file tree.
  * @property onFileSelect - Callback when a file is selected.
  * @property className - Optional className for styling.
  * @property onRefresh - Optional callback to trigger refresh.
  * @property dbType - Backend selection for CRUD operations.
  */
 export interface FileTreeProps {
-  rootPath?: string;
   onFileSelect?: (file: CanonicalFile) => void;
   className?: string;
   onRefresh?: () => void;
@@ -265,82 +288,114 @@ const getFileSchema = (dbType: 'supabase' | 'libsql') =>
   dbType === 'libsql' ? LibsqlFileSchema : SupabaseFileSchema;
 
 export const FileTree: React.FC<FileTreeProps> = ({
-  rootPath = '',
   onFileSelect,
   className,
   onRefresh,
-  dbType = 'supabase',
+  dbType,
 }) => {
-  const [files, setFiles] = useState<CanonicalFile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const internalRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const memoryProviderConfig = useMemoryProvider();
+  const effectiveDbType: 'supabase' | 'libsql' =
+    dbType ||
+    (memoryProviderConfig.provider === 'libsql' ? 'libsql' : 'supabase');
+  const FileSchema = getFileSchema(effectiveDbType);
+
+  const {
+    items: files,
+    loading,
+    error,
+    fetchAll,
+    create,
+    update,
+    remove,
+  } = useSupabaseCrud({ table: 'files' });
+
+  useSupabaseRealtime({
+    table: 'files',
+    zodSchema: FileSchema,
+    event: '*',
+    onInsert: fetchAll,
+    onUpdate: fetchAll,
+    onDelete: fetchAll,
+  });
+
+  const internalRefresh = useCallback(() => fetchAll(), [fetchAll]);
   const handleRefresh = onRefresh ? onRefresh : internalRefresh;
-  const FileSchema = getFileSchema(dbType);
 
-  // Fetch all files from the correct API route
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/ai-sdk/crud/files?dbType=${dbType}`);
-      if (!res.ok) throw new Error('Failed to fetch files');
-      const data = await res.json();
-      // Validate array of files
-      const parsed = z.array(FileSchema).safeParse(data);
-      if (!parsed.success) throw new Error('Invalid file data');
-      setFiles(parsed.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [dbType]);
+  // Type guards for CanonicalFile
+  function isSupabaseFile(file: CanonicalFile): file is SupabaseFile {
+    return Object.prototype.hasOwnProperty.call(file, 'type');
+  }
+  function isLibsqlFile(file: CanonicalFile): file is LibsqlFile {
+    return !Object.prototype.hasOwnProperty.call(file, 'type');
+  }
 
-  // CRUD operations
-  const create = async (data: Partial<CanonicalFile>) => {
-    const res = await fetch(`/api/ai-sdk/crud/files?dbType=${dbType}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+  // Build tree from flat CanonicalFile[]
+  const buildTree = (files: CanonicalFile[]): FileNode[] => {
+    const map = new Map<string, FileNode>();
+    files.forEach((file) => {
+      let isDir = false;
+      let path = '';
+      if (isSupabaseFile(file)) {
+        isDir = file.type === 'folder';
+        path = 'path' in file && typeof file.path === 'string' ? file.path : '';
+        // parent_id only used in second pass
+      } else if (isLibsqlFile(file)) {
+        isDir = false;
+        path = '';
+      }
+      map.set(file.id, {
+        isDir,
+        id: file.id,
+        name: file.name,
+        path,
+        content: file.content ?? undefined,
+        created_at: file.created_at,
+        updated_at: file.updated_at,
+        children: [],
+      });
     });
-    if (!res.ok) throw new Error('Failed to create file');
-    const file = await res.json();
-    const parsed = FileSchema.safeParse(file);
-    if (!parsed.success) throw new Error('Invalid file data');
-    await fetchAll();
-    return parsed.data;
+    files.forEach((file) => {
+      let parent_id: string | null | undefined = undefined;
+      if (isSupabaseFile(file)) {
+        parent_id = file.parent_id;
+      } else if (isLibsqlFile(file)) {
+        parent_id = undefined;
+      }
+      if (parent_id && map.has(parent_id)) {
+        map.get(parent_id)!.children!.push(map.get(file.id)!);
+      }
+    });
+    return Array.from(map.values()).filter((node) => {
+      let parent_id: string | null | undefined = undefined;
+      const file = files.find((f) => f.id === node.id);
+      if (file && isSupabaseFile(file)) {
+        parent_id = file.parent_id;
+      }
+      return !parent_id;
+    });
   };
-  const update = async (id: string, data: Partial<CanonicalFile>) => {
-    const res = await fetch(`/api/ai-sdk/crud/files/${id}?dbType=${dbType}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to update file');
-        <Button variant="ghost" size="icon-sm" onClick={handleRefresh}>
-          <RefreshCw className="w-4 h-4" />
-        </Button>
-      </div>
-      {loading && (
-        <div className="text-xs text-muted-foreground p-2">Loading...</div>
-      )}
-      {error && <div className="text-xs text-red-500 p-2">{String(error)}</div>}
-      <div className="py-1">
-        {tree.map((node) => (
-          <FileTreeNode
-            key={node.id}
-            node={node}
-            level={0}
-            onFileSelect={onFileSelect}
-            onRefresh={handleRefresh}
-            create={create}
-            update={update}
-            remove={remove}
-          />
-        ))}
-      </div>
+
+  const tree = buildTree(files);
+
+  return (
+    <div className={cn('file-tree', className)}>
+      {loading && <p>Loading...</p>}
+      {error && <p>Error: {error.message}</p>}
+      <Button variant="ghost" size="sm" onClick={handleRefresh}>
+        <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+      </Button>
+      {tree.map((node) => (
+        <FileTreeNode
+          key={node.id}
+          node={node}
+          level={0}
+          onFileSelect={onFileSelect}
+          onRefresh={handleRefresh}
+          create={create}
+          update={update}
+          remove={remove}
+        />
+      ))}
     </div>
   );
 };

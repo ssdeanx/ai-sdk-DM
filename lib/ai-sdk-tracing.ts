@@ -9,7 +9,7 @@
 // --- TYPE & LOGGER IMPORT FIXES ---
 // Use project canonical types and logger import
 import type { Tool } from '../db/supabase/validation';
-import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
+import type { Message as ChatMessage } from '../types/upstashTypes';
 // MetadataRecord is just Record<string, unknown> for this project
 
 import {

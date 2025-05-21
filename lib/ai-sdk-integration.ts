@@ -38,8 +38,8 @@ import { agenticTools } from './tools/agentic';
  * @module ai-sdk-integration
  */
 
-import type { Message as ChatMessage } from './memory/upstash/upstashTypes';
-import type { ModelEntity as MetadataRecord } from './memory/upstash/upstashTypes';
+import type { Message as ChatMessage } from '../types/upstashTypes';
+import type { ModelEntity as MetadataRecord } from '../types/upstashTypes';
 // --- Zod Schemas ---
 
 // TODO: [2025-05-18] - SdkToolDefinition and SdkToolDefinitionSchema seem to be misdefined or misused.

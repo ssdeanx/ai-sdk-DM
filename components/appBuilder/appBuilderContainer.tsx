@@ -95,8 +95,8 @@ export function AppBuilderContainer({
         <CardContent className="p-2">
           <FileTree
             key={fileTreeKey}
-            onFileSelect={({ path }) => {
-              setActiveFile(path);
+            onFileSelect={(file) => {
+              setActiveFile(file.id);
             }}
             onRefresh={refreshTree}
           />

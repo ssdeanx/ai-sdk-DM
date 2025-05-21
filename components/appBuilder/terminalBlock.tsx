@@ -7,6 +7,10 @@ import { CanvasAddon } from '@xterm/addon-canvas';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
+import { useMemoryProvider } from '@/hooks/use-memory-provider';
+import { TerminalSessionSchema as SupabaseTerminalSessionSchema } from '@/types/supabase';
+import { TerminalSessionSchema as LibsqlTerminalSessionSchema } from '@/types/libsql';
+import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 
 interface AppBuilderTerminalBlockProps {
   /** Initial content to display in the terminal (static mode) */
@@ -26,6 +30,14 @@ export const AppBuilderTerminalBlock: React.FC<
   const cmdBufferRef = useRef<string>('');
   const commandHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
+
+  const memoryProviderConfig = useMemoryProvider();
+  const dbType: 'supabase' | 'libsql' =
+    memoryProviderConfig.provider === 'libsql' ? 'libsql' : 'supabase';
+  const TerminalSessionSchema =
+    dbType === 'libsql'
+      ? LibsqlTerminalSessionSchema
+      : SupabaseTerminalSessionSchema;
 
   // Initialize terminal once
   useEffect(() => {
@@ -70,13 +82,25 @@ export const AppBuilderTerminalBlock: React.FC<
             })
               .then((res) => res.json())
               .then((data) => {
-                if (data.output) {
-                  term.write(data.output.replace(/\n/g, '\r\n'));
-                } else if (data.error) {
-                  term.write(data.error.replace(/\n/g, '\r\n'));
+                const parsed = TerminalSessionSchema.safeParse(data);
+                if (parsed.success) {
+                  if (parsed.data.output) {
+                    term.write(parsed.data.output.replace(/\n/g, '\r\n'));
+                  }
+                } else {
+                  upstashLogger.error(
+                    'terminalBlock',
+                    'Validation error',
+                    parsed.error
+                  );
+                  term.write(
+                    'Validation error: ' +
+                      JSON.stringify(parsed.error.flatten())
+                  );
                 }
               })
               .catch((err) => {
+                upstashLogger.error('terminalBlock', 'Command error', err);
                 term.write(('Error: ' + err.message).replace(/\n/g, '\r\n'));
               })
               .finally(() => {

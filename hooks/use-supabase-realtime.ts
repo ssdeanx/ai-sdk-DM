@@ -13,12 +13,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   RealtimeChannel,
-  REALTIME_LISTEN_TYPES,
   REALTIME_PRESENCE_LISTEN_EVENTS,
   REALTIME_SUBSCRIBE_STATES,
   RealtimePostgresDeletePayload,
   RealtimePresenceJoinPayload,
-  RealtimePostgresChangesFilter,
   RealtimePostgresChangesPayload, // Added for clarity in onPayload
   RealtimePostgresInsertPayload, // Added for clarity in onPayload
   RealtimePostgresUpdatePayload, // Added for clarity in onPayload
@@ -429,11 +427,10 @@ export function useSupabaseRealtime<
         // `table` is guaranteed to be non-null here due to the check earlier in the subscribe function.
         // `event` is of type PostgresChangeEvent ('INSERT' | 'UPDATE' | 'DELETE' | '*')
         // which is compatible with the generic constraint of RealtimePostgresChangesFilter.
-        const paramsForChannel: RealtimePostgresChangesFilter<typeof event> = {
-          event: event,
-          schema: tableSchema,
-          table: table!, // table is asserted as non-null due to prior checks
-        };
+        // const paramsForChannel: RealtimePostgresChangesFilter<typeof event> = {
+        //   event: event,
+        //   schema: tableSchema,
+        //   table: table!, // table is asserted as non-null due to prior checks
         const onPayload = (p: RealtimePostgresChangesPayload<z.infer<T>>) => {
           setLastEventTimestamp(Date.now());
           onChange?.(p);
@@ -471,19 +468,34 @@ export function useSupabaseRealtime<
         if (event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.INSERT) {
           ch.on(
             'postgres_changes' as const,
-            { ...paramsForChannel, filter: postgresFilterString },
+            {
+              event: event, // Use narrowed 'INSERT'
+              schema: tableSchema,
+              table: table!,
+              filter: postgresFilterString,
+            },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         } else if (event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE) {
           ch.on(
             'postgres_changes' as const,
-            { ...paramsForChannel, filter: postgresFilterString },
+            {
+              event: event, // Use narrowed 'UPDATE'
+              schema: tableSchema,
+              table: table!,
+              filter: postgresFilterString,
+            },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         } else if (event === REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.DELETE) {
           ch.on(
             'postgres_changes' as const,
-            { ...paramsForChannel, filter: postgresFilterString },
+            {
+              event: event, // Use narrowed 'DELETE'
+              schema: tableSchema,
+              table: table!,
+              filter: postgresFilterString,
+            },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         } else {
@@ -491,7 +503,12 @@ export function useSupabaseRealtime<
           // In this branch, 'event' is narrowed to '*'
           ch.on(
             'postgres_changes' as const,
-            { ...paramsForChannel, filter: postgresFilterString },
+            {
+              event: event, // Use narrowed '*'
+              schema: tableSchema,
+              table: table!,
+              filter: postgresFilterString,
+            },
             onPayload // Callback is compatible
           ).subscribe(handleStatus);
         }

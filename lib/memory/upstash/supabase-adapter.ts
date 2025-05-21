@@ -14,7 +14,7 @@ import {
   VectorMetadata,
   VectorQueryOptions,
   VectorStoreError,
-} from './upstashTypes';
+} from '../../../types/upstashTypes';
 import { upstashLogger } from './upstash-logger';
 import { generateEmbedding } from '../../ai-integration';
 import {
@@ -34,7 +34,7 @@ import {
   ToolExecutionEntity,
   WorkflowNode,
   LogEntry,
-} from './upstashTypes';
+} from '../../../types/upstashTypes';
 import type { Database } from '@/types/supabase';
 
 export type TableName = keyof Database['public']['Tables'];

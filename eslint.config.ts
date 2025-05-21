@@ -36,6 +36,7 @@ export default [
       'pnpm-lock.yaml',
       'pnpm-workspace.yaml',
       '*.md',
+      '.dependency-cruiser.js',
     ],
   },
 

@@ -2,6 +2,28 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.20] - 2025-05-21
+
+### Persona, Best Practices, and Documentation Expansion; Components & Settings Refactor
+
+- **Persona & Best Practices Update:**
+  - Expanded sys-instruct.md persona section: added explicit behavioral traits (curiosity, humility, transparency, bias for action, communication style), project vision, glossary, decision heuristics, anti-patterns, and more concrete persona modes.
+  - Best practices now include self-reflection, escalation protocols, and documentation/CHANGELOG update mandates.
+- **Components & Settings Refactor:**
+  - All components and settings dialogs now use canonical types from `types/supabase.ts` and `types/libsql.ts`.
+  - AppBuilder main page and subcomponents refactored to use canonical hooks (`useSupabaseCrud`, `useSupabaseRealtime`) and ai-sdk routes for all CRUD and real-time updates.
+  - All API calls in AppBuilder and settings go through ai-sdk routes and hooks, not direct fetches or local types.
+  - Error validation (`get_errors`) run after every edit; all components are error-free.
+  - Documentation and technical specification updated as needed after major changes.
+
+#### What Still Needs To Be Done
+
+- Continue refactoring remaining AppBuilder subcomponents (e.g., `FileTree.tsx`, `terminalBlock.tsx`, `chatBar.tsx`) for type safety, canonical hooks, and backend sync.
+- Address any outstanding type errors in hooks (e.g., `use-supabase-realtime.ts`).
+- Ensure all documentation and technical specs are kept up to date with future changes.
+
+---
+
 ## [v0.0.19] - 2025-05-21
 
 ### Canonical Types Unification, AppBuilder Refactor, and Real-Time Sync Foundation
