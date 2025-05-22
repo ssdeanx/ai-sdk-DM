@@ -4,12 +4,15 @@ The content has been processed where empty lines have been removed, line numbers
 # File Summary
 
 ## Purpose
+
 This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
 ## File Format
+
 The content is organized as follows:
+
 1. This summary section
 2. Repository information
 3. Directory structure
@@ -19,6 +22,7 @@ The content is organized as follows:
   b. The full contents of the file in a code block
 
 ## Usage Guidelines
+
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -27,6 +31,7 @@ The content is organized as follows:
   the same level of security as you would the original repository.
 
 ## Notes
+
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: hooks
@@ -39,6 +44,7 @@ The content is organized as follows:
 - Files are sorted by Git change count (files with more changes are at the bottom)
 
 # Directory Structure
+
 ```
 hooks/use-chat.ts
 hooks/use-executor.ts
@@ -56,6 +62,7 @@ hooks/use-upstash-adapter.ts
 # Files
 
 ## File: hooks/use-media-query.ts
+
 ````typescript
 import { useEffect, useState } from 'react';
 /**
@@ -85,6 +92,7 @@ const listener = (event: MediaQueryListEvent) =>
 ````
 
 ## File: hooks/use-mobile.tsx
+
 ````typescript
 export function useIsMobile()
 ⋮----
@@ -92,6 +100,7 @@ const onChange = () =>
 ````
 
 ## File: hooks/use-memory-provider.ts
+
 ````typescript
 /**
  * Hook for determining the current memory provider
@@ -204,6 +213,7 @@ return false; // Default to false, will be updated by the hook
 ````
 
 ## File: hooks/use-chat.ts
+
 ````typescript
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { nanoid } from 'nanoid';
@@ -361,6 +371,7 @@ const fetchMessages = async (threadId: string) =>
 ````
 
 ## File: hooks/use-executor.ts
+
 ````typescript
 import { useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -449,6 +460,7 @@ const executeTool = async (
 ````
 
 ## File: hooks/use-upstash-adapter.ts
+
 ````typescript
 /**
  * Hook for accessing Upstash adapter configuration
@@ -562,6 +574,7 @@ async function remove(table: string, id: string)
 ````
 
 ## File: hooks/use-toast.ts
+
 ````typescript
 /**
  * Enhanced toast hook with advanced features
@@ -772,6 +785,7 @@ function useToast()
 ````
 
 ## File: hooks/use-supabase-direct.ts
+
 ````typescript
 /**
  * Hook for direct Supabase CRUD operations
@@ -1426,6 +1440,7 @@ const withTransaction = async <R>(
 ````
 
 ## File: hooks/use-supabase-realtime.ts
+
 ````typescript
 /**
  * Hook for Supabase real-time subscriptions
@@ -1686,6 +1701,7 @@ onBroadcast?.(payloadEnvelope.payload); // Extract the actual payload
 ````
 
 ## File: hooks/use-supabase-crud.ts
+
 ````typescript
 /**
  * Hook for enhanced Supabase CRUD + Storage operations
@@ -1754,6 +1770,7 @@ const uploadFile = async () =>
 ````
 
 ## File: hooks/use-supabase-fetch.ts
+
 ````typescript
 /**
  * Enhanced hook for fetching data from a Next.js API route that, in turn,

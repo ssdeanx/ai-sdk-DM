@@ -8,7 +8,7 @@
  */
 
 /*
- NOTE: All table schemas used in this factory are imported from the canonical Supabase validation schemas defined in db/supabase/validation.ts, ensuring consistent type validation and a single source of truth for our Supabase database entities.
+ NOTE: All table schemas used in this factory are imported from the canonical Supabase validation schemas defined in types/supabase.ts, ensuring consistent type validation and a single source of truth for our Supabase database entities.
 */
 
 import {
@@ -17,30 +17,12 @@ import {
   FilterOptions,
   QueryOptions,
 } from './supabase-adapter';
-import {
-  UserSchema,
-  AppSchema,
-  AppCodeBlockSchema,
-  IntegrationSchema,
-  FileSchema,
-  TerminalSessionSchema,
-  WorkflowSchema,
-  ModelSchema,
-  ProviderSchema,
-  AgentPersonaSchema,
-  AgentSchema,
-  ToolSchema,
-  WorkflowStepSchema,
-  AgentToolSchema,
-  SettingSchema,
-  BlogPostSchema,
-  MdxDocumentSchema,
-} from '../../../db/supabase/validation';
-import { EmbeddingVectorSchema } from './vector-store';
+import * as supabaseTypes from '../../../types/supabase';
 import { getRedisClient, getVectorClient } from './upstashClients';
 import { upstashLogger } from './upstash-logger';
 import { generateId } from 'ai';
 import { isSupabaseAvailable } from '..';
+import { EmbeddingVectorSchema } from './vector-store';
 
 function toLoggerError(err: unknown): Error | { error: string } {
   if (err instanceof Error) return err;
@@ -49,26 +31,24 @@ function toLoggerError(err: unknown): Error | { error: string } {
 
 // --- Table Name to Schema Map ---
 export const tableSchemas = {
-  users: UserSchema,
-  apps: AppSchema,
-  app_code_blocks: AppCodeBlockSchema,
-  integrations: IntegrationSchema,
-  files: FileSchema,
-  terminal_sessions: TerminalSessionSchema,
-  workflows: WorkflowSchema,
-  models: ModelSchema,
-  providers: ProviderSchema,
-  agent_personas: AgentPersonaSchema,
-  agents: AgentSchema,
-  tools: ToolSchema,
-  workflow_steps: WorkflowStepSchema,
-  agent_tools: AgentToolSchema,
-  settings: SettingSchema,
-  blog_posts: BlogPostSchema,
-  mdx_documents: MdxDocumentSchema,
+  users: supabaseTypes.UserSchema,
+  apps: supabaseTypes.AppSchema,
+  app_code_blocks: supabaseTypes.AppCodeBlockSchema,
+  integrations: supabaseTypes.IntegrationSchema,
+  files: supabaseTypes.FileSchema,
+  terminal_sessions: supabaseTypes.TerminalSessionSchema,
+  workflows: supabaseTypes.WorkflowSchema,
+  models: supabaseTypes.ModelSchema,
+  providers: supabaseTypes.ProviderSchema,
+  agent_personas: supabaseTypes.AgentPersonaSchema,
+  agents: supabaseTypes.AgentSchema,
+  tools: supabaseTypes.ToolSchema,
+  workflow_steps: supabaseTypes.WorkflowStepSchema,
+  agent_tools: supabaseTypes.AgentToolSchema,
+  settings: supabaseTypes.SettingSchema,
+  blog_posts: supabaseTypes.BlogPostSchema,
+  mdx_documents: supabaseTypes.MdxDocumentSchema,
 };
-
-export type TableName = keyof typeof tableSchemas;
 
 // --- Enhanced Type-Safe TableClient ---
 export interface TableClient<T> {
@@ -94,12 +74,12 @@ export interface TableClient<T> {
 
 // --- Type-Safe TableClient Implementation ---
 function createTableClient<T>(
-  tableName: TableName,
-  _schema: (typeof tableSchemas)[TableName]
+  tableName: string,
+  _schema: (typeof tableSchemas)[keyof typeof tableSchemas]
 ): TableClient<T> {
   const redis = getRedisClient();
   return {
-    async getAll(_options) {
+    async getAll(_options?: QueryOptions): Promise<T[]> {
       try {
         const keys = await redis.hkeys(`table:${tableName}`);
         const rows = await Promise.all(
@@ -130,7 +110,7 @@ function createTableClient<T>(
         throw err;
       }
     },
-    async getById(id) {
+    async getById(id: string): Promise<T | null> {
       try {
         const data = await redis.hget(`table:${tableName}`, id);
         if (!data) return null;
@@ -146,7 +126,7 @@ function createTableClient<T>(
         throw err;
       }
     },
-    async create(item) {
+    async create(item: T): Promise<T> {
       _schema.parse(item);
       const id = (item as { id?: string }).id || generateId();
       const now = new Date().toISOString();
@@ -154,7 +134,7 @@ function createTableClient<T>(
       await redis.hset(`table:${tableName}`, { [id]: JSON.stringify(row) });
       return row as T;
     },
-    async update(id, updates) {
+    async update(id: string, updates: Partial<T>): Promise<T> {
       const existing = await redis.hget(`table:${tableName}`, id);
       if (!existing) throw new Error(`No row with id ${id}`);
       const parsed = _schema.parse(
@@ -169,11 +149,11 @@ function createTableClient<T>(
       await redis.hset(`table:${tableName}`, { [id]: JSON.stringify(updated) });
       return updated as T;
     },
-    async delete(id) {
+    async delete(id: string): Promise<boolean> {
       const result = await redis.hdel(`table:${tableName}`, id);
       return result > 0;
     },
-    async upsert(item) {
+    async upsert(item: T): Promise<T> {
       _schema.parse(item);
       const id = (item as { id?: string }).id || generateId();
       const now = new Date().toISOString();
@@ -181,30 +161,34 @@ function createTableClient<T>(
       await redis.hset(`table:${tableName}`, { [id]: JSON.stringify(row) });
       return row as T;
     },
-    async exists(id) {
+    async exists(id: string): Promise<boolean> {
       const exists = await redis.hexists(`table:${tableName}`, id);
       return !!exists;
     },
-    async count(_options) {
+    async count(_options?: QueryOptions): Promise<number> {
       return await redis.hlen(`table:${tableName}`);
     },
-    async batchGet(ids) {
+    async batchGet(ids: string[]): Promise<(T | null)[]> {
       const results = await Promise.all(ids.map((id) => this.getById(id)));
       return results;
     },
-    select(..._columns) {
+    select(..._columns: (keyof T)[]): TableClient<T> {
       return this;
     },
-    filter(_field, _operator, _value) {
+    filter(
+      _field: keyof T,
+      _operator: FilterOptions['operator'],
+      _value: unknown
+    ): TableClient<T> {
       return this;
     },
-    order(_column, _ascending) {
+    order(_column: keyof T, _ascending?: boolean): TableClient<T> {
       return this;
     },
-    limit(_limit) {
+    limit(_limit: number): TableClient<T> {
       return this;
     },
-    offset(_offset) {
+    offset(_offset: number): TableClient<T> {
       return this;
     },
   };

@@ -141,11 +141,7 @@ export const isSupabaseDrizzleAvailable = async (): Promise<boolean> => {
   // Generated on May 19, 2025
   try {
     const db = getSupabaseDrizzleClient();
-    if (!supabaseDbSchema.users) {
-      await db.execute('SELECT 1'); // Generic check
-    } else {
-      await db.select().from(supabaseDbSchema.users).limit(1);
-    }
+    await db.execute('SELECT 1'); // Generic check
     return true;
   } catch (error) {
     await upstashLogger.error(
@@ -185,11 +181,11 @@ export const isLibsqlDrizzleAvailable = async (): Promise<boolean> => {
  * Get a row by ID from a Supabase (Postgres) table using Drizzle and validate with Zod.
  */
 export async function getByIdWithSupabaseDrizzle<
-  TTable extends PgTable<TableConfig>,
-  TRow = TTable['$inferSelect'],
+  TTable extends (typeof supabaseDbSchema)[keyof typeof supabaseDbSchema],
+  TRow = any,
   TId = string,
 >(
-  db: PostgresJsDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if supabaseDbSchema import is fixed
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
   table: TTable,
   idColumn: Column,
   zodSchema: ZodType<TRow>,
@@ -198,7 +194,7 @@ export async function getByIdWithSupabaseDrizzle<
   try {
     const results = await db
       .select()
-      .from(table)
+      .from((table as any).table ?? table)
       .where(eq(idColumn, id))
       .limit(1);
     if (!Array.isArray(results) || results.length === 0) return null;
@@ -221,19 +217,20 @@ export async function getByIdWithSupabaseDrizzle<
     );
     return null;
   }
-} /**
- * Get all rows from a Supabase (Postgres) table using Drizzle and validate with Zod.
+}
+
+/** * Get all rows from a Supabase (Postgres) table using Drizzle and validate with Zod.
  */
 export async function getAllWithSupabaseDrizzle<
-  TTable extends PgTable<TableConfig>,
-  TRow = TTable['$inferSelect'],
+  TTable extends (typeof supabaseDbSchema)[keyof typeof supabaseDbSchema],
+  TRow = any,
 >(
-  db: PostgresJsDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if supabaseDbSchema import is fixed
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
   table: TTable,
   zodSchema: ZodType<TRow>
 ): Promise<TRow[]> {
   try {
-    const result = await db.select().from(table);
+    const result = await db.select().from((table as any).table ?? table);
     return result
       .map((row) => zodSchema.safeParse(row))
       .filter(
@@ -255,10 +252,10 @@ export async function getAllWithSupabaseDrizzle<
  */
 export async function createWithSupabaseDrizzle<
   TTable extends PgTable<TableConfig>,
-  TInsert = TTable['$inferInsert'],
-  TRow = TTable['$inferSelect'],
+  TInsert = any,
+  TRow = any,
 >(
-  db: PostgresJsDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if supabaseDbSchema import is fixed
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
   table: TTable,
   zodSchema: ZodType<TInsert>,
   data: TInsert
@@ -273,7 +270,10 @@ export async function createWithSupabaseDrizzle<
       );
       return null;
     }
-    const result = await db.insert(table).values(parsed.data).returning();
+    const result = await db
+      .insert((table as any).table ?? table)
+      .values(parsed.data as Record<string, any>)
+      .returning();
     const row = result[0];
     if (!row) return null;
     return row as TRow;
@@ -292,7 +292,7 @@ export async function createWithSupabaseDrizzle<
  */
 export async function updateWithSupabaseDrizzle<
   TTable extends PgTable<TableConfig>,
-  TRow = TTable['$inferSelect'],
+  TRow extends { [x: string]: any } = any,
   TId = string,
 >(
   db: PostgresJsDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if supabaseDbSchema import is fixed
@@ -305,7 +305,7 @@ export async function updateWithSupabaseDrizzle<
   try {
     const existingRows = await db
       .select()
-      .from(table)
+      .from((table as any).table ?? table)
       .where(eq(idColumn, id))
       .limit(1);
     if (!Array.isArray(existingRows) || existingRows.length === 0) {
@@ -328,8 +328,8 @@ export async function updateWithSupabaseDrizzle<
       return null;
     }
     const result = await db
-      .update(table)
-      .set(parsed.data)
+      .update((table as any).table ?? table)
+      .set({ ...parsed.data })
       .where(eq(idColumn, id))
       .returning();
     const row = result[0];
@@ -344,7 +344,6 @@ export async function updateWithSupabaseDrizzle<
     return null;
   }
 }
-
 /**
  * Delete a row by ID in a Supabase (Postgres) table using Drizzle.
  */
@@ -352,14 +351,14 @@ export async function deleteWithSupabaseDrizzle<
   TTable extends PgTable<TableConfig>,
   TId = string,
 >(
-  db: PostgresJsDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if supabaseDbSchema import is fixed
+  db: PostgresJsDatabase<typeof supabaseDbSchema>,
   table: TTable,
   idColumn: Column,
   id: TId
 ): Promise<boolean> {
   try {
     const deletedRows = await db
-      .delete(table)
+      .delete((table as any).table ?? table)
       .where(eq(idColumn, id))
       .returning();
     return Array.isArray(deletedRows) && deletedRows.length > 0;
@@ -380,10 +379,10 @@ export async function deleteWithSupabaseDrizzle<
  */
 export async function getByIdWithLibsqlDrizzle<
   TTable extends SQLiteTable<TableConfig>,
-  TRow = TTable['$inferSelect'],
+  TRow = any,
   TId = string,
 >(
-  db: LibSQLDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if libSqlDbSchema import is fixed
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
   table: TTable,
   idColumn: Column,
   zodSchema: ZodType<TRow>,
@@ -418,9 +417,9 @@ export async function getByIdWithLibsqlDrizzle<
  */
 export async function getAllWithLibsqlDrizzle<
   TTable extends SQLiteTable<TableConfig>,
-  TRow = TTable['$inferSelect'],
+  TRow = any,
 >(
-  db: LibSQLDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if libSqlDbSchema import is fixed
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
   table: TTable,
   zodSchema: ZodType<TRow>
 ): Promise<TRow[]> {
@@ -448,10 +447,10 @@ export async function getAllWithLibsqlDrizzle<
  */
 export async function createWithLibsqlDrizzle<
   TTable extends SQLiteTable<TableConfig>,
-  TInsert = TTable['$inferInsert'],
-  TRow = TTable['$inferSelect'],
+  TInsert = any,
+  TRow = any,
 >(
-  db: LibSQLDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if libSqlDbSchema import is fixed
+  db: LibSQLDatabase<typeof libSqlDbSchema>,
   table: TTable,
   zodSchema: ZodType<TInsert>,
   data: TInsert
@@ -466,7 +465,10 @@ export async function createWithLibsqlDrizzle<
       );
       return null;
     }
-    const result = await db.insert(table).values(parsed.data).all();
+    const result = await db
+      .insert(table)
+      .values(parsed.data as TTable['$inferInsert'])
+      .all();
     if (!Array.isArray(result) || result.length === 0) return null;
     const row = result[0];
     return row as TRow;
@@ -485,7 +487,7 @@ export async function createWithLibsqlDrizzle<
  */
 export async function updateWithLibsqlDrizzle<
   TTable extends SQLiteTable<TableConfig>,
-  TRow = TTable['$inferSelect'],
+  TRow extends Record<string, any> = any,
   TId = string,
 >(
   db: LibSQLDatabase<any>, // TODO: May 19, 2025 - Revert to specific schema type if libSqlDbSchema import is fixed
@@ -522,7 +524,7 @@ export async function updateWithLibsqlDrizzle<
     }
     const result = await db
       .update(table)
-      .set(parsed.data)
+      .set(parsed.data as Record<string, any>)
       .where(eq(idColumn, id))
       .all();
     if (!Array.isArray(result) || result.length === 0) {

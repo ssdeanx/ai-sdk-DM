@@ -3,11 +3,11 @@ import { upstashLogger } from './upstash-logger';
 import { Query } from '@upstash/query';
 import { Redis } from '@upstash/redis';
 import { Index } from '@upstash/vector';
+import { SemanticCache } from '@upstash/semantic-cache';
 import {
   RediSearchHybridQuery,
   QStashTaskPayload,
   WorkflowNode,
-  UpstashEntityBase,
   UpstashEntitySchema,
   VectorIndexConfig,
   RediSearchHybridResult,
@@ -49,6 +49,7 @@ export const EnvVarsSchema = z.object({
 let redisClientInstance: Redis | null = null;
 let vectorClientInstance: Index | null = null;
 let upstashQueryClient: Query | null = null;
+let semanticCacheInstance: SemanticCache | null = null;
 
 /**
  * Custom error class for Upstash client-related issues.
@@ -242,6 +243,55 @@ export const getUpstashQueryClient = (): Query => {
 };
 
 /**
+ * Initializes and returns a singleton instance of the Upstash Semantic Cache.
+ * Requires UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.
+ * @returns {SemanticCache} The initialized SemanticCache instance.
+ * @throws {Error} If required environment variables are not set.
+ */
+export function getSemanticCacheClient(): SemanticCache {
+  if (semanticCacheInstance) {
+    return semanticCacheInstance;
+  }
+  const upstashVectorUrl = process.env.UPSTASH_VECTOR_REST_URL;
+  const upstashVectorToken = process.env.UPSTASH_VECTOR_REST_TOKEN;
+  if (!upstashVectorUrl || !upstashVectorToken) {
+    upstashLogger.error(
+      'semantic-cache',
+      'Missing Upstash Vector environment variables. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN.'
+    );
+    throw new Error(
+      'Upstash Vector URL or Token not configured. Please set UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN environment variables.'
+    );
+  }
+  try {
+    const index = new Index({
+      url: upstashVectorUrl,
+      token: upstashVectorToken,
+    });
+    semanticCacheInstance = new SemanticCache({
+      index,
+      minProximity: 0.95,
+    });
+    upstashLogger.info(
+      'semantic-cache',
+      'Upstash Semantic Cache client initialized successfully.'
+    );
+    return semanticCacheInstance;
+  } catch (error: unknown) {
+    upstashLogger.error(
+      'semantic-cache',
+      'Failed to initialize Upstash Semantic Cache client.',
+      error as Error | null
+    );
+    throw new Error(
+      `Failed to initialize SemanticCache: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
+
+/**
  * Check if Upstash Redis is available based on environment variables
  * @returns Whether Upstash Redis is available
  */
@@ -431,20 +481,37 @@ export function isUpstashMainDb(): boolean {
 /**
  * Returns true if fallback to Supabase/LibSQL should be attempted (if Upstash is unavailable).
  * Controlled by env var USE_UPSTASH_ADAPTER and presence of backup env vars.
+ *
+ * Fallback logic:
+ * - If USE_UPSTASH_ADAPTER=true and Upstash is unavailable, fallback is allowed if all required Supabase/LibSQL env vars are present.
+ * - For Supabase: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL
+ * - For LibSQL: LIBSQL_DATABASE_URL, LIBSQL_AUTH_TOKEN
  */
 export function shouldFallbackToBackup(): boolean {
-  return (
-    !isUpstashMainDb() &&
-    !!process.env.SUPABASE_URL &&
-    !!process.env.SUPABASE_KEY
-  );
+  const useUpstash = process.env.USE_UPSTASH_ADAPTER === 'true';
+  if (!useUpstash) return false;
+
+  // Check Supabase fallback
+  const hasSupabase =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY &&
+    !!process.env.DATABASE_URL;
+
+  // Check LibSQL fallback
+  const hasLibSQL =
+    !!process.env.LIBSQL_DATABASE_URL &&
+    !!process.env.LIBSQL_AUTH_TOKEN;
+
+  return hasSupabase || hasLibSQL;
 }
 
 /**
  * Helper: Serialize entity for Redis hset
  */
-function serializeEntityForRedis<T extends UpstashEntityBase>(
+function serializeEntityForRedis<T>(
   entity: T
+): Record<string, string | number | boolean | null> {
 ): Record<string, string | number | boolean | null> {
   const result: Record<string, string | number | boolean | null> = {};
   for (const [k, v] of Object.entries(entity)) {

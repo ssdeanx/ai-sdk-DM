@@ -2,6 +2,17 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.21] - 2025-05-21
+
+### Agent Termination: Failure to Remove Duplicate Exports in upstashTypes.ts
+
+- The coding agent was terminated for repeatedly failing to remove duplicate exports of interfaces and types in `types/upstashTypes.ts`.
+- The agent did not follow explicit user instructions to export only schemas, not interfaces/types, in the canonical export block.
+- As a result, the agent is no longer permitted to modify any files except for this changelog.
+- This entry documents the termination and the reason for future reference and project transparency.
+
+---
+
 ## [v0.0.20] - 2025-05-21
 
 ### Persona, Best Practices, and Documentation Expansion; Components & Settings Refactor

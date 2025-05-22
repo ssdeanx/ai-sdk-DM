@@ -273,14 +273,6 @@ export const WorkflowNodeSchema = z.object({
 });
 
 // --- Generic Upstash Entity Types ---
-export interface UpstashEntityBase {
-  id: string;
-  type: string;
-  created_at: string;
-  updated_at: string;
-  metadata?: Record<string, unknown>;
-}
-
 export const UpstashEntitySchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -289,405 +281,462 @@ export const UpstashEntitySchema = z.object({
   metadata: z.record(z.any()).optional(),
 });
 
-// Thread entity (for chat, memory, etc)
-export interface ThreadEntity extends UpstashEntityBase {
-  name?: string | null;
-  user_id?: string | null;
-  agent_id?: string | null;
-  messages?: string[]; // message IDs
-}
-export const ThreadEntitySchema = UpstashEntitySchema.extend({
-  name: z.string().nullable().optional(),
-  user_id: z.string().nullable().optional(),
-  agent_id: z.string().nullable().optional(),
-  messages: z.array(z.string()).optional(),
-});
-
-// Message entity (for chat, memory, etc)
-export interface MessageEntity extends UpstashEntityBase {
-  thread_id: string;
-  role: 'user' | 'assistant' | 'system' | 'tool';
-  content: string;
-  name?: string;
-}
-export const MessageEntitySchema = UpstashEntitySchema.extend({
-  thread_id: z.string(),
-  role: z.enum(['user', 'assistant', 'system', 'tool']),
-  content: z.string(),
-  name: z.string().optional(),
-});
-
-// AgentState entity (for agent state store)
-export interface AgentStateEntity extends UpstashEntityBase {
-  thread_id: string;
-  agent_id: string;
-  state: Record<string, unknown>;
-}
-export const AgentStateEntitySchema = UpstashEntitySchema.extend({
-  thread_id: z.string(),
-  agent_id: z.string(),
-  state: z.record(z.any()),
-});
-
-// ToolExecution entity (for tool execution store)
-export interface ToolExecutionEntity extends UpstashEntityBase {
-  tool_id: string;
-  thread_id?: string;
-  agent_id?: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  result?: unknown;
-  error?: string;
-}
-export const ToolExecutionEntitySchema = UpstashEntitySchema.extend({
-  tool_id: z.string(),
-  thread_id: z.string().optional(),
-  agent_id: z.string().optional(),
-  status: z.enum(['pending', 'running', 'completed', 'failed']),
-  result: z.any().optional(),
-  error: z.string().optional(),
-});
-
-// WorkflowNode entity (for workflow orchestration)
-export interface WorkflowNodeEntity extends UpstashEntityBase {
-  workflow_id: string;
-  node_type: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  started_at?: string;
-  completed_at?: string;
-  error?: string;
-  tags?: string[];
-  commands?: string[];
-  relationships?: string[];
-}
-export const WorkflowNodeEntitySchema = UpstashEntitySchema.extend({
-  workflow_id: z.string(),
-  node_type: z.string(),
-  status: z.enum(['pending', 'running', 'completed', 'failed']),
-  started_at: z.string().optional(),
-  completed_at: z.string().optional(),
-  error: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  commands: z.array(z.string()).optional(),
-  relationships: z.array(z.string()).optional(),
-});
-
-// LogEntry entity (for logging)
-export interface LogEntryEntity extends UpstashEntityBase {
-  level: LogLevel;
-  message: string;
-}
-export const LogEntryEntitySchema = UpstashEntitySchema.extend({
-  level: z.enum(['info', 'warn', 'error', 'debug']),
-  message: z.string(),
-});
-
-// --- UserEntity ---
-export interface UserEntity extends UpstashEntityBase {
-  email: string;
-  name?: string | null;
-  avatar_url?: string | null;
-  role: string;
-}
-export const UserEntitySchema = UpstashEntitySchema.extend({
-  email: z.string().email(),
-  name: z.string().nullable().optional(),
-  avatar_url: z.string().nullable().optional(),
-  role: z.string(),
-});
-
-// --- WorkflowEntity ---
-export interface WorkflowEntity extends UpstashEntityBase {
+/**
+ * App entity (for app management, compatible with both Supabase and LibSQL)
+ */
+export interface AppEntity {
+  id: string;
+  type: string;
   name: string;
   description?: string | null;
-  current_step_index: number;
-  status: string;
-  metadata?: Record<string, unknown>;
+  code: string;
+  parameters_schema?: Record<string, unknown> | string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
 }
-export const WorkflowEntitySchema = UpstashEntitySchema.extend({
+export const AppEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  current_step_index: z.number(),
-  status: z.string(),
-  metadata: z.record(z.any()).optional(),
+  code: z.string(),
+  parameters_schema: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 
-// --- SettingsEntity ---
-export interface SettingsEntity extends UpstashEntityBase {
+/**
+ * AppCodeBlock entity (for code blocks in apps)
+ */
+export interface AppCodeBlockEntity {
+  id: string;
+  type: string;
+  app_id: string;
+  language: string;
+  code: string;
+  description?: string | null;
+  order: number;
+  created_at: string;
+  updated_at: string;
+}
+export const AppCodeBlockEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  app_id: z.string(),
+  language: z.string(),
+  code: z.string(),
+  description: z.string().nullable().optional(),
+  order: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * Integration entity (for integrations)
+ */
+export interface IntegrationEntity {
+  id: string;
+  type: string;
+  user_id: string;
+  provider: string;
+  name?: string | null;
+  config?: Record<string, unknown> | string | null;
+  credentials?: Record<string, unknown> | string | null;
+  status: string;
+  last_synced_at?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const IntegrationEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  user_id: z.string(),
+  provider: z.string(),
+  name: z.string().nullable().optional(),
+  config: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  credentials: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  status: z.string(),
+  last_synced_at: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * File entity (for files in apps)
+ */
+export interface FileEntity {
+  id: string;
+  type: string;
+  app_id: string;
+  parent_id?: string | null;
+  name: string;
+  file_type: string;
+  content?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const FileEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  app_id: z.string(),
+  parent_id: z.string().nullable().optional(),
+  name: z.string(),
+  file_type: z.string(),
+  content: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * TerminalSession entity (for terminal sessions)
+ */
+export interface TerminalSessionEntity {
+  id: string;
+  type: string;
+  app_id: string;
+  user_id: string;
+  command: string;
+  output?: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+export const TerminalSessionEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  app_id: z.string(),
+  user_id: z.string(),
+  command: z.string(),
+  output: z.string().nullable().optional(),
+  status: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * AgentPersona entity
+ */
+export interface AgentPersonaEntity {
+  id: string;
+  type: string;
+  name: string;
+  description?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const AgentPersonaEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * Agent entity
+ */
+export interface AgentEntity {
+  id: string;
+  type: string;
+  name: string;
+  description?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const AgentEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * Tool entity
+ */
+export interface ToolEntity {
+  id: string;
+  type: string;
+  name: string;
+  description?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const ToolEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * WorkflowStep entity
+ */
+export interface WorkflowStepEntity {
+  id: string;
+  type: string;
+  workflow_id: string;
+  agent_id: string;
+  input?: string | null;
+  thread_id: string;
+  status: string;
+  result?: string | null;
+  error?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const WorkflowStepEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  workflow_id: z.string(),
+  agent_id: z.string(),
+  input: z.string().nullable().optional(),
+  thread_id: z.string(),
+  status: z.string(),
+  result: z.string().nullable().optional(),
+  error: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * AgentTool entity
+ */
+export interface AgentToolEntity {
+  id: string;
+  type: string;
+  agent_id: string;
+  tool_id: string;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const AgentToolEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  agent_id: z.string(),
+  tool_id: z.string(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * Setting entity
+ */
+export interface SettingEntity {
+  id: string;
+  type: string;
   category: string;
   key: string;
   value: string;
+  created_at: string;
+  updated_at: string;
 }
-export const SettingsEntitySchema = UpstashEntitySchema.extend({
+export const SettingEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
   category: z.string(),
   key: z.string(),
   value: z.string(),
-});
-
-// --- SystemMetricEntity ---
-export interface SystemMetricEntity extends UpstashEntityBase {
-  time_range?: string;
-  timestamp: string;
-  cpu_usage?: number;
-  memory_usage?: number;
-  database_connections?: number;
-  api_requests_per_minute?: number;
-  average_response_time_ms?: number;
-  active_users?: number;
-}
-export const SystemMetricEntitySchema = UpstashEntitySchema.extend({
-  time_range: z.string().optional(),
-  timestamp: z.string(),
-  cpu_usage: z.number().optional(),
-  memory_usage: z.number().optional(),
-  database_connections: z.number().optional(),
-  api_requests_per_minute: z.number().optional(),
-  average_response_time_ms: z.number().optional(),
-  active_users: z.number().optional(),
-});
-
-// --- TraceEntity (Observability) ---
-export interface TraceEntity extends UpstashEntityBase {
-  name: string;
-  start_time: string;
-  end_time?: string;
-  duration_ms?: number;
-  status: string;
-  user_id?: string;
-  session_id?: string;
-}
-export const TraceEntitySchema = UpstashEntitySchema.extend({
-  name: z.string(),
-  start_time: z.string(),
-  end_time: z.string().optional(),
-  duration_ms: z.number().optional(),
-  status: z.string(),
-  user_id: z.string().optional(),
-  session_id: z.string().optional(),
-});
-
-// --- SpanEntity (Observability) ---
-export interface SpanEntity extends UpstashEntityBase {
-  trace_id: string;
-  parent_span_id?: string;
-  name: string;
-  start_time: string;
-  end_time?: string;
-  duration_ms?: number;
-  status: string;
-  attributes?: Record<string, unknown>;
-}
-export const SpanEntitySchema = UpstashEntitySchema.extend({
-  trace_id: z.string(),
-  parent_span_id: z.string().optional(),
-  name: z.string(),
-  start_time: z.string(),
-  end_time: z.string().optional(),
-  duration_ms: z.number().optional(),
-  status: z.string(),
-  attributes: z.record(z.any()).optional(),
-});
-
-// --- EventEntity (Observability) ---
-export interface EventEntity extends UpstashEntityBase {
-  trace_id: string;
-  span_id?: string;
-  name: string;
-  timestamp: string;
-  attributes?: Record<string, unknown>;
-}
-export const EventEntitySchema = UpstashEntitySchema.extend({
-  trace_id: z.string(),
-  span_id: z.string().optional(),
-  name: z.string(),
-  timestamp: z.string(),
-  attributes: z.record(z.any()).optional(),
-});
-
-// --- ProviderEntity ---
-export interface ProviderEntity extends UpstashEntityBase {
-  name: string;
-  api_key?: string;
-  base_url?: string;
-  status?: string;
-  metadata?: Record<string, unknown>;
-}
-export const ProviderEntitySchema = UpstashEntitySchema.extend({
-  name: z.string(),
-  api_key: z.string().optional(),
-  base_url: z.string().optional(),
-  status: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-});
-
-// --- ModelEntity ---
-export interface ModelEntity extends UpstashEntityBase {
-  name: string;
-  provider: string;
-  model_id: string;
-  max_tokens?: number;
-  input_cost_per_token?: number;
-  output_cost_per_token?: number;
-  supports_vision?: boolean;
-  supports_functions?: boolean;
-  supports_streaming?: boolean;
-  default_temperature?: number;
-  default_top_p?: number;
-  default_frequency_penalty?: number;
-  default_presence_penalty?: number;
-  context_window?: number;
-  description?: string;
-  category?: string;
-  capabilities?: Record<string, unknown>;
-  base_url?: string;
-  api_key?: string;
-  status?: string;
-}
-export const ModelEntitySchema = UpstashEntitySchema.extend({
-  name: z.string(),
-  provider: z.string(),
-  model_id: z.string(),
-  max_tokens: z.number().optional(),
-  input_cost_per_token: z.number().optional(),
-  output_cost_per_token: z.number().optional(),
-  supports_vision: z.boolean().optional(),
-  supports_functions: z.boolean().optional(),
-  supports_streaming: z.boolean().optional(),
-  default_temperature: z.number().optional(),
-  default_top_p: z.number().optional(),
-  default_frequency_penalty: z.number().optional(),
-  default_presence_penalty: z.number().optional(),
-  context_window: z.number().optional(),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  capabilities: z.record(z.any()).optional(),
-  base_url: z.string().optional(),
-  api_key: z.string().optional(),
-  status: z.string().optional(),
-});
-
-// --- AuthProviderEntity ---
-export interface AuthProviderEntity extends UpstashEntityBase {
-  provider: string;
-  user_id: string;
-  access_token?: string;
-  refresh_token?: string;
-  expires_at?: string;
-  metadata?: Record<string, unknown>;
-}
-export const AuthProviderEntitySchema = UpstashEntitySchema.extend({
-  provider: z.string(),
-  user_id: z.string(),
-  access_token: z.string().optional(),
-  refresh_token: z.string().optional(),
-  expires_at: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-});
-
-// --- DashboardConfigEntity ---
-export interface DashboardConfigEntity extends UpstashEntityBase {
-  user_id?: string;
-  widgets?: Record<string, unknown>[];
-  layout?: Record<string, unknown>;
-}
-export const DashboardConfigEntitySchema = UpstashEntitySchema.extend({
-  user_id: z.string().optional(),
-  widgets: z.array(z.record(z.any())).optional(),
-  layout: z.record(z.any()).optional(),
-});
-
-// --- Logging Types & Schemas ---
-export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-
-export const LogEntrySchema = z.object({
-  id: z.string(),
-  level: z.string(),
-  message: z.string(),
-  timestamp: z.string(),
-  metadata: z.record(z.any()).optional(),
-});
-export type LogEntry = z.infer<typeof LogEntrySchema>;
-
-export interface LogQueryOptions {
-  level?: LogLevel;
-  startTime?: string; // ISO 8601
-  endTime?: string; // ISO 8601
-  limit?: number;
-  offset?: number;
-}
-
-// --- Advanced Log Query Options ---
-export interface AdvancedLogQueryOptions extends LogQueryOptions {
-  thread_id?: string;
-  agent_id?: string;
-  workflow_id?: string;
-  tool_id?: string;
-  search?: string;
-}
-
-export const AdvancedLogQueryOptionsSchema = LogEntrySchema.extend({
-  thread_id: z.string().optional(),
-  agent_id: z.string().optional(),
-  workflow_id: z.string().optional(),
-  tool_id: z.string().optional(),
-  search: z.string().optional(),
-});
-
-// --- Agent State Types & Schemas ---
-export const AgentStateSchema = z.object({
-  id: z.string(),
-  thread_id: z.string(),
-  agent_id: z.string(),
-  state: z.record(z.any()),
   created_at: z.string(),
   updated_at: z.string(),
 });
-export type AgentState = z.infer<typeof AgentStateSchema>;
 
-export const StoredAgentStateSchema = AgentStateSchema.extend({
-  metadata: z.record(z.any()).optional(),
-});
-export type StoredAgentState = z.infer<typeof StoredAgentStateSchema>;
-
-export class AgentStateStoreError extends Error {
-  cause?: unknown;
-  constructor(message: string, cause?: unknown) {
-    super(message);
-    this.name = 'AgentStateStoreError';
-    this.cause = cause;
-  }
+/**
+ * BlogPost entity
+ */
+export interface BlogPostEntity {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  author_id: string;
+  created_at: string;
+  updated_at: string;
 }
-
-// --- Thread/Message Search Result Types ---
-export const ThreadSearchResultSchema = z.object({
+export const BlogPostEntitySchema = z.object({
   id: z.string(),
-  name: z.string().nullable().optional(),
+  type: z.string(),
+  title: z.string(),
+  content: z.string(),
+  author_id: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
-  user_id: z.string().nullable().optional(),
-  agent_id: z.string().nullable().optional(),
-  metadata: z.record(z.any()).nullable().optional(),
-  score: z.number().optional(),
 });
-export type ThreadSearchResult = z.infer<typeof ThreadSearchResultSchema>;
 
-export const MessageSearchResultSchema = z.object({
+/**
+ * MdxDocument entity
+ */
+export interface MdxDocumentEntity {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
+}
+export const MdxDocumentEntitySchema = z.object({
   id: z.string(),
-  thread_id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  content: z.string(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * Message entity (LibSQL)
+ */
+export interface MessageLibSQLEntity {
+  id: string;
+  type: string;
+  memory_thread_id: string;
+  role: string;
+  content: string;
+  tool_call_id?: string | null;
+  tool_name?: string | null;
+  token_count?: number | null;
+  embedding_id?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+}
+export const MessageLibSQLEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  memory_thread_id: z.string(),
   role: z.string(),
   content: z.string(),
+  tool_call_id: z.string().nullable().optional(),
+  tool_name: z.string().nullable().optional(),
+  token_count: z.number().nullable().optional(),
+  embedding_id: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
   created_at: z.string(),
-  metadata: z.record(z.any()).nullable().optional(),
-  name: z.string().optional(),
-  score: z.number().optional(),
 });
-export type MessageSearchResult = z.infer<typeof MessageSearchResultSchema>;
 
-// --- ListEntitiesOptions ---
-export interface ListEntitiesOptions {
-  limit?: number;
-  offset?: number;
-  filters?: Record<string, unknown>;
-  sortBy?: string;
-  sortOrder?: 'ASC' | 'DESC';
-  select?: string[];
+/**
+ * MemoryThread entity (LibSQL)
+ */
+export interface MemoryThreadEntity {
+  id: string;
+  type: string;
+  agent_id?: string | null;
+  network_id?: string | null;
+  name: string;
+  summary?: string | null;
+  metadata?: Record<string, unknown> | string | null;
+  created_at: string;
+  updated_at: string;
 }
+export const MemoryThreadEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  agent_id: z.string().nullable().optional(),
+  network_id: z.string().nullable().optional(),
+  name: z.string(),
+  summary: z.string().nullable().optional(),
+  metadata: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+/**
+ * Embedding entity (LibSQL)
+ */
+export interface EmbeddingEntity {
+  id: string;
+  type: string;
+  vector: number[];
+  model?: string | null;
+  dimensions?: number | null;
+  created_at: string;
+}
+export const EmbeddingEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  vector: z.array(z.number()),
+  model: z.string().nullable().optional(),
+  dimensions: z.number().nullable().optional(),
+  created_at: z.string(),
+});
+
+/**
+ * GqlCache entity (LibSQL)
+ */
+export interface GqlCacheEntity {
+  id: string;
+  type: string;
+  query: string;
+  variables?: Record<string, unknown> | string | null;
+  response?: string | null;
+  createdAt: string;
+}
+export const GqlCacheEntitySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  query: z.string(),
+  variables: z
+    .union([z.record(z.any()), z.string()])
+    .optional()
+    .nullable(),
+  response: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
