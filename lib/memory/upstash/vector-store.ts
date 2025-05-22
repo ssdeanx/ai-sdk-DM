@@ -15,132 +15,53 @@ import {
   QStashTaskPayload,
   WorkflowNode,
   UpstashEntityBase,
+  VectorMetadataSchema, // Centralized
+  VectorMetadata, // Centralized
+  VectorDocumentSchema, // Centralized
+  VectorDocument, // Centralized
+  VectorQueryOptions, // Centralized (Interface)
+  VectorSearchResultSchema, // Centralized
+  VectorSearchResult, // Centralized
 } from '../../../types/upstashTypes';
 import { upstashLogger } from './upstash-logger';
 
 // --- Zod Schemas ---
 
-/**
- * Zod schema for embedding metadata
- */
-export const EmbeddingMetadataSchema = z.record(z.any()).and(
-  z
-    .object({
-      text: z.string().optional(),
-      source_url: z.string().optional(),
-      document_id: z.string().optional(),
-      chunk_id: z.string().optional(),
-      user_id: z.string().optional(),
-      created_at: z.string().optional(),
-    })
-    .partial()
-);
-
-/**
- * Zod schema for embedding vector
- */
-export const EmbeddingVectorSchema = z.object({
-  id: z.string(),
-  vector: z.array(z.number()),
-  metadata: EmbeddingMetadataSchema.optional(),
-  sparseVector: z
-    .object({
-      indices: z.array(z.number()),
-      values: z.array(z.number()),
-    })
-    .optional(),
-});
-
-/**
- * Zod schema for search embeddings options
- */
-export const SearchEmbeddingsOptionsSchema = z.object({
+// Local Zod schema for VectorQueryOptions as it's an interface in upstashTypes.ts
+// This is needed if SearchEmbeddingsOptionsSchema was used for parsing.
+export const VectorQueryOptionsSchema = z.object({
   topK: z.number().positive().optional().default(10),
   includeVectors: z.boolean().optional().default(false),
   includeMetadata: z.boolean().optional().default(true),
-  filter: z.string().optional(),
+  filter: z.string().optional(), // Assuming filter in VectorQueryOptions is string. If it's Record<string, unknown> in upstashTypes, this needs adjustment.
+  // Check types/upstashTypes.ts: VectorQueryOptions has filter?: Record<string, unknown>;
+  // The @upstash/vector client `query` method expects filter as a string.
+  // So, if VectorQueryOptions.filter is Record, it needs to be stringified before passing to client.
+  // For now, aligning with client expectation of string filter.
 });
 
-/**
- * Zod schema for embedding search result
- */
-export const EmbeddingSearchResultSchema = z.object({
-  id: z.string(),
-  score: z.number(),
-  vector: z.array(z.number()).optional(),
-  metadata: EmbeddingMetadataSchema.optional(),
-});
 
 // --- Types ---
-
-/**
- * Metadata for an embedding. Can be any JSON-serializable object.
- * It's recommended to include fields that might be useful for filtering searches.
- */
-export interface EmbeddingMetadata {
-  text?: string; // The original text chunk, often useful to store
-  source_url?: string;
-  document_id?: string;
-  chunk_id?: string;
-  user_id?: string;
-  created_at?: string; // ISO 8601 timestamp
-  [key: string]: unknown; // Allow other arbitrary metadata
-}
-
-/**
- * Represents a vector to be upserted into the Upstash Vector database.
- */
-export interface EmbeddingVector extends Vector {
-  id: string; // Unique ID for the vector
-  vector: number[];
-  metadata?: EmbeddingMetadata;
-}
-
-/**
- * Options for querying similar embeddings.
- */
-export interface SearchEmbeddingsOptions {
-  topK?: number;
-  includeVectors?: boolean;
-  includeMetadata?: boolean;
-  filter?: string; // Upstash Vector metadata filter string (e.g., "user_id = 'abc' AND type = 'document'")
-}
-
-/**
- * Represents a search result from Upstash Vector.
- */
-export interface EmbeddingSearchResult extends QueryResult {
-  id: string;
-  score: number;
-  vector?: number[];
-  metadata?: EmbeddingMetadata;
-}
+// Local types are removed, using centralized ones from upstashTypes.ts
 
 // --- Error Handling ---
-export class VectorStoreError extends Error {
-  constructor(
-    message: string,
-    public cause?: unknown
-  ) {
-    super(message);
-    this.name = 'VectorStoreError';
-    Object.setPrototypeOf(this, VectorStoreError.prototype);
-  }
-}
+// VectorStoreError is imported from upstashTypes.ts.
 
 // --- Vector Operations ---
 
 /**
  * Upserts (inserts or updates) one or more embedding vectors into the Upstash Vector index.
- * @param embeddings An array of EmbeddingVector objects or a single EmbeddingVector.
+ * @param embeddings An array of VectorDocument objects or a single VectorDocument.
  * @returns A promise that resolves with the result of the upsert operation from Upstash.
  * @throws VectorStoreError if upsertion fails.
  */
 export async function upsertEmbeddings(
-  embeddings: EmbeddingVector | EmbeddingVector[]
+  embeddings: VectorDocument | VectorDocument[]
 ): Promise<string> {
   const vectorDb: Index = getVectorClient();
   try {
+    // Ensure the input matches what @upstash/vector expects.
+    // VectorDocument structure should align with the client's Vector interface.
     const result = await vectorDb.upsert(embeddings);
     return result as string;
   } catch (error: unknown) {
@@ -157,13 +78,13 @@ export async function upsertEmbeddings(
  * Searches for embeddings similar to a given query vector.
  * @param queryVector The vector to find similar embeddings for.
  * @param options Optional search parameters (topK, includeVectors, includeMetadata, filter).
- * @returns A promise that resolves to an array of EmbeddingSearchResult objects.
+ * @returns A promise that resolves to an array of VectorSearchResult objects.
  * @throws VectorStoreError if the search fails.
  */
 export async function searchSimilarEmbeddings(
   queryVector: number[],
-  options?: SearchEmbeddingsOptions
-): Promise<EmbeddingSearchResult[]> {
+  options?: VectorQueryOptions 
+): Promise<VectorSearchResult[]> {
   const vectorDb: Index = getVectorClient();
   const {
     topK = 10,
@@ -178,9 +99,9 @@ export async function searchSimilarEmbeddings(
       topK,
       includeVectors,
       includeMetadata,
-      filter,
+      filter: typeof options?.filter === 'object' ? JSON.stringify(options.filter) : options?.filter, // Stringify filter if it's an object
     });
-    return results as EmbeddingSearchResult[];
+    return results as VectorSearchResult[];
   } catch (error: unknown) {
     upstashLogger.error(
       'vector-store',
@@ -204,8 +125,8 @@ export async function getEmbeddingsByIds(
   includeVectors: boolean = false,
   includeMetadata: boolean = true
 ): Promise<
-  | Array<FetchResult<EmbeddingMetadata> | null>
-  | FetchResult<EmbeddingMetadata>
+  | Array<FetchResult<VectorMetadata> | null>
+  | FetchResult<VectorMetadata>
   | null
 > {
   const vectorDb: Index = getVectorClient();
@@ -216,8 +137,8 @@ export async function getEmbeddingsByIds(
       includeMetadata,
     });
     return results as
-      | Array<FetchResult<EmbeddingMetadata> | null>
-      | FetchResult<EmbeddingMetadata>
+      | Array<FetchResult<VectorMetadata> | null>
+      | FetchResult<VectorMetadata>
       | null;
   } catch (error: unknown) {
     upstashLogger.error(
@@ -311,7 +232,7 @@ export async function getVectorIndexInfo(): Promise<unknown> {
  */
 export async function storeTextEmbedding(
   text: string,
-  metadata?: EmbeddingMetadata
+  metadata?: VectorMetadata 
 ): Promise<string> {
   try {
     // Check if Upstash Vector is available
@@ -336,21 +257,21 @@ export async function storeTextEmbedding(
     const id = generateId();
 
     // Prepare metadata with the original text
-    const fullMetadata: EmbeddingMetadata = {
+    const fullMetadata: VectorMetadata = { // Use VectorMetadata
       text,
       created_at: new Date().toISOString(),
       ...metadata,
     };
 
     // Validate with Zod schema
-    const vectorData = EmbeddingVectorSchema.parse({
+    const vectorData = VectorDocumentSchema.parse({ // Use VectorDocumentSchema
       id,
       vector: embeddingArray,
       metadata: fullMetadata,
     });
 
     // Store the embedding in Upstash Vector
-    await upsertEmbeddings(vectorData);
+    await upsertEmbeddings(vectorData); // upsertEmbeddings now expects VectorDocument
 
     return id;
   } catch (error: unknown) {
@@ -379,8 +300,8 @@ export async function storeTextEmbedding(
 export async function searchTextStore(
   query: string,
   limit: number = 10,
-  filter?: string
-): Promise<EmbeddingSearchResult[]> {
+  filter?: string 
+): Promise<VectorSearchResult[]> {
   try {
     // Check if Upstash Vector is available
     if (!isUpstashVectorAvailable()) {
@@ -401,19 +322,19 @@ export async function searchTextStore(
     const embeddingArray = Array.from(embedding) as number[];
 
     // Validate search options with Zod schema
-    const searchOptions = SearchEmbeddingsOptionsSchema.parse({
+    const searchOptions = VectorQueryOptionsSchema.parse({ // Use VectorQueryOptionsSchema
       topK: limit,
       includeMetadata: true,
-      filter,
+      filter, // Filter is string here, matching client
     });
 
     // Search for similar embeddings
-    const results = await searchSimilarEmbeddings(
+    const results = await searchSimilarEmbeddings( // searchSimilarEmbeddings now returns Promise<VectorSearchResult[]>
       embeddingArray,
-      searchOptions
+      searchOptions // options type is VectorQueryOptions
     );
 
-    return results;
+    return results; // Type is VectorSearchResult[]
   } catch (error: unknown) {
     upstashLogger.error(
       'vector-store',
@@ -443,7 +364,7 @@ export async function hybridSearch(
     keywordWeight?: number; // Weight for keyword matching (0-1)
     vectorWeight?: number; // Weight for vector similarity (0-1)
   }
-): Promise<EmbeddingSearchResult[]> {
+): Promise<VectorSearchResult[]> { // Return type updated
   try {
     // Default options
     const limit = options?.limit || 10;

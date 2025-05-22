@@ -69,10 +69,9 @@ export async function GET(request: Request) {
       string,
       { description: string; parameters: unknown }
     > = {};
-    const provider = getMemoryProvider();
 
     if (includeCustom) {
-      if (provider === 'upstash') {
+      if (process.env.USE_UPSTASH_ADAPTER === 'true') {
         try {
           // Use a more specific type for Upstash tools table
           type UpstashToolRow = {
@@ -223,12 +222,11 @@ export async function POST(request: Request) {
     }
 
     // Determine which provider to use
-    const provider = getMemoryProvider();
     let toolId;
     let useLibSQL = false;
     const now = new Date().toISOString();
 
-    if (provider === 'upstash') {
+    if (process.env.USE_UPSTASH_ADAPTER === 'true') {
       try {
         // Check if tool with same name already exists
         const existingTools = await (

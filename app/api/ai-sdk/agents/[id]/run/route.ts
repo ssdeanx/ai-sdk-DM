@@ -67,21 +67,6 @@ export async function POST(
       input: typeof input === 'string' ? input.slice(0, 100) : undefined,
     });
 
-    // Health check: ensure Upstash is available
-    const upstashEnabled = process.env.USE_UPSTASH_ADAPTER === 'true';
-    if (!upstashEnabled) {
-      await upstashLogger.error(
-        'agents',
-        'Supabase/Upstash unavailable',
-        {},
-        { agentId: id }
-      );
-      return NextResponse.json(
-        { error: 'Supabase/Upstash is not available' },
-        { status: 503 }
-      );
-    }
-
     // Initialize agent registry
     await agentRegistry.init();
 

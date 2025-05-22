@@ -4,16 +4,13 @@ import {
   getItemById,
   updateItem,
   deleteItem,
-  getData,
-  applyFilters,
-  applyOrdering,
-  applyPagination,
-  selectFields,
-  type QueryOptions,
-  type TableName,
-  type TableRow,
-  type TableInsert,
-  type TableUpdate,
+  // getData, // Removed as fallback is removed
+  applyFilters, // Keep as listRedisEntities uses it for in-memory filtering
+  applyOrdering, // Keep as listRedisEntities uses it for in-memory sorting
+  applyPagination, // Keep as listRedisEntities uses it for in-memory pagination
+  selectFields, // Keep as listRedisEntities uses it for in-memory field selection
+  type QueryOptions, // Keep for ListEntitiesOptions compatibility or direct use in listRedisEntities
+  // type TableName, // Removed as getSupabaseTableName is removed
 } from './supabase-adapter';
 import { z } from 'zod';
 
@@ -63,7 +60,7 @@ import {
   runRediSearchHybridQuery,
   enqueueQStashTask,
   trackWorkflowNode,
-  shouldFallbackToBackup,
+  // shouldFallbackToBackup, // Removed
 } from './upstashClients';
 import { logError } from './upstash-logger';
 
@@ -144,28 +141,28 @@ export function getPrimaryKeyForTable(tableName: string): string | string[] {
   }
 }
 
-// --- TableName mapping and type guard ---
-const upstashToSupabaseTable: Record<string, TableName> = {
-  user: 'users',
-  workflow: 'workflows',
-  tool_execution: 'tools',
-  workflow_node: 'workflow_steps',
-  log_entry: 'events',
-  settings: 'settings',
-  system_metric: 'model_performance',
-  trace: 'traces',
-  span: 'spans',
-  event: 'events',
-  provider: 'agents',
-  model: 'models',
-  auth_provider: 'agent_personas',
-  dashboard_config: 'documents',
-};
-export function getSupabaseTableName(
-  entityType: string
-): TableName | undefined {
-  return upstashToSupabaseTable[entityType];
-}
+// --- TableName mapping and type guard --- // Removed as no longer used
+// const upstashToSupabaseTable: Record<string, TableName> = {
+//   user: 'users',
+//   workflow: 'workflows',
+//   tool_execution: 'tools',
+//   workflow_node: 'workflow_steps',
+//   log_entry: 'events',
+//   settings: 'settings',
+//   system_metric: 'model_performance',
+//   trace: 'traces',
+//   span: 'spans',
+//   event: 'events',
+//   provider: 'agents',
+//   model: 'models',
+//   auth_provider: 'agent_personas',
+//   dashboard_config: 'documents',
+// };
+// export function getSupabaseTableName(
+//   entityType: string
+// ): TableName | undefined {
+//   return upstashToSupabaseTable[entityType];
+// }
 
 // --- Thread Operations ---
 export async function createRedisThread(
@@ -527,15 +524,7 @@ export async function createRedisEntity<T extends object>(
       `Failed to create entity: ${entityType}`,
       toLoggerError(err)
     );
-    if (shouldFallbackToBackup()) {
-      const supabaseTable = getSupabaseTableName(entityType);
-      if (supabaseTable) {
-        return createItem(
-          supabaseTable,
-          entity as TableInsert<typeof supabaseTable>
-        ) as Promise<TableRow<typeof supabaseTable>> as unknown as Promise<T>;
-      }
-    }
+    // Fallback removed
     throw new RedisStoreError(`Failed to create entity: ${entityType}`, err);
   }
 }
@@ -557,14 +546,7 @@ export async function getRedisEntityById<T extends object>(
       `Failed to get entity by id: ${entityType}`,
       toLoggerError(err)
     );
-    if (shouldFallbackToBackup()) {
-      const supabaseTable = getSupabaseTableName(entityType);
-      if (supabaseTable) {
-        return getItemById(supabaseTable, id) as Promise<TableRow<
-          typeof supabaseTable
-        > | null> as unknown as Promise<T | null>;
-      }
-    }
+    // Fallback removed
     throw new RedisStoreError(`Failed to get entity by id: ${entityType}`, err);
   }
 }
@@ -593,18 +575,7 @@ export async function updateRedisEntity<T extends object>(
       `Failed to update entity: ${entityType}`,
       toLoggerError(err)
     );
-    if (shouldFallbackToBackup()) {
-      const supabaseTable = getSupabaseTableName(entityType);
-      if (supabaseTable) {
-        return updateItem(
-          supabaseTable,
-          id,
-          updates as TableUpdate<typeof supabaseTable>
-        ) as Promise<TableRow<
-          typeof supabaseTable
-        > | null> as unknown as Promise<T | null>;
-      }
-    }
+    // Fallback removed
     throw new RedisStoreError(`Failed to update entity: ${entityType}`, err);
   }
 }
@@ -628,12 +599,7 @@ export async function deleteRedisEntity(
       `Failed to delete entity: ${entityType}`,
       toLoggerError(err)
     );
-    if (shouldFallbackToBackup()) {
-      const supabaseTable = getSupabaseTableName(entityType);
-      if (supabaseTable) {
-        return deleteItem(supabaseTable, id);
-      }
-    }
+    // Fallback removed
     throw new RedisStoreError(`Failed to delete entity: ${entityType}`, err);
   }
 }
@@ -682,33 +648,7 @@ export async function listRedisEntities<T extends object>(
       `Failed to list entities: ${entityType}`,
       toLoggerError(err)
     );
-    if (shouldFallbackToBackup()) {
-      const supabaseTable = getSupabaseTableName(entityType);
-      if (supabaseTable) {
-        // Map ListEntitiesOptions to QueryOptions for Supabase
-        const queryOptions: QueryOptions = {
-          select: options?.select,
-          filters: options?.filters
-            ? Object.entries(options.filters).map(([field, value]) => ({
-                field,
-                operator: 'eq',
-                value,
-              }))
-            : undefined,
-          orderBy: options?.sortBy
-            ? {
-                column: options.sortBy,
-                ascending: options.sortOrder !== 'DESC',
-              }
-            : undefined,
-          limit: options?.limit,
-          offset: options?.offset,
-        };
-        return getData(supabaseTable, queryOptions) as Promise<
-          TableRow<typeof supabaseTable>[]
-        > as unknown as Promise<T[]>;
-      }
-    }
+    // Fallback removed
     throw new RedisStoreError(`Failed to list entities: ${entityType}`, err);
   }
 }

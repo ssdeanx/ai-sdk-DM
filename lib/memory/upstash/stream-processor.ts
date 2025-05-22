@@ -53,7 +53,7 @@ export const VectorStreamOptionsSchema = z
   .object({
     query: z.array(z.number()), // Only allow number arrays for vector queries
     topK: z.number().int().positive().default(10),
-    filter: z.record(z.unknown()).optional(),
+    filter: z.string().optional(), // Changed to string
     includeMetadata: z.boolean().default(true),
     includeVectors: z.boolean().default(false), // Changed from includeValues to includeVectors
   })
@@ -318,7 +318,7 @@ export class StreamProcessor {
             const results = await vector.query({
               vector: query,
               topK,
-              ...(vectorFilter ? { filter: JSON.stringify(vectorFilter) } : {}),
+              ...(vectorFilter ? { filter: vectorFilter } : {}), // Removed JSON.stringify
               includeMetadata,
               includeVectors,
             });

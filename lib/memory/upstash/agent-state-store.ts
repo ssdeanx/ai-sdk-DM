@@ -1,8 +1,10 @@
 import { getRedisClient } from './upstashClients';
 import { generateId } from 'ai';
-import { AgentState } from '../../agents/agent.types';
-import { z } from 'zod'; // Add zod import
+import { AgentState } from '../../agents/agent.types'; // Public interface type
+import { z } from 'zod';
 import {
+  AgentStateEntity, // Centralized type for Redis storage
+  AgentStateEntitySchema, // Centralized Zod schema for validation
   RediSearchHybridQuery,
   QStashTaskPayload,
   WorkflowNode,
@@ -20,28 +22,8 @@ const THREAD_AGENT_STATES_PREFIX = 'thread:'; // Prefix for thread-specific agen
 const THREAD_AGENT_STATES_SUFFIX = ':agent_states'; // Suffix for thread-specific agent states
 
 // --- Zod Schemas ---
-
-/**
- * Schema for agent state
- */
-export const AgentStateSchema = z
-  .object({
-    // Define known fields explicitly
-    _thread_id: z.string().optional(),
-    _agent_id: z.string().optional(),
-    _created_at: z.string().optional(),
-    _updated_at: z.string().optional(),
-  })
-  .catchall(z.any()); // Allow any other fields
-
-/**
- * Schema for agent state with required fields
- */
-export const StoredAgentStateSchema = AgentStateSchema.extend({
-  _thread_id: z.string(),
-  _agent_id: z.string(),
-  _updated_at: z.string(),
-});
+// Local AgentStateSchema and StoredAgentStateSchema are removed.
+// Using AgentStateEntitySchema from upstashTypes.ts for validation before storage.
 
 // --- Error Handling ---
 export class AgentStateStoreError extends Error {
@@ -60,29 +42,13 @@ function toLoggerError(err: unknown): Error | { error: string } {
   return { error: String(err) };
 }
 
-// --- Validate agent state using Zod schema ---
-function validateAgentState(state: unknown): AgentState {
-  try {
-    if (typeof state !== 'object' || state === null) {
-      throw new AgentStateStoreError('Agent state must be an object');
-    }
-    return AgentStateSchema.parse(state) as AgentState;
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new AgentStateStoreError(
-        `Invalid agent state: ${error.message}`,
-        error
-      );
-    }
-    throw error;
-  }
-}
+// Local validateAgentState function is removed as validation will be done against AgentStateEntitySchema.
 
 // --- Save agent state ---
 export async function saveAgentState(
   threadId: string,
   agentId: string,
-  state: AgentState,
+  state: AgentState, // Public interface uses AgentState
   ttl?: number
 ): Promise<void> {
   if (!threadId) throw new AgentStateStoreError('Thread ID is required');
@@ -90,19 +56,39 @@ export async function saveAgentState(
   const redis = getRedisClient();
   const stateKey = `${AGENT_STATE_PREFIX}${threadId}:${agentId}`;
   const threadStatesKey = `${THREAD_AGENT_STATES_PREFIX}${threadId}${THREAD_AGENT_STATES_SUFFIX}`;
-  const now = Date.now();
+  const now = new Date().toISOString();
+  const recordId = generateId(); // ID for the AgentStateEntity record
+
   try {
-    validateAgentState(state);
-    const stateData = {
-      ...state,
-      _thread_id: threadId,
-      _agent_id: agentId,
-      _updated_at: new Date().toISOString(),
-      _created_at:
-        (state as Record<string, unknown>)._created_at ||
-        new Date().toISOString(),
+    // Construct the AgentStateEntity
+    const agentStateEntity: AgentStateEntity = {
+      id: recordId,
+      type: 'agent_state',
+      thread_id: threadId,
+      agent_id: agentId,
+      state: state, // The AgentState object goes into the 'state' property
+      created_at: now, // Assuming new save might imply new creation time or fetch existing to preserve
+      updated_at: now,
+      metadata: { source: 'saveAgentState' }, // Optional metadata
     };
-    const stateJson = JSON.stringify(stateData);
+
+    // Attempt to load existing to preserve created_at
+    const existingJson = await redis.get(stateKey);
+    if (existingJson) {
+      try {
+        const existingEntity = AgentStateEntitySchema.parse(JSON.parse(existingJson as string));
+        agentStateEntity.created_at = existingEntity.created_at; // Preserve original creation time
+        agentStateEntity.id = existingEntity.id; // Preserve original ID
+      } catch (e) {
+        // If parsing fails, it's a corrupted record or old format. Overwrite with new.
+        console.warn(`Failed to parse existing agent state for ${stateKey}, overwriting. Error: ${e}`);
+      }
+    }
+    
+    // Validate the entity before saving
+    const validatedEntity = AgentStateEntitySchema.parse(agentStateEntity);
+    const stateJson = JSON.stringify(validatedEntity);
+
     const pipeline = redis.pipeline();
     pipeline.set(stateKey, stateJson);
     if (ttl && ttl > 0) pipeline.expire(stateKey, ttl);
@@ -139,21 +125,24 @@ export async function loadAgentState(
   const stateKey = `${AGENT_STATE_PREFIX}${threadId}:${agentId}`;
   try {
     const stateJson = await redis.get(stateKey);
-    if (!stateJson) return {};
-    let state: AgentState;
+    if (!stateJson) return {}; // Return empty AgentState if not found
+
+    let entity: AgentStateEntity;
     try {
-      state = JSON.parse(stateJson as string) as AgentState;
+      entity = AgentStateEntitySchema.parse(JSON.parse(stateJson as string));
     } catch (e: unknown) {
       throw new AgentStateStoreError(
-        `Failed to parse agent state JSON: ${toLoggerError(e)}`
+        `Failed to parse or validate stored agent state JSON: ${toLoggerError(e)}`
       );
     }
-    validateAgentState(state);
+    
+    // Update access score for AGENT_STATE_INDEX
     await redis.zadd(AGENT_STATE_INDEX, {
       score: Date.now(),
       member: `${threadId}:${agentId}`,
     });
-    return state;
+    
+    return entity.state as AgentState; // Return the 'state' property, which is AgentState
   } catch (error) {
     throw new AgentStateStoreError(
       `Failed to load agent state for thread ${threadId}, agent ${agentId}`,
@@ -253,24 +242,44 @@ export async function deleteThreadAgentStates(
 // --- Create a new agent state with a generated ID ---
 export async function createAgentState(
   threadId: string,
-  initialState: AgentState = {},
+  initialState: AgentState = {}, // Public interface uses AgentState
   ttl?: number
-): Promise<{ agentId: string; state: AgentState }> {
+): Promise<{ agentId: string; state: AgentState }> { // Returns AgentState
   if (!threadId) throw new AgentStateStoreError('Thread ID is required');
+  const agentId = generateId(); // This is the agentId for the new state being created
+  const now = new Date().toISOString();
+  const recordId = generateId(); // ID for the AgentStateEntity record
+
   try {
-    const agentId = generateId();
-    if (Object.keys(initialState).length > 0) {
-      validateAgentState(initialState);
-    }
-    const completeState: AgentState = {
-      ...initialState,
-      _thread_id: threadId,
-      _agent_id: agentId,
-      _created_at: new Date().toISOString(),
-      _updated_at: new Date().toISOString(),
+    const agentStateEntity: AgentStateEntity = {
+      id: recordId,
+      type: 'agent_state',
+      thread_id: threadId,
+      agent_id: agentId,
+      state: initialState, // initialState is the AgentState
+      created_at: now,
+      updated_at: now,
+      metadata: { source: 'createAgentState' },
     };
-    await saveAgentState(threadId, agentId, completeState, ttl);
-    return { agentId, state: completeState };
+
+    const validatedEntity = AgentStateEntitySchema.parse(agentStateEntity);
+    const stateJson = JSON.stringify(validatedEntity);
+
+    const redis = getRedisClient();
+    const stateKey = `${AGENT_STATE_PREFIX}${threadId}:${agentId}`;
+    const threadStatesKey = `${THREAD_AGENT_STATES_PREFIX}${threadId}${THREAD_AGENT_STATES_SUFFIX}`;
+
+    const pipeline = redis.pipeline();
+    pipeline.set(stateKey, stateJson);
+    if (ttl && ttl > 0) pipeline.expire(stateKey, ttl);
+    pipeline.sadd(threadStatesKey, agentId);
+    pipeline.zadd(AGENT_STATE_INDEX, {
+      score: Date.now(), // Use numeric timestamp for score
+      member: `${threadId}:${agentId}`,
+    });
+    await pipeline.exec();
+    
+    return { agentId, state: validatedEntity.state as AgentState };
   } catch (error) {
     throw new AgentStateStoreError(
       `Failed to create agent state for thread ${threadId}`,
@@ -283,46 +292,39 @@ export async function createAgentState(
 export async function getAllAgentStates(
   limit?: number,
   offset?: number
-): Promise<Array<AgentState & { _thread_id: string; _agent_id: string }>> {
+): Promise<AgentStateEntity[]> { // Returns array of AgentStateEntity
   const redis = getRedisClient();
   try {
-    const stateKeys = await redis.zrange(AGENT_STATE_INDEX, 0, -1, {
+    const stateCompositeKeys = await redis.zrange(AGENT_STATE_INDEX, 0, -1, {
       rev: true,
-    });
-    const paginatedKeys = stateKeys.slice(
+    }); // These are "threadId:agentId"
+    
+    const paginatedCompositeKeys = stateCompositeKeys.slice(
       offset || 0,
       limit ? (offset || 0) + limit : undefined
     );
-    if (paginatedKeys.length === 0) return [];
+
+    if (paginatedCompositeKeys.length === 0) return [];
+    
     const pipeline = redis.pipeline();
-    for (const key of paginatedKeys as string[]) {
-      const [threadId, agentId] = key.split(':');
-      pipeline.get(`${AGENT_STATE_PREFIX}${threadId}:${agentId}`);
+    for (const compositeKey of paginatedCompositeKeys as string[]) {
+      pipeline.get(`${AGENT_STATE_PREFIX}${compositeKey}`);
     }
     const stateJsons = await pipeline.exec();
-    const states = (stateJsons as Array<string | null>)
-      .filter(
-        (json): json is string => json !== null && typeof json === 'string'
-      )
+
+    const states: AgentStateEntity[] = (stateJsons as Array<string | null>)
+      .filter((json): json is string => json !== null && typeof json === 'string')
       .map((json) => {
         try {
-          return JSON.parse(json) as AgentState & {
-            _thread_id: string;
-            _agent_id: string;
-          };
-        } catch {
-          return null;
+          // Parse and validate each state against AgentStateEntitySchema
+          return AgentStateEntitySchema.parse(JSON.parse(json));
+        } catch (e) {
+          console.error(`Failed to parse/validate an agent state: ${toLoggerError(e)}`, json);
+          return null; 
         }
       })
-      .filter(
-        (
-          state
-        ): state is AgentState & { _thread_id: string; _agent_id: string } =>
-          state !== null &&
-          typeof state === 'object' &&
-          '_thread_id' in state &&
-          '_agent_id' in state
-      );
+      .filter((state): state is AgentStateEntity => state !== null);
+      
     return states;
   } catch (error) {
     throw new AgentStateStoreError(

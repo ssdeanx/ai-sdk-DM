@@ -15,7 +15,12 @@ import {
   PersonaDefinition,
   MicroPersonaDefinition,
 } from '../../agents/personas/persona-library';
-import { AgentState } from '../../agents/agent.types';
+import { AgentState } from '../../agents/agent.types'; // Public AgentState type
+import { 
+  AgentStateEntity, // For internal Redis structure
+  AgentStateEntitySchema, // For validation
+  VectorSearchResult // For streamSemanticSearch
+} from '../../../types/upstashTypes'; 
 import { Readable } from 'stream';
 import { generateEmbedding } from '../../ai-integration';
 import { upstashLogger } from './upstash-logger';
@@ -284,7 +289,7 @@ export class MemoryProcessor {
     threadId: string,
     options: {
       batchSize?: number;
-      filter?: (state: AgentState & { _agent_id: string }) => boolean;
+      filter?: (state: AgentState & { agent_id: string; thread_id: string }) => boolean;
     } = {}
   ): Readable {
     const { batchSize = 10, filter } = options;
@@ -313,16 +318,24 @@ export class MemoryProcessor {
             for (const json of stateJsons) {
               if (json) {
                 try {
-                  const stateObj = JSON.parse(json as string) as AgentState & {
-                    _agent_id: string;
+                  // Parse and validate as AgentStateEntity
+                  const entity = AgentStateEntitySchema.parse(JSON.parse(json as string));
+                  
+                  // Construct the output object to be streamed
+                  const outputObject = {
+                    ...(entity.state as AgentState), // Spread the actual agent state
+                    agent_id: entity.agent_id,    // Add agent_id from entity
+                    thread_id: entity.thread_id   // Add thread_id from entity
                   };
-                  if (!filter || filter(stateObj)) {
-                    this.push(stateObj);
+
+                  if (!filter || filter(outputObject)) {
+                    this.push(outputObject);
                   }
-                } catch {
+                } catch (e) { // Catch parsing or validation errors
                   upstashLogger.error(
                     'memory-processor',
-                    'Error parsing agent state JSON'
+                    'Error parsing or validating agent state JSON for streaming',
+                    e instanceof Error ? e : { error: String(e) }
                   );
                 }
               }
@@ -359,44 +372,65 @@ export class MemoryProcessor {
   ): Readable {
     const { topK = 10, filter } = options;
     const vector = this.vector;
+    const vector = this.vector; // Ensure `this.vector` is captured if `this` context changes in async
+    const self = this; // Capture `this` for `generateEmbeddings`
+
     return new Readable({
       objectMode: true,
-      read() {
-        let searchStarted = false;
-        let results: unknown[] = [];
-        let currentIndex = 0;
-        (async () => {
-          try {
-            if (!searchStarted) {
-              searchStarted = true;
-              results =
-                (await vector?.query({
-                  vector:
-                    await MemoryProcessor.getInstance().generateEmbeddings(
-                      query
-                    ),
-                  topK,
-                  filter: filter ? JSON.stringify(filter) : undefined,
-                  includeMetadata: true,
-                  includeVectors: false,
-                })) ?? [];
-              currentIndex = 0;
-            }
-            if (currentIndex >= results.length) {
-              this.push(null);
-              return;
-            }
-            this.push(results[currentIndex]);
-            currentIndex++;
-          } catch (error: unknown) {
-            this.destroy(
-              new MemoryProcessorError(
-                'Error streaming semantic search results',
-                error
-              )
-            );
+      async read() {
+        try {
+          if (!vector) {
+            this.destroy(new MemoryProcessorError('Vector client not available for semantic search'));
+            return;
           }
-        })();
+          
+          // Perform the query once
+          // The original implementation had searchStarted logic, implying it should only query once.
+          // For a readable stream, `read` can be called multiple times. We need to manage the state of fetched results.
+          // A simpler approach for a stream that emits all results from a single async op:
+          // fetch all, then push one by one. Or, handle batching if results are huge.
+          // For now, assuming `topK` is manageable to fetch all at once.
+          
+          // This structure assumes read() is called to fetch the next item.
+          // To prevent re-fetching, we need to store the results and cursor outside the async block
+          // or make the stream fetch all then push. Let's go with fetch-all-then-push for simplicity here.
+          
+          // The following is a simplified version that fetches once and pushes all.
+          // If a true "streaming" from a paginated API was intended, this would be different.
+          this.pause(); // Pause the stream while we fetch all data
+
+          const queryVector = await self.generateEmbeddings(query);
+          const rawResults = await vector.query({
+            vector: queryVector,
+            topK,
+            filter: filter ? JSON.stringify(filter) : undefined, // Ensure filter is stringified if it's an object
+            includeMetadata: true,
+            includeVectors: false, // Assuming vectors are not needed in the stream output for this case
+          });
+
+          if (rawResults && rawResults.length > 0) {
+            for (const rawResult of rawResults) {
+              // Map to VectorSearchResult for type consistency
+              const searchResult: VectorSearchResult = {
+                id: rawResult.id,
+                score: rawResult.score,
+                // vector: rawResult.vector, // if includeVectors was true
+                metadata: rawResult.metadata as VectorSearchResult['metadata'], // Cast if necessary
+              };
+              this.push(searchResult);
+            }
+          }
+          this.push(null); // End of stream
+          this.resume();
+
+        } catch (error: unknown) {
+          this.destroy(
+            new MemoryProcessorError(
+              'Error streaming semantic search results',
+              error
+            )
+          );
+        }
       },
     });
   }

@@ -13,14 +13,16 @@ import {
   GeminiCapability,
   composePersona,
 } from './persona-library';
-import { personaScoreManager } from './persona-score-manager';
+import { personaScoreManager } from './persona-score-manager'; // May need to adjust its usage later for scores
+import { AgentPersona as SupabaseAgentPersona, NewAgentPersona, NewPersonaScore, PersonaScore as SupabasePersonaScore } from '../../memory/supabase'; // Supabase types
+import * as supabase from '../../memory/supabase'; // Supabase data access functions
 import { AgentPersona } from '../agent.types';
 import { domainPersonas, taskPersonas } from './persona-library-extended';
-import * as UpstashPersonaStore from './upstash-persona-store';
-import * as UpstashPersonaScore from './upstash-persona-score';
-import { PersonaStreamingService } from './persona-streaming-service';
-import { getMemoryProvider } from '../../memory/factory';
-import { getRedisClient } from '../../memory/upstash/upstashClients';
+// import * as UpstashPersonaStore from './upstash-persona-store'; // To be removed
+// import * as UpstashPersonaScore from './upstash-persona-score'; // To be removed
+// import { PersonaStreamingService } from './persona-streaming-service'; // To be removed
+// import { getMemoryProvider } from '../../memory/factory'; // To be removed
+// import { getRedisClient } from '../../memory/upstash/upstashClients'; // To be removed
 
 /**
  * File formats supported for persona loading
@@ -46,8 +48,8 @@ export class PersonaManager {
   private initialized: boolean = false;
   private initPromise: Promise<void> | null = null;
   public readonly personasDirectory: string;
-  private streamingService: PersonaStreamingService;
-  private useUpstash: boolean;
+  // private streamingService: PersonaStreamingService; // To be removed
+  // private useUpstash: boolean; // To be removed
 
   /**
    * Records usage of a persona with performance metrics
@@ -68,32 +70,60 @@ export class PersonaManager {
       };
     }
   ): Promise<void> {
-    if (this.useUpstash) {
-      // Record usage in Upstash
-      await UpstashPersonaScore.recordPersonaUsage(personaId, data.metadata);
+    await this.ensureInitialized();
+    try {
+      let score = await supabase.getPersonaScoreByPersonaId(personaId);
+      const now = new Date().toISOString();
 
-      // Update score in Upstash
-      const previousScore =
-        await UpstashPersonaScore.loadPersonaScore(personaId);
-      await UpstashPersonaScore.updatePersonaScore(personaId, {
-        successfulInteraction: data.success,
-        latencyMs: data.latency,
-        adaptabilityFactor: data.adaptabilityFactor,
-        metadata: {
-          taskType: data.metadata.taskType,
-          taskScore: data.success ? 1 : 0,
-          previousOverallScore: previousScore?.overall_score,
-        },
-      });
-    } else if (personaScoreManager) {
-      // Use the existing score manager
-      if (typeof personaScoreManager.recordPersonaUsage === 'function') {
-        await personaScoreManager.recordPersonaUsage(personaId, data);
+      if (!score) {
+        // Initialize new score
+        const newScoreData: NewPersonaScore = {
+          persona_id: personaId,
+          usage_count: 1,
+          success_rate: data.success ? '1.0' : '0.0', // Ensure string for numeric type
+          average_latency_ms: data.latency.toString(),
+          user_satisfaction: '0.5', // Default initial satisfaction
+          adaptability_score: data.adaptabilityFactor.toString(),
+          overall_score: '0.5', // Default initial overall score
+          last_used_at: now,
+          metadata: { taskType: data.metadata.taskType, lastTaskSuccess: data.success },
+          // created_at and updated_at will be set by DB
+        };
+        // Calculate initial overall score (simple example)
+        newScoreData.overall_score = this.calculateOverallScore(newScoreData).toString();
+        await supabase.createPersonaScore(newScoreData);
       } else {
-        console.warn(
-          'PersonaScoreManager does not have recordPersonaUsage method'
-        );
+        // Update existing score
+        const previousOverallScore = parseFloat(score.overall_score || '0.5');
+        const updatedUsageCount = (score.usage_count || 0) + 1;
+        
+        const updatedSuccessRate = (((parseFloat(score.success_rate || '0') * (updatedUsageCount -1)) + (data.success ? 1:0)) / updatedUsageCount).toFixed(4);
+        const updatedLatency = (((parseFloat(score.average_latency_ms || '0') * (updatedUsageCount - 1)) + data.latency) / updatedUsageCount).toFixed(2);
+        const updatedAdaptability = (((parseFloat(score.adaptability_score || '0') * (updatedUsageCount - 1)) + data.adaptabilityFactor) / updatedUsageCount).toFixed(2);
+
+        const updatePayload: Partial<SupabasePersonaScore> = {
+          usage_count: updatedUsageCount,
+          success_rate: updatedSuccessRate,
+          average_latency_ms: updatedLatency,
+          adaptability_score: updatedAdaptability,
+          last_used_at: now,
+          metadata: { ...score.metadata, taskType: data.metadata.taskType, lastTaskSuccess: data.success, previousOverallScore },
+        };
+        updatePayload.overall_score = this.calculateOverallScore(score, updatePayload).toString();
+        await supabase.updatePersonaScoreByPersonaId(personaId, updatePayload);
       }
+    } catch (error) {
+      console.error(`Error recording persona usage for ${personaId} in Supabase:`, error);
+      // Removed fallback to personaScoreManager. Errors from Supabase should propagate.
+      // if (personaScoreManager && typeof personaScoreManager.recordPersonaUsage === 'function') {
+      //   console.warn(`Falling back to personaScoreManager for recordPersonaUsage for ${personaId}`);
+      //   await personaScoreManager.recordPersonaUsage(personaId, data);
+      // } else {
+      //   console.warn(
+      //     'PersonaScoreManager does not have recordPersonaUsage method'
+      //   );
+      // }
+      throw error; // Re-throw the error
     }
   }
   /**   * Records user feedback for a persona
@@ -107,34 +137,57 @@ export class PersonaManager {
     rating: number,
     feedback?: string
   ): Promise<void> {
-    if (this.useUpstash) {
-      // Get current score
-      const currentScore =
-        await UpstashPersonaScore.loadPersonaScore(personaId);
+    await this.ensureInitialized();
+    try {
+      let score = await supabase.getPersonaScoreByPersonaId(personaId);
+      const now = new Date().toISOString();
 
-      if (currentScore) {
-        // Update user satisfaction based on rating
-        await UpstashPersonaScore.updatePersonaScore(personaId, {
-          userSatisfaction: rating,
-        });
+      if (!score) {
+        // Initialize new score if it doesn't exist
+        const newScoreData: NewPersonaScore = {
+          persona_id: personaId,
+          usage_count: 1, // First feedback implies first use for score purposes
+          user_satisfaction: rating.toString(),
+          overall_score: '0.5', // Default initial overall score
+          last_used_at: now,
+          metadata: { lastFeedbackRating: rating, feedbackReceived: !!feedback },
+           // Default values for other fields
+          success_rate: '0.5', 
+          average_latency_ms: '0',
+          adaptability_score: '0.5',
+        };
+        newScoreData.overall_score = this.calculateOverallScore(newScoreData).toString();
+        await supabase.createPersonaScore(newScoreData);
+      } else {
+        // Update existing score's user satisfaction
+        const usageCount = score.usage_count || 0; // Should be at least 1 if feedback is given after usage
+        const currentUserSatisfaction = parseFloat(score.user_satisfaction || '0.5');
+        // Weighted average for user satisfaction
+        const updatedUserSatisfaction = usageCount > 0 ? 
+            ((currentUserSatisfaction * (usageCount -1) + rating) / usageCount).toFixed(2) : rating.toString();
 
-        // Store feedback if provided
-        if (feedback) {
-          const redis = getRedisClient();
-          const feedbackKey = `persona:feedback:${personaId}`;
-          const feedbackData = JSON.stringify({
-            rating,
-            feedback,
-            timestamp: new Date().toISOString(),
-          });
+        const updatePayload: Partial<SupabasePersonaScore> = {
+          user_satisfaction: updatedUserSatisfaction,
+          last_used_at: now, // Assuming feedback implies usage
+          metadata: { ...score.metadata, lastFeedbackRating: rating, feedbackReceived: !!feedback },
+        };
+        if (usageCount === 0) updatePayload.usage_count = 1; // If first interaction
 
-          await redis.lpush(feedbackKey, feedbackData);
-          await redis.ltrim(feedbackKey, 0, 99); // Keep last 100 feedback entries
-        }
+        updatePayload.overall_score = this.calculateOverallScore(score, updatePayload).toString();
+        await supabase.updatePersonaScoreByPersonaId(personaId, updatePayload);
       }
-    } else if (personaScoreManager) {
-      // Use the existing score manager
-      if (typeof personaScoreManager.recordUserFeedback === 'function') {
+
+      // Note: Storing the raw feedback string still needs a separate strategy (e.g., new table `persona_feedback_entries`)
+      if (feedback) {
+        console.warn(`Feedback string received for ${personaId}: "${feedback}". Storage for this is not yet implemented in Supabase.`);
+        // Example: await supabase.createPersonaFeedbackEntry({ persona_id: personaId, rating, feedback_text: feedback });
+      }
+
+    } catch (error) {
+      console.error(`Error recording user feedback for ${personaId} in Supabase:`, error);
+      // Removed fallback to personaScoreManager. Errors from Supabase should propagate.
+      // if (personaScoreManager && typeof personaScoreManager.recordUserFeedback === 'function') {
+      //   console.warn(`Falling back to personaScoreManager for recordUserFeedback for ${personaId}`);
         await personaScoreManager.recordUserFeedback(
           personaId,
           rating,
@@ -158,74 +211,37 @@ export class PersonaManager {
    */
   public async getTopPerformingPersonas(
     limit: number = 10
-  ): Promise<Array<{ persona: PersonaDefinition; score: PersonaScore }>> {
-    if (this.useUpstash) {
-      const redis = getRedisClient();
-
-      // Get all persona IDs with scores
-      const personaKeys = await redis.keys('persona:score:*');
-      const topPersonaIds = personaKeys
-        .map((key) => key.replace('persona:score:', ''))
-        .slice(0, limit);
-
-      if (!topPersonaIds || topPersonaIds.length === 0) {
-        return [];
-      }
-
-      // Get persona data and scores
-      const result: Array<{ persona: PersonaDefinition; score: PersonaScore }> =
-        [];
-
-      for (const personaId of topPersonaIds) {
-        const [personaData, scoreData] = await Promise.all([
-          UpstashPersonaStore.loadPersona(personaId),
-          UpstashPersonaScore.loadPersonaScore(personaId),
-        ]);
-
-        if (personaData && scoreData) {
-          result.push({ persona: personaData, score: scoreData });
-        }
-      }
-
-      return result;
-    } else if (personaScoreManager) {
-      // Use the existing score manager
-      // Get all personas first since getTopScores might not exist
-      const allPersonas = Array.from(this.personas.values());
-      const scoresMap = new Map<string, PersonaScore>();
-
-      // Get scores for each persona
-      for (const persona of allPersonas) {
-        try {
-          const scoreData = await personaScoreManager.getScore(persona.id);
-          if (scoreData) {
-            scoresMap.set(persona.id, scoreData as unknown as PersonaScore);
+  ): Promise<Array<{ persona: PersonaDefinition; score: SupabasePersonaScore }>> {
+    await this.ensureInitialized();
+    try {
+      const scores = await supabase.queryPersonaScores({
+        limit,
+        orderBy: 'overall_score',
+        // `where` clause might need specific syntax for 'IS NOT NULL' depending on supabase.ts implementation
+        // For now, assuming it handles it or we filter post-fetch if necessary.
+        // where: { overall_score: 'IS NOT NULL' } // This is a conceptual where
+      });
+      
+      const result: Array<{ persona: PersonaDefinition; score: SupabasePersonaScore }> = [];
+      if (scores) {
+        for (const score of scores) {
+          if (score.persona_id && score.overall_score !== null) { // Ensure overall_score is not null
+            const persona = await this.getPersonaById(score.persona_id);
+            if (persona) {
+              result.push({ persona, score });
+            }
           }
-        } catch (error) {
-          console.warn(`Error getting score for persona ${persona.id}:`, error);
         }
       }
-
-      // Convert to array and sort
-      const scores = Array.from(scoresMap.entries())
-        .map(([personaId, score]) => ({ personaId, ...score }))
-        .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0))
-        .slice(0, limit);
-      const result: Array<{ persona: PersonaDefinition; score: PersonaScore }> =
-        [];
-
-      for (const score of scores) {
-        const persona = await this.getPersonaById(score.personaId);
-        if (persona) {
-          result.push({ persona, score });
-        }
-      }
-
+      // Sort in descending order of overall_score if not handled by DB query
+      result.sort((a, b) => parseFloat(b.score.overall_score ?? "0") - parseFloat(a.score.overall_score ?? "0"));
       return result;
+    } catch (error) {
+      console.error('Error getting top performing personas from Supabase:', error);
+      return [];
     }
-
-    return [];
-  } /**
+  }
+  /**
    * Gets the most frequently used personas
    *
    * @param limit - Maximum number of personas to return
@@ -234,92 +250,31 @@ export class PersonaManager {
   public async getMostUsedPersonas(
     limit: number = 10
   ): Promise<Array<{ persona: PersonaDefinition; usageCount: number }>> {
-    if (this.useUpstash) {
-      const redis = getRedisClient();
-      const usagePattern = 'persona:usage:*';
+    await this.ensureInitialized();
+    try {
+      const scores = await supabase.queryPersonaScores({
+        limit,
+        orderBy: 'usage_count',
+      });
+      const result: Array<{ persona: PersonaDefinition; usageCount: number }> = [];
 
-      // Scan for all usage keys
-      const usageKeys = await redis.keys(usagePattern);
-
-      if (!usageKeys || usageKeys.length === 0) {
-        return [];
-      }
-
-      // Get total usage for each persona
-      const usageCounts: Array<{ personaId: string; count: number }> = [];
-
-      for (const key of usageKeys) {
-        const personaId = key.replace('persona:usage:', '');
-        const totalUsage = await redis.hget(key, 'total_usage');
-
-        if (totalUsage) {
-          usageCounts.push({
-            personaId,
-            count: parseInt(totalUsage as string, 10),
-          });
-        }
-      }
-
-      // Sort by usage count (descending)
-      usageCounts.sort((a, b) => b.count - a.count);
-
-      // Get persona data for top used personas
-      const result: Array<{ persona: PersonaDefinition; usageCount: number }> =
-        [];
-
-      for (const { personaId, count } of usageCounts.slice(0, limit)) {
-        const personaData = await UpstashPersonaStore.loadPersona(personaId);
-
-        if (personaData) {
-          result.push({ persona: personaData, usageCount: count });
-        }
-      }
-
-      return result;
-    } else if (personaScoreManager) {
-      // Use the existing score manager
-      // Since getMostUsed might not exist, we'll use a fallback approach
-      const allPersonas = Array.from(this.personas.values());
-      const usageMap = new Map<string, number>();
-
-      // Get usage count for each persona
-      for (const persona of allPersonas) {
-        try {
-          const scoreData = await personaScoreManager.getScore(persona.id);
-          if (
-            scoreData &&
-            scoreData.metadata &&
-            scoreData.metadata.usageCount
-          ) {
-            usageMap.set(persona.id, scoreData.metadata.usageCount);
-          } else {
-            usageMap.set(persona.id, 0); // Default to 0 if no usage data
+      if (scores) {
+        for (const score of scores) {
+          if (score.persona_id) {
+            const persona = await this.getPersonaById(score.persona_id);
+            if (persona) {
+              result.push({ persona, usageCount: score.usage_count || 0 });
+            }
           }
-        } catch (error) {
-          console.warn(`Error getting usage for persona ${persona.id}:`, error);
-          usageMap.set(persona.id, 0);
         }
       }
-
-      // Convert to array and sort
-      const usageData = Array.from(usageMap.entries())
-        .map(([personaId, count]) => ({ personaId, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, limit);
-      const result: Array<{ persona: PersonaDefinition; usageCount: number }> =
-        [];
-
-      for (const { personaId, count } of usageData) {
-        const persona = await this.getPersonaById(personaId);
-        if (persona) {
-          result.push({ persona, usageCount: count });
-        }
-      }
-
+       // Sort in descending order of usage_count if not handled by DB query
+      result.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
       return result;
+    } catch (error) {
+      console.error('Error getting most used personas from Supabase:', error);
+      return [];
     }
-
-    return [];
   }
 
   /**
@@ -328,31 +283,21 @@ export class PersonaManager {
    * @param personasDir - Optional directory for persona files
    * @param options - Optional configuration options
    */
-  constructor(
-    personasDir?: string,
-    options: {
-      useUpstash?: boolean;
-    } = {}
-  ) {
+  constructor(personasDir?: string) {
     this.personasDirectory =
       personasDir ||
       path.resolve(process.cwd(), 'lib', 'agents', 'personas', 'personasData');
     fsExtra.ensureDirSync(this.personasDirectory);
 
-    // Initialize Upstash integration if specified or if MEMORY_PROVIDER is 'upstash'
-    this.useUpstash =
-      options.useUpstash !== undefined
-        ? options.useUpstash
-        : getMemoryProvider() === 'upstash';
-
-    // Initialize streaming service
-    this.streamingService = PersonaStreamingService.getInstance();
+    // this.useUpstash flag is removed. Data source is determined by supabase.ts.
+    // this.streamingService = PersonaStreamingService.getInstance(); // Removed
 
     console.log(
-      `PersonaManager initialized with ${this.useUpstash ? 'Upstash' : 'file-based'} storage`
+      `PersonaManager initialized. Personas will be managed via Supabase data access layer.`
     );
   }
 
+  // This method will now primarily load MicroPersonas if they remain file-based.
   private async loadPersonasFromDirectory(): Promise<void> {
     if (!fsExtra.existsSync(this.personasDirectory)) {
       console.warn(
@@ -387,14 +332,17 @@ export class PersonaManager {
           file.startsWith('micro_') ||
           data.microTraits
         ) {
+          // Assuming MicroPersonas are still loaded from files for now
           const microPersona = validateMicroPersonaDefinition(data);
-          this.registerMicroPersona(microPersona, false);
+          this.registerMicroPersona(microPersona, false); // saveToStorage for micro-personas might need review
         } else {
-          const persona = validatePersonaDefinition(data);
-          this.registerPersona(persona, false);
+          // PersonaDefinition loading from files is removed. They come from Supabase.
+          // console.warn(`Skipping PersonaDefinition file: ${file}. Personas are loaded from Supabase.`);
+          // const persona = validatePersonaDefinition(data);
+          // this.registerPersona(persona, false); // This would try to save to Supabase again
         }
       } catch (error: any) {
-        console.error(`Error loading persona from ${file}: ${error.message}`);
+        console.error(`Error loading micro-persona from ${file}: ${error.message}`);
         if (error.errors) {
           console.error(
             'Validation details:',
@@ -417,28 +365,40 @@ export class PersonaManager {
 
     this.initPromise = (async () => {
       this.personas.clear();
-      this.microPersonas.clear();
+      this.microPersonas.clear(); // Keep for file-based micro-personas
 
-      // Load built-in personas
+      // Load built-in personas into memory.
+      // These could be optionally registered to Supabase if they don't exist,
+      // but for now, they are primarily in-memory constructs unless explicitly saved.
       Object.values(basePersonas).forEach((p: PersonaDefinition) =>
-        this.registerPersona(p, false)
+        this.personas.set(p.id, p)
       );
       Object.values(specializedPersonas).forEach((p: PersonaDefinition) =>
-        this.registerPersona(p, false)
+        this.personas.set(p.id, p)
       );
       Object.values(domainPersonas).forEach((p: PersonaDefinition) =>
-        this.registerPersona(p, false)
+        this.personas.set(p.id, p)
       );
       Object.values(taskPersonas).forEach((p: PersonaDefinition) =>
-        this.registerPersona(p, false)
+        this.personas.set(p.id, p)
       );
-
-      // Load from file system or Upstash
-      if (this.useUpstash) {
-        await this.loadPersonasFromUpstash();
-      } else {
-        await this.loadPersonasFromDirectory();
+      
+      // Load personas from Supabase
+      try {
+        const dbPersonas = await supabase.getAllAgentPersonas();
+        if (dbPersonas) {
+          dbPersonas.forEach(dbP => {
+            const personaDef = this.mapSupabaseAgentPersonaToPersonaDefinition(dbP);
+            this.personas.set(personaDef.id, personaDef);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading personas from Supabase during init:', error);
+        // Decide on fallback or error propagation strategy. For now, log and continue with built-ins.
       }
+
+      // Load MicroPersonas from directory (assuming they remain file-based)
+      await this.loadPersonasFromDirectory(); // This now primarily loads micro-personas
 
       this.initialized = true;
       this.initPromise = null;
@@ -454,46 +414,122 @@ export class PersonaManager {
    *
    * @returns Promise that resolves when loading is complete
    */
-  private async loadPersonasFromUpstash(): Promise<void> {
-    try {
-      console.log('Loading personas from Upstash...');
+  // private async loadPersonasFromUpstash(): Promise<void> { // Removed, Supabase handles this.
+  //   // ... existing code ...
+  // }
 
-      // Use streaming service to get all personas
-      const personas = await this.streamingService.getAllPersonas();
-
-      for (const persona of personas) {
-        this.personas.set(persona.id, persona);
-      }
-
-      // Use streaming service to get all micro-personas for each persona
-      for (const persona of personas) {
-        if (
-          persona.compatibleMicroPersonas &&
-          persona.compatibleMicroPersonas.length > 0
-        ) {
-          const microPersonas = await this.streamingService.getAllMicroPersonas(
-            {
-              parentPersonaId: persona.id,
-            }
-          );
-
-          for (const microPersona of microPersonas) {
-            this.microPersonas.set(microPersona.id, microPersona);
-          }
-        }
-      }
-
-      console.log(
-        `Loaded ${this.personas.size} personas and ${this.microPersonas.size} micro-personas from Upstash.`
-      );
-    } catch (error) {
-      console.error('Error loading personas from Upstash:', error);
-
-      // Fall back to file system if Upstash fails
-      console.log('Falling back to file system...');
-      await this.loadPersonasFromDirectory();
+  // Helper method to map SupabaseAgentPersona to PersonaDefinition
+  private mapSupabaseAgentPersonaToPersonaDefinition(dbPersona: SupabaseAgentPersona): PersonaDefinition {
+    // This mapping needs to be robust. Assuming fields align or need transformation.
+    // For example, model_settings and capabilities might need JSON.parse if stored as strings,
+    // or direct assignment if they are already JSONB/objects.
+    // The schema for agent_personas has 'tags' as jsonb, 'model_settings' as jsonb, 'capabilities' as jsonb.
+    // PersonaDefinition has tags?: string[], capabilities?: GeminiCapability[]
+    
+    let capabilitiesArray: GeminiCapability[] | undefined = undefined;
+    if (dbPersona.capabilities && typeof dbPersona.capabilities === 'object') {
+        // Assuming dbPersona.capabilities is an object like { text: true, vision: false }
+        // This needs to be mapped to GeminiCapability[] based on your library's enum/values
+        // For now, a placeholder:
+        capabilitiesArray = Object.entries(dbPersona.capabilities)
+                                .filter(([, value]) => value === true)
+                                .map(([key]) => key.toUpperCase() as GeminiCapability); // This is a simplification
     }
+
+
+    return {
+      id: dbPersona.id,
+      name: dbPersona.name,
+      description: dbPersona.description,
+      systemPromptTemplate: dbPersona.system_prompt_template,
+      modelSettings: typeof dbPersona.model_settings === 'object' ? dbPersona.model_settings : JSON.parse(dbPersona.model_settings || '{}'),
+      capabilities: capabilitiesArray, // Needs proper mapping
+      tags: Array.isArray(dbPersona.tags) ? dbPersona.tags as string[] : (dbPersona.tags ? JSON.parse(dbPersona.tags as string) : undefined),
+      version: dbPersona.version?.toString() || '1', // Ensure version is string
+      isSystemPersona: false, // This field is not in Supabase schema, default or determine
+      examples: [], // This field is not in Supabase schema
+      category: 'general', // This field is not in Supabase schema
+      temperature: (dbPersona.model_settings as any)?.temperature ?? 0.7, // Example, needs actual structure
+      maxOutputTokens: (dbPersona.model_settings as any)?.maxOutputTokens ?? 2048, // Example
+      responseMIMEType: 'text/plain', // This field is not in Supabase schema
+      isEnabled: dbPersona.is_enabled ?? true,
+      createdAt: dbPersona.created_at,
+      lastUpdatedAt: dbPersona.updated_at,
+      // Fields like compatibleMicroPersonas, parentPersonaId are not directly in agent_personas
+      // and would need to be handled if MicroPersonas are also moved to Supabase.
+    } as PersonaDefinition; // Cast needed due to potential mismatches / simplifications
   }
+
+  // Helper method to calculate overall score
+  private calculateOverallScore(currentScore: NewPersonaScore | SupabasePersonaScore, updates?: Partial<SupabasePersonaScore>): number {
+    const data = { ...currentScore, ...updates };
+    const weights = {
+      success_rate: 0.4,
+      user_satisfaction: 0.3,
+      adaptability_score: 0.2,
+      average_latency_ms: 0.1, // Lower latency is better
+    };
+
+    const successRate = parseFloat(data.success_rate || '0.5');
+    const userSatisfaction = parseFloat(data.user_satisfaction || '0.5');
+    const adaptabilityScore = parseFloat(data.adaptability_score || '0.5');
+    // Normalize latency: e.g., 0-5000ms range, higher score for lower latency.
+    // Max score of 1 for 0ms latency, 0 for 5000ms or more.
+    const latencyScore = Math.max(0, 1 - (parseFloat(data.average_latency_ms || '5000') / 5000));
+
+    let overallScore =
+      weights.success_rate * successRate +
+      weights.user_satisfaction * userSatisfaction +
+      weights.adaptability_score * adaptabilityScore +
+      weights.average_latency_ms * latencyScore;
+
+    // Ensure score is between 0 and 1
+    overallScore = Math.max(0, Math.min(1, overallScore));
+    return parseFloat(overallScore.toFixed(4));
+  }
+  
+  // Helper method to map PersonaDefinition to NewAgentPersona for creation
+  private mapPersonaDefinitionToNewAgentPersona(personaDef: PersonaDefinition): NewAgentPersona {
+    // Inverse of the above, ensure all required NewAgentPersona fields are present.
+    // Timestamps (created_at, updated_at) are usually handled by DB.
+    return {
+      id: personaDef.id, // Assuming ID is already generated for new personas before this call
+      name: personaDef.name,
+      description: personaDef.description,
+      system_prompt_template: personaDef.systemPromptTemplate,
+      model_settings: personaDef.modelSettings || {},
+      capabilities: personaDef.capabilities ? personaDef.capabilities.reduce((acc, cap) => ({ ...acc, [cap.toLowerCase()]: true }), {}) : {}, // Example mapping
+      tags: personaDef.tags || [],
+      version: parseInt(personaDef.version || '1', 10),
+      is_enabled: personaDef.isEnabled,
+      // created_at and updated_at will be set by Supabase/Drizzle
+    };
+  }
+  
+  // Helper method to map Partial<PersonaDefinition> to Partial<SupabaseAgentPersona> for updates
+  private mapPartialPersonaDefinitionToPartialAgentPersona(updates: Partial<PersonaDefinition>): Partial<SupabaseAgentPersona> {
+      const mapped: Partial<SupabaseAgentPersona> = { ...updates };
+      if (updates.systemPromptTemplate) {
+        mapped.system_prompt_template = updates.systemPromptTemplate;
+        delete (mapped as any).systemPromptTemplate;
+      }
+      if (updates.modelSettings) {
+        mapped.model_settings = updates.modelSettings;
+        delete (mapped as any).modelSettings;
+      }
+      if (updates.capabilities) {
+        mapped.capabilities = updates.capabilities.reduce((acc, cap) => ({ ...acc, [cap.toLowerCase()]: true }), {});
+         delete (mapped as any).capabilities;
+      }
+      if (updates.version) {
+        mapped.version = parseInt(updates.version, 10);
+      }
+      // Timestamps are handled by Supabase/Drizzle on update
+      delete (mapped as any).createdAt;
+      delete (mapped as any).lastUpdatedAt;
+      return mapped;
+  }
+
 
   private async ensureInitialized(): Promise<void> {
     if (!this.initialized && !this.initPromise) {
@@ -516,20 +552,25 @@ export class PersonaManager {
   ): Promise<PersonaDefinition> {
     await this.ensureInitialized();
 
-    // personaData is assumed to have a valid id due to prior validation or creation processes.
-    // The Zod schema for PersonaDefinition ensures 'id' is a non-empty string.
-    this.personas.set(personaData.id, personaData);
+    this.personas.set(personaData.id, personaData); // Keep in-memory cache consistent
 
     if (saveToStorage) {
-      if (this.useUpstash) {
-        // Save to Upstash
-        await UpstashPersonaStore.savePersona(personaData);
-      } else {
-        // Save to file
-        await this.savePersonaToFile(personaData.id);
+      try {
+        const newAgentPersonaData = this.mapPersonaDefinitionToNewAgentPersona(personaData);
+        // Assuming createAgentPersona handles potential primary key conflicts if id is already set
+        // For now, let's assume createAgentPersona can also update if exists, or we need a separate update path.
+        // For simplicity, let's assume this is for new personas or an upsert-like behavior from Supabase function.
+        const existing = await supabase.getAgentPersonaById(newAgentPersonaData.id!); // Check if exists
+        if (existing) {
+            await supabase.updateAgentPersona(newAgentPersonaData.id!, newAgentPersonaData);
+        } else {
+            await supabase.createAgentPersona(newAgentPersonaData);
+        }
+      } catch (error) {
+        console.error(`Error saving persona ${personaData.id} to Supabase:`, error);
+        throw error; // Re-throw or handle appropriately
       }
     }
-
     return personaData;
   }
 
@@ -546,20 +587,13 @@ export class PersonaManager {
   ): Promise<MicroPersonaDefinition> {
     await this.ensureInitialized();
 
-    // microPersonaData is assumed to have a valid id due to prior validation or creation processes.
-    // The Zod schema for MicroPersonaDefinition ensures 'id' is a non-empty string.
+    // MicroPersonas are assumed to be file-based for now.
     this.microPersonas.set(microPersonaData.id, microPersonaData);
 
     if (saveToStorage) {
-      if (this.useUpstash) {
-        // Save to Upstash
-        await UpstashPersonaStore.saveMicroPersona(microPersonaData);
-      } else {
-        // Save to file
-        await this.saveMicroPersonaToFile(microPersonaData.id);
-      }
+      // Save to file (current MicroPersona logic)
+      await this.saveMicroPersonaToFile(microPersonaData.id);
     }
-
     return microPersonaData;
   }
 
@@ -575,16 +609,18 @@ export class PersonaManager {
     // Check in-memory cache first
     let persona = this.personas.get(id) || null;
 
-    // If not in memory and using Upstash, try to fetch from Upstash
-    if (!persona && this.useUpstash) {
-      persona = await UpstashPersonaStore.loadPersona(id);
-
-      // Cache in memory if found
-      if (persona) {
-        this.personas.set(id, persona);
+    if (!persona) {
+      try {
+        const dbPersona = await supabase.getAgentPersonaById(id);
+        if (dbPersona) {
+          persona = this.mapSupabaseAgentPersonaToPersonaDefinition(dbPersona);
+          this.personas.set(id, persona); // Cache in memory
+        }
+      } catch (error) {
+        console.error(`Error fetching persona ${id} from Supabase:`, error);
+        // Do not throw here, return null as per function signature
       }
     }
-
     return persona;
   }
 
@@ -600,17 +636,13 @@ export class PersonaManager {
     await this.ensureInitialized();
 
     // Check in-memory cache first
+    // MicroPersonas are assumed to be file-based for now.
+    // The logic to fetch from Upstash is removed.
     let microPersona = this.microPersonas.get(id) || null;
-
-    // If not in memory and using Upstash, try to fetch from Upstash
-    if (!microPersona && this.useUpstash) {
-      microPersona = await UpstashPersonaStore.loadMicroPersona(id);
-
-      // Cache in memory if found
-      if (microPersona) {
-        this.microPersonas.set(id, microPersona);
-      }
-    }
+    
+    // If file-based, it should be in memory after init. If not, it doesn't exist.
+    // Optionally, could try to load it from file here if not found in map,
+    // but current `loadPersonasFromDirectory` populates `this.microPersonas`.
 
     return microPersona;
   }
@@ -632,45 +664,42 @@ export class PersonaManager {
       tags?: string[];
       capabilities?: GeminiCapability[];
       limit?: number;
+      category?: string; // Added from schema if needed for filtering
     } = {}
   ): Promise<PersonaDefinition[]> {
     await this.ensureInitialized();
 
-    if (this.useUpstash) {
-      // Use streaming service to get personas with filtering
-      return this.streamingService.getAllPersonas({
-        tags: options.tags,
-        capabilities: options.capabilities,
-        limit: options.limit,
+    // For now, filter from in-memory this.personas which is populated from Supabase + built-ins.
+    // More complex queries might require direct Supabase calls with filters.
+    let personas = Array.from(this.personas.values());
+
+    // Apply filters if provided
+    if (options.tags && options.tags.length > 0) {
+      personas = personas.filter((p) => {
+        if (!p.tags) return false;
+        return options.tags!.some((tag) => p.tags!.includes(tag));
       });
-    } else {
-      // Get from in-memory cache
-      let personas = Array.from(this.personas.values());
-
-      // Apply filters if provided
-      if (options.tags && options.tags.length > 0) {
-        personas = personas.filter((p) => {
-          if (!p.tags) return false;
-          return options.tags!.some((tag) => p.tags!.includes(tag));
-        });
-      }
-
-      if (options.capabilities && options.capabilities.length > 0) {
-        personas = personas.filter((p) => {
-          if (!p.capabilities) return false;
-          return options.capabilities!.some((cap) =>
-            p.capabilities!.includes(cap)
-          );
-        });
-      }
-
-      // Apply limit if provided
-      if (options.limit !== undefined) {
-        personas = personas.slice(0, options.limit);
-      }
-
-      return personas;
     }
+
+    if (options.capabilities && options.capabilities.length > 0) {
+      personas = personas.filter((p) => {
+        if (!p.capabilities) return false;
+        return options.capabilities!.some((cap) =>
+          p.capabilities!.includes(cap)
+        );
+      });
+    }
+    
+    if (options.category) {
+        personas = personas.filter(p => p.category === options.category);
+    }
+
+    // Apply limit if provided
+    if (options.limit !== undefined) {
+      personas = personas.slice(0, options.limit);
+    }
+
+    return personas;
   }
 
   /**
@@ -692,38 +721,23 @@ export class PersonaManager {
     } = {}
   ): Promise<MicroPersonaDefinition[]> {
     await this.ensureInitialized();
+    // MicroPersonas are assumed to be file-based for now.
+    // The logic to fetch from Upstash (via streamingService) is removed.
 
-    if (this.useUpstash) {
-      if (options.parentPersonaId) {
-        // Get micro-personas for a specific parent
-        return this.streamingService.getAllMicroPersonas({
-          parentPersonaId: options.parentPersonaId,
-          limit: options.limit,
-        });
-      } else {
-        // Get all micro-personas using streaming service
-        return this.streamingService.getAllMicroPersonas({
-          limit: options.limit,
-        });
-      }
-    } else {
-      // Get from in-memory cache
-      let microPersonas = Array.from(this.microPersonas.values());
+    let microPersonas = Array.from(this.microPersonas.values());
 
-      // Filter by parent if provided
-      if (options.parentPersonaId) {
-        microPersonas = microPersonas.filter(
-          (mp) => mp.parentPersonaId === options.parentPersonaId
-        );
-      }
-
-      // Apply limit if provided
-      if (options.limit !== undefined) {
-        microPersonas = microPersonas.slice(0, options.limit);
-      }
-
-      return microPersonas;
+    // Filter by parent if provided
+    if (options.parentPersonaId) {
+      microPersonas = microPersonas.filter(
+        (mp) => mp.parentPersonaId === options.parentPersonaId
+      );
     }
+
+    // Apply limit if provided
+    if (options.limit !== undefined) {
+      microPersonas = microPersonas.slice(0, options.limit);
+    }
+    return microPersonas;
   }
 
   public async createPersona(
@@ -766,18 +780,34 @@ export class PersonaManager {
     updates: Partial<Omit<PersonaDefinition, 'id' | 'createdAt'>>
   ): Promise<PersonaDefinition | null> {
     await this.ensureInitialized();
-    const existingPersona = this.personas.get(id);
+    await this.ensureInitialized();
+    const existingPersona = this.personas.get(id); // Get from in-memory cache
     if (!existingPersona) return null;
 
-    const updatedData = {
+    // Apply updates to the in-memory version
+    const updatedInMemoryPersonaData = {
       ...existingPersona,
       ...updates,
       lastUpdatedAt: new Date().toISOString(),
     };
-    const updatedPersona = validatePersonaDefinition(updatedData);
-    this.personas.set(id, updatedPersona);
-    await this.savePersonaToFile(id);
-    return updatedPersona;
+    const updatedPersonaDefinition = validatePersonaDefinition(updatedInMemoryPersonaData);
+    this.personas.set(id, updatedPersonaDefinition);
+
+    // Persist changes to Supabase
+    try {
+      const updatePayload = this.mapPartialPersonaDefinitionToPartialAgentPersona(updates);
+      const result = await supabase.updateAgentPersona(id, updatePayload);
+      if (result) {
+        // Optionally, re-map from Supabase result to ensure consistency, though mapPartial... should be fine
+        return this.mapSupabaseAgentPersonaToPersonaDefinition(result);
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error updating persona ${id} in Supabase:`, error);
+      // Revert in-memory change or handle error appropriately
+      this.personas.set(id, existingPersona); // Revert
+      throw error;
+    }
   }
 
   public async updateMicroPersona(
@@ -787,6 +817,8 @@ export class PersonaManager {
     >
   ): Promise<MicroPersonaDefinition | null> {
     await this.ensureInitialized();
+    await this.ensureInitialized();
+    // MicroPersonas are assumed to be file-based.
     const existingMicro = this.microPersonas.get(id);
     if (!existingMicro) return null;
 
@@ -797,47 +829,52 @@ export class PersonaManager {
     };
     const updatedMicro = validateMicroPersonaDefinition(updatedData);
     this.microPersonas.set(id, updatedMicro);
-    await this.saveMicroPersonaToFile(id);
+    await this.saveMicroPersonaToFile(id); // Save to file
     return updatedMicro;
   }
 
   public async deletePersona(id: string): Promise<boolean> {
     await this.ensureInitialized();
-    if (!this.personas.has(id)) return false;
+    if (!this.personas.has(id)) return false; // Not in memory
 
-    const formats: PersonaFileFormat[] = [
-      PersonaFileFormat.JSON,
-      PersonaFileFormat.YAML,
-      PersonaFileFormat.YML,
-    ];
-    if (this.personas.delete(id)) {
-      for (const format of formats) {
-        const filePath = path.join(this.personasDirectory, `${id}.${format}`);
-        if (await fsExtra.pathExists(filePath)) await fsExtra.remove(filePath);
-      }
+    // Delete from Supabase
+    try {
+      const deleted = await supabase.deleteAgentPersona(id);
+      if (deleted) {
+        this.personas.delete(id); // Remove from in-memory cache
 
-      const microsToDelete = Array.from(this.microPersonas.values()).filter(
-        (mp) => mp.parentPersonaId === id
-      );
-      for (const micro of microsToDelete) {
-        await this.deleteMicroPersona(micro.id);
+        // If MicroPersonas are linked and file-based, handle their deletion if necessary
+        // This part of the logic for deleting linked micro-personas might need to be re-evaluated
+        // if micro-personas are also moved to Supabase.
+        const microsToDelete = Array.from(this.microPersonas.values()).filter(
+          (mp) => mp.parentPersonaId === id
+        );
+        for (const micro of microsToDelete) {
+          await this.deleteMicroPersona(micro.id); // This uses file-based deletion for micros
+        }
+        return true;
       }
-      return true;
+      return false;
+    } catch (error) {
+      console.error(`Error deleting persona ${id} from Supabase:`, error);
+      throw error;
     }
-    return false;
   }
 
   public async deleteMicroPersona(id: string): Promise<boolean> {
     await this.ensureInitialized();
+    await this.ensureInitialized();
+    // MicroPersonas are assumed to be file-based.
     if (!this.microPersonas.has(id)) {
       return false;
     }
 
     const deletedFromMap = this.microPersonas.delete(id);
     if (!deletedFromMap) {
-      return false;
+      return false; // Should not happen if it was in the map
     }
 
+    // Delete file for micro-persona
     const formats: PersonaFileFormat[] = [
       PersonaFileFormat.JSON,
       PersonaFileFormat.YAML,
@@ -854,71 +891,50 @@ export class PersonaManager {
           `Error removing file ${filePath} for micro-persona ${id}:`,
           error
         );
+        // Continue, don't let one file error stop everything
       }
     }
 
-    for (const persona of this.personas.values()) {
+    // Update parent personas (in-memory and potentially Supabase if they were modified)
+    for (const persona of this.personas.values()) { // Iterates over in-memory personas
       if (
+        persona.compatibleMicroPersonas &&
         persona.compatibleMicroPersonas &&
         persona.compatibleMicroPersonas.includes(id)
       ) {
-        persona.compatibleMicroPersonas =
-          persona.compatibleMicroPersonas.filter((mpId) => mpId !== id);
-        persona.lastUpdatedAt = new Date().toISOString();
+        const updatedCompatibleMicroPersonas = persona.compatibleMicroPersonas.filter((mpId) => mpId !== id);
+        const updatedPersonaData = {
+            ...persona,
+            compatibleMicroPersonas: updatedCompatibleMicroPersonas,
+            lastUpdatedAt: new Date().toISOString(),
+        };
+        const validatedUpdatedPersona = validatePersonaDefinition(updatedPersonaData);
+        this.personas.set(persona.id, validatedUpdatedPersona); // Update in-memory
 
+        // Persist this change to Supabase for the parent persona
         try {
-          await this.savePersonaToFile(persona.id);
+          await supabase.updateAgentPersona(persona.id, { compatible_micro_personas: updatedCompatibleMicroPersonas });
         } catch (error) {
           console.error(
-            `Error saving updated persona ${persona.id} after deleting micro-persona ${id}:`,
+            `Error updating parent persona ${persona.id} in Supabase after deleting micro-persona ${id}:`,
             error
           );
+          // Potentially revert in-memory change or handle error
         }
       }
     }
     return true;
   }
 
-  public async savePersonaToFile(
-    personaId: string,
-    format: PersonaFileFormat = PersonaFileFormat.JSON,
-    customFilePath?: string
-  ): Promise<string> {
-    await this.ensureInitialized();
-    const persona = this.personas.get(personaId);
-    if (!persona) throw new Error(`Persona with ID ${personaId} not found.`);
+  // savePersonaToFile is removed as Supabase is the source of truth for PersonaDefinitions.
+  // public async savePersonaToFile(...) {}
 
-    const effectiveFormat = format;
-
-    let content: string;
-    if (effectiveFormat === PersonaFileFormat.JSON) {
-      content = JSON.stringify(persona, null, 2);
-    } else {
-      content = yaml.dump(persona);
-    }
-
-    let finalFilePath: string;
-    if (customFilePath) {
-      finalFilePath = customFilePath;
-      const dir = path.dirname(finalFilePath);
-      await fsExtra.ensureDir(dir);
-    } else {
-      const fileName = `${personaId}.${effectiveFormat}`;
-      finalFilePath = path.join(this.personasDirectory, fileName);
-    }
-
-    await fsExtra.writeFile(finalFilePath, content);
-    console.log(
-      `Saved persona ${personaId} to ${finalFilePath} (format: ${effectiveFormat})`
-    );
-    return finalFilePath;
-  }
-
+  // saveMicroPersonaToFile remains if MicroPersonas are file-based.
   public async saveMicroPersonaToFile(
     microPersonaId: string,
     format: PersonaFileFormat = PersonaFileFormat.JSON
   ): Promise<string> {
-    await this.ensureInitialized();
+    await this.ensureInitialized(); // Ensures microPersonas map is loaded
     const microPersona = this.microPersonas.get(microPersonaId);
     if (!microPersona)
       throw new Error(`Micro-persona with ID ${microPersonaId} not found.`);
@@ -1015,12 +1031,7 @@ export class PersonaManager {
   } | null> {
     await this.ensureInitialized();
 
-    // Initialize score manager if available
-    if (personaScoreManager) {
-      await personaScoreManager.init();
-    }
-
-    // Get all personas as candidates
+    // Get all personas as candidates from the in-memory map (already initialized from Supabase)
     let candidatePersonas = Array.from(this.personas.values());
 
     // Filter by required capabilities
@@ -1048,23 +1059,18 @@ export class PersonaManager {
     if (candidatePersonas.length === 0) return null;
 
     // Get scores for all candidates
-    const scoreResults: (PersonaScore | null)[] = await Promise.all(
-      candidatePersonas.map(async (p) => {
-        if (this.useUpstash) {
-          return await UpstashPersonaScore.loadPersonaScore(p.id);
-        } else if (personaScoreManager) {
-          return (await personaScoreManager.getScore(
-            p.id
-          )) as PersonaScore | null;
-        }
-        return null;
-      })
+    const scoreResults: (SupabasePersonaScore | null)[] = await Promise.all(
+      candidatePersonas.map(p => supabase.getPersonaScoreByPersonaId(p.id).catch(err => {
+          console.warn(`Failed to get score for persona ${p.id}:`, err);
+          return null; // Return null if score fetching fails for a persona
+        })
+      )
     );
 
     let bestMatch: {
       persona: PersonaDefinition;
       microPersona?: MicroPersonaDefinition;
-      scoreData?: PersonaScore | null;
+      scoreData?: SupabasePersonaScore | null;
       composedPersona: PersonaDefinition;
       matchReason: string;
       score: number;
@@ -1075,40 +1081,27 @@ export class PersonaManager {
     // Find the best match
     for (let i = 0; i < candidatePersonas.length; i++) {
       const p = candidatePersonas[i];
-      const currentPersonaScore = scoreResults[i];
-      let currentOverallScore = currentPersonaScore?.overall_score ?? 0.5;
+      const currentPersonaScore = scoreResults[i]; // This is now SupabasePersonaScore | null
+      let currentOverallScore = currentPersonaScore?.overall_score ?? 0.5; // Ensure field name matches Supabase schema
       let matchReason = 'Highest overall score';
 
-      // Find the best micro-persona for this persona
+      // Find the best micro-persona for this persona (MicroPersonas still from memory/file)
       let bestMicroPersona: MicroPersonaDefinition | undefined = undefined;
       let bestMicroScore = -1;
 
       if (p.compatibleMicroPersonas && p.compatibleMicroPersonas.length > 0) {
         for (const microId of p.compatibleMicroPersonas) {
-          let micro: MicroPersonaDefinition | null = null;
-
-          if (this.useUpstash) {
-            micro = await UpstashPersonaStore.loadMicroPersona(microId);
-          } else {
-            micro = this.microPersonas.get(microId) || null;
-          }
+          const micro = this.microPersonas.get(microId) || null; // From memory
 
           if (micro) {
-            let microScoreData: PersonaScore | null = null;
+            // If MicroPersonas also have scores in Supabase, fetch them.
+            // For now, assume micro-persona scores are not separately tracked in Supabase, or use a default score.
+            // const microScoreData = await supabase.getPersonaScoreByPersonaId(micro.id).catch(() => null);
+            // const microOverallScore = microScoreData ? parseFloat(microScoreData.overall_score ?? "0.5") : 0.5;
+            const microOverallScore = 0.5; // Placeholder: Default score for micro-personas if not individually scored
 
-            if (this.useUpstash) {
-              microScoreData = await UpstashPersonaScore.loadPersonaScore(
-                micro.id
-              );
-            } else if (personaScoreManager) {
-              microScoreData = (await personaScoreManager.getScore(
-                micro.id
-              )) as PersonaScore | null;
-            }
-
-            const microOverallScore = microScoreData?.overall_score ?? 0.5;
             if (microOverallScore > bestMicroScore) {
-              bestMicroScore = microOverallScore;
+              bestMicroScore = microOverallScore; // This is a numeric comparison
               bestMicroPersona = micro;
               matchReason = 'Best persona and micro-persona combination';
             }
@@ -1137,7 +1130,6 @@ export class PersonaManager {
         };
       }
     }
-
     return bestMatch;
   }
 

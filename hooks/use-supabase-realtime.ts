@@ -275,35 +275,22 @@ export function useSupabaseRealtime<
   // Initialize canonical Supabase or Upstash client
   const initSupabase = useCallback(() => {
     if (!supabaseRef.current) {
-      if (shouldUseUpstash) {
-        // Use canonical Upstash adapter factory
-        try {
-          supabaseRef.current = createCanonicalSupabaseClient();
-        } catch (e) {
-          throw new Error(
-            'Failed to initialize Upstash adapter: ' +
-              (e instanceof Error ? e.message : String(e))
-          );
-        }
-        // Upstash adapter does not support realtime subscriptions
-        throw new Error(
-          'Realtime subscriptions are not supported with the Upstash adapter'
-        );
-      } else {
-        // Use canonical Supabase client factory (replace with your actual Supabase client)
-        // You may want to inject your Supabase client here instead of creating a new one every time
-        // Example:
+      // Always use direct Supabase client for realtime
+      try {
         supabaseRef.current = createSupabaseJsClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
+      } catch (e) {
+        // Propagate error if client creation fails
         throw new Error(
-          'Supabase client factory not implemented. Please provide canonical client.'
+          'Failed to initialize Supabase client for realtime: ' +
+            (e instanceof Error ? e.message : String(e))
         );
       }
     }
     return supabaseRef.current;
-  }, [shouldUseUpstash]);
+  }, []);
 
   const validateData = useCallback(
     (data: z.infer<T>) => {
