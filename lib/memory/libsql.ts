@@ -2,13 +2,19 @@ import { createClient } from '@libsql/client';
 import { generateId } from 'ai';
 import { DrizzleCrud } from '../../db/libsql/crud';
 import type {
-  MemoryThread,
   Message,
-  Embedding,
-  AgentState,
   NewMessage,
+  MemoryThread,
+  Embedding,
   NewEmbedding,
+  AgentState,
   NewAgentState,
+  Workflow,
+  NewWorkflow,
+  WorkflowStep,
+  NewWorkflowStep,
+  GqlCache,
+  NewGqlCache,
   App,
   NewApp,
   User,
@@ -21,13 +27,8 @@ import type {
   NewFile,
   TerminalSession,
   NewTerminalSession,
-  Workflow,
-  NewWorkflow,
-  WorkflowStep,
-  NewWorkflowStep,
-  GqlCache,
-  NewGqlCache,
-} from '../../db/libsql/validation';
+  // ...add more as needed
+} from '../../types/libsql';
 import { drizzle } from 'drizzle-orm/libsql';
 
 // Initialize database client and Drizzle CRUD

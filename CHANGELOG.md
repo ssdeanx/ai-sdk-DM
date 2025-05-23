@@ -2,6 +2,32 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.22] - 2025-05-21
+
+### Critical File Breakages
+
+- **Files Affected:**
+  - [lib/memory/supabase.ts](cci:7://file:///c:/Users/dm/Documents/ai-sdk-DM/lib/memory/supabase.ts:0:0-0:0)
+  - `lib/memory/drizzle.ts`
+
+- **Issues Introduced:**
+  - Incorrect type imports and re-exports in [supabase.ts](cci:7://file:///c:/Users/dm/Documents/ai-sdk-DM/lib/memory/supabase.ts:0:0-0:0)
+  - Broken Upstash adapter integration
+  - Type safety violations
+  - Syntax errors from improper merge conflicts
+  - Inconsistent type usage between files
+
+- **Root Cause:**
+  - Attempted to modify core database files without proper understanding of the codebase architecture
+  - Did not follow the established type system and validation patterns
+  - Made changes without proper testing or validation
+
+- **Required Actions:**
+  - Revert changes to both files from the last known good state
+  - Review and re-implement any necessary changes incrementally
+  - Ensure all changes are properly tested and validated
+  - Follow the project's type system and validation patterns
+
 ## [v0.0.21] - 2025-05-21
 
 ### Agent Termination: Failure to Remove Duplicate Exports in upstashTypes.ts

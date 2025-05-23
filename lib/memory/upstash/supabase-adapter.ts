@@ -37,6 +37,45 @@ import {
 } from '../../../types/upstashTypes';
 import type { Database } from '@/types/supabase';
 
+// Canonical types and schemas for Supabase
+import type {
+  User,
+  NewUser,
+  App,
+  NewApp,
+  AppCodeBlock,
+  NewAppCodeBlock,
+  Integration,
+  NewIntegration,
+  File,
+  NewFile,
+  TerminalSession,
+  NewTerminalSession,
+  Workflow,
+  NewWorkflow,
+  Model,
+  NewModel,
+  Provider,
+  NewProvider,
+  AgentPersona,
+  NewAgentPersona,
+  Agent,
+  NewAgent,
+  Tool,
+  NewTool,
+  WorkflowStep,
+  NewWorkflowStep,
+  AgentTool,
+  NewAgentTool,
+  Setting,
+  NewSetting,
+  BlogPost,
+  NewBlogPost,
+  MdxDocument,
+  NewMdxDocument,
+  // ...add more as needed
+} from '../../../types/supabase';
+
 export type TableName = keyof Database['public']['Tables'];
 export type TableRow<T extends TableName = TableName> =
   Database['public']['Tables'][T]['Row'];
