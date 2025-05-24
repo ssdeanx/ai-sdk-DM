@@ -705,6 +705,219 @@ This document outlines the Model Context Protocol (MCP) servers and associated t
 
 ---
 
+## 11. Cloudflare Workers Bindings MCP Server (`cloudflare-bindings`)
+
+- **Identifier/Client Variable (Typical):** `cloudflareBindingsClient` (Go), `cloudflare_bindings_client` (Python)
+- **Purpose:** Provides comprehensive MCP interface for managing Cloudflare Workers Platform resources, including accounts, KV namespaces, R2 buckets, D1 databases, Workers, and Hyperdrive configurations. Features built-in Cloudflare OAuth for secure access.
+- **Key Exposed Tools:**
+
+  **Account Management:**
+  - **`accounts_list`**
+    - **Description:** List all accounts in your Cloudflare account.
+    - **Parameters:** None
+    - **Returns:** `list[object]` - Array of account objects with id, name, and other metadata.
+  
+  - **`set_active_account`**
+    - **Description:** Set active account to be used for tool calls that require accountId.
+    - **Parameters:**
+      - `accountId: string` (Required) - The Cloudflare account ID to set as active.
+    - **Returns:** `object` - Confirmation of active account setting.
+
+  **KV Namespaces:**
+  - **`kv_namespaces_list`**
+    - **Description:** List all KV namespaces in your Cloudflare account.
+    - **Parameters:** None (uses active account)
+    - **Returns:** `list[object]` - Array of KV namespace objects.
+  
+  - **`kv_namespace_create`**
+    - **Description:** Create a new KV namespace in your Cloudflare account.
+    - **Parameters:**
+      - `title: string` (Required) - The title/name for the new KV namespace.
+    - **Returns:** `object` - Created KV namespace details including id and title.
+  
+  - **`kv_namespace_delete`**
+    - **Description:** Delete a KV namespace in your Cloudflare account.
+    - **Parameters:**
+      - `namespaceId: string` (Required) - The ID of the KV namespace to delete.
+    - **Returns:** `object` - Deletion confirmation.
+  
+  - **`kv_namespace_get`**
+    - **Description:** Get details of a KV namespace in your Cloudflare account.
+    - **Parameters:**
+      - `namespaceId: string` (Required) - The ID of the KV namespace to retrieve.
+    - **Returns:** `object` - KV namespace details.
+  
+  - **`kv_namespace_update`**
+    - **Description:** Update the title of a KV namespace in your Cloudflare account.
+    - **Parameters:**
+      - `namespaceId: string` (Required) - The ID of the KV namespace to update.
+      - `title: string` (Required) - The new title for the KV namespace.
+    - **Returns:** `object` - Updated KV namespace details.
+
+  **Workers:**
+  - **`workers_list`**
+    - **Description:** List all Workers in your Cloudflare account.
+    - **Parameters:** None (uses active account)
+    - **Returns:** `list[object]` - Array of Worker objects with script names and metadata.
+  
+  - **`workers_get_worker`**
+    - **Description:** Get the details of a Cloudflare Worker.
+    - **Parameters:**
+      - `scriptName: string` (Required) - The name of the Worker script.
+    - **Returns:** `object` - Worker details including metadata and configuration.
+  
+  - **`workers_get_worker_code`**
+    - **Description:** Get the source code of a Cloudflare Worker.
+    - **Parameters:**
+      - `scriptName: string` (Required) - The name of the Worker script.
+    - **Returns:** `object` - Worker source code and related files.
+
+  **R2 Buckets:**
+  - **`r2_buckets_list`**
+    - **Description:** List R2 buckets in your Cloudflare account.
+    - **Parameters:** None (uses active account)
+    - **Returns:** `list[object]` - Array of R2 bucket objects.
+  
+  - **`r2_bucket_create`**
+    - **Description:** Create a new R2 bucket in your Cloudflare account.
+    - **Parameters:**
+      - `name: string` (Required) - The name for the new R2 bucket.
+      - `locationHint: string` (Optional) - Location hint for bucket placement.
+    - **Returns:** `object` - Created R2 bucket details.
+  
+  - **`r2_bucket_get`**
+    - **Description:** Get details about a specific R2 bucket.
+    - **Parameters:**
+      - `bucketName: string` (Required) - The name of the R2 bucket.
+    - **Returns:** `object` - R2 bucket details and metadata.
+  
+  - **`r2_bucket_delete`**
+    - **Description:** Delete an R2 bucket.
+    - **Parameters:**
+      - `bucketName: string` (Required) - The name of the R2 bucket to delete.
+    - **Returns:** `object` - Deletion confirmation.
+
+  **D1 Databases:**
+  - **`d1_databases_list`**
+    - **Description:** List all D1 databases in your Cloudflare account.
+    - **Parameters:** None (uses active account)
+    - **Returns:** `list[object]` - Array of D1 database objects.
+  
+  - **`d1_database_create`**
+    - **Description:** Create a new D1 database in your Cloudflare account.
+    - **Parameters:**
+      - `name: string` (Required) - The name for the new D1 database.
+      - `locationHint: string` (Optional) - Location hint for database placement.
+    - **Returns:** `object` - Created D1 database details including database_id.
+  
+  - **`d1_database_delete`**
+    - **Description:** Delete a D1 database in your Cloudflare account.
+    - **Parameters:**
+      - `databaseId: string` (Required) - The ID of the D1 database to delete.
+    - **Returns:** `object` - Deletion confirmation.
+  
+  - **`d1_database_get`**
+    - **Description:** Get a D1 database in your Cloudflare account.
+    - **Parameters:**
+      - `databaseId: string` (Required) - The ID of the D1 database to retrieve.
+    - **Returns:** `object` - D1 database details and metadata.
+  
+  - **`d1_database_query`**
+    - **Description:** Query a D1 database in your Cloudflare account.
+    - **Parameters:**
+      - `databaseId: string` (Required) - The ID of the D1 database to query.
+      - `sql: string` (Required) - The SQL query to execute.
+      - `params: list` (Optional) - Parameters for prepared statements.
+    - **Returns:** `object` - Query results including rows, metadata, and execution details.
+
+  **Hyperdrive:**
+  - **`hyperdrive_configs_list`**
+    - **Description:** List Hyperdrive configurations in your Cloudflare account.
+    - **Parameters:** None (uses active account)
+    - **Returns:** `list[object]` - Array of Hyperdrive configuration objects.
+  
+  - **`hyperdrive_config_create`**
+    - **Description:** Create a new Hyperdrive configuration in your Cloudflare account.
+    - **Parameters:**
+      - `name: string` (Required) - The name for the new Hyperdrive configuration.
+      - `origin: object` (Required) - Origin database configuration including host, port, database, user.
+      - `caching: object` (Optional) - Caching configuration settings.
+    - **Returns:** `object` - Created Hyperdrive configuration details.
+  
+  - **`hyperdrive_config_delete`**
+    - **Description:** Delete a Hyperdrive configuration in your Cloudflare account.
+    - **Parameters:**
+      - `hyperdriveId: string` (Required) - The ID of the Hyperdrive configuration to delete.
+    - **Returns:** `object` - Deletion confirmation.
+  
+  - **`hyperdrive_config_get`**
+    - **Description:** Get details of a specific Hyperdrive configuration in your Cloudflare account.
+    - **Parameters:**
+      - `hyperdriveId: string` (Required) - The ID of the Hyperdrive configuration to retrieve.
+    - **Returns:** `object` - Hyperdrive configuration details including origin and caching settings.
+  
+  - **`hyperdrive_config_edit`**
+    - **Description:** Edit (patch) a Hyperdrive configuration in your Cloudflare account.
+    - **Parameters:**
+      - `hyperdriveId: string` (Required) - The ID of the Hyperdrive configuration to edit.
+      - `name: string` (Optional) - New name for the configuration.
+      - `origin: object` (Optional) - Updated origin database configuration.
+      - `caching: object` (Optional) - Updated caching configuration.
+    - **Returns:** `object` - Updated Hyperdrive configuration details.
+
+---
+
+## 12. Cloudflare Documentation MCP Server (`cloudflare`)
+
+- **Identifier/Client Variable (Typical):** `cloudflareDocsClient` (Go), `cloudflare_docs_client` (Python)
+- **Purpose:** Provides MCP interface to search Cloudflare documentation using Vectorize DB. The documentation is pre-indexed and available for semantic search queries.
+- **Key Exposed Tools:**
+
+  - **`search_cloudflare_documentation`**
+    - **Description:** Search the Cloudflare documentation using semantic search via Vectorize DB.
+    - **Parameters:**
+      - `query: string` (Required) - The search query for finding relevant documentation.
+      - `limit: int` (Optional, default: 5) - Maximum number of documentation results to return.
+      - `similarity_threshold: float` (Optional, default: 0.7) - Minimum similarity score for results.
+    - **Returns:** `list[object]` - Array of documentation search results with content, metadata, and relevance scores.
+
+---
+
+## 13. Cloudflare Workers Builds MCP Server (`cloudflare-builds`)
+
+- **Identifier/Client Variable (Typical):** `cloudflareBuildsClient` (Go), `cloudflare_builds_client` (Python)
+- **Purpose:** Provides MCP interface for managing and monitoring Cloudflare Workers builds, including build history, logs, and deployment tracking.
+- **Key Exposed Tools:**
+
+  - **`workers_builds_set_active_worker`**
+    - **Description:** Sets the active Worker ID for subsequent calls.
+    - **Parameters:**
+      - `workerId: string` (Required) - The Worker ID to set as active for build operations.
+    - **Returns:** `object` - Confirmation of active Worker setting.
+  
+  - **`workers_builds_list_builds`**
+    - **Description:** Lists builds for a Cloudflare Worker.
+    - **Parameters:**
+      - `workerId: string` (Optional) - Worker ID (uses active worker if not provided).
+      - `limit: int` (Optional, default: 10) - Maximum number of builds to return.
+      - `offset: int` (Optional, default: 0) - Offset for pagination.
+    - **Returns:** `list[object]` - Array of build objects with timestamps, status, and metadata.
+  
+  - **`workers_builds_get_build`**
+    - **Description:** Retrieves details for a specific build by its UUID, including build and deploy commands.
+    - **Parameters:**
+      - `buildId: string` (Required) - The UUID of the build to retrieve.
+    - **Returns:** `object` - Detailed build information including commands, status, timestamps, and configuration.
+  
+  - **`workers_builds_get_build_logs`**
+    - **Description:** Fetches the logs for a Cloudflare Workers build by its UUID.
+    - **Parameters:**
+      - `buildId: string` (Required) - The UUID of the build to get logs for.
+      - `logType: string` (Optional) - Type of logs to retrieve ('build', 'deploy', 'all').
+    - **Returns:** `object` - Build logs with timestamps, log levels, and detailed output.
+
+---
+
 # Appendix: Desktop Commander (Winterm) Tool Summary & Usage Reference
 
 ```bash
@@ -728,7 +941,7 @@ Filesystem	read_file	Read contents from local filesystem or URLs with line-based
 read_multiple_files	Read multiple files simultaneously
 write_file	Write file contents with options for rewrite or append mode (uses configurable line limits)
 create_directory	Create a new directory or ensure it exists
-list_directory	Get detailed listing of files and directories
+list_directory	Get a detailed listing of files and directories
 move_file	Move or rename files and directories
 search_files	Find files by name using case-insensitive substring matching
 search_code	Search for text/code patterns within file contents using ripgrep
