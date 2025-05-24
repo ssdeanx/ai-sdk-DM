@@ -59,3 +59,13 @@ dependencies.svg
 scripts/create-admin-user.js
 CF-work.txt
 README_TYPES.md
+drizzle.d1.config.ts
+wrangler.toml
+wrangler.toml
+scripts/test-d1-client.ts
+workers/wrangler.jsonc
+workers/worker-configuration.d.ts
+workers/vitest.config.mts
+workers/test/env.d.ts
+scripts/setup-cloudflare.sh
+c.txt

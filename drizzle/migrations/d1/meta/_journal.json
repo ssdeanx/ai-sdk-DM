@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1748093552216,
+      "tag": "20250524133232_polite_riptide",
+      "breakpoints": true
+    }
+  ]
+}

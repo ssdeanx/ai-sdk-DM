@@ -32,11 +32,22 @@ This stage replaces Supabase Auth with NextAuth.js, using D1 for its database ne
 
 * **Objective:** Implement NextAuth.js to manage user identity, sessions, and accounts, persisting this data into Cloudflare D1.
 * **Key Steps & Considerations:**
-    1. **Installation:**
+    1. **Installation:** Complete, but havnt ran any wranglr commans
 
         ```bash
         pnpm install next-auth @next-auth/drizzle-adapter drizzle-orm @cloudflare/workers-types
-        # Ensure drizzle-kit is also a dev dependency for migrations\
+        # Ensure drizzle-kit is also a dev dependency for migrations
+        pnpm add -D wrangler
+        hono@^4.7.10
+        @hono/node-server@^1.14.2
+        @hono/zod-validator@^0.5.0
+        orval@^7.9.0
+        pg-cloudflare@^1.2.5
+        cloudflare@^4.3.0
+        jose@^6.0.11
+        @cloudflare/redux-fields@^2.5.6
+            react-turnstile@^1.1.4
+          @cloudflare/stream-react@^1.9.3
         ```
 
     2. **D1 Schema for NextAuth.js:** Define the necessary tables (`users`, `accounts`, `sessions`, `verificationTokens`) in your D1 Drizzle schema at `lib/database/cloudflare/d1/schema.ts`. These tables are standard for NextAuth.js adapters and will replace Supabase's `auth.users` and related auth tables.

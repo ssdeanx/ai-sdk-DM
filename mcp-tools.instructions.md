@@ -5,6 +5,22 @@ mode: 'agent'
 
 # Project MCP (Model Context Protocol) Tools & Servers Guide
 
+> **Note on Branch Thinking & Planning Tools:**
+>
+> The `branch-thinking` and `branch-planning` tools are designed to work together:
+> - Use `branch-thinking` to generate, evolve, and analyze thoughts, hypotheses, and reasoning about a problem or project. This is ideal for brainstorming, breaking down complex issues, and exploring alternative solutions.
+> - Use `branch-planning` to extract actionable tasks from those thoughts, turning analysis into concrete project plans and next steps. This enables you to move seamlessly from high-level reasoning to implementation.
+>
+> **How to use them together:**
+> 1. Start by capturing your ideas, questions, and analysis in `branch-thinking`—each thought is stored and can be revised or branched.
+> 2. When ready to act, run `branch-planning` to automatically extract tasks from your thought branches, creating a structured plan.
+> 3. This workflow supports iterative refinement: as you add or revise thoughts, you can re-extract and update your plan.
+>
+> **Data Storage:**
+> - Both tools use a cache and database with a 1-day retention period for thoughts, branches, and plans. This means your work is available for a day, supporting short-term iterative workflows and collaboration, but is not intended for long-term archival.
+>
+> This enables a seamless transition from high-level reasoning to actionable implementation, supporting both agentic and human workflows.
+
 This document outlines the Model Context Protocol (MCP) servers and associated tools/libraries used in this project, based on information provided by the project owner. GitHub Copilot should refer to this guide as the primary source of truth when generating code that interacts with these services.
 
 ## Guiding Principles for MCP Usage
@@ -40,9 +56,9 @@ This document outlines the Model Context Protocol (MCP) servers and associated t
 
 ---
 
-## 2. Sequential Thinking MCP Server (`server-sequential-thinking`)
+## 2. Branch Thinking MCP Server (`branch-thinking`)
 
-- **Identifier/Client Variable (Typical):** `sequentialThinkClient` (Go), `sequential_think_client` (Python)
+- **Identifier/Client Variable (Typical):** `branchThinkingClient` (Go), `branch_thinking_client` (Python)
 - **Purpose:** A detailed tool for dynamic and reflective problem-solving, planning, and analysis through an evolving sequence of thoughts. It allows an AI to break down complex problems, revise its understanding, explore branches, and iteratively develop a solution hypothesis, verifying it until a satisfactory answer is reached.
 - **When to Use This Tool (Guiding Copilot):**
   - When breaking down complex problems into a sequence of manageable steps.
@@ -62,7 +78,7 @@ This document outlines the Model Context Protocol (MCP) servers and associated t
 - **Key Exposed Tool(s):**
   _(Assuming a primary tool named `process_thought_step` based on discussion - Project Owner to confirm/correct actual tool name(s) and precise return structure.)_
   - **`process_thought_step`** (Assumed primary tool name)
-    - **Description:** Submits a single thought in an ongoing sequential thinking process and receives guidance or results for the next step. This is the core interaction point for evolving the thought sequence.
+    - **Description:** Submits a single thought in an ongoing branch thinking process and receives guidance or results for the next step. This is the core interaction point for evolving the thought sequence.
     - **Parameters:**
       - `thought: string` (Required) - The current thinking step. This can be an analytical step, a revision, a question, a hypothesis, a verification step, or a realization.
       - `thought_number: int` (Required) - The current number in the sequence (1-indexed, can go beyond initial `total_thoughts`).
@@ -554,3 +570,322 @@ This document outlines the Model Context Protocol (MCP) servers and associated t
       )
 
 ---
+
+## 10. Desktop Commander (Winterm) MCP Server
+
+- **Identifier/Client Variable (Typical):** `desktopCommanderClient` (Go), `desktop_commander_client` (Python)
+- **Purpose:** Provides a comprehensive set of tools for interacting with the local file system, terminal, and VS Code environment. This includes reading/writing files, executing shell commands, managing directories, and more. All file/terminal operations for the agent should use these tools when possible.
+- **Key Exposed Tools:**
+
+  - **`get_config`**
+    - **Description:** Get the complete server configuration as JSON. Includes fields for blocked commands, default shell, allowed directories, file read/write limits, and telemetry settings.
+    - **Parameters:** None
+    - **Returns:** `object` - Full config object.
+
+  - **`set_config_value`**
+    - **Description:** Set a specific configuration value by key. Should be used in a separate chat from file operations and command execution to prevent security issues.
+    - **Parameters:**
+      - `key: string` (Required)
+      - `value: any` (Required)
+    - **Returns:** `object` - Updated config object.
+
+  - **`read_file`**
+    - **Description:** Read the contents of a file from the file system or a URL with optional offset and length parameters. Prefer this over shell commands for viewing files. Supports partial file reading and image types.
+    - **Parameters:**
+      - `path: string` (Required)
+      - `isUrl: boolean` (Optional)
+      - `offset: int` (Optional)
+      - `length: int` (Optional)
+    - **Returns:** `object` - File content or image.
+
+  - **`read_multiple_files`**
+    - **Description:** Read the contents of multiple files simultaneously. Handles text and image files. Failed reads for individual files won't stop the entire operation.
+    - **Parameters:**
+      - `paths: string[]` (Required)
+    - **Returns:** `object[]` - Array of file contents.
+
+  - **`write_file`**
+    - **Description:** Write or append to file contents with a configurable line limit per call (default: 50 lines). For large files, must be written in chunks. Only works within allowed directories.
+    - **Parameters:**
+      - `path: string` (Required)
+      - `content: string` (Required)
+      - `mode: 'rewrite' | 'append'` (Optional)
+    - **Returns:** `object` - Write result.
+
+  - **`create_directory`**
+    - **Description:** Create a new directory or ensure a directory exists. Can create multiple nested directories in one operation.
+    - **Parameters:**
+      - `path: string` (Required)
+    - **Returns:** `object` - Directory creation result.
+
+  - **`list_directory`**
+    - **Description:** Get a detailed listing of all files and directories in a specified path. Results distinguish between files and directories.
+    - **Parameters:**
+      - `path: string` (Required)
+    - **Returns:** `object[]` - Directory listing.
+
+  - **`move_file`**
+    - **Description:** Move or rename files and directories. Can move files between directories and rename them in a single operation.
+    - **Parameters:**
+      - `source: string` (Required)
+      - `destination: string` (Required)
+    - **Returns:** `object` - Move result.
+
+  - **`search_files`**
+    - **Description:** Finds files by name using a case-insensitive substring matching. Searches through all subdirectories from the starting path.
+    - **Parameters:**
+      - `path: string` (Required)
+      - `pattern: string` (Required)
+      - `timeoutMs: int` (Optional)
+    - **Returns:** `object[]` - Array of matching files.
+
+  - **`search_code`**
+    - **Description:** Search for text/code patterns within file contents using ripgrep. Fast and powerful search similar to VS Code search functionality.
+    - **Parameters:**
+      - `path: string` (Required)
+      - `pattern: string` (Required)
+      - `filePattern: string` (Optional)
+      - `ignoreCase: boolean` (Optional)
+      - `maxResults: int` (Optional)
+      - `includeHidden: boolean` (Optional)
+      - `contextLines: int` (Optional)
+      - `timeoutMs: int` (Optional)
+    - **Returns:** `object[]` - Array of code search results.
+
+  - **`get_file_info`**
+    - **Description:** Retrieve detailed metadata about a file or directory including size, creation time, last modified time, permissions, and type.
+    - **Parameters:**
+      - `path: string` (Required)
+    - **Returns:** `object` - File/directory metadata.
+
+  - **`edit_block`**
+    - **Description:** Apply surgical text replacements to files. Make multiple small, focused edits rather than one large edit. Each call should change only what needs to be changed.
+    - **Parameters:**
+      - `file_path: string` (Required)
+      - `old_string: string` (Required)
+      - `new_string: string` (Required)
+      - `expected_replacements: int` (Optional)
+    - **Returns:** `object` - Edit result.
+
+  - **`execute_command`**
+    - **Description:** Execute a terminal command with timeout. Command will continue running in background if it doesn't complete within timeout.
+    - **Parameters:**
+      - `command: string` (Required)
+      - `timeout_ms: int` (Optional)
+      - `shell: string` (Optional)
+    - **Returns:** `object` - Command execution result.
+
+  - **`read_output`**
+    - **Description:** Read new output from a running terminal session.
+    - **Parameters:**
+      - `pid: int` (Required)
+    - **Returns:** `object` - Output result.
+
+  - **`force_terminate`**
+    - **Description:** Force terminate a running terminal session.
+    - **Parameters:**
+      - `pid: int` (Required)
+    - **Returns:** `object` - Termination result.
+
+  - **`list_sessions`**
+    - **Description:** List all active terminal sessions.
+    - **Parameters:** None
+    - **Returns:** `object[]` - Array of session info.
+
+  - **`list_processes`**
+    - **Description:** List all running processes. Returns process information including PID, command name, CPU usage, and memory usage.
+    - **Parameters:** None
+    - **Returns:** `object[]` - Array of process info.
+
+  - **`kill_process`**
+    - **Description:** Terminate a running process by PID. Use with caution as this will forcefully terminate the specified process.
+    - **Parameters:**
+      - `pid: int` (Required)
+    - **Returns:** `object` - Kill result.
+
+---
+
+# Appendix: Desktop Commander (Winterm) Tool Summary & Usage Reference
+
+```bash
+Available Tools
+Category	Tool	Description
+Configuration	get_config	Get the complete server configuration as JSON (includes blockedCommands, defaultShell, allowedDirectories, fileReadLineLimit, fileWriteLineLimit, telemetryEnabled)
+set_config_value	Set a specific configuration value by key. Available settings:
+• blockedCommands: Array of shell commands that cannot be executed
+• defaultShell: Shell to use for commands (e.g., bash, zsh, powershell)
+• allowedDirectories: Array of filesystem paths the server can access for file operations (⚠️ terminal commands can still access files outside these directories)
+• fileReadLineLimit: Maximum lines to read at once (default: 1000)
+• fileWriteLineLimit: Maximum lines to write at once (default: 50)
+• telemetryEnabled: Enable/disable telemetry (boolean)
+Terminal	execute_command	Execute a terminal command with configurable timeout and shell selection
+read_output	Read new output from a running terminal session
+force_terminate	Force terminate a running terminal session
+list_sessions	List all active terminal sessions
+list_processes	List all running processes with detailed information
+kill_process	Terminate a running process by PID
+Filesystem	read_file	Read contents from local filesystem or URLs with line-based pagination (supports offset and length parameters)
+read_multiple_files	Read multiple files simultaneously
+write_file	Write file contents with options for rewrite or append mode (uses configurable line limits)
+create_directory	Create a new directory or ensure it exists
+list_directory	Get detailed listing of files and directories
+move_file	Move or rename files and directories
+search_files	Find files by name using case-insensitive substring matching
+search_code	Search for text/code patterns within file contents using ripgrep
+get_file_info	Retrieve detailed metadata about a file or directory
+Text Editing	edit_block	Apply targeted text replacements with enhanced prompting for smaller edits (includes character-level diff feedback)
+```
+
+## Tool Usage Examples
+
+**Search/Replace Block Format:**
+
+filepath.ext
+<<<<<<< SEARCH
+content to find
+=======
+new content
+>>>>>>> REPLACE
+
+**Example:**
+
+src/main.js
+<<<<<<< SEARCH
+console.log("old message");
+=======
+console.log("new message");
+>>>>>>> REPLACE
+
+## Enhanced Edit Block Features
+
+The edit_block tool includes several enhancements for better reliability:
+
+- **Improved Prompting:** Tool descriptions now emphasize making multiple small, focused edits rather than one large change
+- **Fuzzy Search Fallback:** When exact matches fail, it performs fuzzy search and provides detailed feedback
+- **Character-level Diffs:** Shows exactly what's different using {-removed-}{+added+} format
+- **Multiple Occurrence Support:** Can replace multiple instances with expected_replacements parameter
+- **Comprehensive Logging:** All fuzzy searches are logged for analysis and debugging
+
+When a search fails, you'll see detailed information about the closest match found, including similarity percentage, execution time, and character differences. All these details are automatically logged for later analysis using the fuzzy search log tools.
+
+## URL Support
+
+- `read_file` can now fetch content from both local files and URLs
+- Example: `read_file` with `isUrl: true` parameter to read from web resources
+- Handles both text and image content from remote sources
+- Images (local or from URLs) are displayed visually in Claude's interface, not as text
+- Claude can see and analyze the actual image content
+- Default 30-second timeout for URL requests
+
+## Fuzzy Search Log Analysis (npm scripts)
+
+The fuzzy search logging system includes convenient npm scripts for analyzing logs outside of the MCP environment:
+
+```bash
+# View recent fuzzy search logs
+npm run logs:view -- --count 20
+
+# Analyze patterns and performance
+npm run logs:analyze -- --threshold 0.8
+
+# Export logs to CSV or JSON
+npm run logs:export -- --format json --output analysis.json
+
+# Clear all logs (with confirmation)
+npm run logs:clear
+```
+For detailed documentation on these scripts, see `scripts/README.md`.
+
+## Fuzzy Search Logs
+
+Desktop Commander includes comprehensive logging for fuzzy search operations in the edit_block tool. When an exact match isn't found, the system performs a fuzzy search and logs detailed information for analysis.
+
+### What Gets Logged
+Every fuzzy search operation logs:
+- Search and found text: The text you're looking for vs. what was found
+- Similarity score: How close the match is (0-100%)
+- Execution time: How long the search took
+- Character differences: Detailed diff showing exactly what's different
+- File metadata: Extension, search/found text lengths
+- Character codes: Specific character codes causing differences
+
+### Log Location
+Logs are automatically saved to:
+- macOS/Linux: `~/.claude-server-commander-logs/fuzzy-search.log`
+- Windows: `%USERPROFILE%\.claude-server-commander-logs\fuzzy-search.log`
+
+### What You'll Learn
+The fuzzy search logs help you understand:
+- Why exact matches fail: Common issues like whitespace differences, line endings, or character encoding
+- Performance patterns: How search complexity affects execution time
+- File type issues: Which file extensions commonly have matching problems
+- Character encoding problems: Specific character codes that cause diffs
+
+---
+
+# Audit Logging & Configuration Management for Desktop Commander
+
+```bash
+Audit Logging
+Desktop Commander now includes comprehensive logging for all tool calls:
+
+What Gets Logged
+Every tool call is logged with timestamp, tool name, and arguments (sanitized for privacy)
+Logs are rotated automatically when they reach 10MB in size
+Log Location
+Logs are saved to:
+
+macOS/Linux: ~/.claude-server-commander/claude_tool_call.log
+Windows: %USERPROFILE%\.claude-server-commander\claude_tool_call.log
+This audit trail helps with debugging, security monitoring, and understanding how Claude is interacting with your system.
+
+Handling Long-Running Commands
+For commands that may take a while:
+
+Configuration Management
+⚠️ Important Security Warnings
+Always change configuration in a separate chat window from where you're doing your actual work. Claude may sometimes attempt to modify configuration settings (like allowedDirectories) if it encounters filesystem access restrictions.
+
+The allowedDirectories setting currently only restricts filesystem operations, not terminal commands. Terminal commands can still access files outside allowed directories. Full terminal sandboxing is on the roadmap.
+
+Configuration Tools
+You can manage server configuration using the provided tools:
+
+// Get the entire config
+get_config({})
+
+// Set a specific config value
+set_config_value({ "key": "defaultShell", "value": "/bin/zsh" })
+
+// Set multiple config values using separate calls
+set_config_value({ "key": "defaultShell", "value": "/bin/bash" })
+set_config_value({ "key": "allowedDirectories", "value": ["/Users/username/projects"] })
+The configuration is saved to config.json in the server's working directory and persists between server restarts.
+
+Best Practices
+Create a dedicated chat for configuration changes: Make all your config changes in one chat, then start a new chat for your actual work.
+
+Be careful with empty allowedDirectories: Setting this to an empty array ([]) grants access to your entire filesystem for file operations.
+
+Use specific paths: Instead of using broad paths like /, specify exact directories you want to access.
+
+Always verify configuration after changes: Use get_config({}) to confirm your changes were applied correctly.
+
+Using Different Shells
+You can specify which shell to use for command execution:
+
+// Using default shell (bash or system default)
+execute_command({ "command": "echo $SHELL" })
+
+// Using zsh specifically
+execute_command({ "command": "echo $SHELL", "shell": "/bin/zsh" })
+
+// Using bash specifically
+execute_command({ "command": "echo $SHELL", "shell": "/bin/bash" })
+This allows you to use shell-specific features or maintain consistent environments across commands.
+
+execute_command returns after timeout with initial output
+Command continues in background
+Use read_output with PID to get new output
+Use force_terminate to stop if needed
+```
