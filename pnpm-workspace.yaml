@@ -5,3 +5,6 @@ onlyBuiltDependencies:
   - protobufjs
   - sharp
   - tree-sitter
+  - tsparticles/engine
+  - canvas
+  - workerd

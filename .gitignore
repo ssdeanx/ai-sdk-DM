@@ -57,3 +57,5 @@ dependencies.svg
 .github/prompts/research-with-rag.prompt.md
 .github/workflows/github-workflow.json
 scripts/create-admin-user.js
+CF-work.txt
+README_TYPES.md
