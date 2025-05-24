@@ -6,6 +6,83 @@ mode: 'agent'
 # It internalizes project knowledge for the Agent's persona and operational strategy.
 ---
 
+<!--
+CLOUDFLARE MIGRATION CHECKLIST (as of 2025-05-24)
+
+This checklist tracks the full migration of ai-sdk-dm backend to Cloudflare (D1, Vectorize, Durable Objects, KV, R2) per project blueprint. Update as you progress.
+
+Legend: [x] = complete, [ ] = not started/in progress
+
+## 1. Cloudflare D1 (Database)
+[x] D1 schema defined in /lib/database/cloudflare/d1/
+[x] D1 migrations generated and applied (drizzle.d1.config.ts, wrangler d1)
+[x] D1 database binding configured in Worker config (workers/wrangler.jsonc)
+[x] NextAuth.js tables migrated to D1
+[x] D1 used as canonical DB for all new backend features
+
+## 2. Cloudflare Worker App
+[x] workers/ directory created at project root (not in lib/)
+[x] workers/wrangler.jsonc config present and correct
+[x] Worker entrypoint (workers/src/index.ts) scaffolded
+[ ] Worker implements all backend API endpoints (move from Next.js API if needed)
+[ ] Worker integrates with D1, KV, R2, Vectorize, Durable Objects
+[ ] Worker uses Hono or other router for API structure
+[ ] Worker has environment variable and secret management set up
+[ ] Worker has production and dev environments configured
+
+## 3. Cloudflare KV (Key-Value)
+[ ] KV namespace created and bound in workers/wrangler.jsonc
+[ ] All Upstash/Redis logic migrated to Cloudflare KV (lib/memory/)
+[ ] Remove Upstash/Redis dependencies from project
+
+## 4. Cloudflare R2 (Object Storage)
+[ ] R2 bucket created and bound in workers/wrangler.jsonc
+[ ] File upload/download logic migrated to R2 (lib/storage/ or lib/files/)
+[ ] Remove any legacy S3/other storage code
+
+## 5. Cloudflare Vectorize (Vector DB)
+[ ] Vectorize index created and bound in workers/wrangler.jsonc
+[ ] Embedding/vector search logic migrated to Vectorize (lib/database/cloudflare/vectorize/)
+[ ] Remove Upstash vector code
+
+## 6. Durable Objects
+[ ] Durable Object classes implemented for agent state/personas (lib/database/cloudflare/durable-objects/)
+[ ] Durable Object bindings configured in workers/wrangler.jsonc
+[ ] Durable Object logic integrated into Worker
+
+## 7. Shared Code
+[x] Plan to move shared types/hooks to lib/shared/types/ and lib/shared/hooks/
+[ ] All shared types/hooks actually moved and imported from new location
+[ ] All imports updated in both Next.js and Worker code
+
+## 8. NextAuth.js Integration
+[x] NextAuth.js configured to use D1 for sessions/users
+[x] NextAuth.js JWT validation logic available for Worker APIs
+[ ] All frontend auth UI uses NextAuth.js exclusively
+[ ] All backend APIs validate NextAuth.js JWTs
+
+## 9. Legacy Decommission
+[ ] Remove all Supabase, LibSQL, Upstash code/deps after migration
+[ ] Remove old migration/config files (drizzle.supabase.config.ts, drizzle.libsql.config.ts, etc.)
+[ ] Remove unused .env variables
+[ ] Remove legacy Supabase, Upstash, LibSQL variables from .env.local
+
+## 10. Cloudflare Resource Sync
+[ ] Ensure all Cloudflare resource IDs and bindings (KV, R2, D1, Vectorize, etc.) from .env.local are reflected in workers/wrangler.jsonc and as Worker secrets/bindings
+[ ] Migrate any required secrets from .env.local to Cloudflare Secrets using `wrangler secret put`
+
+## 11. Documentation & Dev Experience
+[ ] Update all docs to reference Cloudflare stack (not Supabase/LibSQL/Upstash)
+[ ] Add onboarding notes for new contributors (how to run dev, migrate, deploy, etc.)
+[ ] Add/Update .env.example for all required Cloudflare/NextAuth/AI keys
+[ ] Add/Update scripts in root and workers/package.json for clear DX
+[ ] Ensure tsconfig.json and workers/tsconfig.json are correct and do not overlap unnecessarily
+
+---
+
+Update this checklist as you complete each step. See project docs for details. This is your single source of truth for Cloudflare migration progress.
+-->
+
 # The Definitive, Self-Contained, Hyper-Detailed Blueprint: `ai-sdk-dm` to an Exclusive Cloudflare & NextAuth.js Architecture
 
 This ultimate blueprint provides an exhaustive, multi-stage strategy for migrating your `ai-sdk-dm` backend services entirely away from LibSQL, Upstash, and all Supabase data/backend functionalities. Authentication will be handled by NextAuth.js, integrating with Cloudflare D1 for its database needs. The new backend will run exclusively on a Cloudflare stack (D1, Vectorize, Durable Objects, KV, R2) managed within your `lib/database/cloudflare/` directory, with shared types in `lib/shared/types/` and shared hooks in `lib/shared/hooks/`.
@@ -365,7 +442,7 @@ This stage ensures all vector storage and retrieval operations are handled by Cl
 
     // Define an interface for your Worker's environment that includes the Vectorize binding
     export interface AppEnvWithVectorize extends WorkerEnv {
-      VECTOR_INDEX: VectorizeIndex; // This name MUST match the binding name in your wrangler.toml
+      VECTOR_INDEX: VectorizeIndex;                // This name MUST match the binding in your wrangler.toml
       // You might also store the index name as a separate env var for logging or if managing multiple indices
       VECTORIZE_INDEX_NAME_FOR_LOGS?: string;
     }
@@ -607,7 +684,6 @@ This stage replaces Upstash for agent state (from `lib/memory/upstash/agent-stat
         // lib/database/cloudflare/durableObjects/agentThreadDO.ts
         import { DurableObjectState, DurableObjectNamespace, DurableObjectStub, Env as WorkerEnv } from '@cloudflare/workers-types';
         import { CoreMessage } from '@ai-sdk/core'; // Assuming you use this type
-
         interface ThreadData {
           messages: CoreMessage[];
           createdAt: number;
@@ -834,7 +910,7 @@ This stage replaces Upstash for agent state (from `lib/memory/upstash/agent-stat
         1. Node.js script connects to Upstash Redis.
         2. Reads data (e.g., Hashes for agent context, Sorted Sets for scores).
         3. For each relevant entity:
-            * If mapping to a DO: The script calls a temporary Worker HTTP endpoint. This endpoint gets the appropriate DO stub (`AgentThreadDO`, `PersonaProfileDO`) by its ID (derived from Upstash key/data) and calls methods on the DO to initialize its state with the migrated data.
+            *If mapping to a DO: The script calls a temporary Worker HTTP endpoint. This endpoint gets the appropriate DO stub (`AgentThreadDO`, `PersonaProfileDO`) by its ID (derived from Upstash key/data) and calls methods on the DO to initialize its state with the migrated data.
             * If mapping to D1/KV: The script can directly (if it has D1/KV access via API/bindings if run as a Worker) or indirectly (via a Worker endpoint) write to D1 tables or KV.
   * **Challenges:** Mapping complex Upstash data structures (like Streams or Hashes with many fields) to DO storage or D1 tables requires careful planning. It's often simpler to migrate summarized or essential persistent data rather than trying to replicate entire Redis structures. Starting fresh for ephemeral states is usually easiest.
 
@@ -1066,6 +1142,7 @@ This stage replaces Upstash for agent state (from `lib/memory/upstash/agent-stat
   * **Enhancements:**
     * **Stronger Typing:** Leverage Drizzle's `InferSelectModel` and `InferInsertModel` more rigorously in method signatures.
     * **Flexible `findMany`:** Allow more complex filter objects to be passed and construct `where` clauses dynamically using `and()`, `or()`, and other Drizzle SQL operators (`gt`, `lt`, `like`, etc.).
+
     * **Transaction Support:** Expose a method to run operations within a D1 transaction using Drizzle's `db.transaction(async (tx) => { ... })` pattern.
 
             ```typescript
@@ -1330,7 +1407,7 @@ This stage replaces Upstash for agent state (from `lib/memory/upstash/agent-stat
     } from '@cloudflare/workers-types';
 
     export class CfR2Store {
-      private bucket: R2Bucket; // Bound R2 Bucket, e.g., env.ASSETS_R2_BUCKET (from wrangler.toml)
+      private bucket: R2Bucket; // Bound R2 Bucket, e.g., env.ASSETS_R2_BUCKET
 
       constructor(r2BucketBinding: R2Bucket) {
         this.bucket = r2BucketBinding;
@@ -1880,7 +1957,3 @@ This addresses features potentially reliant on Supabase Realtime, as suggested b
     * Remove old workflow provider files (`lib/workflow/libsqlWorkflow.ts`, `supabaseWorkflow.ts`, `upstashWorkflow.ts`).
     * Remove old React hooks from `hooks/` directory (now `lib/shared/hooks/`) that were specific to Supabase or Upstash (e.g., `use-supabase-*.ts`, `use-upstash-adapter.ts`).
   * Update all documentation (`README.md`, `PROJECT_CONTEXT.MD`, any architecture diagrams) to reflect the new Cloudflare-exclusive stack.
-
-This exhaustive blueprint aims to cover all critical aspects of your refactoring. It's a complex journey, but by breaking it down into these detailed stages and sub-plans, it becomes a manageable engineering effort.
-
-```

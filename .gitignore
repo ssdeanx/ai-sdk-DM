@@ -69,3 +69,7 @@ workers/vitest.config.mts
 workers/test/env.d.ts
 scripts/setup-cloudflare.sh
 c.txt
+lib/database/schema.png
+README_TYPES.md
+.drizzle/visualizer.json
+README_TYPES.md
