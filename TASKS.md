@@ -212,7 +212,7 @@ Reference #file:CF-work.txt for Cloudflare best practices.
 
   ```bash
   # Agent should verify/execute these commands in the 'workers' directory
-  # pnpm add hono @hono/zod-validator @hono/jwt @cloudflare/workers-types zod ai # 'ai' for generateId
+  # pnpm add hono @hono/zod-validator @hono/jwt @cloudflare/workers-types zod ai # 'ai' for generateId for ai-sdk
   ```
 
 - [ ] **Task 1.1.2**: Implement production-ready worker entrypoint in `#file:workers/src/index.ts`.

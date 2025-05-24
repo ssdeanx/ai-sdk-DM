@@ -9,8 +9,13 @@
 
 import { generateId } from 'ai';
 import { z } from 'zod';
-import { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
-import type { Vectorize } from '@cloudflare/workers-types';
+import {
+  D1Database,
+  KVNamespace,
+  R2Bucket,
+  Vectorize,
+  VectorizeIndex,
+} from '@cloudflare/workers-types';
 
 // Import D1 client and schema
 import { getD1Orm, type D1Orm } from '../../database/cloudflare/d1/client';
@@ -37,13 +42,18 @@ export interface AppEnv {
 
   // R2 Buckets
   R2_MAIN_BUCKET: R2Bucket;
-
   // Vectorize Index
-  VECTORIZE_MAIN_INDEX: Vectorize;
-
+  VECTORIZE_MAIN_INDEX: VectorizeIndex;
   // Durable Objects
   AGENT_THREAD_DO: DurableObjectNamespace;
   PERSONA_PROFILE_DO: DurableObjectNamespace;
+  WORKFLOW_INSTANCE_DO: DurableObjectNamespace;
+  APP_BUILDER_SESSION_DO: DurableObjectNamespace;
+  CHAT_ROOM_DO: DurableObjectNamespace;
+  TERMINAL_SESSION_DO: DurableObjectNamespace;
+  DOCUMENT_COLLABORATION_DO: DurableObjectNamespace;
+  INTEGRATION_SESSION_DO: DurableObjectNamespace;
+  CACHE_COORDINATOR_DO: DurableObjectNamespace;
 
   // Assets (optional)
   ASSETS?: Fetcher;
@@ -104,19 +114,17 @@ export class MemoryFactory {
       this.d1Orm = getD1Orm(this.env);
 
       // Initialize service operation classes
-      this.d1CrudService = new CfD1CrudService();
-      this.kvOps = new CfKvOps();
-      this.vectorizeOps = new CfVectorizeOps();
-      this.r2Store = new CfR2Store();
+      this.d1CrudService = new CfD1CrudService(this.d1Orm);
+      this.kvOps = new CfKvOps(this.env.DB_KV);
+      this.vectorizeOps = new CfVectorizeOps(this.env.VECTORIZE_MAIN_INDEX);
+      this.r2Store = new CfR2Store(this.env.R2_MAIN_BUCKET);
 
       // TODO: Validate that all required bindings are present
       this.validateBindings();
     } catch (error) {
-      console.error('MemoryFactory initialization failed:', error);
       throw error;
     }
   }
-
   /**
    * Validate that all required bindings are present
    */
@@ -130,6 +138,13 @@ export class MemoryFactory {
       'VECTORIZE_MAIN_INDEX',
       'AGENT_THREAD_DO',
       'PERSONA_PROFILE_DO',
+      'WORKFLOW_INSTANCE_DO',
+      'APP_BUILDER_SESSION_DO',
+      'CHAT_ROOM_DO',
+      'TERMINAL_SESSION_DO',
+      'DOCUMENT_COLLABORATION_DO',
+      'INTEGRATION_SESSION_DO',
+      'CACHE_COORDINATOR_DO',
     ];
 
     for (const binding of requiredBindings) {
@@ -208,7 +223,16 @@ export class MemoryFactory {
    * Get specific Durable Object namespace
    */
   getDurableObjectNamespace(
-    name: 'AGENT_THREAD_DO' | 'PERSONA_PROFILE_DO'
+    name:
+      | 'AGENT_THREAD_DO'
+      | 'PERSONA_PROFILE_DO'
+      | 'WORKFLOW_INSTANCE_DO'
+      | 'APP_BUILDER_SESSION_DO'
+      | 'CHAT_ROOM_DO'
+      | 'TERMINAL_SESSION_DO'
+      | 'DOCUMENT_COLLABORATION_DO'
+      | 'INTEGRATION_SESSION_DO'
+      | 'CACHE_COORDINATOR_DO'
   ): DurableObjectNamespace {
     return this.env[name];
   }
@@ -221,12 +245,12 @@ export class MemoryFactory {
   }
 
   /**
+  /**
    * Get Vectorize index
    */
-  getVectorizeIndex(): Vectorize {
+  getVectorizeIndex(): VectorizeIndex {
     return this.env.VECTORIZE_MAIN_INDEX;
   }
-
   /**
    * Run comprehensive health checks for all Cloudflare services
    */
@@ -304,12 +328,13 @@ export class MemoryFactory {
     try {
       const vectorizeStart = Date.now();
       const vectorize = this.getVectorizeIndex();
-      // TODO: Implement proper vectorize health check once we have the implementation
+      // Basic connectivity check - perform a minimal query to verify access
+      await vectorize.query([0.1, 0.1, 0.1], { topK: 1, returnValues: false });
       results.push({
         service: 'Vectorize',
         status: 'healthy',
         latency: Date.now() - vectorizeStart,
-        metadata: { note: 'Basic connectivity check' },
+        metadata: { note: 'Index connectivity verified via query' },
       });
     } catch (error) {
       results.push({
@@ -380,6 +405,13 @@ export class MemoryFactory {
         vectorize: !!this.env.VECTORIZE_MAIN_INDEX,
         agentThreadDO: !!this.env.AGENT_THREAD_DO,
         personaProfileDO: !!this.env.PERSONA_PROFILE_DO,
+        workflowInstanceDO: !!this.env.WORKFLOW_INSTANCE_DO,
+        appBuilderSessionDO: !!this.env.APP_BUILDER_SESSION_DO,
+        chatRoomDO: !!this.env.CHAT_ROOM_DO,
+        terminalSessionDO: !!this.env.TERMINAL_SESSION_DO,
+        documentCollaborationDO: !!this.env.DOCUMENT_COLLABORATION_DO,
+        integrationSessionDO: !!this.env.INTEGRATION_SESSION_DO,
+        cacheCoordinatorDO: !!this.env.CACHE_COORDINATOR_DO,
       },
     };
   }
