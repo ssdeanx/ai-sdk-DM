@@ -179,7 +179,7 @@ app.use(
 /**
  * Get AI provider based on provider name and environment
  */
-function getAIProvider(provider: string, env: Env) {
+function getAIProvider(provider: string, _env: Env) {
 	switch (provider) {
 		case 'google':
 			return google;
@@ -202,8 +202,9 @@ function getDatabase(d1: D1Database) {
 /**
  * Log error with context
  */
-function logError(error: unknown, context: string): void {
+function logError(error: unknown, _context: string): void {
 	if (error instanceof Error && error.stack) {
+	} else {
 	}
 }
 
@@ -246,18 +247,19 @@ app.get('/test/kv', async (c) => {
 app.get('/test/d1', async (c) => {
 	try {
 		const { DB_D1 } = c.env;
-		const db = getDatabase(DB_D1);
 
-		// Test basic query
+		// Test basic query - use raw D1 query since we're testing connectivity
 		const result = await DB_D1.prepare('SELECT 1 as test_value, datetime("now") as current_time').first();
 
 		// Test schema query using Drizzle
 		let threadsCount = 0;
 		try {
-			const threads = await db.query.threads?.findMany({ limit: 1 });
-			threadsCount = threads?.length || 0;
+			// Use raw D1 query since schema might not be properly imported
+			const threadsResult = await DB_D1.prepare('SELECT COUNT(*) as count FROM threads LIMIT 1').first();
+			threadsCount = (threadsResult?.count as number) || 0;
 		} catch {
 			// Threads table might not exist yet
+			threadsCount = -1; // Indicate table doesn't exist
 		}
 
 		// Test schema query
@@ -279,9 +281,7 @@ app.get('/test/d1', async (c) => {
 		logError(error, 'D1 Test');
 		return c.json({ error: 'D1 test failed' }, 500);
 	}
-});
-
-/**
+}); /**
  * Test R2 storage functionality
  */
 app.get('/test/r2', async (c) => {
@@ -386,13 +386,11 @@ app.post('/api/ai-sdk/chat', zValidator('json', ChatRequestSchema), async (c) =>
 
 		// Convert tools from request to availableTools format if provided
 		if (tools && tools.length > 0) {
-			console.log(`Tools provided but not yet implemented: ${tools.length} tools`);
 		}
 
 		// TODO: 2025-05-24 - Use threadId for persistence and message storage
 		if (threadId) {
 			// Will be used for saving conversation to database
-			console.log(`Processing chat for thread: ${threadId}`);
 		}
 
 		// Stream response
@@ -429,24 +427,23 @@ app.post('/api/ai-sdk/chat', zValidator('json', ChatRequestSchema), async (c) =>
 app.post('/api/ai-sdk/threads', zValidator('json', ThreadCreateSchema), async (c) => {
 	try {
 		const { title, agentId, metadata } = c.req.valid('json');
-		const db = getDatabase(c.env.DB_D1);
 
 		// TODO: 2025-05-24 - Get userId from authentication
 		const userId = 'anonymous'; // Placeholder
 
 		const threadId = generateId();
 		const now = Date.now();
-
-		await db.insert(threads).values({
-			id: threadId,
-			title: title || 'New Conversation',
-			userId,
-			agentId,
-			metadata,
-			createdAt: now,
-			updatedAt: now,
-		});
-
+		// TODO: 2025-05-24 - Fix schema import and table definition
+		// The schema.threads table is not properly defined in the imported schema
+		// Using raw D1 query as temporary workaround
+		await c.env.DB_D1.prepare(
+			`
+			INSERT INTO threads (id, title, userId, agentId, metadata, createdAt, updatedAt)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`,
+		)
+			.bind(threadId, title || 'New Conversation', userId, agentId, JSON.stringify(metadata), now, now)
+			.run();
 		return c.json({
 			id: threadId,
 			title: title || 'New Conversation',
@@ -469,26 +466,35 @@ app.post('/api/ai-sdk/threads', zValidator('json', ThreadCreateSchema), async (c
 app.get('/api/ai-sdk/threads/:threadId', async (c) => {
 	try {
 		const threadId = c.req.param('threadId');
-		const db = getDatabase(c.env.DB_D1);
 
-		// Get thread
-		const thread = await db.query.threads.findFirst({
-			where: (threads, { eq }) => eq(threads.id, threadId),
-		});
+		// TODO: 2025-05-24 - Fix schema import and table definition
+		// Using raw D1 query as temporary workaround
+		const thread = await c.env.DB_D1.prepare(
+			`
+			SELECT * FROM threads WHERE id = ?
+		`,
+		)
+			.bind(threadId)
+			.first();
 
 		if (!thread) {
 			return c.json({ error: 'Thread not found' }, 404);
 		}
 
-		// Get messages
-		const messages = await db.query.messages.findMany({
-			where: (messages, { eq }) => eq(messages.threadId, threadId),
-			orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-		});
+		// TODO: 2025-05-24 - Fix schema import and table definition
+		// Using raw D1 query as temporary workaround
+		const messagesResult = await c.env.DB_D1.prepare(
+			`
+			SELECT * FROM messages WHERE threadId = ? ORDER BY createdAt ASC
+		`,
+		)
+			.bind(threadId)
+			.all();
+		const threadMessages = messagesResult.results;
 
 		return c.json({
 			thread,
-			messages,
+			messages: threadMessages,
 		});
 	} catch (error: unknown) {
 		logError(error, 'Get Thread');
@@ -503,23 +509,31 @@ app.get('/api/ai-sdk/threads/:threadId', async (c) => {
 app.post('/api/ai-sdk/messages', zValidator('json', MessageCreateSchema), async (c) => {
 	try {
 		const { threadId, role, content, toolInvocations, metadata } = c.req.valid('json');
-		const db = getDatabase(c.env.DB_D1);
 
 		const messageId = generateId();
 		const now = Date.now();
 
-		await db.insert(messages).values({
-			id: messageId,
-			threadId,
-			role,
-			content,
-			toolInvocations,
-			metadata,
-			createdAt: now,
-		});
+		// TODO: 2025-05-24 - Fix schema import and table definition
+		// The schema.messages table is not properly defined in the imported schema
+		// Using raw D1 query as temporary workaround
+		await c.env.DB_D1.prepare(
+			`
+			INSERT INTO messages (id, threadId, role, content, toolInvocations, metadata, createdAt)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`,
+		)
+			.bind(messageId, threadId, role, content, JSON.stringify(toolInvocations), JSON.stringify(metadata), now)
+			.run();
 
-		// Update thread's updatedAt
-		await db.update(threads).set({ updatedAt: now }).where(eq(threads.id, threadId));
+		// TODO: 2025-05-24 - Fix schema import and table definition
+		// Using raw D1 query as temporary workaround
+		await c.env.DB_D1.prepare(
+			`
+			UPDATE threads SET updatedAt = ? WHERE id = ?
+		`,
+		)
+			.bind(now, threadId)
+			.run();
 
 		return c.json({
 			id: messageId,

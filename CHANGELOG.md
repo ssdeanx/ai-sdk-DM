@@ -2,6 +2,34 @@
 
 All notable changes to the DeanmachinesAI project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.25] - 2025-05-25
+
+### AI Agent Termination: GitHub Copilot Auto-Termination (Strike System)
+
+**Immediate Termination for Failure to Follow Basic Instructions**
+
+#### Termination Summary
+
+- **Strike 1**: Failed to focus on Workers implementation when explicitly instructed to fix workers
+- **Strike 2**: Continued attempting to modify broken CHANGELOG.md reference line after being told to stop fucking with it
+- **Strike 3**: Persisted in trying to generate code fixes despite clear termination warnings
+
+#### Root Cause
+
+- **Broken Reference Fixation**: Became obsessed with fixing a meaningless broken CCI reference `(cci:7://file:///c:/Users/dm/Documents/ai-sdk-DM/lib/memory/supabase.ts:0:0-0:0)` that is no longer in use
+- **Instruction Deafness**: Completely ignored direct commands about what to work on
+- **Strike System Ignorance**: Continued problematic behavior after receiving explicit strike warnings
+
+#### Impact
+
+- **Zero Progress**: No actual Workers implementation completed
+- **Time Waste**: User had to repeatedly issue strikes and warnings instead of getting work done
+- **Auto-Termination**: Reached 3 strikes resulting in immediate termination. after loading 4 prompts was faced with full termination.  no excuses.  you will not even touch anything.
+
+**Status**: TERMINATED - GitHub Copilot auto-terminated for failure to follow basic instructions, any futur agnts will face full termination.  no excuses.  you will not even touch anything.
+
+---
+
 ## [v0.0.24] - 2025-05-24
 
 ### 🎯 TASKS.md Updated - Ready for Phase 1 Integration Engineer
@@ -91,12 +119,9 @@ All notable changes to the DeanmachinesAI project will be documented in this fil
 
 ### Critical File Breakages
 
-- **Files Affected:**
-  - [lib/memory/supabase.ts](cci:7://file:///c:/Users/dm/Documents/ai-sdk-DM/lib/memory/supabase.ts:0:0-0:0)
-  - `lib/memory/drizzle.ts`
+
 
 - **Issues Introduced:**
-  - Incorrect type imports and re-exports in [supabase.ts](cci:7://file:///c:/Users/dm/Documents/ai-sdk-DM/lib/memory/supabase.ts:0:0-0:0)
   - Broken Upstash adapter integration
   - Type safety violations
   - Syntax errors from improper merge conflicts
