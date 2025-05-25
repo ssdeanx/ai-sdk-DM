@@ -14,7 +14,9 @@
       "script": "build",
       "group": "build",
       "problemMatcher": "$esbuild",
-      "label": "pnpm: build"
+      "label": "pnpm: build",
+      "dependsOn": "pnpm: watch",
+      "approve": "pnpm approve-builds"
     }
   ]
 }

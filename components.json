@@ -15,7 +15,21 @@
     "utils": "@/lib/utils",
     "ui": "@/components/ui",
     "lib": "@/lib",
-    "hooks": "@/hooks"
+    "hooks": "@/lib/shared/hooks",
+    "types": "@/lib/shared/types"
   },
-  "iconLibrary": "lucide"
+  "iconLibrarys": {
+    "lucide": true,
+    "react-icons": true,
+    "radix": false,
+    "heroicons": false,
+    "ant-design": false,
+    "ant-design-pro": false,
+    "font-awesome": false,
+    "bootstrap": false,
+    "mui": false,
+    "tailwindcss": false,
+    "open-iconic": false,
+    "material-icons": false
+  }
 }
