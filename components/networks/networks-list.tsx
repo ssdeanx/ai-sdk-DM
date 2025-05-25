@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { NetworkCard } from '@/components/networks/network-card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { CreateNetworkDialog } from '@/components/networks/create-network-dialog';
 import type { Network } from '@/types/networks';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 
 export function NetworksList() {
   const [filteredNetworks, setFilteredNetworks] = useState<Network[]>([]);

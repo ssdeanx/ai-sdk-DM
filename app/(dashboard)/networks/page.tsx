@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   AlertCircle,
@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Define the form schema

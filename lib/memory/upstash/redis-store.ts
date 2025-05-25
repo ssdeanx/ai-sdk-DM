@@ -56,7 +56,7 @@ import {
   AuthProviderEntitySchema,
   DashboardConfigEntity,
   DashboardConfigEntitySchema,
-} from '../../../types/upstashTypes';
+} from '../../shared/types/upstashTypes';
 
 import {
   getRedisClient,

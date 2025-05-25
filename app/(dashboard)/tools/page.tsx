@@ -27,14 +27,14 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Edit, Plus, Trash, MoreHorizontal } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { DataTable } from '@/components/ui/data-table';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -11,7 +11,7 @@ import {
   ModelProvider,
   ModelCategory,
   ModelCapabilities,
-} from '../types/model-settings';
+} from './shared/types/model-settings';
 import type { ToolSet, ToolExecutionOptions } from 'ai';
 import { z } from 'zod';
 

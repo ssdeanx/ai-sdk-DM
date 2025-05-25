@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { ProviderSchema } from 'types/supabase';
+import { ProviderSchema } from '@/lib/shared/types/supabase';
 
 const table = 'settings';
 const PROVIDER_PREFIX = 'provider:';

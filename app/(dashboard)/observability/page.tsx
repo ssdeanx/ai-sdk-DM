@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 
 import { TracingOverview } from '@/components/observability/tracing-overview';
 import { TracingTimeline } from '@/components/observability/tracing-timeline';

@@ -10,7 +10,7 @@ import { getSupabaseClient, getDrizzleClient } from '@/lib/memory/supabase';
 import { z } from 'zod';
 import * as schema from '@/db/supabase/schema';
 import { eq, desc, asc } from 'drizzle-orm';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 
 // Define allowed tables for security
 const allowedTables = ['models', 'agents', 'tools', 'settings'];

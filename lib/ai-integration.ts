@@ -9,7 +9,7 @@ import { shouldUseUpstash } from './memory/supabase';
 import { getEncoding } from 'js-tiktoken';
 import { pipeline } from '@xenova/transformers';
 import { upstashLogger } from './memory/upstash/upstash-logger';
-import type { Message as ChatMessage } from '../types/upstashTypes';
+import type { Message as ChatMessage } from './shared/types/upstashTypes';
 import type { CoreMessage, ToolSet } from 'ai';
 import type { FeatureExtractionPipeline } from '@xenova/transformers';
 

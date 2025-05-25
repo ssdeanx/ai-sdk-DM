@@ -6,7 +6,7 @@ import {
   updateItem,
   deleteItem,
 } from '@/lib/memory/upstash/supabase-adapter';
-import { AppSchema } from 'types/supabase';
+import { AppSchema } from '@/lib/shared/types/supabase';
 
 const APPS_PREFIX = 'app:';
 

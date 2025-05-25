@@ -15,11 +15,11 @@ import { Copy, Maximize, Minimize, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import prettier from 'prettier/standalone';
 import parserTypescript from 'prettier/parser-typescript';
-import { useMemoryProvider } from '@/hooks/use-memory-provider';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
-import { AppCodeBlockSchema as SupabaseAppCodeBlockSchema } from '@/types/supabase';
-import { AppCodeBlockSchema as LibsqlAppCodeBlockSchema } from '@/types/libsql';
+import { useMemoryProvider } from '@/lib/shared/hooks/use-memory-provider';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
+import { AppCodeBlockSchema as SupabaseAppCodeBlockSchema } from '@/lib/shared/types/supabase';
+import { AppCodeBlockSchema as LibsqlAppCodeBlockSchema } from '@/lib/shared/types/libsql';
 
 export interface AppBuilderCodeBlockProps {
   code?: string;

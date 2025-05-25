@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BlogCard } from '@/components/blog/blog-card';
 import { BlogFeatured } from '@/components/blog/blog-featured';
-import { useToast } from '@/hooks/use-toast';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useToast } from '@/lib/shared/hooks/use-toast';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 
 interface BlogPost {
   id: string;

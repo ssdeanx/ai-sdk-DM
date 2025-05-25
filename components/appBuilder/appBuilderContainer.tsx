@@ -9,7 +9,7 @@ import { FileTree } from './FileTree';
 import { AppBuilderCodeBlock } from './codeBlock';
 import { AppBuilderTerminalBlock } from './terminalBlock';
 import { Card, CardContent } from '@/components/ui/card';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
 
 interface AppBuilderContainerProps {
   initialCode?: string;

@@ -21,9 +21,9 @@
       "./types",
       "./db/supabase/validations",
       "./db/libsql/validation.ts",
-      "./hooks/use-supabase-realtime.ts",
-      "./hooks/use-supabase-fetch.ts",
-      "./hooks/use-supabase-crud.ts"
+      "lib/shared/hooks/use-supabase-realtime.ts",
+      "lib/shared/hooks/use-supabase-fetch.ts",
+      "lib/shared/hooks/use-supabase-crud.ts"
     ],
     "types": ["node"],
     "baseUrl": ".",

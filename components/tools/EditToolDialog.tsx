@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import type { Tool } from '@/types/tools';
+import type { Tool } from '@/lib/shared/types/tools';
 import { Loader2 } from 'lucide-react';
 
 interface EditToolDialogProps {

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Tool } from '@/types/tools';
+import type { Tool } from '@/lib/shared/types/tools';
 import { Loader2 } from 'lucide-react';
 
 interface CreateToolDialogProps {

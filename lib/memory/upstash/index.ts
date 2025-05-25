@@ -147,7 +147,7 @@ export {
   type IndexType,
   type VectorType,
   type ZodType,
-} from '../../../types/upstashTypes';
+} from '../../shared/types/upstashTypes';
 
 // From stream-processor.ts
 export {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Loader2 } from 'lucide-react';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 
 export default function AdminLayout({
   children,

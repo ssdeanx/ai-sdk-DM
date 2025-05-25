@@ -26,7 +26,7 @@ import {
   SupabaseClient as OfficialSupabaseClient,
 } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { useMemoryProvider } from './use-memory-provider';
 import {
   createSupabaseClient as createCanonicalSupabaseClient,

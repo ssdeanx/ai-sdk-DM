@@ -5,7 +5,7 @@ import { generateId } from 'ai';
 import { z } from 'zod';
 import { getMemoryProvider } from '@/lib/memory/factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { AgentSchema } from 'types/supabase';
+import { AgentSchema } from '@/lib/shared/types/supabase';
 
 // Import Upstash adapter functions
 import {

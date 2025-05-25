@@ -45,9 +45,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { DatabaseStatus } from '@/components/ui/database-status';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 import { useToast } from '@/components/ui/use-toast';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { useMediaQuery } from '@/lib/shared/hooks/use-media-query';
 
 interface MainSidebarProps {
   className?: string;

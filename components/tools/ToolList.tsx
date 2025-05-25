@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { ToolCard } from '@/components/tools/ToolCard';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { CreateToolDialog } from '@/components/tools/CreateToolDialog';
-import type { Tool } from '@/types/tools';
+import type { Tool } from '@/lib/shared/types/tools';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 
 export function ToolsList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

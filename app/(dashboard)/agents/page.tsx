@@ -14,12 +14,12 @@ import {
   Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DataTable } from '@/components/ui/data-table';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,

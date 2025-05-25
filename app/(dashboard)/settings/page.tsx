@@ -9,13 +9,13 @@ import SettingsForm from '@/components/settings/SettingsForm';
 import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsField from '@/components/settings/SettingsField';
 import SettingsLoadingSkeleton from '@/components/settings/SettingsLoadingSkeleton';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { logError } from '@/lib/memory/upstash/upstash-logger';
-import { useMemoryProvider } from '@/hooks/use-memory-provider';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
-import { SettingSchema as SupabaseSettingSchema } from 'types/supabase';
-import { SettingSchema as LibsqlSettingSchema } from 'types/libsql';
+import { useMemoryProvider } from '@/lib/shared/hooks/use-memory-provider';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
+import { SettingSchema as SupabaseSettingSchema } from '@/lib/shared/types/supabase';
+import { SettingSchema as LibsqlSettingSchema } from '@/lib/shared/types/libsql';
 import '@/app/globals.css';
 
 // Helper to coerce string/boolean values to boolean

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 // Import Integration type from canonical types
-import { Integration } from '@/types/supabase';
+import { Integration } from '@/lib/shared/types/supabase';
 
 // Import react-icons for provider icons
 import { FaGithub, FaGoogle, FaCloud } from 'react-icons/fa';

@@ -17,12 +17,12 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { createClient, PostgrestError } from '@supabase/supabase-js';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 import { LRUCache } from 'lru-cache';
 import { getDrizzleClient } from '@/lib/memory/drizzle';
-import { DATABASE_URL } from '../lib/tools/graphql/constants';
+import { DATABASE_URL } from '../../tools/graphql/constants';
 import { useMemoryProvider } from './use-memory-provider';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import type { SupabaseClient as UpstashSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';

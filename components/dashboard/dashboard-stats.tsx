@@ -11,7 +11,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 import { StatCard } from '@/components/dashboard/stat-card';
 
 interface DashboardStatsProps {

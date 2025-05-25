@@ -38,7 +38,7 @@ import type {
   BlogPost as SupabaseBlogPost,
   MdxDocument as SupabaseMdxDocument,
   // Add other Supabase types as needed
-} from '@/types/supabase';
+} from '@/lib/shared/types/supabase';
 
 import type {
   // LibSQL types
@@ -56,7 +56,7 @@ import type {
   File as LibsqlFile,
   TerminalSession as LibsqlTerminalSession,
   // Add other LibSQL types as needed
-} from '@/types/libsql';
+} from '@/lib/shared/types/libsql';
 
 // Re-export for convenience
 export { eq, and, or, inArray, desc, asc };

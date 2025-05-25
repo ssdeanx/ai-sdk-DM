@@ -24,7 +24,7 @@ import { getLibSQLClient } from '@/lib/memory/libsql';
 import { handleApiError } from '@/lib/api-error-handler';
 import { createTrace, logEvent } from '@/lib/langfuse-integration';
 import { getGoogleAI } from '@/lib/ai'; // getGoogleAI from lib/ai.ts returns a LanguageModelProvider
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 
 export async function POST(request: Request) {
   try {

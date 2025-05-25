@@ -29,7 +29,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { AdminGitHubSignInButton } from '@/components/auth/admin-github-sign-in-button';
 import { Loader2, Lock, Shield, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 
 // Form validation schema
 const formSchema = z.object({

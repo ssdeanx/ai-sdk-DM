@@ -20,7 +20,7 @@ import {
   SettingSchema,
   BlogPostSchema,
   MdxDocumentSchema,
-} from 'types/supabase';
+} from '@/lib/shared/types/supabase';
 import {
   MemoryThreadSchema,
   MessageSchema,
@@ -29,7 +29,7 @@ import {
   GqlCacheSchema,
   FileSchema,
   TerminalSessionSchema,
-} from 'types/libsql';
+} from '@/lib/shared/types/libsql';
 
 // Allowed tables for CRUD (expand as needed)
 const ALLOWED_TABLES = [

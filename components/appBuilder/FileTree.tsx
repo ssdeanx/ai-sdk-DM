@@ -15,14 +15,14 @@ import { Button } from '@/components/ui/button';
 import {
   File as SupabaseFile,
   FileSchema as SupabaseFileSchema,
-} from '@/types/supabase';
+} from '@/lib/shared/types/supabase';
 import {
   File as LibsqlFile,
   FileSchema as LibsqlFileSchema,
-} from '@/types/libsql';
-import { useMemoryProvider } from '@/hooks/use-memory-provider';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+} from '@/lib/shared/types/libsql';
+import { useMemoryProvider } from '@/lib/shared/hooks/use-memory-provider';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
 
 /**
  * FileNode is a UI-only type for tree rendering, derived from canonical File.

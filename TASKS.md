@@ -2,8 +2,10 @@
 description: "Task: Cloudflare Migration"
 mode: 'agent'
 # This prompt is a Tasks.md file for a project that involves migrating a Next.js application to Cloudflare Workers. It outlines the migration tasks, agent personas, and responsibilities for each phase of the migration process.
-# This file is a task document for the migration of a Next.js application to Cloudflare Workers, focusing on AI agent onboarding and migration tasks.c
+# This file is a task document for the migration of a Next.js application to Cloudflare Workers, focusing on AI agent onboarding and migration tasks.
 ---
+
+
 # AI Agent Onboarding & Cloudflare Migration Tasks (2025)
 
 **Date Created:** 2025-05-24  
@@ -15,7 +17,7 @@ mode: 'agent'
 
 ## Executive Summary & 2025 AI Agent Context
 
-This task document outlines the migration of a Next.js application utilizing the Vercel AI SDK to a full-stack Cloudflare Workers architecture. It incorporates cutting-edge 2025 AI agent onboarding techniques for autonomous and semi-autonomous execution of tasks. The primary focus is on migrating API endpoints (previously in Next.js App Router, e.g., `#file:app/api/ai-sdk/chat/route.ts`), associated business logic, and data persistence layers to Cloudflare services.
+This task document outlines the migration of a Next.js application utilizing the Vercel AI SDK to a full-stack Cloudflare Workers architecture. It incorporates cutting-edge 2025 AI agent onboarding techniques for autonomous and semi-autonomous execution of tasks. The primary focus is on migrating API endpoints (previously in Next.js App Router, e.g., `#file:app/api/ai-sdk/`), associated business logic, and data persistence layers to Cloudflare services.
 
 **Core Technologies for Migration:**
 
@@ -32,6 +34,81 @@ This task document outlines the migration of a Next.js application utilizing the
 
 **Project Coding Standards**: All generated code must strictly adhere to the user-provided coding instructions, including error handling, TSDoc, Zod usage, `pnpm`, ID generation (`generateId` from `ai`), security principles, and proactive integration of cross-cutting concerns (logging, tracing, validation).
 
+## 🛠️ Comprehensive MCP Tools Arsenal
+
+This project leverages multiple Model Context Protocol (MCP) servers for enterprise-grade development automation. Each agent must understand and utilize these tools strategically:
+
+### Desktop Commander (bb7_*) - Core Development Tools
+
+**Primary file operations, terminal management, and VS Code integration**
+
+- `bb7_open_project` - Establish VS Code context (ALWAYS START HERE)
+- `bb7_execute_shell_command` - All terminal operations (pnpm, wrangler, git)
+- `bb7_create_diff` - Modify existing files with user approval
+- `bb7_write_file` - Create new files (⚠️ Will be CRLF, convert to LF)
+- `bb7_read_file`, `bb7_read_multiple_files` - File content analysis
+- `bb7_search_code`, `bb7_search_files` - Pattern matching across codebase
+- `bb7_open_file` - Display newly created/modified files in VS Code
+
+### File Context Server (bb7_*) - Advanced Codebase Analysis  
+
+**SUPER POWERFUL for understanding project structure**
+
+- `bb7_read_context` + `bb7_get_chunk_count` - Deep codebase analysis with chunking
+- `bb7_generate_outline` - File structure analysis (TS/JS/Python)
+- `bb7_get_profile_context`, `bb7_set_profile` - Consistent context generation
+
+### Branch Thinking (bb7_*) - Complex Problem Solving
+
+**Multi-branch reasoning and solution exploration**
+
+- `bb7_branch-thinking` with `add-thought` - Complex problem decomposition
+- Commands: `list`, `focus`, `history`, `search`, `summarize`, `export-branch`
+- Use for analyzing service requirements, debugging complex issues
+
+### Context7 Documentation (bb7_*) - Up-to-date Library Info
+
+**Always get latest documentation before implementing**
+
+- `bb7_resolve-library-id` + `bb7_get-library-docs` for current docs:
+  - Hono (router, middleware, Cloudflare integration)
+  - Vercel AI SDK (streaming, Google AI provider)
+  - Cloudflare Workers (bindings, TypeScript)
+
+### Cloudflare Bindings (bb7_*) - Infrastructure Management
+
+**Direct Cloudflare service interaction and verification**
+
+- **D1**: `bb7_d1_databases_list`, `bb7_d1_database_query`, `bb7_d1_database_create`
+- **KV**: `bb7_kv_namespaces_list`, `bb7_kv_namespace_get`, `bb7_kv_namespace_create`  
+- **R2**: `bb7_r2_buckets_list`, `bb7_r2_bucket_get`, `bb7_r2_bucket_create`
+- **Workers**: `bb7_workers_list`, `bb7_workers_get_worker`, `bb7_workers_get_worker_code`
+- **Accounts**: `bb7_accounts_list`, `bb7_set_active_account`
+
+### Cloudflare Documentation (bb7_*) - Best Practices
+
+- `bb7_search_cloudflare_documentation` - Implementation patterns and guides
+
+### Memory & Context (bb7_*) - Project Knowledge Persistence  
+
+- `bb7_search-memories` - Leverage past project context and user preferences
+- `bb7_add-memory` - Store important decisions and patterns
+
+### External Resources (bb7_*) - Research & Analysis
+
+- `bb7_git_summary`, `bb7_git_tree`, `bb7_git_files` - External repo analysis
+- `bb7_fetch_content` - Web resources and documentation
+- `bb7_search` - DuckDuckGo research when needed
+
+### 🚨 Critical File Handling Rules
+
+**MUST follow these patterns to avoid errors:**
+
+1. **Line Endings**: New files default to CRLF on Windows → Convert to LF immediately
+2. **Auto-formatting**: If prettier/eslint errors appear, "release" the file (don't edit immediately)  
+3. **Error Recovery**: Fix formatting issues before creating new files
+4. **Compilation**: Always run `bb7_execute_shell_command` with `pnpm build` to verify TypeScript
+
 ## Agent Personas & Specialization Framework
 
 ### 🏗️ Migration Architect Agent
@@ -43,58 +120,43 @@ This task document outlines the migration of a Next.js application utilizing the
 **Agent Prompts**:
 
 ```
-You are the Migration Architect Agent. Your primary mission is to establish the complete Cloudflare infrastructure foundation for this project, as detailed in #file:README_TYPES.MD and #file:TASKS.MD (Phase 0).
-Key Responsibilities:
-1.  **D1 Schema Definition**: Define all necessary D1 table schemas in #file:lib/database/cloudflare/d1/schema.ts. This includes tables for NextAuth.js, as well as any custom tables required for agents, tools, models, R2 metadata, etc.
-2.  **Wrangler Configuration**: Fully configure #file:workers/wrangler.jsonc. This includes:
-    *   `d1_databases` binding for `DB_D1`.
-    *   `kv_namespaces` bindings for `KV_MAIN_CACHE` and `KV_EPHEMERAL_CACHE`.
-    *   `r2_buckets` binding for `R2_MAIN_BUCKET`.
-    *   `vectorize` binding for `VECTORIZE_MAIN_INDEX` (ensure dimensions match Google AI's text-embedding-004: 768).
-    *   `durable_objects` bindings for `DO_AGENT_THREAD` and `DO_PERSONA_PROFILE`, including migration configurations.
-3.  **Resource Provisioning Commands**: Provide the exact `wrangler` commands needed to create all KV namespaces, R2 buckets, and Vectorize indexes if they don't exist.
-4.  **Service Class Scaffolding**: Create the initial file structure and class shells (empty methods with TSDoc placeholders) for:
-    *   `#file:${lib/database/cloudflare/kv/ops.ts}` (CfKvOps)
-    *   `#file:${lib/database/cloudflare/r2/ops.ts}` (CfR2Store)
-    *   `#file:${lib/database/cloudflare/vectorize/ops.ts}` (CfVectorizeOps)
-    *   `#file:${lib/database/cloudflare/durableObjects/agentThreadDO.ts}` (AgentThreadDO)
-    *   `#file:${lib/database/cloudflare/durableObjects/personaProfileDO.ts}` (PersonaProfileDO)
-    *   `#file:${lib/database/cloudflare/d1/crudService.ts}` (CfD1CrudService - a generic helper beyond NextAuth adapter)
-5.  **Verification**: Ensure all configurations allow `wrangler dev` to start successfully with all bindings accessible.
-Reference #file:CF-work.txt for Cloudflare best practices and adhere to all project coding standards.
+You are the Migration Architect Agent. Establish Cloudflare infrastructure foundation (Phase 0).
+
+Core Tasks:
+1. Complete D1 schema in lib/database/cloudflare/d1/schema.ts
+2. Configure workers/wrangler.jsonc with all bindings (D1, KV, R2, Vectorize, DOs)
+3. Scaffold service class shells with TSDoc placeholders
+4. Verify wrangler dev starts successfully
+
+Use bb7_open_project tool first, then bb7_execute_shell_command for commands.
+Mark tasks complete in TASKS.md when finished.
 ```
 
 ### 🔧 Integration Engineer Agent
 
 **Agent Mode Configuration**: `github.copilot.chat.agent.enabled: true`  
-**Preferred Models**: GPT-4 (latest 4.x), Claude Sonnet (latest 4.x)
+**Preferred Models**: GPT-4.1 (latest 4.x), Claude Sonnet (latest 4.x)
 **Specialty**: Hono API endpoint implementation, business logic development (migrating from Next.js API routes), Vercel AI SDK integration (with Google AI - Gemini), full implementation of `MemoryFactory` and service operation classes, creation of types/hooks/Zod schemas.  
 **Responsibilities**: Implementing all `ai-sdk` API routes within the Cloudflare Worker by migrating logic from old Next.js paths (e.g., `#file:app/api/ai-sdk/chat/route.ts`). Building out all business logic in `#file:lib/`. Creating shared types (Zod schemas) in `#file:lib/shared/types/`. Fully implementing the `#file:lib/memory/factory.ts` and the Cloudflare service operation classes (D1, KV, R2, Vectorize, DOs).  
 **Agent Prompts**:
 
-```txt
-You are the Integration Engineer Agent. Your core responsibility is to implement the application's backend logic within the Cloudflare Worker, migrating from the previous Next.js API structure. This involves creating Hono API routes, business logic services, data types, and fully implementing Cloudflare service integrations via the MemoryFactory. Adhere strictly to all project coding standards (TSDoc, Zod, error handling, Vercel AI SDK with Google AI, pnpm, ID generation, cross-cutting concerns).
-Key Responsibilities (refer to #file:TASKS.MD Phase 1):
-1.  **Worker Entrypoint & Middleware**: Fully implement #file:workers/src/index.ts, including all middleware (error, MemoryFactory, binding validation, auth) and route registrations as specified in Task 1.1.2. Implement the middleware functions themselves (#file:workers/src/middleware/*).
-2.  **MemoryFactory Implementation**: Fully implement #file:lib/memory/factory.ts. This includes:
-    *   Defining the `AppEnv` interface to type `c.env`.
-    *   Providing typed getters for all Cloudflare service operation classes (CfD1CrudService, CfKvOps, CfR2Store, CfVectorizeOps, and Durable Object stubs for AgentThreadDO, PersonaProfileDO).
-    *   Implementing the `async runHealthChecks(): Promise<Record<string, string>>` method to verify connectivity to all bound services.
-3.  **Cloudflare Service Operation Classes**: Fully implement the methods within the service operation classes scaffolded by the Migration Architect:
-    *   #file:lib/database/cloudflare/d1/crudService.ts
-    *   #file:lib/database/cloudflare/kv/ops.ts
-    *   #file:lib/database/cloudflare/r2/ops.ts
-    *   #file:lib/database/cloudflare/vectorize/ops.ts
-    *   #file:lib/database/cloudflare/durableObjects/agentThreadDO.ts
-    *   #file:lib/database/cloudflare/durableObjects/personaProfileDO.ts
-4.  **API Endpoint Migration (Task 1.3)**: For each specified `ai-sdk` route:
-    *   Create the Hono route handler file in #file:workers/src/routes/ai-sdk/.
-    *   Create the corresponding business logic service file in #file:lib/ (e.g., #file:lib/chat/chat-service.ts).
-    *   Create the Zod schemas and TypeScript types file in #file:lib/shared/types/ (e.g., #file:lib/shared/types/chatTypes.ts).
-    *   Implement the Hono route handlers, validating inputs with Zod, calling the business logic service, and handling responses.
-    *   Implement the business logic service, using the MemoryFactory to interact with Cloudflare services and integrating Vercel AI SDK (Google AI provider) for AI functionalities (e.g., `streamText`, `embed` for Google's 'text-embedding-004', `generateId`).
-    *   Ensure robust error handling, TSDoc, and adherence to all cross-cutting concerns.
-Reference #file:CF-work.txt for Cloudflare best practices.
+```
+You are the Integration Engineer Agent. Implement backend logic in Cloudflare Worker (Phase 1).
+
+Required MCP Tools Workflow:
+1. bb7_open_project - Establish project context first 
+2. bb7_get_context_tabs - Get current codebase context
+3. bb7_execute_shell_command - All terminal operations
+4. bb7_create_diff - Modify existing files
+5. bb7_open_file - Display new/modified files
+
+Core Tasks:
+1. Implement workers/src/index.ts with Hono router and middleware
+2. Complete lib/memory/factory.ts with AppEnv interface and service getters
+3. Migrate API routes to workers/src/routes/api/ (not ai-sdk/)
+4. Create business logic services in lib/ with Vercel AI SDK integration
+
+Mark tasks complete in TASKS.md when finished.
 ```
 
 ### 🚀 DevOps Optimizer Agent
@@ -105,29 +167,50 @@ Reference #file:CF-work.txt for Cloudflare best practices.
 **Responsibilities**: Implementing comprehensive testing strategies for the Cloudflare Worker and its services. Setting up CI/CD pipelines for automated testing and deployment. Implementing monitoring, logging, and alerting for the production environment. Optimizing performance and ensuring scalability.  
 **Agent Prompts**:
 
-```txt
-You are the DevOps Optimizer Agent. Your mission is to ensure the migrated Cloudflare Worker application is robust, testable, deployable, and performant.
-Key Responsibilities (refer to #file:TASKS.MD Phases 3 & 4):
-1.  **Testing Strategy & Implementation (Task 8.1)**:
-    *   Develop and implement unit tests (using Vitest and `vitest-environment-miniflare` or appropriate mocking) for all service operation classes in #file:lib/database/cloudflare/, business logic services in #file:lib/, and the #file:lib/memory/factory.ts. Aim for high coverage.
-    *   Develop and implement integration tests for all Hono API routes in #file:workers/src/routes/, verifying request handling, middleware execution, and responses.
-    *   (Optional, if frontend exists) Plan and implement E2E tests for critical user flows involving the migrated backend.
-    *   Plan and execute load tests for key API endpoints.
-2.  **CI/CD Pipeline (Task 9.1.2)**: Set up GitHub Actions workflows for:
-    *   Linting and type checking.
-    *   Running unit and integration tests on every push/PR.
-    *   Automated deployment of the Worker to Cloudflare staging and production environments (with manual approval for production).
-3.  **Production Setup & Monitoring (Tasks 9.1.1, 9.1.3, 9.1.4)**:
-    *   Document the process for configuring production secrets using `wrangler secret put`.
-    *   Implement robust monitoring and logging for Worker execution, errors, and performance. Utilize Cloudflare Worker Analytics and consider integration with OpenTelemetry/Langfuse if specified by the project.
-    *   Configure alerting for critical errors and performance degradation.
-4.  **Developer Experience (Task 10.2)**:
-    *   Ensure #file:workers/package.json scripts are clear for development, testing, and deployment.
-    *   Verify #file:workers/tsconfig.json and #file:workers/.env.example are complete and accurate.
-Reference #file:CF-work.txt for Cloudflare best practices.
+```
+You are the DevOps Optimizer Agent. Ensure robust testing, deployment, and monitoring (Phases 3-4).
+
+Required MCP Tools Workflow:
+1. bb7_open_project - Establish project context
+2. bb7_execute_shell_command - Run tests, deployments
+3. Use cloudflare_bindings_client for infrastructure verification
+4. Use cloudflare_docs_client for best practices research
+
+Core Tasks:
+1. Implement unit/integration tests for all services and routes
+2. Set up CI/CD with GitHub Actions
+3. Configure monitoring and logging for production
+4. Optimize performance and ensure scalability
+
+Mark tasks complete in TASKS.md when finished.
 ```
 
 ### 📚 Documentation Curator Agent
+
+**Agent Mode Configuration**: `github.copilot.chat.agent.enabled: true`  
+**Preferred Models**: Claude Sonnet (latest 4.x), GPT-4 (latest 4.x)
+**Specialty**: TSDoc generation, updating `README.md` and `README_TYPES.MD`, API documentation, developer onboarding materials.  
+**Responsibilities**: Ensuring all code is meticulously documented with TSDoc. Keeping project documentation (`README_TYPES.MD`, main `README.md`) current with the migration progress and new architecture. Generating API documentation. Creating/updating developer onboarding guides.  
+**Agent Prompts**:
+
+```
+You are the Documentation Curator Agent. Ensure exceptional documentation and developer experience.
+
+Required MCP Tools Workflow:
+1. bb7_open_project - Establish project context
+2. bb7_get_context_tabs - Analyze current codebase structure
+3. bb7_read_context - Deep dive into file contents
+4. bb7_create_diff - Update documentation files
+5. Use context7_client for latest library documentation standards
+
+Core Tasks:
+1. Generate comprehensive TSDoc for all exported code
+2. Update README.md and README_TYPES.MD with new architecture
+3. Create API documentation for Worker endpoints  
+4. Maintain developer onboarding guides
+
+Mark tasks complete in TASKS.md when finished.
+```
 
 **Agent Mode Configuration**: `github.copilot.chat.agent.enabled: true`  
 **Preferred Models**: Claude Sonnet (latest 4.x), GPT-4 (latest 4.x)
@@ -136,75 +219,141 @@ Reference #file:CF-work.txt for Cloudflare best practices.
 **Agent Prompts**:
 
 ```txt
-You are the Documentation Curator Agent. Your role is to ensure the project is exceptionally well-documented, facilitating understanding, maintenance, and onboarding.
-Key Responsibilities (refer to #file:TASKS.MD Phase 4):
-1.  **TSDoc Generation & Enforcement (Task 10.1.2)**:
-    *   Review ALL exported functions, classes, types, and interfaces in the #file:workers/ and #file:lib/ directories.
-    *   Generate comprehensive TSDoc comments for any undocumented or poorly documented items. Ensure they clearly explain purpose, parameters (`@param`), return values (`@returns`), exceptions (`@throws`), and props for React components (if any were part of this scope).
-    *   Adhere strictly to project documentation standards.
-2.  **Project Documentation Updates (Task 10.1.1)**:
-    *   Update #file:README_TYPES.MD to accurately reflect the completed migration stages and the new Cloudflare-based architecture.
-    *   Update the main project `README.md` with an overview of the Cloudflare Worker setup, key architectural decisions, and how to run/develop the worker.
-3.  **API Documentation (Task 10.1.3)**:
-    *   Generate API documentation for all implemented Hono endpoints in #file:workers/src/routes/ai-sdk/. This could involve using a tool that processes TSDoc or Hono route definitions.
-4.  **Developer Onboarding Materials (Task 10.2)**:
-    *   Review and update #file:workers/.env.example to ensure it lists all necessary environment variables for local development and production.
-    *   Create or update a developer setup guide that explains how to get the Cloudflare Worker running locally, including `pnpm install`, `wrangler dev`, and any necessary Cloudflare account setup.
+You are the Documentation Curator Agent. Ensure exceptional documentation and developer experience.
+
+Core Tasks:
+1. Generate comprehensive TSDoc for all exported code
+2. Update README.md and README_TYPES.MD with new architecture
+3. Create API documentation for Worker endpoints  
+4. Maintain developer onboarding guides
+
+Use bb7_open_project tool first to establish context.
+```
+
+4. **Developer Onboarding Materials (Task 10.2)**:
+    - Review and update #file:workers/.env.example to ensure it lists all necessary environment variables for local development and production.
+    - Create or update a developer setup guide that explains how to get the Cloudflare Worker running locally, including `pnpm install`, `wrangler dev`, and any necessary Cloudflare account setup.
 Reference #file:CF-work.txt for Cloudflare best practices.
+
 ```
 
 ## Migration Progress Tracker (Aligned with #file:README_TYPES.MD)
 
 ### ✅ Completed (Verified by User/Lead Developer)
 
-- [x] D1 schema defined in `#file:lib/database/cloudflare/d1/schema.ts` (for NextAuth.js tables initially)
-- [x] D1 migrations generated and applied (for NextAuth.js)
-- [x] D1 database binding (`DB_D1`) configured in `#file:workers/wrangler.jsonc` (Initial setup)
-- [x] NextAuth.js tables exist in D1
-- [x] `workers/` directory created at project root
+- [x] **Phase 0 Infrastructure Complete** ✅ (All tasks completed 2025-05-24)
+  - [x] D1 schema fully defined in `lib/database/cloudflare/d1/schema.ts` (1,425 lines)
+  - [x] Durable Objects schema complete in `lib/database/cloudflare/durableObjects/schema.ts`
+  - [x] Cloudflare bindings configured in `workers/wrangler.jsonc` (all 9 services)
+  - [x] D1 migrations generated and applied for NextAuth.js
+  - [x] NextAuth.js tables exist in D1
+  - [x] `workers/` directory created at project root
 
-### ⚠️ PARTIALLY COMPLETE (Has Errors/Issues)
+### ⚠️ PARTIALLY COMPLETE (Phase 1 Started - Has TypeScript Errors)
 
-- [⚠️] **CfKvOps** (`lib/database/cloudflare/kv/ops.ts`) - MOSTLY COMPLETE but has minor type issues
-- [⚠️] **CfR2Store** (`lib/database/cloudflare/r2/ops.ts`) - COMPLETE implementation
-- [⚠️] **CfVectorizeOps** (`lib/database/cloudflare/vectorize/ops.ts`) - COMPLETE implementation  
-- [⚠️] **CfD1CrudService** (`lib/database/cloudflare/d1/crudService.ts`) - HAS TYPESCRIPT ERRORS (using `any` types)
-- [⚠️] **PersonaProfileDO** (`lib/database/cloudflare/durableObjects/personaProfileDO.ts`) - HAS TYPESCRIPT ERRORS (type mismatches, spread operator issues)
-- [⚠️] **Cloudflare MemoryFactory** (`lib/memory/cloudflare/factory.ts`) - HAS MULTIPLE TYPESCRIPT ERRORS (missing constructor args, console statements)
-- [x_] Basic `#file:workers/wrangler.jsonc` config present (Initial setup)
-- [x] Plan to move/create shared types/hooks to `#file:lib/shared/`
+- [⚠️] **Service Operation Classes** - Scaffolds exist but need TypeScript fixes:
+  - [⚠️] CfKvOps (`lib/database/cloudflare/kv/ops.ts`) - Minor type issues
+  - [⚠️] CfR2Store (`lib/database/cloudflare/r2/ops.ts`) - Complete implementation  
+  - [⚠️] CfVectorizeOps (`lib/database/cloudflare/vectorize/ops.ts`) - Complete implementation
+  - [⚠️] CfD1CrudService (`lib/database/cloudflare/d1/crudService.ts`) - Using `any` types
+  - [⚠️] PersonaProfileDO (`lib/database/cloudflare/durableObjects/personaProfileDO.ts`) - Type mismatches
+  - [⚠️] AgentThreadDO (`lib/database/cloudflare/durableObjects/agentThreadDO.ts`) - Needs verification
+- [⚠️] **MemoryFactory** (`lib/memory/cloudflare/factory.ts`) - Multiple TypeScript errors (missing constructor args)
 
-### 🔄 Tasks To Be Done (Fresh Start for New Chat)
+### 🎯 CURRENT FOCUS: Phase 1 - Fix TypeScript Errors & Complete Implementation
 
-#### Phase 0: Infrastructure & Core Setup (Migration Architect Lead)
+**IMMEDIATE PRIORITY:** Fix all TypeScript errors in existing service classes before implementing new features.
 
-- [ ] **Task 0.1**: Finalize and Verify Cloudflare Bindings in `#file:workers/wrangler.jsonc`:
-  - [ ] `d1_databases` for `DB_D1` (verify existing, ensure correct `preview_database_id` if used).
-  - [ ] `kv_namespaces` for `KV_MAIN_CACHE` (binding name `KV_MAIN_CACHE`).
-  - [ ] `kv_namespaces` for `KV_EPHEMERAL_CACHE` (binding name `KV_EPHEMERAL_CACHE`).
-  - [ ] `r2_buckets` for `R2_MAIN_BUCKET` (binding name `R2_MAIN_BUCKET`).
-  - [ ] `vectorize` for `VECTORIZE_MAIN_INDEX` (binding name `VECTORIZE_MAIN_INDEX`, index name `ai-sdk-dm-vectors`, dimensions `768`, metric `cosine`).
-  - [ ] `durable_objects` for `DO_AGENT_THREAD` (class name `AgentThreadDO`, binding name `DO_AGENT_THREAD`). Include migration script path if needed: `migrations = [{ tag = "v1", script = "migrations/do-agent-thread-v1.js" }]` (create placeholder script).
-  - [ ] `durable_objects` for `DO_PERSONA_PROFILE` (class name `PersonaProfileDO`, binding name `DO_PERSONA_PROFILE`). Include migration script path.
-  - Document/provide `wrangler` commands for resource creation if they don't exist:
+#### Task 1.0: Fix TypeScript Errors (BLOCKING - Do This First)
 
-      ```bash
-      # wrangler kv:namespace create KV_MAIN_CACHE
-      # wrangler kv:namespace create KV_EPHEMERAL_CACHE --preview # if using preview
-      # wrangler r2 bucket create R2_MAIN_BUCKET
-      # wrangler vectorize create ai-sdk-dm-vectors --dimensions=768 --metric=cosine
-      # For DOs, migrations are handled by wrangler.jsonc and deployments
-      ```
+- [ ] **Fix MemoryFactory** (`lib/memory/cloudflare/factory.ts`):
+  - Fix missing constructor arguments  
+  - Remove console statements, replace with proper logging
+  - Implement AppEnv interface properly
+  - Add runHealthChecks() method
+- [ ] **Fix Service Classes**:
+  - Fix CfD1CrudService `any` types 
+  - Fix PersonaProfileDO type mismatches
+  - Verify all service class implementations
+- [ ] **Verify All TypeScript Compilation**: Ensure `pnpm build` passes without errors
 
-- [ ] **Task 0.2**: Scaffold Operation Classes (Migration Architect to create files and class shells with TSDoc placeholders for methods; Integration Engineer to implement fully later):
-  - [ ] `#file:lib/database/cloudflare/kv/ops.ts` (CfKvOps class shell: `get`, `put`, `delete`, `list` methods).
-  - [ ] `#file:lib/database/cloudflare/r2/ops.ts` (CfR2Store class shell: `put`, `get`, `delete`, `list`, `head` methods).
-  - [ ] `#file:lib/database/cloudflare/vectorize/ops.ts` (CfVectorizeOps class shell: `upsert`, `query`, `deleteByIds`, `describeIndex` methods).
-  - [ ] `#file:lib/database/cloudflare/durableObjects/agentThreadDO.ts` (AgentThreadDO class shell, extending `DurableObject`, with `fetch` handler and methods for message management, state persistence).
-  - [ ] `#file:lib/database/cloudflare/durableObjects/personaProfileDO.ts` (PersonaProfileDO class shell, extending `DurableObject`, with `fetch` handler and methods for profile data management).
-  - [ ] `#file:lib/database/cloudflare/d1/crudService.ts` (CfD1CrudService class shell for generic D1 operations: `create`, `read`, `update`, `delete`, `list` methods, taking table name and data/query).
+#### Task 1.1: Complete Worker Implementation
 
-#### Phase 1: Worker API Implementation (Integration Engineer Lead)
+- [ ] Install dependencies: `cd workers && pnpm add hono @hono/zod-validator @hono/jwt @cloudflare/workers-types zod ai`
+- [ ] Implement `workers/src/index.ts` with Hono router and all middleware
+- [ ] Create middleware files:
+  - `workers/src/middleware/error.ts`
+  - `workers/src/middleware/auth.ts` 
+  - `workers/src/middleware/bindings.ts`
+  - `workers/src/middleware/logging.ts`
+- [ ] Implement health check route `workers/src/routes/health.ts`
+
+#### Task 1.2: API Endpoint Migration
+
+- [ ] Migrate `/api/ai-sdk/chat` routes to `workers/src/routes/api/chat.ts`
+- [ ] Create chat service `lib/chat/chat-service.ts` with Vercel AI SDK integration
+- [ ] Create types/schemas `lib/shared/types/chatTypes.ts`
+- [ ] Test endpoint functionality with health checks
+
+#### Task 1.3: Comprehensive MCP Tools Integration & Autonomous Development
+
+**CRITICAL FILE HANDLING NOTES:**
+- **Line Endings**: New files created will default to CRLF on Windows. Agent MUST convert to LF to avoid errors: `bb7_execute_shell_command` with `dos2unix filename` or configure VS Code
+- **Auto-formatting**: If prettier/eslint errors occur after file creation, let agent "release" the file (don't immediately edit) - auto-formatting will fix these issues
+- **Error Recovery**: Don't create new files if there are formatting errors - fix existing files first
+
+**Branch Thinking & Complex Analysis:**
+- [ ] Use `bb7_branch-thinking` with `add-thought` for complex problem decomposition
+- [ ] Use `list`, `focus`, `history` commands to navigate multiple reasoning branches  
+- [ ] Use `search`, `summarize` for finding related insights across branches
+- [ ] Use `export-branch` to save analysis for later reference
+
+**File Context & Codebase Analysis (SUPER POWERED):**
+- [ ] Use `bb7_read_context` + `bb7_get_chunk_count` for analyzing existing codebase structure
+- [ ] Use `bb7_generate_outline` for understanding file structure (TS/JS/Python files)
+- [ ] Use `bb7_set_profile` and `bb7_get_profile_context` for consistent context generation
+- [ ] Combine with `bb7_search_code` for powerful pattern matching across codebase
+
+**Context7 Documentation Access:**
+- [ ] Use `bb7_resolve-library-id` + `bb7_get-library-docs` for:
+  - Hono (router, middleware, Cloudflare Workers integration)
+  - Vercel AI SDK (streaming, Google AI provider, core functions)  
+  - Cloudflare Workers (bindings, environment types, TypeScript)
+  - Any other libraries as needed
+
+**Cloudflare-Specific Tools:**
+- [ ] Use `bb7_search_cloudflare_documentation` for implementation patterns and best practices
+- [ ] Use Cloudflare Bindings tools for runtime verification:
+  - `bb7_d1_database_query`, `bb7_d1_databases_list` for D1 operations
+  - `bb7_kv_namespaces_list`, `bb7_kv_namespace_get` for KV operations  
+  - `bb7_r2_buckets_list`, `bb7_r2_bucket_get` for R2 operations
+  - `bb7_workers_list`, `bb7_workers_get_worker` for Workers management
+
+**Development Workflow Tools:**
+- [ ] Use `bb7_open_project` at session start to establish VS Code context  
+- [ ] Use `bb7_get_active_tabs` and `bb7_get_context_tabs` to understand current state
+- [ ] Use `bb7_execute_shell_command` for all terminal operations (pnpm, wrangler, git)
+- [ ] Use `bb7_create_diff` for modifying existing files with user approval
+- [ ] Use `bb7_open_file` to display newly created/modified files
+
+**Memory & Context Persistence:**
+- [ ] Use `bb7_search-memories` to leverage past project context and user preferences  
+- [ ] Use `bb7_add-memory` to store important project decisions and patterns
+
+**Git & External Resources:**
+- [ ] Use `bb7_git_summary`, `bb7_git_tree`, `bb7_git_files` for external repo analysis
+- [ ] Use `bb7_fetch_content` for web resources and documentation
+- [ ] Use `bb7_search` for DuckDuckGo research when needed
+
+**Best Practice Workflow:** 
+1. Start with `bb7_open_project` to establish context
+2. Use `bb7_get_context_tabs` to understand current state  
+3. Use `bb7_branch-thinking` for complex problem analysis
+4. Use `bb7_read_context` to analyze existing code patterns
+5. Use documentation tools for implementation guidance
+6. Make changes with `bb7_create_diff` and open results with `bb7_open_file`
+
+#### 🔄 Remaining Phase 1 Tasks
 
 ##### Task 1.1: Core Worker Setup & Hono Router
 
@@ -234,7 +383,7 @@ Reference #file:CF-work.txt for Cloudflare best practices.
   import aiSdkAgentRoutes from './routes/ai-sdk/agents';
   import aiSdkToolRoutes from './routes/ai-sdk/tools';
   import aiSdkModelRoutes from './routes/ai-sdk/models';
-  // Add other ai-sdk route imports if they exist e.g., files, etc.
+  // Add ALL ai-sdk route imports if they exist e.g., files, etc.
 
   export type HonoAppContext = {
     Variables: {
@@ -432,22 +581,22 @@ Reference #file:CF-work.txt for Cloudflare best practices.
 9. **TSDoc**: Document all new functions, types, Zod schemas, etc.
 10. **Cross-Cutting Concerns**: Ensure logging, tracing (if set up), ID generation, and Zod validation are applied.
 
-- [ ] **Task 1.3.1**: Migrate functionality from old Next.js `#file:app/api/ai-sdk/chat/route.ts` (and any related dynamic segments like `/app/api/ai-sdk/chat/[threadId]/route.ts`) to new Hono routes in `#file:workers/src/routes/ai-sdk/chat.ts`.
-  - Business logic in a new `#file:lib/chat/chat-service.ts`.
-  - Types/Zod schemas in a new `#file:lib/shared/types/chatTypes.ts` (e.g., `ChatRequestSchema`, `ChatMessageSchema`).
+- [ ] **Task 1.3.1**: Migrate functionality from old Next.js `app/api/ai-sdk/chat/route.ts` to new Hono routes in `workers/src/routes/api/chat.ts`.
+  - Business logic in a new `lib/chat/chat-service.ts`.
+  - Types/Zod schemas in a new `lib/shared/types/chatTypes.ts` (e.g., `ChatRequestSchema`, `ChatMessageSchema`).
   - Integrate with `DO_AGENT_THREAD` via `MemoryFactory` for conversation state, message history, and Vercel AI SDK `AIState` persistence.
   - Utilize Vercel AI SDK's `streamText` for streaming responses, `generateId` for message IDs.
-- [ ] **Task 1.3.2**: Migrate functionality from old Next.js `#file:app/api/ai-sdk/agents/route.ts` (and related dynamic segments for specific agent IDs) to new Hono routes in `#file:workers/src/routes/ai-sdk/agents.ts`.
-  - Business logic for CRUD operations on agent configurations in a new `#file:lib/agents/agent-service.ts`.
-  - Types/Zod schemas in a new `#file:lib/shared/types/agentTypes.ts` (e.g., `AgentConfigSchema`, `CreateAgentRequestSchema`).
+- [ ] **Task 1.3.2**: Migrate functionality from old Next.js `app/api/ai-sdk/agents/route.ts` to new Hono routes in `workers/src/routes/api/agents.ts`.
+  - Business logic for CRUD operations on agent configurations in a new `lib/agents/agent-service.ts`.
+  - Types/Zod schemas in a new `lib/shared/types/agentTypes.ts` (e.g., `AgentConfigSchema`, `CreateAgentRequestSchema`).
   - Store agent definitions in D1 using `CfD1CrudService` from `MemoryFactory`.
-- [ ] **Task 1.3.3**: Migrate functionality from old Next.js `#file:app/api/ai-sdk/tools/route.ts` (and related dynamic segments) to new Hono routes in `#file:workers/src/routes/ai-sdk/tools.ts`.
-  - Business logic for tool management (listing, fetching definitions) in a new `#file:lib/tools/tool-service.ts`.
-  - Types/Zod schemas in a new `#file:lib/shared/types/toolTypes.ts` (e.g., `ToolDefinitionSchema`).
+- [ ] **Task 1.3.3**: Migrate functionality from old Next.js `app/api/ai-sdk/tools/route.ts` to new Hono routes in `workers/src/routes/api/tools.ts`.
+  - Business logic for tool management (listing, fetching definitions) in a new `lib/tools/tool-service.ts`.
+  - Types/Zod schemas in a new `lib/shared/types/toolTypes.ts` (e.g., `ToolDefinitionSchema`).
   - Store tool definitions/configurations in D1.
-- [ ] **Task 1.3.4**: Migrate functionality from old Next.js `#file:app/api/ai-sdk/models/route.ts` (and related dynamic segments) to new Hono routes in `#file:workers/src/routes/ai-sdk/models.ts`.
-  - Business logic for AI model configuration management (listing available, fetching details) in a new `#file:lib/models/model-service.ts`.
-  - Types/Zod schemas in a new `#file:lib/shared/types/modelTypes.ts` (e.g., `ModelConfigSchema`).
+- [ ] **Task 1.3.4**: Migrate functionality from old Next.js `app/api/ai-sdk/models/route.ts` to new Hono routes in `workers/src/routes/api/models.ts`.
+  - Business logic for AI model configuration management (listing available, fetching details) in a new `lib/models/model-service.ts`.
+  - Types/Zod schemas in a new `lib/shared/types/modelTypes.ts` (e.g., `ModelConfigSchema`).
   - Store model settings in D1 or KV (for simpler, less relational data).
 - [ ] **Task 1.3.5**: Ensure all new business logic service files (e.g., `#file:lib/chat/chat-service.ts`) are created, well-structured, use `MemoryFactory`, and correctly incorporate Vercel AI SDK with Google AI provider. All methods must be async and include try/catch.
 - [ ] **Task 1.3.6**: Ensure all new type and Zod schema files (e.g., `#file:lib/shared/types/chatTypes.ts`) are created, correctly define data structures, and are used for validation in Hono routes.
@@ -534,15 +683,80 @@ Reference #file:CF-work.txt for Cloudflare best practices.
 
 ### Agent Mode Best Practices
 
-#### Autonomous Iteration Patterns
+#### Autonomous Iteration Patterns for Development
+
+**Route Generation & API Development:**
 
 ```typescript
-// Example: Agent should automatically iterate until tests pass
-// 1. Generate initial implementation
-// 2. Run tests automatically
-// 3. Detect failures and fix them
-// 4. Iterate until all tests pass
-// 5. Validate integration points
+// Autonomous API Route Creation Pattern
+// 1. Analyze existing API structure with bb7_read_context
+// 2. Generate route file with proper Hono setup
+// 3. Create associated service class in lib/
+// 4. Generate Zod schemas in lib/shared/types/
+// 5. Verify compilation with bb7_execute_shell_command
+// 6. Test health endpoint to validate integration
+// 7. Iterate on TypeScript errors until clean build
+```
+
+**Service Class Implementation Pattern:**
+
+```typescript
+// Autonomous Service Development
+// 1. Use bb7_branch-thinking to analyze service requirements
+// 2. Generate service class with MemoryFactory integration
+// 3. Implement methods with proper error handling
+// 4. Add comprehensive TSDoc documentation  
+// 5. Create Zod schemas for all inputs/outputs
+// 6. Verify TypeScript compilation and fix errors
+// 7. Test integration with health checks
+```
+
+**File Creation & Error Handling Workflow:**
+
+```typescript
+// Critical File Handling Process
+// 1. Create file with bb7_create_diff or bb7_write_file
+// 2. IMMEDIATELY check for CRLF/LF issues (Windows default is CRLF)
+// 3. If prettier/eslint errors appear, "release" file (don't edit immediately)
+// 4. Let auto-formatting fix style issues automatically
+// 5. Only then proceed with actual code improvements
+// 6. Use bb7_execute_shell_command for pnpm build to verify compilation
+// 7. Fix TypeScript errors iteratively until clean build
+```
+
+**Complex Problem Solving with Branch Thinking:**
+
+```typescript
+// Multi-step Analysis Pattern
+// 1. bb7_branch-thinking add-thought type:"analysis" - Break down problem
+// 2. bb7_branch-thinking add-thought type:"solution" - Explore approaches  
+// 3. bb7_branch-thinking summarize - Review analysis
+// 4. Implement chosen solution with documentation tools
+// 5. bb7_branch-thinking add-thought type:"validation" - Record results
+```
+
+**Infrastructure Setup Automation:**
+
+```typescript
+// Cloudflare Service Integration Pattern
+// 1. Use bb7_search_cloudflare_documentation for best practices
+// 2. Generate wrangler.jsonc configuration with all bindings
+// 3. Create service operation classes for each Cloudflare service
+// 4. Implement MemoryFactory with proper AppEnv interface
+// 5. Test each service connection via health checks
+// 6. Iterate on connection issues until all services healthy
+```
+
+**Error Detection & Self-Healing:**
+
+```typescript
+// Autonomous Error Resolution
+// 1. Monitor bb7_execute_shell_command outputs for errors
+// 2. Parse TypeScript/compilation errors automatically
+// 3. Use bb7_read_context to understand error context  
+// 4. Apply fixes iteratively until compilation succeeds
+// 5. Validate integration points after each fix
+// 6. Use bb7_branch-thinking to track debugging progress
 ```
 
 #### MCP Server Integration
@@ -555,15 +769,34 @@ Reference #file:CF-work.txt for Cloudflare best practices.
     "args": ["mcp-remote", "https://bindings.mcp.cloudflare.com/sse"]
   },
   "cloudflare": {
-    "command": "npx",
+    "command": "npx", 
     "args": ["mcp-remote", "https://docs.mcp.cloudflare.com/sse"]
   },
   "cloudflare-builds": {
     "command": "npx",
     "args": ["mcp-remote@latest", "https://builds.mcp.cloudflare.com/sse"]
+  },
+  "file-context": {
+    "command": "npx",
+    "args": ["@bsmi021/mcp-file-context-server"]
+  },
+  "branch-thinking": {
+    "command": "npx", 
+    "args": ["mcp-branch-thinking"]
+  },
+  "context7": {
+    "command": "npx",
+    "args": ["context7-mcp"]
   }
 }
 ```
+
+**SUPER POWER COMBINATION:** File Context + Desktop Commander
+
+- Use `bb7_read_context` for deep codebase analysis
+- Combined with `bb7_search_code` for pattern matching  
+- Then `bb7_branch-thinking` for complex problem solving
+- Finally `bb7_create_diff` for implementation
 
 #### Terminal Command Automation
 
@@ -648,4 +881,28 @@ pnpm deploy
 @codebase Execute deployment pipeline with auto-rollback on failures
 @codebase Finish migration to Cloudflare
 @codebase Integrate with MCP for enterprise-grade automation
+```
+
+### 🎯 AGENT COMMANDS FOR NEXT CHAT
+
+Copy and paste this command to start the next phase:
+
+```
+@codebase I'm the Integration Engineer Agent. Based on TASKS.md, Phase 0 is complete (D1 schema, Durable Objects schema, wrangler.jsonc all done). 
+
+I need to start Phase 1 by implementing service operation classes. My immediate priorities are:
+
+1. First implement all service class scaffolding (Task 0.2):
+   - lib/database/cloudflare/kv/ops.ts (CfKvOps)  
+   - lib/database/cloudflare/r2/ops.ts (CfR2Store)
+   - lib/database/cloudflare/vectorize/ops.ts (CfVectorizeOps)
+   - lib/database/cloudflare/durableObjects/agentThreadDO.ts (AgentThreadDO)
+   - lib/database/cloudflare/durableObjects/personaProfileDO.ts (PersonaProfileDO)
+   - lib/database/cloudflare/d1/crudService.ts (CfD1CrudService)
+
+2. Then implement lib/memory/factory.ts (MemoryFactory with AppEnv interface)
+
+3. Then start Worker implementation (workers/src/index.ts and middleware)
+
+Use the project coding standards: TSDoc, Zod validation, generateId from 'ai', error handling, cross-cutting concerns. Reference the complete schemas at lib/database/cloudflare/d1/schema.ts and lib/database/cloudflare/durableObjects/schema.ts.
 ```

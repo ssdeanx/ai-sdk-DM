@@ -17,7 +17,7 @@ import {
   SettingSchema,
   BlogPostSchema,
   MdxDocumentSchema,
-} from '../db/supabase/validation';
+} from '../../../db/supabase/validation';
 
 // Supabase types derived from Zod schemas
 export type User = z.infer<typeof UserSchema>;

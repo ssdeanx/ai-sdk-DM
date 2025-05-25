@@ -15,7 +15,7 @@ import {
   QStashTaskPayload,
   WorkflowNode,
   UpstashEntityBase,
-} from '../../../types/upstashTypes';
+} from '../../shared/types/upstashTypes';
 import { upstashLogger } from './upstash-logger';
 
 // --- Zod Schemas ---

@@ -62,7 +62,7 @@ import type {
   NewBlogPost,
   MdxDocument,
   NewMdxDocument,
-} from '../../types/supabase';
+} from '../shared/types/supabase';
 
 // --- Upstash Client Utilities ---
 export {

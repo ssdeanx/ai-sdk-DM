@@ -1,4 +1,4 @@
-import * as validation from '../db/libsql/validation';
+import * as validation from '../../../db/libsql/validation';
 
 /**
  * LibSQL types for use throughout the project (frontend & backend).

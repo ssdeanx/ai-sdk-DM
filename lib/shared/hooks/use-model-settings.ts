@@ -3,7 +3,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Model } from '@/types/models';
-import { ModelSettings, ModelProvider } from '@/types/model-settings';
+import { ModelSettings, ModelProvider } from '@/lib/shared/types/model-settings';
 import { MODEL_REGISTRY } from '../model-registry';
 import {
   getModelById,

@@ -28,7 +28,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 
 export default function AdminDashboardPage() {
   const [userName, setUserName] = useState<string | null>(null);

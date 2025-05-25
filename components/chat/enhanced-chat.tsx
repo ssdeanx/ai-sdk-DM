@@ -52,8 +52,8 @@ import { InteractiveForm } from './interactive-form';
 import { AIImageGenerator } from './ai-image-generator';
 import { AudioPlayer } from './audio-player';
 import { FileUpload } from './file-upload';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useChat, type Message } from '@/hooks/use-chat';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
+import { useChat, type Message } from '@/lib/shared/hooks/use-chat';
 import { renderContent } from './ai-sdk-chatHelper';
 
 interface EnhancedChatProps {

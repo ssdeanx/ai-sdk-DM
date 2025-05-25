@@ -14,7 +14,7 @@ import {
   VectorMetadata,
   VectorQueryOptions,
   VectorStoreError,
-} from '../../../types/upstashTypes';
+} from '../../shared/types/upstashTypes';
 import { upstashLogger } from './upstash-logger';
 import { generateEmbedding } from '../../ai-integration';
 import {
@@ -34,8 +34,8 @@ import {
   ToolExecutionEntity,
   WorkflowNode,
   LogEntry,
-} from '../../../types/upstashTypes';
-import type { Database } from '@/types/supabase';
+} from '../../shared/types/upstashTypes';
+import type { Database } from '@/lib/shared/types/supabase';
 
 // Canonical types and schemas for Supabase
 import type {
@@ -74,7 +74,7 @@ import type {
   MdxDocument,
   NewMdxDocument,
   // ...add more as needed
-} from '../../../types/supabase';
+} from '../../shared/types/supabase';
 
 export type TableName = keyof Database['public']['Tables'];
 export type TableRow<T extends TableName = TableName> =

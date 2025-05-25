@@ -17,7 +17,7 @@ import {
   FilterOptions,
   QueryOptions,
 } from './supabase-adapter';
-import * as supabaseTypes from '../../../types/supabase';
+import * as supabaseTypes from '../../shared/types/supabase';
 import { getRedisClient, getVectorClient } from './upstashClients';
 import { upstashLogger } from './upstash-logger';
 import { generateId } from 'ai';

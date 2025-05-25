@@ -1,6 +1,6 @@
 import { createVertex } from '@ai-sdk/google-vertex';
 import { streamText, generateText, convertToCoreMessages } from 'ai';
-import type { ModelSettings } from '@/types/model-settings';
+import type { ModelSettings } from '@/lib/shared/types/model-settings';
 
 // Local type definitions based on AI SDK UI documentation and project types
 export type ChatMessage = {
@@ -44,7 +44,7 @@ export async function getModelConfig(
   // Coerce/parse fields to match ModelSettings (numbers, booleans, enums)
   return {
     ...model,
-    provider: 'vertex' as import('../types/model-settings').ModelProvider,
+    provider: 'vertex' as import('./shared/types/model-settings').ModelProvider,
     input_cost_per_token:
       typeof model.input_cost_per_token === 'string'
         ? parseFloat(model.input_cost_per_token)
@@ -85,13 +85,13 @@ export async function getModelConfig(
     description: model.description ?? undefined,
     category:
       typeof model.category === 'string'
-        ? (model.category as import('../types/model-settings').ModelCategory)
+        ? (model.category as import('./shared/types/model-settings').ModelCategory)
         : undefined,
     capabilities:
       model.capabilities &&
       typeof model.capabilities === 'object' &&
       !Array.isArray(model.capabilities)
-        ? (model.capabilities as import('../types/model-settings').ModelCapabilities)
+        ? (model.capabilities as import('./shared/types/model-settings').ModelCapabilities)
         : undefined,
     metadata:
       model.metadata &&

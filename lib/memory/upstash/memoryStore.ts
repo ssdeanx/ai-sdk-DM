@@ -3,7 +3,7 @@ import {
   ThreadMetadata,
   Message,
   MessageMetadata,
-} from '../../../types/upstashTypes';
+} from '../../shared/types/upstashTypes';
 import { generateId } from 'ai';
 import { getRedisClient } from './upstashClients';
 import { upstashLogger } from './upstash-logger';

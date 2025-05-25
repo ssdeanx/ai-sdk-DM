@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   AlertCircle,
@@ -57,9 +57,9 @@ import { json } from '@codemirror/lang-json';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AppBuilderContainer } from '@/components/appBuilder/appBuilderContainer';
-import type { App } from 'types/supabase';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import type { App } from '@/lib/shared/types/supabase';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
 
 // Use a form schema that matches the canonical App type, but only for fields used in the form
 // TODO: [2025-05-20] - If AppSchema changes, update this form schema to match backend

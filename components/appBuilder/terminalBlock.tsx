@@ -7,9 +7,9 @@ import { CanvasAddon } from '@xterm/addon-canvas';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { useMemoryProvider } from '@/hooks/use-memory-provider';
-import { TerminalSessionSchema as SupabaseTerminalSessionSchema } from '@/types/supabase';
-import { TerminalSessionSchema as LibsqlTerminalSessionSchema } from '@/types/libsql';
+import { useMemoryProvider } from '@/lib/shared/hooks/use-memory-provider';
+import { TerminalSessionSchema as SupabaseTerminalSessionSchema } from '@/lib/shared/types/supabase';
+import { TerminalSessionSchema as LibsqlTerminalSessionSchema } from '@/lib/shared/types/libsql';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 
 interface AppBuilderTerminalBlockProps {

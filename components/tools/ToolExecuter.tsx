@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useToolExecutor } from '@/hooks/use-executor';
+import { useToolExecutor } from '@/lib/shared/hooks/use-executor';
 
 interface ToolExecutorProps {
   tool: {

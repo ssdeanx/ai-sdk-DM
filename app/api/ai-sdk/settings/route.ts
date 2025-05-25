@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { settings } from '@/db/supabase/schema';
-import { SettingSchema } from 'types/supabase';
+import { SettingSchema } from '@/lib/shared/types/supabase';
 
 const table = 'settings';
 const adapter = createSupabaseClient();

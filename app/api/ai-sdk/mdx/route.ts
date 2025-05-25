@@ -1,4 +1,4 @@
-import { MdxDocumentSchema } from 'types/supabase';
+import { MdxDocumentSchema } from '@/lib/shared/types/supabase';
 import { createSupabaseClient } from '@/lib/memory/upstash/supabase-adapter-factory';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { NextResponse } from 'next/server';

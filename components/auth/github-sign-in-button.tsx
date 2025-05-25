@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useToast } from '@/components/ui/use-toast';
-import type { Database } from '@/types/supabase';
+import type { Database } from '@/lib/shared/types/supabase';
 
 interface GitHubSignInButtonProps {
   redirectTo?: string;

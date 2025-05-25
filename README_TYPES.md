@@ -13,12 +13,17 @@ This checklist tracks the full migration of ai-sdk-dm backend to Cloudflare (D1,
 
 Legend: [x] = complete, [ ] = not started/in progress
 
-## 1. Cloudflare D1 (Database)
-[x] D1 schema defined in /lib/database/cloudflare/d1/
-[x] D1 migrations generated and applied (drizzle.d1.config.ts, wrangler d1)
-[x] D1 database binding configured in Worker config (workers/wrangler.jsonc)
-[x] NextAuth.js tables migrated to D1
-[x] D1 used as canonical DB for all new backend features
+## 1. Cloudflare D1 (Database) ✅ COMPLETED 2025-05-24
+[x] D1 schema defined in /lib/database/cloudflare/d1/ ✅
+[x] D1 migrations generated and applied (drizzle.d1.config.ts, wrangler d1) ✅
+[x] D1 database binding configured in Worker config (workers/wrangler.jsonc) ✅
+[x] NextAuth.js tables migrated to D1 ✅
+[x] D1 used as canonical DB for all new backend features ✅
+[x] **NEW 2025-05-24**: Complete observability system tables (traces, spans, events, metrics) ✅
+[x] **NEW 2025-05-24**: Infrastructure monitoring tables (database tracking, scheduled tasks) ✅
+[x] **NEW 2025-05-24**: All Drizzle relations and TypeScript types exported ✅
+[x] **NEW 2025-05-24**: Self-referencing table issues resolved (spans parentSpanId) ✅
+[x] **NEW 2025-05-24**: Schema parity with Supabase for full feature migration ✅
 
 ## 2. Cloudflare Worker App
 [x] workers/ directory created at project root (not in lib/)
@@ -45,7 +50,12 @@ Legend: [x] = complete, [ ] = not started/in progress
 [ ] Embedding/vector search logic migrated to Vectorize (lib/database/cloudflare/vectorize/)
 [ ] Remove Upstash vector code
 
-## 6. Durable Objects
+## 6. Durable Objects ✅ SCHEMA COMPLETED 2025-05-24
+[x] **NEW 2025-05-24**: Complete Durable Object Zod schemas in lib/database/cloudflare/durableObjects/schema.ts ✅
+[x] **NEW 2025-05-24**: NextAuth.js schemas (Account, Session, VerificationToken) ✅
+[x] **NEW 2025-05-24**: Real-time collaboration schemas (Network, TypingIndicator, UserPresence) ✅
+[x] **NEW 2025-05-24**: Worker analytics and caching schemas ✅
+[x] **NEW 2025-05-24**: All validation functions implemented for type safety ✅
 [ ] Durable Object classes implemented for agent state/personas (lib/database/cloudflare/durable-objects/)
 [ ] Durable Object bindings configured in workers/wrangler.jsonc
 [ ] Durable Object logic integrated into Worker

@@ -16,9 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 import { renderContent } from './ai-sdk-chatHelper';
-import { useToolExecutor } from '@/hooks/use-executor';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useUpstashAdapter } from '@/hooks/use-upstash-adapter';
+import { useToolExecutor } from '@/lib/shared/hooks/use-executor';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
+import { useUpstashAdapter } from '@/lib/shared/hooks/use-upstash-adapter';
 import {
   Send,
   XCircle,

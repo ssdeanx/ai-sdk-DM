@@ -3,8 +3,8 @@
 import type React from 'react';
 
 // Use canonical types from types/libsql and types/supabase
-import type { Message as CanonicalMessage } from 'types/libsql';
-import type { Agent as CanonicalAgent, Tool } from 'types/supabase';
+import type { Message as CanonicalMessage } from '@/lib/shared/types/libsql';
+import type { Agent as CanonicalAgent, Tool } from '@/lib/shared/types/supabase';
 import { generateId } from 'ai';
 
 import { useState, useRef, useEffect } from 'react';
@@ -21,10 +21,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAgentExecutor } from '@/hooks/use-executor';
+import { useAgentExecutor } from '@/lib/shared/hooks/use-executor';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
 
 /**
  * Renders the result of a tool call, using a local mapping or fallback pretty-print.

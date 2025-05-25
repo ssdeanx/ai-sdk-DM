@@ -19,7 +19,7 @@ import {
   ModelSettings,
   ModelSettingsInput,
   ModelSettingsUpdate,
-} from '../../types/model-settings';
+} from '../shared/types/model-settings';
 import { ModelSettingsSchema } from './model-registry';
 import { generateId } from 'ai';
 import { modelRegistry } from './model-registry';

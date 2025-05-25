@@ -11,7 +11,7 @@ import {
   UpstashEntitySchema,
   VectorIndexConfig,
   RediSearchHybridResult,
-} from '../../../types/upstashTypes';
+} from '../../shared/types/upstashTypes';
 
 export type IndexConfig = VectorIndexConfig;
 

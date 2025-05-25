@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { type Agent, Model } from 'types/supabase';
+import { type Agent, Model } from '@/lib/shared/types/supabase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { createAvatar } from '@dicebear/core';
 import { identicon, pixelArtNeutral } from '@dicebear/collection';
@@ -39,9 +39,9 @@ import { personas } from '@dicebear/collection';
 import { pixelArt } from '@dicebear/collection';
 import { shapes } from '@dicebear/collection';
 import { thumbs } from '@dicebear/collection';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
-import { useSupabaseCrud } from '@/hooks/use-supabase-crud';
-import { useSupabaseRealtime } from '@/hooks/use-supabase-realtime';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
+import { useSupabaseCrud } from '@/lib/shared/hooks/use-supabase-crud';
+import { useSupabaseRealtime } from '@/lib/shared/hooks/use-supabase-realtime';
 
 interface DiceBearStyleEntry {
   key: string;

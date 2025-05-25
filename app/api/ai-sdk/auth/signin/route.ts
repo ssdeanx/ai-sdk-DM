@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient as ActualSupabaseClient } from '@supabase/supabase-js';
 // Corrected import: Alias getUpstashClient to getSupabaseClient for consistency
 import { getUpstashClient as getSupabaseClient } from '@/lib/memory/supabase';
-import { UserSchema } from 'types/supabase'; // Canonical UserSchema for output
+import { UserSchema } from '@/lib/shared/types/supabase'; // Canonical UserSchema for output
 import { z } from 'zod';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { createTrace } from '@/lib/langfuse-integration';

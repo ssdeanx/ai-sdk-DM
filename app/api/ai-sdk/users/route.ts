@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { UserSchema } from 'types/supabase';
+import { UserSchema } from '@/lib/shared/types/supabase';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 import { handleApiError } from '@/lib/api-error-handler';
 import { z } from 'zod';

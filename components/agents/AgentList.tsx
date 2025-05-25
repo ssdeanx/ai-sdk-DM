@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { AgentCard } from '@/components/agents/AgentCard';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { CreateAgentDialog } from '@/components/agents/CreateAgentDialog';
-import { type Agent } from 'types/supabase';
+import { type Agent } from '@/lib/shared/types/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { useSupabaseFetch } from '@/hooks/use-supabase-fetch';
+import { useSupabaseFetch } from '@/lib/shared/hooks/use-supabase-fetch';
 import { upstashLogger } from '@/lib/memory/upstash/upstash-logger';
 
 export function AgentsList() {

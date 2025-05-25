@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/lib/shared/hooks/use-toast';
 import { LRUCache } from 'lru-cache';
 import {
   AgentStateSchema as LibsqlAgentStateSchema,

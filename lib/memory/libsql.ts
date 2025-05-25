@@ -28,7 +28,7 @@ import type {
   TerminalSession,
   NewTerminalSession,
   // ...add more as needed
-} from '../../types/libsql';
+} from '../shared/types/libsql';
 import { drizzle } from 'drizzle-orm/libsql';
 
 // Initialize database client and Drizzle CRUD

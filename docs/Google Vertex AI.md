@@ -1,4 +1,5 @@
 # AI SDK Providers: Google Vertex AI
+
 [AI SDK Providers](https://ai-sdk.dev/providers/ai-sdk-providers)Google Vertex AI
 
 [Google Vertex Provider](#google-vertex-provider)
@@ -17,7 +18,6 @@ The Google Vertex and Google Vertex Anthropic providers are both available in th
 pnpm add @ai-sdk/google-vertex
 ```
 
-
 [Google Vertex Provider Usage](#google-vertex-provider-usage)
 -------------------------------------------------------------
 
@@ -32,7 +32,6 @@ You can import the default provider instance `vertex` from `@ai-sdk/google-verte
 import { vertex } from '@ai-sdk/google-vertex';
 ```
 
-
 If you need a customized setup, you can import `createVertex` from `@ai-sdk/google-vertex` and create a provider instance with your settings:
 
 ```
@@ -43,7 +42,6 @@ const vertex = createVertex({
   location: 'us-central1', // optional
 });
 ```
-
 
 Google Vertex supports two different authentication implementations depending on your runtime environment.
 
@@ -66,55 +64,53 @@ const vertex = createVertex({
 });
 ```
 
-
 ##### [Optional Provider Settings](#optional-provider-settings)
 
 You can use the following optional settings to customize the provider instance:
 
-*   **project** _string_
-    
+* **project** _string_
+
     The Google Cloud project ID that you want to use for the API calls. It uses the `GOOGLE_VERTEX_PROJECT` environment variable by default.
-    
-*   **location** _string_
-    
+
+* **location** _string_
+
     The Google Cloud location that you want to use for the API calls, e.g. `us-central1`. It uses the `GOOGLE_VERTEX_LOCATION` environment variable by default.
-    
-*   **googleAuthOptions** _object_
-    
+
+* **googleAuthOptions** _object_
+
     Optional. The Authentication options used by the [Google Auth Library](https://github.com/googleapis/google-auth-library-nodejs/). See also the [GoogleAuthOptions](https://github.com/googleapis/google-auth-library-nodejs/blob/08978822e1b7b5961f0e355df51d738e012be392/src/auth/googleauth.ts#L87C18-L87C35) interface.
-    
-    *   **authClient** _object_ An `AuthClient` to use.
-        
-    *   **keyFilename** _string_ Path to a .json, .pem, or .p12 key file.
-        
-    *   **keyFile** _string_ Path to a .json, .pem, or .p12 key file.
-        
-    *   **credentials** _object_ Object containing client\_email and private\_key properties, or the external account client options.
-        
-    *   **clientOptions** _object_ Options object passed to the constructor of the client.
-        
-    *   **scopes** _string | string\[\]_ Required scopes for the desired API request.
-        
-    *   **projectId** _string_ Your project ID.
-        
-    *   **universeDomain** _string_ The default service domain for a given Cloud universe.
-        
-*   **headers** _Resolvable<Record<string, string | undefined>>_
-    
+
+  * **authClient** _object_ An `AuthClient` to use.
+
+  * **keyFilename** _string_ Path to a .json, .pem, or .p12 key file.
+
+  * **keyFile** _string_ Path to a .json, .pem, or .p12 key file.
+
+  * **credentials** _object_ Object containing client\_email and private\_key properties, or the external account client options.
+
+  * **clientOptions** _object_ Options object passed to the constructor of the client.
+
+  * **scopes** _string | string\[\]_ Required scopes for the desired API request.
+
+  * **projectId** _string_ Your project ID.
+
+  * **universeDomain** _string_ The default service domain for a given Cloud universe.
+
+* **headers** _Resolvable<Record<string, string | undefined>>_
+
     Headers to include in the requests. Can be provided in multiple formats:
-    
-    *   A record of header key-value pairs: `Record<string, string | undefined>`
-    *   A function that returns headers: `() => Record<string, string | undefined>`
-    *   An async function that returns headers: `async () => Record<string, string | undefined>`
-    *   A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
-*   **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
-    
+
+  * A record of header key-value pairs: `Record<string, string | undefined>`
+  * A function that returns headers: `() => Record<string, string | undefined>`
+  * An async function that returns headers: `async () => Record<string, string | undefined>`
+  * A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
+* **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
+
     Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation. Defaults to the global `fetch` function. You can use it as a middleware to intercept requests, or to provide a custom fetch implementation for e.g. testing.
-    
-*   **baseURL** _string_
-    
+
+* **baseURL** _string_
+
     Optional. Base URL for the Google Vertex API calls e.g. to use proxy servers. By default, it is constructed using the location and project: `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google`
-    
 
 #### [Edge Runtime](#edge-runtime)
 
@@ -129,7 +125,6 @@ You can import the default provider instance `vertex` from `@ai-sdk/google-verte
 import { vertex } from '@ai-sdk/google-vertex/edge';
 ```
 
-
 The `/edge` sub-module is included in the `@ai-sdk/google-vertex` package, so you don't need to install it separately. You must import from `@ai-sdk/google-vertex/edge` to differentiate it from the Node.js provider.
 
 If you need a customized setup, you can import `createVertex` from `@ai-sdk/google-vertex/edge` and create a provider instance with your settings:
@@ -143,12 +138,11 @@ const vertex = createVertex({
 });
 ```
 
-
 For Edge runtime authentication, you'll need to set these environment variables from your Google Default Application Credentials JSON file:
 
-*   `GOOGLE_CLIENT_EMAIL`
-*   `GOOGLE_PRIVATE_KEY`
-*   `GOOGLE_PRIVATE_KEY_ID` (optional)
+* `GOOGLE_CLIENT_EMAIL`
+* `GOOGLE_PRIVATE_KEY`
+* `GOOGLE_PRIVATE_KEY_ID` (optional)
 
 These values can be obtained from a service account JSON file from the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 
@@ -156,36 +150,35 @@ These values can be obtained from a service account JSON file from the [Google C
 
 You can use the following optional settings to customize the provider instance:
 
-*   **project** _string_
-    
+* **project** _string_
+
     The Google Cloud project ID that you want to use for the API calls. It uses the `GOOGLE_VERTEX_PROJECT` environment variable by default.
-    
-*   **location** _string_
-    
+
+* **location** _string_
+
     The Google Cloud location that you want to use for the API calls, e.g. `us-central1`. It uses the `GOOGLE_VERTEX_LOCATION` environment variable by default.
-    
-*   **googleCredentials** _object_
-    
+
+* **googleCredentials** _object_
+
     Optional. The credentials used by the Edge provider for authentication. These credentials are typically set through environment variables and are derived from a service account JSON file.
-    
-    *   **clientEmail** _string_ The client email from the service account JSON file. Defaults to the contents of the `GOOGLE_CLIENT_EMAIL` environment variable.
-        
-    *   **privateKey** _string_ The private key from the service account JSON file. Defaults to the contents of the `GOOGLE_PRIVATE_KEY` environment variable.
-        
-    *   **privateKeyId** _string_ The private key ID from the service account JSON file (optional). Defaults to the contents of the `GOOGLE_PRIVATE_KEY_ID` environment variable.
-        
-*   **headers** _Resolvable<Record<string, string | undefined>>_
-    
+
+  * **clientEmail** _string_ The client email from the service account JSON file. Defaults to the contents of the `GOOGLE_CLIENT_EMAIL` environment variable.
+
+  * **privateKey** _string_ The private key from the service account JSON file. Defaults to the contents of the `GOOGLE_PRIVATE_KEY` environment variable.
+
+  * **privateKeyId** _string_ The private key ID from the service account JSON file (optional). Defaults to the contents of the `GOOGLE_PRIVATE_KEY_ID` environment variable.
+
+* **headers** _Resolvable<Record<string, string | undefined>>_
+
     Headers to include in the requests. Can be provided in multiple formats:
-    
-    *   A record of header key-value pairs: `Record<string, string | undefined>`
-    *   A function that returns headers: `() => Record<string, string | undefined>`
-    *   An async function that returns headers: `async () => Record<string, string | undefined>`
-    *   A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
-*   **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
-    
+
+  * A record of header key-value pairs: `Record<string, string | undefined>`
+  * A function that returns headers: `() => Record<string, string | undefined>`
+  * An async function that returns headers: `async () => Record<string, string | undefined>`
+  * A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
+* **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
+
     Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation. Defaults to the global `fetch` function. You can use it as a middleware to intercept requests, or to provide a custom fetch implementation for e.g. testing.
-    
 
 ### [Language Models](#language-models)
 
@@ -195,7 +188,6 @@ You can create models that call the Vertex API using the provider instance. The 
 
 const model = vertex('gemini-1.5-pro');
 ```
-
 
 If you are using [your own models](https://cloud.google.com/vertex-ai/docs/training-overview), the name of your model needs to start with `projects/`.
 
@@ -210,50 +202,48 @@ const model = vertex('gemini-1.5-pro', {
 });
 ```
 
-
 The following optional settings are available for Google Vertex models:
 
-*   **structuredOutputs** _boolean_
-    
+* **structuredOutputs** _boolean_
+
     Optional. Enable structured output. Default is true.
-    
+
     This is useful when the JSON Schema contains elements that are not supported by the OpenAPI schema version that Google Vertex uses. You can use this to disable structured outputs if you need to.
-    
+
     See [Troubleshooting: Schema Limitations](#schema-limitations) for more details.
-    
-*   **safetySettings** _Array<{ category: string; threshold: string }>_
-    
+
+* **safetySettings** _Array<{ category: string; threshold: string }>_
+
     Optional. Safety settings for the model.
-    
-    *   **category** _string_
-        
+
+  * **category** _string_
+
         The category of the safety setting. Can be one of the following:
-        
-        *   `HARM_CATEGORY_UNSPECIFIED`
-        *   `HARM_CATEGORY_HATE_SPEECH`
-        *   `HARM_CATEGORY_DANGEROUS_CONTENT`
-        *   `HARM_CATEGORY_HARASSMENT`
-        *   `HARM_CATEGORY_SEXUALLY_EXPLICIT`
-        *   `HARM_CATEGORY_CIVIC_INTEGRITY`
-    *   **threshold** _string_
-        
+
+    * `HARM_CATEGORY_UNSPECIFIED`
+    * `HARM_CATEGORY_HATE_SPEECH`
+    * `HARM_CATEGORY_DANGEROUS_CONTENT`
+    * `HARM_CATEGORY_HARASSMENT`
+    * `HARM_CATEGORY_SEXUALLY_EXPLICIT`
+    * `HARM_CATEGORY_CIVIC_INTEGRITY`
+  * **threshold** _string_
+
         The threshold of the safety setting. Can be one of the following:
-        
-        *   `HARM_BLOCK_THRESHOLD_UNSPECIFIED`
-        *   `BLOCK_LOW_AND_ABOVE`
-        *   `BLOCK_MEDIUM_AND_ABOVE`
-        *   `BLOCK_ONLY_HIGH`
-        *   `BLOCK_NONE`
-*   **useSearchGrounding** _boolean_
-    
+
+    * `HARM_BLOCK_THRESHOLD_UNSPECIFIED`
+    * `BLOCK_LOW_AND_ABOVE`
+    * `BLOCK_MEDIUM_AND_ABOVE`
+    * `BLOCK_ONLY_HIGH`
+    * `BLOCK_NONE`
+* **useSearchGrounding** _boolean_
+
     Optional. When enabled, the model will [use Google search to ground the response](https://cloud.google.com/vertex-ai/generative-ai/docs/grounding/overview).
-    
-*   **audioTimestamp** _boolean_
-    
+
+* **audioTimestamp** _boolean_
+
     Optional. Enables timestamp understanding for audio files. Defaults to false.
-    
+
     This is useful for generating transcripts with accurate timestamps. Consult [Google's Documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/audio-understanding) for usage details.
-    
 
 You can use Google Vertex language models to generate text with the `generateText` function:
 
@@ -266,7 +256,6 @@ const { text } = await generateText({
   prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
-
 
 Google Vertex language models can also be used in the `streamText` function (see [AI SDK Core](https://ai-sdk.dev/docs/ai-sdk-core)).
 
@@ -299,7 +288,6 @@ const { text } = await generateText({
 });
 ```
 
-
 The AI SDK will automatically download URLs if you pass them as data, except for `gs://` URLs. You can use the Google Cloud Storage API to upload larger files to that location.
 
 See [File Parts](about:/docs/foundations/prompts#file-parts) for details on how to use files in prompts.
@@ -330,27 +318,26 @@ const groundingMetadata = metadata?.groundingMetadata;
 const safetyRatings = metadata?.safetyRatings;
 ```
 
-
 The grounding metadata includes detailed information about how search results were used to ground the model's response. Here are the available fields:
 
-*   **`webSearchQueries`** (`string[] | null`)
-    
-    *   Array of search queries used to retrieve information
-    *   Example: `["What's the weather in Chicago this weekend?"]`
-*   **`searchEntryPoint`** (`{ renderedContent: string } | null`)
-    
-    *   Contains the main search result content used as an entry point
-    *   The `renderedContent` field contains the formatted content
-*   **`groundingSupports`** (Array of support objects | null)
-    
-    *   Contains details about how specific response parts are supported by search results
-    *   Each support object includes:
-        *   **`segment`**: Information about the grounded text segment
-            *   `text`: The actual text segment
-            *   `startIndex`: Starting position in the response
-            *   `endIndex`: Ending position in the response
-        *   **`groundingChunkIndices`**: References to supporting search result chunks
-        *   **`confidenceScores`**: Confidence scores (0-1) for each supporting chunk
+* **`webSearchQueries`** (`string[] | null`)
+
+  * Array of search queries used to retrieve information
+  * Example: `["What's the weather in Chicago this weekend?"]`
+* **`searchEntryPoint`** (`{ renderedContent: string } | null`)
+
+  * Contains the main search result content used as an entry point
+  * The `renderedContent` field contains the formatted content
+* **`groundingSupports`** (Array of support objects | null)
+
+  * Contains details about how specific response parts are supported by search results
+  * Each support object includes:
+    * **`segment`**: Information about the grounded text segment
+      * `text`: The actual text segment
+      * `startIndex`: Starting position in the response
+      * `endIndex`: Ending position in the response
+    * **`groundingChunkIndices`**: References to supporting search result chunks
+    * **`confidenceScores`**: Confidence scores (0-1) for each supporting chunk
 
 Example response excerpt:
 
@@ -377,7 +364,6 @@ Example response excerpt:
 }
 ```
 
-
 ### [Sources](#sources)
 
 When you use [Search Grounding](#search-grounding), the model will include sources in the response. You can access them using the `sources` property of the result:
@@ -391,7 +377,6 @@ const { sources } = await generateText({
   prompt: 'List the top 5 San Francisco news from the past week.',
 });
 ```
-
 
 ### [Safety Ratings](#safety-ratings)
 
@@ -436,7 +421,6 @@ Example response excerpt:
 }
 ```
 
-
 For more details, see the [Google Vertex AI documentation on grounding with Google Search](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/ground-gemini#ground-to-search).
 
 ### [Troubleshooting](#troubleshooting)
@@ -473,14 +457,12 @@ const result = await generateObject({
 });
 ```
 
-
 The following Zod features are known to not work with Google Vertex:
 
-*   `z.union`
-*   `z.record`
+* `z.union`
+* `z.record`
 
 ### [Model Capabilities](#model-capabilities)
-
 
 |Model               |Image Input|Object Generation|Tool Usage|Tool Streaming|
 |--------------------|-----------|-----------------|----------|--------------|
@@ -488,7 +470,6 @@ The following Zod features are known to not work with Google Vertex:
 |gemini-2.0-flash-exp|           |                 |          |              |
 |gemini-1.5-flash    |           |                 |          |              |
 |gemini-1.5-pro      |           |                 |          |              |
-
 
 The table above lists popular models. Please see the [Google Vertex AI docs](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference#supported-models) for a full list of available models. The table above lists popular models. You can also pass any available provider model ID as a string if needed.
 
@@ -501,7 +482,6 @@ You can create models that call the Google Vertex AI embeddings API using the `.
 const model = vertex.textEmbeddingModel('text-embedding-004');
 ```
 
-
 Google Vertex AI embedding models support additional settings. You can pass them as an options argument:
 
 ```
@@ -511,21 +491,17 @@ const model = vertex.textEmbeddingModel('text-embedding-004', {
 });
 ```
 
-
 The following optional settings are available for Google Vertex AI embedding models:
 
-*   **outputDimensionality**: _number_
-    
+* **outputDimensionality**: _number_
+
     Optional reduced dimension for the output embedding. If set, excessive values in the output embedding are truncated from the end.
-    
 
 #### [Model Capabilities](#model-capabilities-1)
-
 
 |Model             |Max Values Per Call|Parallel Calls|
 |------------------|-------------------|--------------|
 |text-embedding-004|2048               |              |
-
 
 The table above lists popular models. You can also pass any available provider model ID as a string if needed.
 
@@ -543,7 +519,6 @@ const { image } = await generateImage({
   aspectRatio: '16:9',
 });
 ```
-
 
 Further configuration can be done using Google Vertex provider options. You can validate the provider options using the `GoogleVertexImageProviderOptions` type.
 
@@ -563,30 +538,26 @@ const { image } = await generateImage({
 });
 ```
 
-
 The following provider options are available:
 
-*   **negativePrompt** _string_ A description of what to discourage in the generated images.
-    
-*   **personGeneration** `allow_adult` | `allow_all` | `dont_allow` Whether to allow person generation. Defaults to `allow_adult`.
-    
-*   **safetySetting** `block_low_and_above` | `block_medium_and_above` | `block_only_high` | `block_none` Whether to block unsafe content. Defaults to `block_medium_and_above`.
-    
-*   **addWatermark** _boolean_ Whether to add an invisible watermark to the generated images. Defaults to `true`.
-    
-*   **storageUri** _string_ Cloud Storage URI to store the generated images.
-    
+* **negativePrompt** _string_ A description of what to discourage in the generated images.
+
+* **personGeneration** `allow_adult` | `allow_all` | `dont_allow` Whether to allow person generation. Defaults to `allow_adult`.
+
+* **safetySetting** `block_low_and_above` | `block_medium_and_above` | `block_only_high` | `block_none` Whether to block unsafe content. Defaults to `block_medium_and_above`.
+
+* **addWatermark** _boolean_ Whether to add an invisible watermark to the generated images. Defaults to `true`.
+
+* **storageUri** _string_ Cloud Storage URI to store the generated images.
 
 Imagen models do not support the `size` parameter. Use the `aspectRatio` parameter instead.
 
 #### [Model Capabilities](#model-capabilities-2)
 
-
 |Model                       |Aspect Ratios            |
 |----------------------------|-------------------------|
 |imagen-3.0-generate-002     |1:1, 3:4, 4:3, 9:16, 16:9|
 |imagen-3.0-fast-generate-001|1:1, 3:4, 4:3, 9:16, 16:9|
-
 
 [Google Vertex Anthropic Provider Usage](#google-vertex-anthropic-provider-usage)
 ---------------------------------------------------------------------------------
@@ -602,7 +573,6 @@ You can import the default provider instance `vertexAnthropic` from `@ai-sdk/goo
 import { vertexAnthropic } from '@ai-sdk/google-vertex/anthropic';
 ```
 
-
 If you need a customized setup, you can import `createVertexAnthropic` from `@ai-sdk/google-vertex/anthropic` and create a provider instance with your settings:
 
 ```
@@ -613,7 +583,6 @@ const vertexAnthropic = createVertexAnthropic({
   location: 'us-central1', // optional
 });
 ```
-
 
 #### [Node.js Runtime](#nodejs-runtime-1)
 
@@ -632,51 +601,49 @@ const vertexAnthropic = createVertexAnthropic({
 });
 ```
 
-
 ##### [Optional Provider Settings](#optional-provider-settings-2)
 
 You can use the following optional settings to customize the Google Vertex Anthropic provider instance:
 
-*   **project** _string_
-    
+* **project** _string_
+
     The Google Cloud project ID that you want to use for the API calls. It uses the `GOOGLE_VERTEX_PROJECT` environment variable by default.
-    
-*   **location** _string_
-    
+
+* **location** _string_
+
     The Google Cloud location that you want to use for the API calls, e.g. `us-central1`. It uses the `GOOGLE_VERTEX_LOCATION` environment variable by default.
-    
-*   **googleAuthOptions** _object_
-    
+
+* **googleAuthOptions** _object_
+
     Optional. The Authentication options used by the [Google Auth Library](https://github.com/googleapis/google-auth-library-nodejs/). See also the [GoogleAuthOptions](https://github.com/googleapis/google-auth-library-nodejs/blob/08978822e1b7b5961f0e355df51d738e012be392/src/auth/googleauth.ts#L87C18-L87C35) interface.
-    
-    *   **authClient** _object_ An `AuthClient` to use.
-        
-    *   **keyFilename** _string_ Path to a .json, .pem, or .p12 key file.
-        
-    *   **keyFile** _string_ Path to a .json, .pem, or .p12 key file.
-        
-    *   **credentials** _object_ Object containing client\_email and private\_key properties, or the external account client options.
-        
-    *   **clientOptions** _object_ Options object passed to the constructor of the client.
-        
-    *   **scopes** _string | string\[\]_ Required scopes for the desired API request.
-        
-    *   **projectId** _string_ Your project ID.
-        
-    *   **universeDomain** _string_ The default service domain for a given Cloud universe.
-        
-*   **headers** _Resolvable<Record<string, string | undefined>>_
-    
+
+  * **authClient** _object_ An `AuthClient` to use.
+
+  * **keyFilename** _string_ Path to a .json, .pem, or .p12 key file.
+
+  * **keyFile** _string_ Path to a .json, .pem, or .p12 key file.
+
+  * **credentials** _object_ Object containing client\_email and private\_key properties, or the external account client options.
+
+  * **clientOptions** _object_ Options object passed to the constructor of the client.
+
+  * **scopes** _string | string\[\]_ Required scopes for the desired API request.
+
+  * **projectId** _string_ Your project ID.
+
+  * **universeDomain** _string_ The default service domain for a given Cloud universe.
+
+* **headers** _Resolvable<Record<string, string | undefined>>_
+
     Headers to include in the requests. Can be provided in multiple formats:
-    
-    *   A record of header key-value pairs: `Record<string, string | undefined>`
-    *   A function that returns headers: `() => Record<string, string | undefined>`
-    *   An async function that returns headers: `async () => Record<string, string | undefined>`
-    *   A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
-*   **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
-    
+
+  * A record of header key-value pairs: `Record<string, string | undefined>`
+  * A function that returns headers: `() => Record<string, string | undefined>`
+  * An async function that returns headers: `async () => Record<string, string | undefined>`
+  * A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
+* **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
+
     Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation. Defaults to the global `fetch` function. You can use it as a middleware to intercept requests, or to provide a custom fetch implementation for e.g. testing.
-    
 
 #### [Edge Runtime](#edge-runtime-1)
 
@@ -691,7 +658,6 @@ For Edge runtimes, you can import the provider instance from `@ai-sdk/google-ver
 import { vertexAnthropic } from '@ai-sdk/google-vertex/anthropic/edge';
 ```
 
-
 To customize the setup, use `createVertexAnthropic` from the same module:
 
 ```
@@ -703,47 +669,45 @@ const vertexAnthropic = createVertexAnthropic({
 });
 ```
 
-
 For Edge runtime authentication, set these environment variables from your Google Default Application Credentials JSON file:
 
-*   `GOOGLE_CLIENT_EMAIL`
-*   `GOOGLE_PRIVATE_KEY`
-*   `GOOGLE_PRIVATE_KEY_ID` (optional)
+* `GOOGLE_CLIENT_EMAIL`
+* `GOOGLE_PRIVATE_KEY`
+* `GOOGLE_PRIVATE_KEY_ID` (optional)
 
 ##### [Optional Provider Settings](#optional-provider-settings-3)
 
 You can use the following optional settings to customize the provider instance:
 
-*   **project** _string_
-    
+* **project** _string_
+
     The Google Cloud project ID that you want to use for the API calls. It uses the `GOOGLE_VERTEX_PROJECT` environment variable by default.
-    
-*   **location** _string_
-    
+
+* **location** _string_
+
     The Google Cloud location that you want to use for the API calls, e.g. `us-central1`. It uses the `GOOGLE_VERTEX_LOCATION` environment variable by default.
-    
-*   **googleCredentials** _object_
-    
+
+* **googleCredentials** _object_
+
     Optional. The credentials used by the Edge provider for authentication. These credentials are typically set through environment variables and are derived from a service account JSON file.
-    
-    *   **clientEmail** _string_ The client email from the service account JSON file. Defaults to the contents of the `GOOGLE_CLIENT_EMAIL` environment variable.
-        
-    *   **privateKey** _string_ The private key from the service account JSON file. Defaults to the contents of the `GOOGLE_PRIVATE_KEY` environment variable.
-        
-    *   **privateKeyId** _string_ The private key ID from the service account JSON file (optional). Defaults to the contents of the `GOOGLE_PRIVATE_KEY_ID` environment variable.
-        
-*   **headers** _Resolvable<Record<string, string | undefined>>_
-    
+
+  * **clientEmail** _string_ The client email from the service account JSON file. Defaults to the contents of the `GOOGLE_CLIENT_EMAIL` environment variable.
+
+  * **privateKey** _string_ The private key from the service account JSON file. Defaults to the contents of the `GOOGLE_PRIVATE_KEY` environment variable.
+
+  * **privateKeyId** _string_ The private key ID from the service account JSON file (optional). Defaults to the contents of the `GOOGLE_PRIVATE_KEY_ID` environment variable.
+
+* **headers** _Resolvable<Record<string, string | undefined>>_
+
     Headers to include in the requests. Can be provided in multiple formats:
-    
-    *   A record of header key-value pairs: `Record<string, string | undefined>`
-    *   A function that returns headers: `() => Record<string, string | undefined>`
-    *   An async function that returns headers: `async () => Record<string, string | undefined>`
-    *   A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
-*   **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
-    
+
+  * A record of header key-value pairs: `Record<string, string | undefined>`
+  * A function that returns headers: `() => Record<string, string | undefined>`
+  * An async function that returns headers: `async () => Record<string, string | undefined>`
+  * A promise that resolves to headers: `Promise<Record<string, string | undefined>>`
+* **fetch** _(input: RequestInfo, init?: RequestInit) => Promise<Response>_
+
     Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation. Defaults to the global `fetch` function. You can use it as a middleware to intercept requests, or to provide a custom fetch implementation for e.g. testing.
-    
 
 ### [Language Models](#language-models-1)
 
@@ -753,7 +717,6 @@ You can create models that call the [Anthropic Messages API](https://docs.anthro
 
 const model = anthropic('claude-3-haiku-20240307');
 ```
-
 
 You can use Anthropic language models to generate text with the `generateText` function:
 
@@ -767,19 +730,17 @@ const { text } = await generateText({
 });
 ```
 
-
 Anthropic language models can also be used in the `streamText`, `generateObject`, and `streamObject` functions (see [AI SDK Core](https://ai-sdk.dev/docs/ai-sdk-core)).
 
 The Anthropic API returns streaming tool calls all at once after a delay. This causes the `streamObject` function to generate the object fully after a delay instead of streaming it incrementally.
 
 The following optional settings are available for Anthropic models:
 
-*   `sendReasoning` _boolean_
-    
+* `sendReasoning` _boolean_
+
     Optional. Include reasoning content in requests sent to the model. Defaults to `true`.
-    
+
     If you are experiencing issues with the model handling requests involving reasoning content, you can set this to `false` to omit them from the request.
-    
 
 ### [Reasoning](#reasoning)
 
@@ -804,7 +765,6 @@ console.log(reasoning); // reasoning text
 console.log(reasoningDetails); // reasoning details including redacted reasoning
 console.log(text); // text response
 ```
-
 
 See [AI SDK UI: Chatbot](about:/docs/ai-sdk-ui/chatbot#reasoning) for more details on how to integrate reasoning into your chatbot.
 
@@ -843,7 +803,6 @@ console.log(result.providerMetadata?.anthropic);
 // e.g. { cacheCreationInputTokens: 2118, cacheReadInputTokens: 0 }
 ```
 
-
 You can also use cache control on system messages by providing multiple system messages at the head of your messages array:
 
 ```
@@ -870,16 +829,15 @@ const result = await generateText({
 });
 ```
 
-
 For more on prompt caching with Anthropic, see [Google Vertex AI's Claude prompt caching documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude-prompt-caching) and [Anthropic's Cache Control documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
 
 ### [Computer Use](#computer-use)
 
 Anthropic provides three built-in tools that can be used to interact with external systems:
 
-1.  **Bash Tool**: Allows running bash commands.
-2.  **Text Editor Tool**: Provides functionality for viewing and editing text files.
-3.  **Computer Tool**: Enables control of keyboard and mouse actions on a computer.
+1. **Bash Tool**: Allows running bash commands.
+2. **Text Editor Tool**: Provides functionality for viewing and editing text files.
+3. **Computer Tool**: Enables control of keyboard and mouse actions on a computer.
 
 They are available via the `tools` property of the provider instance.
 
@@ -899,11 +857,10 @@ const bashTool = vertexAnthropic.tools.bash_20241022({
 });
 ```
 
-
 Parameters:
 
-*   `command` (string): The bash command to run. Required unless the tool is being restarted.
-*   `restart` (boolean, optional): Specifying true will restart this tool.
+* `command` (string): The bash command to run. Required unless the tool is being restarted.
+* `restart` (boolean, optional): Specifying true will restart this tool.
 
 #### [Text Editor Tool](#text-editor-tool)
 
@@ -927,16 +884,15 @@ const textEditorTool = vertexAnthropic.tools.textEditor_20241022({
 });
 ```
 
-
 Parameters:
 
-*   `command` ('view' | 'create' | 'str\_replace' | 'insert' | 'undo\_edit'): The command to run.
-*   `path` (string): Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`.
-*   `file_text` (string, optional): Required for `create` command, with the content of the file to be created.
-*   `insert_line` (number, optional): Required for `insert` command. The line number after which to insert the new string.
-*   `new_str` (string, optional): New string for `str_replace` or `insert` commands.
-*   `old_str` (string, optional): Required for `str_replace` command, containing the string to replace.
-*   `view_range` (number\[\], optional): Optional for `view` command to specify line range to show.
+* `command` ('view' | 'create' | 'str\_replace' | 'insert' | 'undo\_edit'): The command to run.
+* `path` (string): Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`.
+* `file_text` (string, optional): Required for `create` command, with the content of the file to be created.
+* `insert_line` (number, optional): Required for `insert` command. The line number after which to insert the new string.
+* `new_str` (string, optional): New string for `str_replace` or `insert` commands.
+* `old_str` (string, optional): Required for `str_replace` command, containing the string to replace.
+* `view_range` (number\[\], optional): Optional for `view` command to specify line range to show.
 
 #### [Computer Tool](#computer-tool)
 
@@ -979,19 +935,17 @@ const computerTool = vertexAnthropic.tools.computer_20241022({
 });
 ```
 
-
 Parameters:
 
-*   `action` ('key' | 'type' | 'mouse\_move' | 'left\_click' | 'left\_click\_drag' | 'right\_click' | 'middle\_click' | 'double\_click' | 'screenshot' | 'cursor\_position'): The action to perform.
-*   `coordinate` (number\[\], optional): Required for `mouse_move` and `left_click_drag` actions. Specifies the (x, y) coordinates.
-*   `text` (string, optional): Required for `type` and `key` actions.
+* `action` ('key' | 'type' | 'mouse\_move' | 'left\_click' | 'left\_click\_drag' | 'right\_click' | 'middle\_click' | 'double\_click' | 'screenshot' | 'cursor\_position'): The action to perform.
+* `coordinate` (number\[\], optional): Required for `mouse_move` and `left_click_drag` actions. Specifies the (x, y) coordinates.
+* `text` (string, optional): Required for `type` and `key` actions.
 
 These tools can be used in conjunction with the `claude-3-5-sonnet-v2@20241022` model to enable more complex interactions and tasks.
 
 ### [Model Capabilities](#model-capabilities-3)
 
 The latest Anthropic model list on Vertex AI is available [here](https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude#model-list). See also [Anthropic Model Comparison](https://docs.anthropic.com/en/docs/about-claude/models#model-comparison).
-
 
 |Model                        |Image Input|Object Generation|Tool Usage|Tool Streaming|Computer Use|
 |-----------------------------|-----------|-----------------|----------|--------------|------------|
@@ -1002,6 +956,5 @@ The latest Anthropic model list on Vertex AI is available [here](https://cloud.g
 |claude-3-sonnet@20240229     |           |                 |          |              |            |
 |claude-3-haiku@20240307      |           |                 |          |              |            |
 |claude-3-opus@20240229       |           |                 |          |              |            |
-
 
 The table above lists popular models. You can also pass any available provider model ID as a string if needed.
