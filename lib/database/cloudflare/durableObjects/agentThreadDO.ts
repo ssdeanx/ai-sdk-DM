@@ -107,9 +107,13 @@ export class AgentThreadDO extends DurableObject {
    * @param message - Message data
    */
   async addMessage(message: unknown): Promise<void> {
+    const messageObj =
+      typeof message === 'object' && message !== null
+        ? (message as Record<string, unknown>)
+        : {};
     const validatedMessage = MessageSchema.parse({
-      ...message,
-      id: (message as any).id || generateId(),
+      ...messageObj,
+      id: typeof messageObj.id === 'string' ? messageObj.id : generateId(),
       threadId: this.threadId,
     });
 
@@ -140,8 +144,12 @@ export class AgentThreadDO extends DurableObject {
    * @param state - AIState data
    */
   async saveAIState(state: unknown): Promise<void> {
+    const stateObj =
+      typeof state === 'object' && state !== null
+        ? (state as Record<string, unknown>)
+        : {};
     const validatedState = AIStateSchema.parse({
-      ...state,
+      ...stateObj,
       threadId: this.threadId,
     });
 

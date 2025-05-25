@@ -14,6 +14,7 @@ import {
   text,
   primaryKey,
   blob,
+  real,
 } from 'drizzle-orm/sqlite-core';
 import {
   relations,
@@ -814,6 +815,353 @@ export const workerAnalytics = sqliteTable('worker_analytics', {
   metadata: text('metadata', { mode: 'json' }),
 });
 
+/**
+ * Traces table - Observability
+ * Stores high-level trace information for AI model interactions
+ */
+export const traces = sqliteTable('traces', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  name: text('name').notNull(),
+  startTime: integer('start_time').notNull(),
+  endTime: integer('end_time'),
+  durationMs: integer('duration_ms'),
+  status: text('status').notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  sessionId: text('session_id'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Spans table - Observability
+ * Stores detailed timing information for specific operations within a trace
+ */
+export const spans = sqliteTable('spans', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  traceId: text('trace_id')
+    .notNull()
+    .references(() => traces.id, { onDelete: 'cascade' }),
+  parentSpanId: text('parent_span_id'),
+  name: text('name').notNull(),
+  startTime: integer('start_time').notNull(),
+  endTime: integer('end_time'),
+  durationMs: integer('duration_ms'),
+  status: text('status').notNull(),
+  attributes: text('attributes', { mode: 'json' }),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Events table - Observability
+ * Stores discrete events that occur during a trace
+ */
+export const events = sqliteTable('events', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  traceId: text('trace_id')
+    .notNull()
+    .references(() => traces.id, { onDelete: 'cascade' }),
+  spanId: text('span_id').references(() => spans.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  timestamp: integer('timestamp').notNull(),
+  attributes: text('attributes', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * System Metrics table - Observability
+ * Stores system health metrics like CPU usage, memory usage, etc.
+ */
+export const systemMetrics = sqliteTable('system_metrics', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  timeRange: text('time_range'),
+  timestamp: integer('timestamp').notNull(),
+  cpuUsage: real('cpu_usage'),
+  memoryUsage: real('memory_usage'),
+  databaseConnections: integer('database_connections'),
+  apiRequestsPerMinute: integer('api_requests_per_minute'),
+  averageResponseTimeMs: real('average_response_time_ms'),
+  activeUsers: integer('active_users'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Model Performance table - Observability
+ * Stores performance metrics for AI models like latency, tokens per second, etc.
+ */
+export const modelPerformance = sqliteTable('model_performance', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  modelId: text('model_id')
+    .notNull()
+    .references(() => models.id, { onDelete: 'cascade' }),
+  timestamp: integer('timestamp').notNull(),
+  latencyMs: real('latency_ms'),
+  tokensPerSecond: real('tokens_per_second'),
+  successRate: real('success_rate'),
+  requestCount: integer('request_count').notNull().default(0),
+  totalTokens: integer('total_tokens').notNull().default(0),
+  errorCount: integer('error_count').notNull().default(0),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Model Costs table - Observability
+ * Stores cost information for AI model usage
+ */
+export const modelCosts = sqliteTable('model_costs', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  modelId: text('model_id')
+    .notNull()
+    .references(() => models.id, { onDelete: 'cascade' }),
+  date: integer('date').notNull(), // Date as timestamp
+  cost: real('cost').notNull().default(0.0),
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  requests: integer('requests').notNull().default(0),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Model Evaluations table - Observability
+ * Stores evaluation results for AI models
+ */
+export const modelEvaluations = sqliteTable('model_evaluations', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  modelId: text('model_id')
+    .notNull()
+    .references(() => models.id, { onDelete: 'cascade' }),
+  version: text('version'),
+  evaluationDate: integer('evaluation_date').notNull(),
+  datasetName: text('dataset_name'),
+  datasetSize: integer('dataset_size'),
+  overallScore: real('overall_score'),
+  previousScore: real('previous_score'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Evaluation Metrics table - Observability
+ * Stores detailed metrics for model evaluations
+ */
+export const evaluationMetrics = sqliteTable('evaluation_metrics', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  evaluationId: text('evaluation_id')
+    .notNull()
+    .references(() => modelEvaluations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  value: real('value').notNull(),
+  threshold: real('threshold'),
+  weight: real('weight'),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Evaluation Examples table - Observability
+ * Stores example inputs and outputs for model evaluations
+ */
+export const evaluationExamples = sqliteTable('evaluation_examples', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  evaluationId: text('evaluation_id')
+    .notNull()
+    .references(() => modelEvaluations.id, { onDelete: 'cascade' }),
+  input: text('input').notNull(),
+  expectedOutput: text('expected_output'),
+  actualOutput: text('actual_output'),
+  scores: text('scores', { mode: 'json' }),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Database Connections table - Infrastructure
+ * Tracks database connection pools
+ */
+export const databaseConnections = sqliteTable('database_connections', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  connectionType: text('connection_type').notNull(),
+  poolName: text('pool_name').notNull(),
+  connectionUrl: text('connection_url').notNull(),
+  maxConnections: integer('max_connections'),
+  idleTimeoutMs: integer('idle_timeout_ms'),
+  connectionTimeoutMs: integer('connection_timeout_ms'),
+  status: text('status').notNull().default('active'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Database Transactions table - Infrastructure
+ * Tracks database transaction execution
+ */
+export const databaseTransactions = sqliteTable('database_transactions', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  connectionId: text('connection_id').references(() => databaseConnections.id, {
+    onDelete: 'set null',
+  }),
+  transactionType: text('transaction_type'),
+  startTime: integer('start_time').notNull(),
+  endTime: integer('end_time'),
+  durationMs: integer('duration_ms'),
+  status: text('status').notNull().default('in_progress'),
+  queryCount: integer('query_count').notNull().default(0),
+  errorMessage: text('error_message'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Database Queries table - Infrastructure
+ * Tracks individual database query execution
+ */
+export const databaseQueries = sqliteTable('database_queries', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  transactionId: text('transaction_id').references(
+    () => databaseTransactions.id,
+    { onDelete: 'cascade' }
+  ),
+  queryText: text('query_text').notNull(),
+  queryType: text('query_type'),
+  executionTimeMs: integer('execution_time_ms'),
+  rowCount: integer('row_count'),
+  status: text('status').notNull(),
+  errorMessage: text('error_message'),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Scheduled Tasks table - Infrastructure
+ * Stores scheduled task definitions
+ */
+export const scheduledTasks = sqliteTable('scheduled_tasks', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  name: text('name').notNull(),
+  description: text('description'),
+  cronExpression: text('cron_expression').notNull(),
+  jobName: text('job_name').notNull().unique(),
+  sqlCommand: text('sql_command').notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  lastRunAt: integer('last_run_at'),
+  nextRunAt: integer('next_run_at'),
+  runCount: integer('run_count').notNull().default(0),
+  errorCount: integer('error_count').notNull().default(0),
+  lastError: text('last_error'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+/**
+ * Scheduled Task Runs table - Infrastructure
+ * Tracks execution history of scheduled tasks
+ */
+export const scheduledTaskRuns = sqliteTable('scheduled_task_runs', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => scheduledTasks.id, { onDelete: 'cascade' }),
+  startTime: integer('start_time').notNull(),
+  endTime: integer('end_time'),
+  durationMs: integer('duration_ms'),
+  status: text('status').notNull(),
+  resultSummary: text('result_summary'),
+  errorMessage: text('error_message'),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 // =============================================================================
 // Relations
 // =============================================================================
@@ -904,54 +1252,173 @@ export const workflowExecutionsRelations = relations(
   })
 );
 
-// =============================================================================
-// Type Exports
-// =============================================================================
+// Observability Relations
+export const tracesRelations = relations(traces, ({ one, many }) => ({
+  user: one(users, {
+    fields: [traces.userId],
+    references: [users.id],
+  }),
+  spans: many(spans),
+  events: many(events),
+}));
+
+export const spansRelations = relations(spans, ({ one, many }) => ({
+  trace: one(traces, {
+    fields: [spans.traceId],
+    references: [traces.id],
+  }),
+  parentSpan: one(spans, {
+    fields: [spans.parentSpanId],
+    references: [spans.id],
+  }),
+  childSpans: many(spans),
+  events: many(events),
+}));
+
+export const eventsRelations = relations(events, ({ one }) => ({
+  trace: one(traces, {
+    fields: [events.traceId],
+    references: [traces.id],
+  }),
+  span: one(spans, {
+    fields: [events.spanId],
+    references: [spans.id],
+  }),
+}));
+
+export const modelPerformanceRelations = relations(
+  modelPerformance,
+  ({ one }) => ({
+    model: one(models, {
+      fields: [modelPerformance.modelId],
+      references: [models.id],
+    }),
+  })
+);
+
+export const modelCostsRelations = relations(modelCosts, ({ one }) => ({
+  model: one(models, {
+    fields: [modelCosts.modelId],
+    references: [models.id],
+  }),
+}));
+
+export const modelEvaluationsRelations = relations(
+  modelEvaluations,
+  ({ one, many }) => ({
+    model: one(models, {
+      fields: [modelEvaluations.modelId],
+      references: [models.id],
+    }),
+    metrics: many(evaluationMetrics),
+    examples: many(evaluationExamples),
+  })
+);
+
+export const evaluationMetricsRelations = relations(
+  evaluationMetrics,
+  ({ one }) => ({
+    evaluation: one(modelEvaluations, {
+      fields: [evaluationMetrics.evaluationId],
+      references: [modelEvaluations.id],
+    }),
+  })
+);
+
+export const evaluationExamplesRelations = relations(
+  evaluationExamples,
+  ({ one }) => ({
+    evaluation: one(modelEvaluations, {
+      fields: [evaluationExamples.evaluationId],
+      references: [modelEvaluations.id],
+    }),
+  })
+);
+
+// Infrastructure Relations
+export const databaseTransactionsRelations = relations(
+  databaseTransactions,
+  ({ one, many }) => ({
+    connection: one(databaseConnections, {
+      fields: [databaseTransactions.connectionId],
+      references: [databaseConnections.id],
+    }),
+    queries: many(databaseQueries),
+  })
+);
+
+export const databaseQueriesRelations = relations(
+  databaseQueries,
+  ({ one }) => ({
+    transaction: one(databaseTransactions, {
+      fields: [databaseQueries.transactionId],
+      references: [databaseTransactions.id],
+    }),
+  })
+);
+
+export const scheduledTasksRelations = relations(
+  scheduledTasks,
+  ({ many }) => ({
+    runs: many(scheduledTaskRuns),
+  })
+);
+
+export const scheduledTaskRunsRelations = relations(
+  scheduledTaskRuns,
+  ({ one }) => ({
+    task: one(scheduledTasks, {
+      fields: [scheduledTaskRuns.taskId],
+      references: [scheduledTasks.id],
+    }),
+  })
+);
+
+// =========================
+// TYPES
+// =========================
+
+// ...existing imports...
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
-
 export type Account = InferSelectModel<typeof accounts>;
 export type NewAccount = InferInsertModel<typeof accounts>;
-
 export type Session = InferSelectModel<typeof sessions>;
 export type NewSession = InferInsertModel<typeof sessions>;
-
 export type VerificationToken = InferSelectModel<typeof verificationTokens>;
 export type NewVerificationToken = InferInsertModel<typeof verificationTokens>;
-
 export type Model = InferSelectModel<typeof models>;
 export type NewModel = InferInsertModel<typeof models>;
-
 export type Tool = InferSelectModel<typeof tools>;
 export type NewTool = InferInsertModel<typeof tools>;
-
-export type Agent = InferSelectModel<typeof agents>;
-export type NewAgent = InferInsertModel<typeof agents>;
-
-export type Thread = InferSelectModel<typeof threads>;
-export type NewThread = InferInsertModel<typeof threads>;
-
-export type Message = InferSelectModel<typeof messages>;
-export type NewMessage = InferInsertModel<typeof messages>;
-
-export type Workflow = InferSelectModel<typeof workflows>;
-export type NewWorkflow = InferInsertModel<typeof workflows>;
-
-export type Network = InferSelectModel<typeof networks>;
-export type NewNetwork = InferInsertModel<typeof networks>;
-
-export type AppBuilderProject = InferSelectModel<typeof appBuilderProjects>;
-export type NewAppBuilderProject = InferInsertModel<typeof appBuilderProjects>;
-
-export type File = InferSelectModel<typeof files>;
-export type NewFile = InferInsertModel<typeof files>;
-
-export type Embedding = InferSelectModel<typeof embeddings>;
-export type NewEmbedding = InferInsertModel<typeof embeddings>;
-
-export type WorkflowExecution = InferSelectModel<typeof workflowExecutions>;
-export type NewWorkflowExecution = InferInsertModel<typeof workflowExecutions>;
-
-export type CacheEntry = InferSelectModel<typeof cacheEntries>;
-export type NewCacheEntry = InferInsertModel<typeof cacheEntries>;
+export type Trace = InferSelectModel<typeof traces>;
+export type NewTrace = InferInsertModel<typeof traces>;
+export type Span = InferSelectModel<typeof spans>;
+export type NewSpan = InferInsertModel<typeof spans>;
+export type Event = InferSelectModel<typeof events>;
+export type NewEvent = InferInsertModel<typeof events>;
+export type ModelPerformance = InferSelectModel<typeof modelPerformance>;
+export type NewModelPerformance = InferInsertModel<typeof modelPerformance>;
+export type ModelCosts = InferSelectModel<typeof modelCosts>;
+export type NewModelCosts = InferInsertModel<typeof modelCosts>;
+export type ModelEvaluation = InferSelectModel<typeof modelEvaluations>;
+export type NewModelEvaluation = InferInsertModel<typeof modelEvaluations>;
+export type EvaluationMetrics = InferSelectModel<typeof evaluationMetrics>;
+export type NewEvaluationMetrics = InferInsertModel<typeof evaluationMetrics>;
+export type EvaluationExamples = InferSelectModel<typeof evaluationExamples>;
+export type NewEvaluationExamples = InferInsertModel<typeof evaluationExamples>;
+export type DatabaseConnection = InferSelectModel<typeof databaseConnections>;
+export type NewDatabaseConnection = InferInsertModel<
+  typeof databaseConnections
+>;
+export type DatabaseTransaction = InferSelectModel<typeof databaseTransactions>;
+export type NewDatabaseTransaction = InferInsertModel<
+  typeof databaseTransactions
+>;
+export type DatabaseQuery = InferSelectModel<typeof databaseQueries>;
+export type NewDatabaseQuery = InferInsertModel<typeof databaseQueries>;
+export type ScheduledTask = InferSelectModel<typeof scheduledTasks>;
+export type NewScheduledTask = InferInsertModel<typeof scheduledTasks>;
+export type ScheduledTaskRun = InferSelectModel<typeof scheduledTaskRuns>;
+export type NewScheduledTaskRun = InferInsertModel<typeof scheduledTaskRuns>;

@@ -22,6 +22,17 @@ import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../lib/database/cloudflare/d1/schema';
 
+// Import Durable Object classes
+export { AgentThreadDO } from '../../lib/database/cloudflare/durableObjects/agentThreadDO';
+export { PersonaProfileDO } from '../../lib/database/cloudflare/durableObjects/personaProfileDO';
+export { WorkflowInstanceDO } from '../../lib/database/cloudflare/durableObjects/worflowInstanceDO';
+export { AppBuilderSessionDO } from '../../lib/database/cloudflare/durableObjects/appBuilderSessionDO';
+export { ChatRoomDO } from '../../lib/database/cloudflare/durableObjects/chatRoomDO';
+export { TerminalSessionDO } from '../../lib/database/cloudflare/durableObjects/terminalSessionDO';
+export { DocumentCollaborationDO } from '../../lib/database/cloudflare/durableObjects/documentCallaborationDO';
+export { IntegrationSessionDO } from '../../lib/database/cloudflare/durableObjects/integrationSessionDO';
+export { CacheCoordinatorDO } from '../../lib/database/cloudflare/durableObjects/cacheCordinatorDO';
+
 // Define Vectorize interface for proper typing
 interface VectorizeIndex {
 	describe(): Promise<{
@@ -91,6 +102,13 @@ interface Env {
 	// Durable Objects
 	AGENT_THREAD_DO: DurableObjectNamespace;
 	PERSONA_PROFILE_DO: DurableObjectNamespace;
+	WORKFLOW_INSTANCE_DO: DurableObjectNamespace;
+	APP_BUILDER_SESSION_DO: DurableObjectNamespace;
+	CHAT_ROOM_DO: DurableObjectNamespace;
+	TERMINAL_SESSION_DO: DurableObjectNamespace;
+	DOCUMENT_COLLABORATION_DO: DurableObjectNamespace;
+	INTEGRATION_SESSION_DO: DurableObjectNamespace;
+	CACHE_COORDINATOR_DO: DurableObjectNamespace;
 
 	// Environment Variables
 	GOOGLE_GENERATIVE_AI_API_KEY: string;
@@ -419,7 +437,7 @@ app.post('/api/ai-sdk/threads', zValidator('json', ThreadCreateSchema), async (c
 		const threadId = generateId();
 		const now = Date.now();
 
-		await db.insert(schema.threads).values({
+		await db.insert(threads).values({
 			id: threadId,
 			title: title || 'New Conversation',
 			userId,
@@ -490,7 +508,7 @@ app.post('/api/ai-sdk/messages', zValidator('json', MessageCreateSchema), async 
 		const messageId = generateId();
 		const now = Date.now();
 
-		await db.insert(schema.messages).values({
+		await db.insert(messages).values({
 			id: messageId,
 			threadId,
 			role,
@@ -501,7 +519,7 @@ app.post('/api/ai-sdk/messages', zValidator('json', MessageCreateSchema), async 
 		});
 
 		// Update thread's updatedAt
-		await db.update(schema.threads).set({ updatedAt: now }).where(eq(schema.threads.id, threadId));
+		await db.update(threads).set({ updatedAt: now }).where(eq(threads.id, threadId));
 
 		return c.json({
 			id: messageId,

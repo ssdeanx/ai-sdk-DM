@@ -99,7 +99,17 @@ export class PersonaProfileDO extends DurableObject {
    */
   async getProfile(): Promise<PersonaProfile | null> {
     if (!this.profile) {
-      this.profile = await this.ctx.storage.get('profile');
+      const storedProfile = await this.ctx.storage.get('profile');
+      if (storedProfile) {
+        try {
+          this.profile = PersonaProfileSchema.parse(storedProfile);
+        } catch {
+          // If stored data is invalid, set to null
+          this.profile = null;
+        }
+      } else {
+        this.profile = null;
+      }
     }
     return this.profile;
   }
@@ -157,8 +167,9 @@ export class PersonaProfileDO extends DurableObject {
       throw new Error('Profile not found');
     }
 
+    const configData = config as Record<string, unknown>;
     return await this.updateProfile({
-      config: { ...currentProfile.config, ...config },
+      config: { ...(currentProfile.config || {}), ...configData },
     });
   }
 
@@ -172,8 +183,12 @@ export class PersonaProfileDO extends DurableObject {
       throw new Error('Profile not found');
     }
 
+    const preferencesData = preferences as Record<string, unknown>;
     return await this.updateProfile({
-      preferences: { ...currentProfile.preferences, ...preferences },
+      preferences: {
+        ...(currentProfile.preferences || {}),
+        ...preferencesData,
+      },
     });
   }
 
