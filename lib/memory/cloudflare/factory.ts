@@ -13,7 +13,6 @@ import {
   D1Database,
   KVNamespace,
   R2Bucket,
-  Vectorize,
   VectorizeIndex,
 } from '@cloudflare/workers-types';
 
@@ -110,21 +109,22 @@ export class MemoryFactory {
    */
   async initialize(): Promise<void> {
     try {
+      // Validate that all required bindings are present
+      this.validateBindings();
+
       // Initialize D1 ORM
-      this.d1Orm = getD1Orm(this.env);
+      this.d1Orm = getD1Orm();
 
       // Initialize service operation classes
-      this.d1CrudService = new CfD1CrudService(this.d1Orm);
+      this.d1CrudService = new CfD1CrudService();
       this.kvOps = new CfKvOps(this.env.DB_KV);
       this.vectorizeOps = new CfVectorizeOps(this.env.VECTORIZE_MAIN_INDEX);
       this.r2Store = new CfR2Store(this.env.R2_MAIN_BUCKET);
-
-      // TODO: Validate that all required bindings are present
-      this.validateBindings();
     } catch (error) {
       throw error;
     }
   }
+
   /**
    * Validate that all required bindings are present
    */

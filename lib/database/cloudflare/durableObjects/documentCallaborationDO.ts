@@ -164,7 +164,7 @@ export class DocumentCollaborationDO extends DurableObject {
       data && typeof data === 'object' && !Array.isArray(data) ? data : {};
 
     const document = DocumentStateSchema.parse({
-      id: this.documentId,
+      id: generateId(),
       ...requestData,
       version: 1,
       lastModified: now,

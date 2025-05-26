@@ -1,26 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
+import { generateId } from 'ai';
 import { z } from 'zod';
 
-/**
- * Zod schemas for PersonaProfileDO operations
- */
+// Define schemas for validation
 const PersonaProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(['user', 'agent', 'assistant']),
   description: z.string().optional(),
-  avatar: z.string().optional(),
-  config: z
-    .object({
-      model: z.string().optional(),
-      temperature: z.number().optional(),
-      maxTokens: z.number().optional(),
-      systemPrompt: z.string().optional(),
-      tools: z.array(z.string()).optional(),
-    })
-    .optional(),
+  config: z.record(z.unknown()).optional(),
   preferences: z.record(z.unknown()).optional(),
-  metadata: z.record(z.unknown()).optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
@@ -50,40 +38,64 @@ export class PersonaProfileDO extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
-      const method = request.method;
       const path = url.pathname;
+      const method = request.method;
 
       switch (method) {
         case 'GET':
           if (path === '/profile') {
-            return await this.handleGetProfile();
+            const profile = await this.getProfile();
+            return new Response(JSON.stringify(profile), {
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           if (path === '/config') {
-            return await this.handleGetConfig();
+            const config = await this.getConfig();
+            return new Response(JSON.stringify(config), {
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           break;
 
         case 'POST':
           if (path === '/profile') {
-            return await this.handleCreateProfile(request);
+            const data = await request.json();
+            const profile = await this.createProfile(data);
+            return new Response(JSON.stringify(profile), {
+              status: 201,
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           break;
 
         case 'PUT':
           if (path === '/profile') {
-            return await this.handleUpdateProfile(request);
+            const data = await request.json();
+            const profile = await this.updateProfile(data);
+            return new Response(JSON.stringify(profile), {
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           if (path === '/config') {
-            return await this.handleUpdateConfig(request);
+            const data = await request.json();
+            const profile = await this.updateConfig(data);
+            return new Response(JSON.stringify(profile), {
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           if (path === '/preferences') {
-            return await this.handleUpdatePreferences(request);
+            const data = await request.json();
+            const profile = await this.updatePreferences(data);
+            return new Response(JSON.stringify(profile), {
+              headers: { 'Content-Type': 'application/json' },
+            });
           }
           break;
 
         case 'DELETE':
           if (path === '/profile') {
-            return await this.handleDeleteProfile();
+            await this.deleteProfile();
+            return new Response('', { status: 204 });
           }
           break;
       }
@@ -123,7 +135,7 @@ export class PersonaProfileDO extends DurableObject {
     const now = Date.now();
 
     const validatedProfile = PersonaProfileSchema.parse({
-      id: this.profileId,
+      id: generateId(),
       ...profileData,
       createdAt: now,
       updatedAt: now,
@@ -156,7 +168,6 @@ export class PersonaProfileDO extends DurableObject {
     await this.ctx.storage.put('profile', this.profile);
     return this.profile;
   }
-
   /**
    * Update persona configuration.
    * @param config - Configuration data
@@ -171,6 +182,14 @@ export class PersonaProfileDO extends DurableObject {
     return await this.updateProfile({
       config: { ...(currentProfile.config || {}), ...configData },
     });
+  }
+
+  /**
+   * Get persona configuration only.
+   */
+  async getConfig(): Promise<PersonaProfile['config'] | null> {
+    const profile = await this.getProfile();
+    return profile?.config || null;
   }
 
   /**
@@ -193,73 +212,10 @@ export class PersonaProfileDO extends DurableObject {
   }
 
   /**
-   * Delete the persona profile.
+   * Delete persona profile.
    */
   async deleteProfile(): Promise<void> {
     this.profile = null;
     await this.ctx.storage.delete('profile');
-  }
-
-  /**
-   * Get persona configuration only.
-   */
-  async getConfig(): Promise<PersonaProfile['config'] | null> {
-    const profile = await this.getProfile();
-    return profile?.config || null;
-  }
-
-  // HTTP handlers for fetch requests
-  private async handleGetProfile(): Promise<Response> {
-    const profile = await this.getProfile();
-    return new Response(JSON.stringify(profile), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  private async handleCreateProfile(request: Request): Promise<Response> {
-    const profileData = await request.json();
-    const profile = await this.createProfile(profileData);
-    return new Response(JSON.stringify(profile), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  private async handleUpdateProfile(request: Request): Promise<Response> {
-    const updateData = await request.json();
-    const profile = await this.updateProfile(updateData);
-    return new Response(JSON.stringify(profile), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  private async handleUpdateConfig(request: Request): Promise<Response> {
-    const configData = await request.json();
-    const profile = await this.updateConfig(configData);
-    return new Response(JSON.stringify(profile), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  private async handleUpdatePreferences(request: Request): Promise<Response> {
-    const preferencesData = await request.json();
-    const profile = await this.updatePreferences(preferencesData);
-    return new Response(JSON.stringify(profile), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  private async handleDeleteProfile(): Promise<Response> {
-    await this.deleteProfile();
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  private async handleGetConfig(): Promise<Response> {
-    const config = await this.getConfig();
-    return new Response(JSON.stringify(config), {
-      headers: { 'Content-Type': 'application/json' },
-    });
   }
 }

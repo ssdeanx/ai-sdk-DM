@@ -8,7 +8,6 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import { generateId } from 'ai';
 import { z } from 'zod';
 
 /**
@@ -430,7 +429,7 @@ export class IntegrationSessionDO extends DurableObject {
     error?: string
   ): Promise<IntegrationEvent> {
     const event = IntegrationEventSchema.parse({
-      id: generateId(),
+      id: crypto.randomUUID(),
       sessionId: this.sessionId,
       type,
       data,

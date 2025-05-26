@@ -1,212 +1,311 @@
-import * as schema from './schema';
-import {
-  eq,
-  and,
-  SQL,
-  InferSelectModel,
-  InferInsertModel,
-  getTableColumns,
-  AnyColumn,
-} from 'drizzle-orm';
 import { D1Orm } from './client';
+import * as schema from './schema';
+import { eq, and, SQL, sql } from 'drizzle-orm';
+import { SQLiteColumn } from 'drizzle-orm/sqlite-core';
+import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { generateId } from 'ai';
+import { drizzle } from 'drizzle-orm/d1/driver';
 
-// Define standard audit keys that are commonly used
-type StandardAuditKeys = 'id' | 'createdAt' | 'updatedAt';
+// Type mapping for table names to their schema definitions
+type TableMap = typeof schema;
+type TableName = keyof TableMap;
 
-// Only include table exports (not relations, helpers, etc.)
-const tables = {
-  users: schema.users,
-  accounts: schema.accounts,
-  sessions: schema.sessions,
-  verificationTokens: schema.verificationTokens,
-  models: schema.models,
-  tools: schema.tools,
-  traces: schema.traces,
-  spans: schema.spans,
-  events: schema.events,
-  modelPerformance: schema.modelPerformance,
-  modelCosts: schema.modelCosts,
-  modelEvaluations: schema.modelEvaluations,
-  evaluationMetrics: schema.evaluationMetrics,
-  evaluationExamples: schema.evaluationExamples,
-  databaseConnections: schema.databaseConnections,
-  databaseTransactions: schema.databaseTransactions,
-  databaseQueries: schema.databaseQueries,
-  scheduledTasks: schema.scheduledTasks,
-  scheduledTaskRuns: schema.scheduledTaskRuns,
-  // ...add all other tables you want to support
-};
-type TableName = keyof typeof tables;
+// Extract actual table type from schema (excluding relations)
+type ExtractTable<T> = T extends {
+  $inferSelect: unknown;
+  $inferInsert: unknown;
+}
+  ? T
+  : never;
+type SchemaTable<T extends TableName> = ExtractTable<TableMap[T]>;
 
+// AI-domain tables use generateId, others use crypto.randomUUID()
+const AI_TABLES: Set<string> = new Set([
+  'models',
+  'tools',
+  'agents',
+  'threads',
+  'messages',
+  'workflows',
+  'networks',
+  'appBuilderProjects',
+  'apps',
+  'appCodeBlocks',
+  'agentPersonas',
+  'agentTools',
+  'memoryThreads',
+  'embeddings',
+  'agentStates',
+  'workflowSteps',
+  'workflowExecutions',
+  'vectorEmbeddings',
+  'terminalSessions',
+  'blogPosts',
+  'mdxDocuments',
+  'contentTable',
+  'traces',
+  'spans',
+  'events',
+  'systemMetrics',
+  'modelPerformance',
+  'modelCosts',
+  'modelEvaluations',
+  'evaluationMetrics',
+  'evaluationExamples',
+]);
+
+/**
+ * CfD1CrudService
+ *
+ * Generic helper for CRUD operations on Cloudflare D1 tables.
+ * Uses Drizzle ORM with project schema for type-safe database operations.
+ *
+ * @example
+ *
+ *
+ *
+ */
 export class CfD1CrudService {
-  private orm: D1Orm;
+  private orm!: D1Orm;
+  private database: D1Database;
 
-  constructor(orm: D1Orm) {
-    this.orm = orm;
+  constructor(database: D1Database) {
+    this.database = database;
+    this.orm = drizzle(this.database);
   }
 
+  /**
+   * Create a new record in the specified table.
+   * @param tableName - The table to create in
+   * @param data - The data to insert
+   * @returns Promise<InferSelectModel<SchemaTable<T>>> The created record
+   */
   async create<T extends TableName>(
     tableName: T,
-    data: Omit<
-      InferInsertModel<(typeof tables)[T]>,
-      Extract<keyof InferInsertModel<(typeof tables)[T]>, StandardAuditKeys>
-    > &
-      Partial<
-        Pick<
-          InferInsertModel<(typeof tables)[T]>,
-          Extract<keyof InferInsertModel<(typeof tables)[T]>, StandardAuditKeys>
-        >
-      >
-  ): Promise<InferSelectModel<(typeof tables)[T]>> {
-    const table = tables[tableName];
-    const now = Date.now();
-    const record = {
-      ...data,
-      id: 'id' in data ? data.id : generateId(),
-      createdAt: 'createdAt' in data ? data.createdAt : now,
-      updatedAt: 'updatedAt' in data ? data.updatedAt : now,
-    } as InferInsertModel<(typeof tables)[T]>;
-    const [created] = await this.orm
+    data: InferInsertModel<SchemaTable<T>>
+  ): Promise<InferSelectModel<SchemaTable<T>>> {
+    const table = this.getTable(tableName);
+    const timestamp = Date.now();
+
+    // Determine ID
+    const providedId = (data as Record<string, unknown>).id as
+      | string
+      | undefined;
+    const idValue =
+      providedId ||
+      (AI_TABLES.has(tableName as string) ? generateId() : crypto.randomUUID());
+
+    // Build insert record with proper typing
+    const insertRecord = { ...data } as Record<string, unknown>;
+
+    if ('id' in table && !providedId) {
+      insertRecord.id = idValue;
+    }
+    if ('createdAt' in table) {
+      insertRecord.createdAt = timestamp;
+    }
+    if ('updatedAt' in table) {
+      insertRecord.updatedAt = timestamp;
+    }
+
+    const [inserted] = await this.orm
       .insert(table)
-      .values(record as (typeof tables)[T]['$inferInsert'])
+      .values(insertRecord as SchemaTable<T>['$inferInsert'])
       .returning();
-    return created as InferSelectModel<(typeof tables)[T]>;
+
+    return inserted as InferSelectModel<SchemaTable<T>>;
   }
+
   /**
-   * Read a single record matching query
+   * Read records from the specified table.
+   * @param tableName - The table to query
+   * @param query - Query/filter parameters
+   * @returns Promise<InferSelectModel<SchemaTable<T>> | null> The found record or null
    */
   async read<T extends TableName>(
     tableName: T,
-    query: Partial<InferSelectModel<(typeof tables)[T]>>
-  ): Promise<InferSelectModel<(typeof tables)[T]> | null> {
-    const table = tables[tableName];
-    const cond = this.buildWhere(table, query);
-    const [found] = await this.orm
+    query: Partial<InferSelectModel<SchemaTable<T>>>
+  ): Promise<InferSelectModel<SchemaTable<T>> | null> {
+    const table = this.getTable(tableName);
+    const result = await this.orm
       .select()
       .from(table)
-      .where(cond ?? undefined)
+      .where(this.buildWhereConditions(table, query)!)
       .limit(1);
-    return found ? (found as InferSelectModel<(typeof tables)[T]>) : null;
+    return (result[0] as InferSelectModel<SchemaTable<T>>) || null;
   }
 
   /**
-   * Update record(s) matching query
+   * Update records in the specified table.
+   * @param tableName - The table to update
+   * @param query - Query/filter parameters
+   * @param data - The data to update
+   * @returns Promise<unknown> The updated record
    */
   async update<T extends TableName>(
     tableName: T,
-    query: Partial<InferSelectModel<(typeof tables)[T]>>,
-    data: Partial<InferInsertModel<(typeof tables)[T]>>
-  ): Promise<InferSelectModel<(typeof tables)[T]>> {
-    const table = tables[tableName];
-    // Call the internal method with the specifically typed table
-    return this._updateInternal(table, query, data);
-  }
-
-  /**
-   * Internal update method with more specific table typing.
-   */
-  private async _updateInternal<TTable extends (typeof tables)[TableName]>(
-    table: TTable,
-    query: Partial<InferSelectModel<TTable>>,
-    data: Partial<InferInsertModel<TTable>>
-  ): Promise<InferSelectModel<TTable>> {
-    const cond = this.buildWhere(table, query);
+    query: Partial<InferSelectModel<SchemaTable<T>>>,
+    data: Partial<InferInsertModel<SchemaTable<T>>>
+  ): Promise<InferSelectModel<SchemaTable<T>>> {
+    const table = this.getTable(tableName);
+    const conditions = this.buildWhereConditions(table, query);
     const updateData = {
       ...data,
       updatedAt: Date.now(),
-    } as unknown as Parameters<
-      ReturnType<typeof this.orm.update<TTable>>['set']
-    >[0];
-
-    const [updated] = await this.orm
+    };
+    const result = await this.orm
       .update(table)
       .set(updateData)
-      .where(cond!)
+      .where(conditions)
       .returning();
-    return updated as InferSelectModel<TTable>;
+    return result[0] as InferSelectModel<SchemaTable<T>>;
   }
+
   /**
-   * Delete record(s) matching query
+   * Delete records from the specified table.
+   * @param tableName - The table to delete from
+   * @param query - Query/filter parameters
+   * @returns Promise<InferSelectModel<SchemaTable<T>>> The deleted record
    */
   async delete<T extends TableName>(
     tableName: T,
-    query: Partial<InferSelectModel<(typeof tables)[T]>>
-  ): Promise<InferSelectModel<(typeof tables)[T]>> {
-    const table = tables[tableName];
-    const cond = this.buildWhere(table, query);
-    const [deleted] = await this.orm.delete(table).where(cond!).returning();
-    return deleted as InferSelectModel<(typeof tables)[T]>;
+    query: Partial<InferSelectModel<SchemaTable<T>>>
+  ): Promise<InferSelectModel<SchemaTable<T>>> {
+    const table = this.getTable(tableName);
+    const conditions = this.buildWhereConditions(table, query);
+
+    const result = await this.orm.delete(table).where(conditions).returning();
+    return result[0] as InferSelectModel<SchemaTable<T>>;
   }
 
   /**
-   * List records with optional filters and pagination
+   * List records from the specified table.
+   * @param tableName - The table to list from
+   * @param options - Pagination or filter options
+   * @returns Promise<InferSelectModel<SchemaTable<T>>[]> Array of records
    */
   async list<T extends TableName>(
     tableName: T,
     options: {
-      where?: Partial<InferSelectModel<(typeof tables)[T]>>;
+      where?: Partial<InferSelectModel<SchemaTable<T>>>;
       limit?: number;
       offset?: number;
     } = {}
-  ): Promise<InferSelectModel<(typeof tables)[T]>[]> {
-    const table = tables[tableName];
-    let dbQuery = this.orm.select().from(table).$dynamic();
+  ): Promise<InferSelectModel<SchemaTable<T>>[]> {
+    const table = this.getTable(tableName);
+
+    // Start with the base select statement.
+    let baseSelect = this.orm.select().from(table);
 
     if (options.where) {
-      const condition = this.buildWhere(table, options.where);
-      if (condition) {
-        dbQuery = dbQuery.where(condition);
+      const conditions = this.buildWhereConditions(table, options.where);
+      if (conditions) {
+        // Apply where clause. Casting to handle potential type inference issues with Omit<...>.
+        baseSelect = baseSelect.where(
+          conditions
+        ) as unknown as typeof baseSelect;
       }
     }
 
-    if (typeof options.limit === 'number') {
-      dbQuery = dbQuery.limit(options.limit);
+    // Sequentially apply limit and offset.
+    // Each operation can change the query object's type, so we handle it step-by-step.
+    let queryWithPossibleLimit;
+    if (options.limit !== undefined) {
+      queryWithPossibleLimit = baseSelect.limit(options.limit);
+    } else {
+      queryWithPossibleLimit = baseSelect;
     }
-    if (typeof options.offset === 'number') {
-      dbQuery = dbQuery.offset(options.offset);
+
+    let finalQueryExecutable;
+    if (options.offset !== undefined) {
+      finalQueryExecutable = queryWithPossibleLimit.offset(options.offset);
+    } else {
+      finalQueryExecutable = queryWithPossibleLimit;
     }
-    return (await dbQuery) as InferSelectModel<(typeof tables)[T]>[];
+
+    // Execute the fully constructed query.
+    // All intermediate types (baseSelect, queryWithPossibleLimit, finalQueryExecutable) are awaitable.
+    const result = await finalQueryExecutable;
+
+    return result as InferSelectModel<SchemaTable<T>>[];
   }
 
   /**
-   * Build a WHERE clause from a partial record
+   * Count records in the specified table.
+   * @param tableName - The table to count from
+   * @param where - Optional filter conditions
+   * @returns Promise<number> Count of matching records
    */
-  private buildWhere<T extends TableName>(
-    table: (typeof tables)[T],
-    query: Partial<InferSelectModel<(typeof tables)[T]>>
-  ): SQL | undefined {
-    const conds: SQL[] = [];
-    const tableColumns = getTableColumns(table);
+  async count<T extends TableName>(
+    tableName: T,
+    where?: Partial<InferSelectModel<SchemaTable<T>>>
+  ): Promise<number> {
+    const table = this.getTable(tableName);
+    let query = this.orm.select({ count: sql<number>`count(*)` }).from(table);
 
-    for (const key in query) {
-      const value = query[key as keyof typeof query];
-      // Ensure `key` is a column name present in the table schema and query
-      if (value != null && Object.prototype.hasOwnProperty.call(query, key)) {
-        // `key` is known to be a key of `tableColumns` (a valid column name)
-        // `tableColumns[key]` is guaranteed to be a Column object
-        // Cast to AnyColumn to help TypeScript resolve overloads for `eq`
-        conds.push(
-          eq(tableColumns[key as keyof typeof tableColumns] as AnyColumn, value)
-        );
+    if (where) {
+      const conditions = this.buildWhereConditions(table, where);
+      if (conditions) {
+        query = query.where(conditions) as unknown as typeof query;
       }
     }
-    if (conds.length === 0) return undefined; // Explicitly return undefined
-    if (conds.length === 0) return undefined; // Explicitly return undefined
-    return conds.length > 1 ? and(...conds) : conds[0];
+
+    const result = await query;
+    return result[0]?.count || 0;
+  }
+  /**
+   * Check if record exists in the specified table.
+   * @param tableName - The table to check
+   * @param query - Query/filter parameters
+   * @returns Promise<boolean> Whether record exists
+   */
+  async exists<T extends TableName>(
+    tableName: T,
+    query: Partial<InferSelectModel<SchemaTable<T>>>
+  ): Promise<boolean> {
+    const table = this.getTable(tableName);
+    const conditions = this.buildWhereConditions(table, query);
+
+    const result = await this.orm
+      .select({ exists: sql<number>`1` })
+      .from(table)
+      .where(conditions)
+      .limit(1);
+
+    return result.length > 0;
+  }
+  /**
+   * Get table reference by name
+   * @private
+   */
+  private getTable<T extends TableName>(tableName: T): SchemaTable<T> {
+    const table = (schema as unknown as Record<string, SchemaTable<T>>)[
+      tableName
+    ];
+    if (!table) {
+      throw new Error(`Table '${String(tableName)}' not found in schema`);
+    }
+    return table;
+  }
+
+  /**
+   * Build WHERE conditions from query object
+   * @private
+   */
+  private buildWhereConditions<T extends TableName>(
+    table: SchemaTable<T>,
+    query: Partial<InferSelectModel<SchemaTable<T>>>
+  ): SQL | undefined {
+    const conditions: SQL[] = [];
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null) {
+        const column = table[key as keyof SchemaTable<T>];
+        if (column && typeof column === 'object' && 'getSQL' in column) {
+          conditions.push(eq(column as unknown as SQLiteColumn, value));
+        }
+      }
+    }
+    if (conditions.length === 0) return undefined;
+    return conditions.length > 1 ? and(...conditions)! : conditions[0];
   }
 }
-
-// ---
-// SUGGESTION: Add a table for schema metadata management
-// This helps track schema versions, migrations, and table documentation.
-// Example:
-// export const tableMetadata = sqliteTable('table_metadata', {
-//   id: text('id').primaryKey().$defaultFn(() => generateId()),
-//   tableName: text('table_name').notNull().unique(),
-//   description: text('description'),
-//   version: integer('version').notNull().default(1),
-//   createdAt: integer('created_at').notNull().$defaultFn(() => Date.now()),
-//   updatedAt: integer('updated_at').notNull().$defaultFn(() => Date.now()),
-// });
-// ---

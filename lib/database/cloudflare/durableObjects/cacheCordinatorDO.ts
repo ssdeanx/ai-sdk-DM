@@ -8,44 +8,13 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import { generateId } from 'ai';
-import { z } from 'zod';
-
-/**
- * Zod schemas for CacheCoordinatorDO operations
- */
-const CacheEntrySchema = z.object({
-  key: z.string(),
-  value: z.unknown(),
-  ttl: z.number().optional(),
-  tags: z.array(z.string()).default([]),
-  metadata: z.record(z.unknown()).optional(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-  expiresAt: z.number().optional(),
-});
-
-const CacheInvalidationSchema = z.object({
-  id: z.string(),
-  type: z.enum(['key', 'tag', 'pattern', 'all']),
-  target: z.string().optional(),
-  reason: z.string().optional(),
-  requestedBy: z.string(),
-  timestamp: z.number(),
-});
-
-const CacheStatsSchema = z.object({
-  totalEntries: z.number(),
-  totalSize: z.number(),
-  hitCount: z.number(),
-  missCount: z.number(),
-  evictionCount: z.number(),
-  lastAccessed: z.number().optional(),
-});
-
-type CacheEntry = z.infer<typeof CacheEntrySchema>;
-type CacheInvalidation = z.infer<typeof CacheInvalidationSchema>;
-type CacheStats = z.infer<typeof CacheStatsSchema>;
+import {
+  CacheEntrySchema,
+  type CacheEntry,
+  CacheInvalidationSchema,
+  type CacheInvalidation,
+  type CacheStats,
+} from './schema';
 
 /**
  * CacheCoordinatorDO
@@ -68,7 +37,7 @@ export class CacheCoordinatorDO extends DurableObject {
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env);
-    this.coordinatorId = this.coordinatorId = this.constructor.name;
+    this.coordinatorId = this.constructor.name;
 
     // Set up periodic cleanup
     this.ctx.storage.setAlarm(Date.now() + 60000); // 1 minute
@@ -171,13 +140,7 @@ export class CacheCoordinatorDO extends DurableObject {
       const data = await request.json();
 
       // Validate the input data
-      const SetCacheRequestSchema = z.object({
-        key: z.string().min(1),
-        value: z.unknown(),
-        ttl: z.number().optional(),
-        tags: z.array(z.string()).optional(),
-        metadata: z.record(z.unknown()).optional(),
-      });
+      const SetCacheRequestSchema = CacheEntrySchema;
 
       const validatedData = SetCacheRequestSchema.parse(data);
       ({ key, value, ttl, tags, metadata } = validatedData);
@@ -195,6 +158,7 @@ export class CacheCoordinatorDO extends DurableObject {
       createdAt: now,
       updatedAt: now,
       expiresAt: ttl ? now + ttl * 1000 : undefined,
+      hitCount: 0, // Ensure hitCount is always included
     };
 
     const wasNew = !this.cache.has(key);
@@ -267,12 +231,7 @@ export class CacheCoordinatorDO extends DurableObject {
     const data = await request.json();
 
     // Validate the input data first
-    const InvalidateRequestSchema = z.object({
-      type: z.enum(['key', 'tag', 'pattern', 'all']),
-      target: z.string().optional(),
-      reason: z.string().optional(),
-      requestedBy: z.string(),
-    });
+    const InvalidateRequestSchema = CacheInvalidationSchema;
 
     let validatedData;
     try {
@@ -282,8 +241,8 @@ export class CacheCoordinatorDO extends DurableObject {
     }
 
     const invalidation: CacheInvalidation = {
-      id: generateId(),
       ...validatedData,
+      id: crypto.randomUUID(),
       timestamp: Date.now(),
     };
 

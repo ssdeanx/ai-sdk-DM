@@ -9,7 +9,6 @@
 
 import { DurableObject } from 'cloudflare:workers';
 import { generateId } from 'ai';
-import { z } from 'zod';
 import {
   ChatMessageSchema,
   TypingIndicatorSchema,

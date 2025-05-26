@@ -8,52 +8,17 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import { generateId } from 'ai';
+import {
+  AppBuilderSessionSchema,
+  type AppBuilderSession,
+  CodeUpdateSchema,
+  type CodeUpdate,
+  PreviewStateSchema,
+  type PreviewState,
+} from './schema';
 import { z } from 'zod';
 
-/**
- * Zod schemas for AppBuilderSessionDO operations
- */
-const AppBuilderSessionSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  userId: z.string(),
-  name: z.string(),
-  status: z.enum(['active', 'paused', 'completed', 'archived']),
-  config: z
-    .object({
-      framework: z.string().optional(),
-      language: z.string().optional(),
-      features: z.array(z.string()).optional(),
-    })
-    .optional(),
-  metadata: z.record(z.unknown()).optional(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-});
-
-const CodeUpdateSchema = z.object({
-  blockId: z.string(),
-  content: z.string(),
-  language: z.string().optional(),
-  userId: z.string(),
-  timestamp: z.number(),
-});
-
-const PreviewStateSchema = z.object({
-  url: z.string().optional(),
-  status: z.enum(['building', 'ready', 'error']),
-  error: z.string().optional(),
-  timestamp: z.number(),
-});
-
-const AddCollaboratorSchema = z.object({
-  userId: z.string(),
-});
-
-type AppBuilderSession = z.infer<typeof AppBuilderSessionSchema>;
-type CodeUpdate = z.infer<typeof CodeUpdateSchema>;
-type PreviewState = z.infer<typeof PreviewStateSchema>;
+const AddCollaboratorSchema = z.object({ userId: z.string() });
 
 /**
  * Stored code block with additional metadata

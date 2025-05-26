@@ -8,53 +8,16 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
+import {
+  TerminalSessionSchema,
+  type TerminalSession,
+  CommandExecutionSchema,
+  type CommandExecution,
+  TerminalOutputSchema,
+  type TerminalOutput,
+  TerminalInputSchema,
+} from './schema';
 import { generateId } from 'ai';
-import { z } from 'zod';
-
-/**
- * Zod schemas for TerminalSessionDO operations
- */
-const TerminalSessionSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  name: z.string(),
-  status: z.enum(['active', 'paused', 'terminated', 'error']),
-  environment: z.record(z.string()).optional(),
-  workingDirectory: z.string().optional(),
-  shell: z.string().default('/bin/bash'),
-  metadata: z.record(z.unknown()).optional(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-  lastActivityAt: z.number(),
-});
-
-const CommandExecutionSchema = z.object({
-  id: z.string(),
-  sessionId: z.string(),
-  command: z.string(),
-  status: z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']),
-  exitCode: z.number().optional(),
-  output: z.string().optional(),
-  error: z.string().optional(),
-  startedAt: z.number(),
-  completedAt: z.number().optional(),
-  duration: z.number().optional(),
-});
-
-const TerminalOutputSchema = z.object({
-  sessionId: z.string(),
-  type: z.enum(['stdout', 'stderr', 'system']),
-  content: z.string(),
-  timestamp: z.number(),
-});
-
-const TerminalInputSchema = z.object({
-  input: z.string(),
-});
-
-type TerminalSession = z.infer<typeof TerminalSessionSchema>;
-type CommandExecution = z.infer<typeof CommandExecutionSchema>;
-type TerminalOutput = z.infer<typeof TerminalOutputSchema>;
 
 /**
  * TerminalSessionDO
@@ -185,8 +148,6 @@ export class TerminalSessionDO extends DurableObject {
     const data = await request.json();
     const commandId = generateId();
     const now = Date.now();
-
-    // Ensure data is an object before spreading
     const commandData = typeof data === 'object' && data !== null ? data : {};
 
     const execution = CommandExecutionSchema.parse({

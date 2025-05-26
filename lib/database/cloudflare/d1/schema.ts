@@ -21,6 +21,7 @@ import {
   type InferSelectModel,
   type InferInsertModel,
 } from 'drizzle-orm';
+import { z } from 'zod';
 import { generateId } from 'ai';
 
 // =============================================================================
@@ -326,7 +327,7 @@ export const appCodeBlocks = sqliteTable('app_code_blocks', {
 export const integrations = sqliteTable('integrations', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
   provider: text('provider').notNull(),
   name: text('name'),
@@ -350,7 +351,7 @@ export const integrations = sqliteTable('integrations', {
 export const providers = sqliteTable('providers', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull().unique(),
   displayName: text('display_name'),
   apiKey: text('api_key'),
@@ -654,6 +655,27 @@ export const gqlCache = sqliteTable('gql_cache', {
     .$defaultFn(() => Date.now()),
 });
 
+/**
+ * File Tree Nodes table
+ */
+export const fileTreeNodes = sqliteTable('file_tree_nodes', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  parentId: text('parent_id'),
+  name: text('name').notNull(),
+  type: text('type').notNull(), // 'file' or 'folder'
+  order: integer('order').notNull().default(0),
+  appId: text('app_id').references(() => apps.id, { onDelete: 'cascade' }),
+  metadata: text('metadata', { mode: 'json' }),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 // =============================================================================
 // Cloudflare-Specific Tables for Full Stack Migration
 // =============================================================================
@@ -665,7 +687,7 @@ export const gqlCache = sqliteTable('gql_cache', {
 export const files = sqliteTable('files', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   appId: text('app_id').references(() => apps.id, { onDelete: 'cascade' }),
   parentId: text('parent_id'),
   name: text('name').notNull(),
@@ -730,7 +752,7 @@ export const workflowExecutions = sqliteTable('workflow_executions', {
   startedAt: integer('started_at'),
   completedAt: integer('completed_at'),
   duration: integer('duration'), // milliseconds
-  triggeredBy: text('triggered_by'), // 'user', 'schedule', 'webhook', etc.
+  triggeredBy: text('triggered_by'), // allowed: 'user', 'schedule', 'webhook', etc.
   metadata: text('metadata', { mode: 'json' }),
   createdAt: integer('created_at')
     .notNull()
@@ -747,7 +769,7 @@ export const workflowExecutions = sqliteTable('workflow_executions', {
 export const cacheEntries = sqliteTable('cache_entries', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   key: text('key').notNull().unique(),
   namespace: text('namespace').notNull(),
   kvKey: text('kv_key'), // Actual key in Cloudflare KV
@@ -773,7 +795,7 @@ export const cacheEntries = sqliteTable('cache_entries', {
 export const durableObjectSessions = sqliteTable('durable_object_sessions', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   objectId: text('object_id').notNull().unique(),
   objectClass: text('object_class').notNull(), // 'ChatRoom', 'WorkflowRunner', etc.
   namespace: text('namespace').notNull(),
@@ -797,7 +819,7 @@ export const durableObjectSessions = sqliteTable('durable_object_sessions', {
 export const workerAnalytics = sqliteTable('worker_analytics', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   workerName: text('worker_name').notNull(),
   route: text('route'),
   method: text('method'),
@@ -814,7 +836,6 @@ export const workerAnalytics = sqliteTable('worker_analytics', {
     .$defaultFn(() => Date.now()),
   metadata: text('metadata', { mode: 'json' }),
 });
-
 /**
  * Traces table - Observability
  * Stores high-level trace information for AI model interactions
@@ -822,7 +843,7 @@ export const workerAnalytics = sqliteTable('worker_analytics', {
 export const traces = sqliteTable('traces', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   startTime: integer('start_time').notNull(),
   endTime: integer('end_time'),
@@ -893,7 +914,7 @@ export const events = sqliteTable('events', {
 export const systemMetrics = sqliteTable('system_metrics', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   timeRange: text('time_range'),
   timestamp: integer('timestamp').notNull(),
   cpuUsage: real('cpu_usage'),
@@ -918,7 +939,7 @@ export const systemMetrics = sqliteTable('system_metrics', {
 export const modelPerformance = sqliteTable('model_performance', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   modelId: text('model_id')
     .notNull()
     .references(() => models.id, { onDelete: 'cascade' }),
@@ -945,7 +966,7 @@ export const modelPerformance = sqliteTable('model_performance', {
 export const modelCosts = sqliteTable('model_costs', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   modelId: text('model_id')
     .notNull()
     .references(() => models.id, { onDelete: 'cascade' }),
@@ -996,7 +1017,7 @@ export const modelEvaluations = sqliteTable('model_evaluations', {
 export const evaluationMetrics = sqliteTable('evaluation_metrics', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   evaluationId: text('evaluation_id')
     .notNull()
     .references(() => modelEvaluations.id, { onDelete: 'cascade' }),
@@ -1020,7 +1041,7 @@ export const evaluationMetrics = sqliteTable('evaluation_metrics', {
 export const evaluationExamples = sqliteTable('evaluation_examples', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   evaluationId: text('evaluation_id')
     .notNull()
     .references(() => modelEvaluations.id, { onDelete: 'cascade' }),
@@ -1044,7 +1065,7 @@ export const evaluationExamples = sqliteTable('evaluation_examples', {
 export const databaseConnections = sqliteTable('database_connections', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   connectionType: text('connection_type').notNull(),
   poolName: text('pool_name').notNull(),
   connectionUrl: text('connection_url').notNull(),
@@ -1068,7 +1089,7 @@ export const databaseConnections = sqliteTable('database_connections', {
 export const databaseTransactions = sqliteTable('database_transactions', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   connectionId: text('connection_id').references(() => databaseConnections.id, {
     onDelete: 'set null',
   }),
@@ -1095,7 +1116,7 @@ export const databaseTransactions = sqliteTable('database_transactions', {
 export const databaseQueries = sqliteTable('database_queries', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   transactionId: text('transaction_id').references(
     () => databaseTransactions.id,
     { onDelete: 'cascade' }
@@ -1118,7 +1139,7 @@ export const databaseQueries = sqliteTable('database_queries', {
 export const scheduledTasks = sqliteTable('scheduled_tasks', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   description: text('description'),
   cronExpression: text('cron_expression').notNull(),
@@ -1146,7 +1167,7 @@ export const scheduledTasks = sqliteTable('scheduled_tasks', {
 export const scheduledTaskRuns = sqliteTable('scheduled_task_runs', {
   id: text('id')
     .primaryKey()
-    .$defaultFn(() => generateId()),
+    .$defaultFn(() => crypto.randomUUID()),
   taskId: text('task_id')
     .notNull()
     .references(() => scheduledTasks.id, { onDelete: 'cascade' }),
@@ -1163,17 +1184,26 @@ export const scheduledTaskRuns = sqliteTable('scheduled_task_runs', {
 });
 
 /**
- * Table Metadata
- * Tracks schema versions, migration status, and table documentation for observability and maintainability.
- * Generated on 2025-05-25
+ * Tasks table
+ * Used by agent networks to coordinate multi-agent training or distributed jobs
  */
-export const tableMetadata = sqliteTable('table_metadata', {
+export const tasks = sqliteTable('tasks', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => generateId()),
-  tableName: text('table_name').notNull().unique(),
+  networkId: text('network_id').references(() => networks.id, {
+    onDelete: 'cascade',
+  }),
+  agentId: text('agent_id').references(() => agents.id, {
+    onDelete: 'set null',
+  }),
+  name: text('name').notNull(),
   description: text('description'),
-  version: integer('version').notNull().default(1),
+  status: text('status').notNull().default('pending'), // pending, running, completed, failed
+  input: text('input', { mode: 'json' }),
+  output: text('output', { mode: 'json' }),
+  error: text('error'),
+  metadata: text('metadata', { mode: 'json' }),
   createdAt: integer('created_at')
     .notNull()
     .$defaultFn(() => Date.now()),
@@ -1185,6 +1215,17 @@ export const tableMetadata = sqliteTable('table_metadata', {
 // =============================================================================
 // Relations
 // =============================================================================
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  network: one(networks, {
+    fields: [tasks.networkId],
+    references: [networks.id],
+  }),
+  agent: one(agents, {
+    fields: [tasks.agentId],
+    references: [agents.id],
+  }),
+}));
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
@@ -1395,11 +1436,8 @@ export const scheduledTaskRunsRelations = relations(
 );
 
 // =========================
-// TYPES
+// TYPE EXPORTS
 // =========================
-
-// ...existing imports...
-
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 export type Account = InferSelectModel<typeof accounts>;
@@ -1412,33 +1450,605 @@ export type Model = InferSelectModel<typeof models>;
 export type NewModel = InferInsertModel<typeof models>;
 export type Tool = InferSelectModel<typeof tools>;
 export type NewTool = InferInsertModel<typeof tools>;
+export type Agent = InferSelectModel<typeof agents>;
+export type NewAgent = InferInsertModel<typeof agents>;
+export type Thread = InferSelectModel<typeof threads>;
+export type NewThread = InferInsertModel<typeof threads>;
+export type Message = InferSelectModel<typeof messages>;
+export type NewMessage = InferInsertModel<typeof messages>;
+export type Workflow = InferSelectModel<typeof workflows>;
+export type NewWorkflow = InferInsertModel<typeof workflows>;
+export type Network = InferSelectModel<typeof networks>;
+export type NewNetwork = InferInsertModel<typeof networks>;
+export type AppBuilderProject = InferSelectModel<typeof appBuilderProjects>;
+export type NewAppBuilderProject = InferInsertModel<typeof appBuilderProjects>;
+export type App = InferSelectModel<typeof apps>;
+export type NewApp = InferInsertModel<typeof apps>;
+export type AppCodeBlock = InferSelectModel<typeof appCodeBlocks>;
+export type NewAppCodeBlock = InferInsertModel<typeof appCodeBlocks>;
+export type Integration = InferSelectModel<typeof integrations>;
+export type NewIntegration = InferInsertModel<typeof integrations>;
+export type Provider = InferSelectModel<typeof providers>;
+export type NewProvider = InferInsertModel<typeof providers>;
+export type AgentPersona = InferSelectModel<typeof agentPersonas>;
+export type NewAgentPersona = InferInsertModel<typeof agentPersonas>;
+export type AgentTool = InferSelectModel<typeof agentTools>;
+export type NewAgentTool = InferInsertModel<typeof agentTools>;
+export type Setting = InferSelectModel<typeof settings>;
+export type NewSetting = InferInsertModel<typeof settings>;
+export type Document = InferSelectModel<typeof documents>;
+export type NewDocument = InferInsertModel<typeof documents>;
+export type MemoryThread = InferSelectModel<typeof memoryThreads>;
+export type NewMemoryThread = InferInsertModel<typeof memoryThreads>;
+export type Embedding = InferSelectModel<typeof embeddings>;
+export type NewEmbedding = InferInsertModel<typeof embeddings>;
+export type AgentState = InferSelectModel<typeof agentStates>;
+export type NewAgentState = InferInsertModel<typeof agentStates>;
+export type WorkflowStep = InferSelectModel<typeof workflowSteps>;
+export type NewWorkflowStep = InferInsertModel<typeof workflowSteps>;
+export type TerminalSession = InferSelectModel<typeof terminalSessions>;
+export type NewTerminalSession = InferInsertModel<typeof terminalSessions>;
+export type BlogPost = InferSelectModel<typeof blogPosts>;
+export type NewBlogPost = InferInsertModel<typeof blogPosts>;
+export type MdxDocument = InferSelectModel<typeof mdxDocuments>;
+export type NewMdxDocument = InferInsertModel<typeof mdxDocuments>;
+export type Content = InferSelectModel<typeof contentTable>;
+export type NewContent = InferInsertModel<typeof contentTable>;
+export type GqlCache = InferSelectModel<typeof gqlCache>;
+export type NewGqlCache = InferInsertModel<typeof gqlCache>;
+export type File = InferSelectModel<typeof files>;
+export type NewFile = InferInsertModel<typeof files>;
+export type VectorEmbedding = InferSelectModel<typeof vectorEmbeddings>;
+export type NewVectorEmbedding = InferInsertModel<typeof vectorEmbeddings>;
+export type WorkflowExecution = InferSelectModel<typeof workflowExecutions>;
+export type NewWorkflowExecution = InferInsertModel<typeof workflowExecutions>;
+export type CacheEntry = InferSelectModel<typeof cacheEntries>;
+export type NewCacheEntry = InferInsertModel<typeof cacheEntries>;
+export type DurableObjectSession = InferSelectModel<
+  typeof durableObjectSessions
+>;
+export type NewDurableObjectSession = InferInsertModel<
+  typeof durableObjectSessions
+>;
+export type WorkerAnalytics = InferSelectModel<typeof workerAnalytics>;
+export type NewWorkerAnalytics = InferInsertModel<typeof workerAnalytics>;
 export type Trace = InferSelectModel<typeof traces>;
 export type NewTrace = InferInsertModel<typeof traces>;
+export type FileTreeNode = InferSelectModel<typeof fileTreeNodes>;
+export type NewFileTreeNode = InferInsertModel<typeof fileTreeNodes>;
 export type Span = InferSelectModel<typeof spans>;
 export type NewSpan = InferInsertModel<typeof spans>;
 export type Event = InferSelectModel<typeof events>;
 export type NewEvent = InferInsertModel<typeof events>;
-export type ModelPerformance = InferSelectModel<typeof modelPerformance>;
-export type NewModelPerformance = InferInsertModel<typeof modelPerformance>;
-export type ModelCosts = InferSelectModel<typeof modelCosts>;
-export type NewModelCosts = InferInsertModel<typeof modelCosts>;
-export type ModelEvaluation = InferSelectModel<typeof modelEvaluations>;
-export type NewModelEvaluation = InferInsertModel<typeof modelEvaluations>;
-export type EvaluationMetrics = InferSelectModel<typeof evaluationMetrics>;
-export type NewEvaluationMetrics = InferInsertModel<typeof evaluationMetrics>;
-export type EvaluationExamples = InferSelectModel<typeof evaluationExamples>;
-export type NewEvaluationExamples = InferInsertModel<typeof evaluationExamples>;
-export type DatabaseConnection = InferSelectModel<typeof databaseConnections>;
-export type NewDatabaseConnection = InferInsertModel<
-  typeof databaseConnections
->;
-export type DatabaseTransaction = InferSelectModel<typeof databaseTransactions>;
-export type NewDatabaseTransaction = InferInsertModel<
-  typeof databaseTransactions
->;
-export type DatabaseQuery = InferSelectModel<typeof databaseQueries>;
-export type NewDatabaseQuery = InferInsertModel<typeof databaseQueries>;
-export type ScheduledTask = InferSelectModel<typeof scheduledTasks>;
-export type NewScheduledTask = InferInsertModel<typeof scheduledTasks>;
-export type ScheduledTaskRun = InferSelectModel<typeof scheduledTaskRuns>;
-export type NewScheduledTaskRun = InferInsertModel<typeof scheduledTaskRuns>;
+export type Task = InferSelectModel<typeof tasks>;
+export type NewTask = InferInsertModel<typeof tasks>;
+
+// =========================
+// VALIDATION FUNCTIONS (Zod)
+// =========================
+// Example for users table:
+
+export function validateUser(data: unknown): User {
+  return UserSchema.parse(data);
+}
+export function validateAccount(data: unknown): Account {
+  return AccountSchema.parse(data);
+}
+export function validateSession(data: unknown): Session {
+  return SessionSchema.parse(data);
+}
+export function validateVerificationToken(data: unknown): VerificationToken {
+  return VerificationTokenSchema.parse(data);
+}
+export function validateModel(data: unknown): Model {
+  return ModelSchema.parse(data);
+}
+export function validateTool(data: unknown): Tool {
+  return ToolSchema.parse(data);
+}
+export function validateAgent(data: unknown): Agent {
+  return AgentSchema.parse(data);
+}
+export function validateThread(data: unknown): Thread {
+  return ThreadSchema.parse(data);
+}
+export function validateMessage(data: unknown): Message {
+  return MessageSchema.parse(data);
+}
+export function validateWorkflow(data: unknown): Workflow {
+  return WorkflowSchema.parse(data);
+}
+export function validateNetwork(data: unknown): Network {
+  return NetworkSchema.parse(data);
+}
+export function validateAppBuilderProject(data: unknown): AppBuilderProject {
+  return AppBuilderProjectSchema.parse(data);
+}
+export function validateApp(data: unknown): App {
+  return AppSchema.parse(data);
+}
+export function validateAppCodeBlock(data: unknown): AppCodeBlock {
+  const parsed = AppCodeBlockSchema.parse(data);
+  return {
+    ...parsed,
+    order: parsed.order ?? 0,
+  };
+}
+export function validateIntegration(data: unknown): Integration {
+  const parsed = IntegrationSchema.parse(data);
+  return {
+    ...parsed,
+    status: parsed.status ?? '',
+  };
+}
+export function validateProvider(data: unknown): Provider {
+  return ProviderSchema.parse(data);
+}
+export function validateAgentPersona(data: unknown): AgentPersona {
+  return AgentPersonaSchema.parse(data);
+}
+export function validateAgentTool(data: unknown): AgentTool {
+  return AgentToolSchema.parse(data);
+}
+export function validateSetting(data: unknown): Setting {
+  return SettingSchema.parse(data);
+}
+export function validateDocument(data: unknown): Document {
+  return DocumentSchema.parse(data);
+}
+export function validateMemoryThread(data: unknown): MemoryThread {
+  return MemoryThreadSchema.parse(data);
+}
+export function validateEmbedding(data: unknown): Embedding {
+  return EmbeddingSchema.parse(data);
+}
+export function validateAgentState(data: unknown): AgentState {
+  return AgentStateSchema.parse(data);
+}
+export function validateWorkflowStep(data: unknown): WorkflowStep {
+  return WorkflowStepSchema.parse(data);
+}
+export function validateTerminalSession(data: unknown): TerminalSession {
+  return TerminalSessionSchema.parse(data);
+}
+export function validateBlogPost(data: unknown): BlogPost {
+  return BlogPostSchema.parse(data);
+}
+export function validateMdxDocument(data: unknown): MdxDocument {
+  return MdxDocumentSchema.parse(data);
+}
+export function validateContent(data: unknown): Content {
+  return ContentSchema.parse(data);
+}
+export function validateGqlCache(data: unknown): GqlCache {
+  return GqlCacheSchema.parse(data);
+}
+export function validateFile(data: unknown): File {
+  return FileSchema.parse(data);
+}
+export function validateVectorEmbedding(data: unknown): VectorEmbedding {
+  return VectorEmbeddingSchema.parse(data);
+}
+export function validateWorkflowExecution(data: unknown): WorkflowExecution {
+  return WorkflowExecutionSchema.parse(data);
+}
+export function validateCacheEntry(data: unknown): CacheEntry {
+  return CacheEntrySchema.parse(data);
+}
+export function validateDurableObjectSession(
+  data: unknown
+): DurableObjectSession {
+  return DurableObjectSessionSchema.parse(data);
+}
+export function validateWorkerAnalytics(data: unknown): WorkerAnalytics {
+  return WorkerAnalyticsSchema.parse(data);
+}
+export function validateTrace(data: unknown): Trace {
+  return TraceSchema.parse(data);
+}
+
+// Zod schemas for all tables
+export const UserSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  email: z.string().email(),
+  emailVerified: z.number().nullable(),
+  image: z.string().nullable(),
+  role: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AccountSchema = z.object({
+  userId: z.string(),
+  type: z.string(),
+  provider: z.string(),
+  providerAccountId: z.string(),
+  refresh_token: z.string().nullable(),
+  access_token: z.string().nullable(),
+  expires_at: z.number().nullable(),
+  token_type: z.string().nullable(),
+  scope: z.string().nullable(),
+  id_token: z.string().nullable(),
+  session_state: z.string().nullable(),
+});
+export const SessionSchema = z.object({
+  sessionToken: z.string(),
+  userId: z.string(),
+  expires: z.number(),
+});
+export const VerificationTokenSchema = z.object({
+  identifier: z.string(),
+  token: z.string(),
+  expires: z.number(),
+});
+export const ModelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  provider: z.string(),
+  modelId: z.string(),
+  capabilities: z.string().nullable(),
+  maxTokens: z.number().nullable(),
+  inputCostPer1k: z.string().nullable(),
+  outputCostPer1k: z.string().nullable(),
+  contextWindow: z.number().nullable(),
+  isActive: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const ToolSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  category: z.string(),
+  schema: z.string().nullable(),
+  isActive: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AgentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  systemPrompt: z.string().nullable(),
+  modelId: z.string().nullable(),
+  tools: z.string().nullable(),
+  userId: z.string().nullable(),
+  isActive: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const ThreadSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  userId: z.string(),
+  agentId: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const MessageSchema = z.object({
+  id: z.string(),
+  threadId: z.string(),
+  role: z.string(),
+  content: z.string().nullable(),
+  toolInvocations: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+});
+export const WorkflowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  definition: z.string().nullable(),
+  userId: z.string().nullable(),
+  isActive: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const NetworkSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  configuration: z.string().nullable(),
+  userId: z.string().nullable(),
+  isActive: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AppBuilderProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  configuration: z.string().nullable(),
+  userId: z.string().nullable(),
+  isActive: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AppSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  type: z.string(),
+  code: z.string(),
+  parametersSchema: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AppCodeBlockSchema = z.object({
+  id: z.string(),
+  appId: z.string(),
+  language: z.string(),
+  code: z.string(),
+  description: z.string().nullable(),
+  order: z.number().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const IntegrationSchema = z.object({
+  id: z.string(),
+  userId: z.string().nullable(),
+  provider: z.string(),
+  name: z.string().nullable(),
+  config: z.string().nullable(),
+  credentials: z.string().nullable(),
+  status: z.string().nullable(),
+  lastSyncedAt: z.number().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const ProviderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  apiKey: z.string().nullable(),
+  baseUrl: z.string().nullable(),
+  status: z.string(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AgentPersonaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  systemPromptTemplate: z.string(),
+  modelSettings: z.string().nullable(),
+  capabilities: z.string().nullable(),
+  tags: z.string().nullable(),
+  version: z.number().nullable(),
+  isEnabled: z.boolean().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const AgentToolSchema = z.object({
+  agentId: z.string(),
+  toolId: z.string(),
+  createdAt: z.number(),
+});
+export const SettingSchema = z.object({
+  category: z.string(),
+  key: z.string(),
+  value: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const DocumentSchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  embedding: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  documentType: z.string().nullable(),
+  userId: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const MemoryThreadSchema = z.object({
+  id: z.string(),
+  agentId: z.string().nullable(),
+  networkId: z.string().nullable(),
+  name: z.string(),
+  summary: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const EmbeddingSchema = z.object({
+  id: z.string(),
+  vector: z.instanceof(Uint8Array),
+  model: z.string().nullable(),
+  dimensions: z.number().nullable(),
+  createdAt: z.number(),
+});
+export const AgentStateSchema = z.object({
+  memoryThreadId: z.string(),
+  agentId: z.string(),
+  stateData: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const WorkflowStepSchema = z.object({
+  id: z.string(),
+  workflowId: z.string(),
+  agentId: z.string(),
+  input: z.string().nullable(),
+  threadId: z.string(),
+  status: z.string(),
+  result: z.string().nullable(),
+  error: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const TerminalSessionSchema = z.object({
+  id: z.string(),
+  appId: z.string(),
+  userId: z.string(),
+  command: z.string(),
+  output: z.string().nullable(),
+  status: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const BlogPostSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  excerpt: z.string().nullable(),
+  authorId: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  tags: z.string().nullable(),
+  featured: z.boolean().nullable(),
+  publishedAt: z.number().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const MdxDocumentSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  excerpt: z.string().nullable(),
+  userId: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const ContentSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string().nullable(),
+  subtitle: z.string().nullable(),
+  description: z.string().nullable(),
+  contentData: z.string().nullable(),
+  data: z.string().nullable(),
+  imageUrl: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const GqlCacheSchema = z.object({
+  id: z.string(),
+  query: z.string(),
+  variables: z.string().nullable(),
+  response: z.string(),
+  createdAt: z.number(),
+});
+export const FileSchema = z.object({
+  id: z.string(),
+  appId: z.string().nullable(),
+  parentId: z.string().nullable(),
+  name: z.string(),
+  type: z.string(),
+  content: z.string().nullable(),
+  r2ObjectKey: z.string().nullable(),
+  r2Bucket: z.string().nullable(),
+  mimeType: z.string().nullable(),
+  size: z.number().nullable(),
+  userId: z.string().nullable(),
+  associatedEntity: z.string().nullable(),
+  associatedEntityId: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const VectorEmbeddingSchema = z.object({
+  id: z.string(),
+  entityType: z.string(),
+  entityId: z.string(),
+  vector: z.string(),
+  vectorizeIndex: z.string().nullable(),
+  vectorizeId: z.string().nullable(),
+  model: z.string(),
+  dimensions: z.number(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+});
+export const WorkflowExecutionSchema = z.object({
+  id: z.string(),
+  workflowId: z.string(),
+  userId: z.string(),
+  status: z.string(),
+  currentStepIndex: z.number().nullable(),
+  input: z.string().nullable(),
+  output: z.string().nullable(),
+  error: z.string().nullable(),
+  startedAt: z.number().nullable(),
+  completedAt: z.number().nullable(),
+  duration: z.number().nullable(),
+  triggeredBy: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const CacheEntrySchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  namespace: z.string(),
+  kvKey: z.string().nullable(),
+  dataType: z.string(),
+  size: z.number().nullable(),
+  ttl: z.number().nullable(),
+  expiresAt: z.number().nullable(),
+  hitCount: z.number().nullable(),
+  lastAccessed: z.number().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const DurableObjectSessionSchema = z.object({
+  id: z.string(),
+  objectId: z.string(),
+  objectClass: z.string(),
+  namespace: z.string(),
+  state: z.string().nullable(),
+  lastActivity: z.number().nullable(),
+  connectionCount: z.number().nullable(),
+  isActive: z.boolean().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const WorkerAnalyticsSchema = z.object({
+  id: z.string(),
+  workerName: z.string(),
+  route: z.string().nullable(),
+  method: z.string().nullable(),
+  statusCode: z.number().nullable(),
+  duration: z.number().nullable(),
+  cpuTime: z.number().nullable(),
+  memoryUsed: z.number().nullable(),
+  requestSize: z.number().nullable(),
+  responseSize: z.number().nullable(),
+  country: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  timestamp: z.number(),
+  metadata: z.string().nullable(),
+});
+export const TraceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  startTime: z.number(),
+  endTime: z.number().nullable(),
+  durationMs: z.number().nullable(),
+  status: z.string(),
+  userId: z.string().nullable(),
+  sessionId: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export const FileTreeNodeSchema = z.object({
+  id: z.string(),
+  parentId: z.string().nullable(),
+  name: z.string(),
+  type: z.string(),
+  order: z.number(),
+  appId: z.string().nullable(),
+  metadata: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export function validateFileTreeNode(data: unknown): FileTreeNode {
+  return FileTreeNodeSchema.parse(data);
+}

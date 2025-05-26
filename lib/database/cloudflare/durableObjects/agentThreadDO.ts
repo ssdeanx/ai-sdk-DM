@@ -1,44 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import { generateId } from 'ai';
-import { z } from 'zod';
-
-/**
- * Zod schemas for AgentThreadDO operations
- */
-const MessageSchema = z.object({
-  id: z.string().optional(),
-  threadId: z.string(),
-  role: z.enum(['user', 'assistant', 'system', 'tool']),
-  content: z.string(),
-  metadata: z.record(z.unknown()).optional(),
-  toolCalls: z
-    .array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        args: z.record(z.unknown()),
-      })
-    )
-    .optional(),
-  toolResults: z
-    .array(
-      z.object({
-        toolCallId: z.string(),
-        result: z.unknown(),
-      })
-    )
-    .optional(),
-});
-
-const AIStateSchema = z.object({
-  threadId: z.string(),
-  messages: z.array(MessageSchema),
-  metadata: z.record(z.unknown()).optional(),
-  agentConfig: z.record(z.unknown()).optional(),
-});
-
-type Message = z.infer<typeof MessageSchema>;
-type AIState = z.infer<typeof AIStateSchema>;
+import {
+  ChatMessageSchema,
+  type ChatMessage,
+  AgentStateSchema,
+  type AgentState,
+} from './schema';
 
 /**
  * AgentThreadDO
@@ -48,8 +15,8 @@ type AIState = z.infer<typeof AIStateSchema>;
  */
 export class AgentThreadDO extends DurableObject {
   private threadId: string;
-  private messages: Message[] = [];
-  private aiState: AIState | null = null;
+  private messages: ChatMessage[] = [];
+  private aiState: AgentState | null = null;
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env);
@@ -111,7 +78,7 @@ export class AgentThreadDO extends DurableObject {
       typeof message === 'object' && message !== null
         ? (message as Record<string, unknown>)
         : {};
-    const validatedMessage = MessageSchema.parse({
+    const validatedMessage = ChatMessageSchema.parse({
       ...messageObj,
       id: typeof messageObj.id === 'string' ? messageObj.id : generateId(),
       threadId: this.threadId,
@@ -124,9 +91,10 @@ export class AgentThreadDO extends DurableObject {
   /**
    * Get message history for the thread.
    */
-  async getMessages(): Promise<Message[]> {
+  async getMessages(): Promise<ChatMessage[]> {
     if (this.messages.length === 0) {
-      this.messages = (await this.ctx.storage.get('messages')) || [];
+      const stored = await this.ctx.storage.get('messages');
+      if (stored) this.messages = stored as ChatMessage[];
     }
     return this.messages;
   }
@@ -148,9 +116,9 @@ export class AgentThreadDO extends DurableObject {
       typeof state === 'object' && state !== null
         ? (state as Record<string, unknown>)
         : {};
-    const validatedState = AIStateSchema.parse({
+    const validatedState = AgentStateSchema.parse({
       ...stateObj,
-      threadId: this.threadId,
+      memoryThreadId: this.threadId,
     });
 
     this.aiState = validatedState;
@@ -160,9 +128,10 @@ export class AgentThreadDO extends DurableObject {
   /**
    * Load Vercel AI SDK AIState.
    */
-  async loadAIState(): Promise<AIState | null> {
+  async loadAIState(): Promise<AgentState | null> {
     if (!this.aiState) {
-      this.aiState = (await this.ctx.storage.get('aiState')) || null;
+      const stored = await this.ctx.storage.get('aiState');
+      if (stored) this.aiState = AgentStateSchema.parse(stored);
     }
     return this.aiState;
   }
@@ -173,8 +142,8 @@ export class AgentThreadDO extends DurableObject {
   async getThread(): Promise<{
     id: string;
     messageCount: number;
-    lastMessage?: Message;
-    aiState?: AIState;
+    lastMessage?: ChatMessage;
+    aiState?: AgentState;
   }> {
     const messages = await this.getMessages();
     const aiState = await this.loadAIState();
