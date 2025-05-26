@@ -6,6 +6,8 @@ import tseslint from 'typescript-eslint';
 import eslintPluginReact from 'eslint-plugin-react';
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'; // <-- Import Prettier recommended config
+// @ts-ignore
+import eslintPluginDrizzle from 'eslint-plugin-drizzle';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +39,8 @@ export default [
       'pnpm-workspace.yaml',
       '*.md',
       '.dependency-cruiser.js',
+      'workers/dist',
+      'workers/node_modules',
     ],
   },
 
@@ -58,8 +62,9 @@ export default [
     plugins: {
       react: eslintPluginReact,
       'react-hooks': eslintPluginReactHooks,
-      // 'prettier' plugin is included via eslintPluginPrettierRecommended
+      drizzle: eslintPluginDrizzle, // <-- Now this is defined
     },
+
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'warn',

@@ -223,12 +223,12 @@ export class TerminalSessionDO extends DurableObject {
     const data = await request.json();
     const { input } = TerminalInputSchema.parse(data);
 
-    const output: TerminalOutput = {
+    const output = TerminalOutputSchema.parse({
       sessionId: this.sessionId,
       type: 'system',
       content: `Input: ${input}`,
       timestamp: Date.now(),
-    };
+    });
 
     this.outputBuffer.push(output);
     await this.ctx.storage.put('outputBuffer', this.outputBuffer);
@@ -389,12 +389,12 @@ export class TerminalSessionDO extends DurableObject {
 
       await this.ctx.storage.put('commandHistory', this.commandHistory);
 
-      const terminalOutput: TerminalOutput = {
+      const terminalOutput = TerminalOutputSchema.parse({
         sessionId: this.sessionId,
         type: 'stdout',
         content: output,
         timestamp: now,
-      };
+      });
 
       this.outputBuffer.push(terminalOutput);
       await this.ctx.storage.put('outputBuffer', this.outputBuffer);

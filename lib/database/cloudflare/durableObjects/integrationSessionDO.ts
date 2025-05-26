@@ -200,14 +200,14 @@ export class IntegrationSessionDO extends DurableObject {
     await this.ctx.storage.put('session', this.session);
 
     // Initialize metrics
-    this.metrics = {
+    this.metrics = ConnectionMetricsSchema.parse({
       sessionId: this.sessionId,
       totalRequests: 0,
       successfulRequests: 0,
       failedRequests: 0,
       avgResponseTime: 0,
       errors: [],
-    };
+    });
     await this.ctx.storage.put('metrics', this.metrics);
 
     this.broadcastToConnections('session-created', this.session);
@@ -330,7 +330,7 @@ export class IntegrationSessionDO extends DurableObject {
     if (!this.metrics) {
       const storedMetrics = await this.ctx.storage.get('metrics');
       if (storedMetrics) {
-        this.metrics = storedMetrics as ConnectionMetrics;
+        this.metrics = ConnectionMetricsSchema.parse(storedMetrics);
       }
     }
 
@@ -429,14 +429,14 @@ export class IntegrationSessionDO extends DurableObject {
     data?: Record<string, unknown>,
     error?: string
   ): Promise<IntegrationEvent> {
-    const event: IntegrationEvent = {
+    const event = IntegrationEventSchema.parse({
       id: generateId(),
       sessionId: this.sessionId,
       type,
       data,
       error,
       timestamp: Date.now(),
-    };
+    });
 
     this.events.push(event);
 
@@ -506,7 +506,7 @@ export class IntegrationSessionDO extends DurableObject {
     if (!this.metrics) {
       const storedMetrics = await this.ctx.storage.get('metrics');
       if (storedMetrics) {
-        this.metrics = storedMetrics as ConnectionMetrics;
+        this.metrics = ConnectionMetricsSchema.parse(storedMetrics);
       }
     }
     return this.metrics;

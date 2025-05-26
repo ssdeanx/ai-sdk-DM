@@ -1162,6 +1162,26 @@ export const scheduledTaskRuns = sqliteTable('scheduled_task_runs', {
     .$defaultFn(() => Date.now()),
 });
 
+/**
+ * Table Metadata
+ * Tracks schema versions, migration status, and table documentation for observability and maintainability.
+ * Generated on 2025-05-25
+ */
+export const tableMetadata = sqliteTable('table_metadata', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  tableName: text('table_name').notNull().unique(),
+  description: text('description'),
+  version: integer('version').notNull().default(1),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+  updatedAt: integer('updated_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 // =============================================================================
 // Relations
 // =============================================================================

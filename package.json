@@ -193,6 +193,7 @@
     "drizzle-orm": "^0.43.1",
     "drizzle-zod": "^0.8.2",
     "embla-carousel-react": "8.6.0",
+    "eslint-plugin-drizzle": "^0.2.3",
     "eslint4b": "^7.32.0",
     "exit-hook": "^4.0.0",
     "fast-xml-parser": "^5.2.3",

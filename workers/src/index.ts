@@ -21,6 +21,8 @@ import { streamText, CoreMessage, Tool } from 'ai';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../lib/database/cloudflare/d1/schema';
+import { bindingValidationMiddleware } from './middleware/bindings';
+import { MemoryFactory } from '../../lib/memory/cloudflare/factory';
 
 // Import Durable Object classes
 export { AgentThreadDO } from '../../lib/database/cloudflare/durableObjects/agentThreadDO';
@@ -171,6 +173,20 @@ app.use(
 		credentials: true,
 	}),
 );
+
+// Validate environment bindings
+app.use('*', bindingValidationMiddleware);
+
+// Initialize MemoryFactory for request context
+app.use('*', async (c, next) => {
+	try {
+		const factory = new MemoryFactory(c.env);
+		c.set('memoryFactory', factory);
+	} catch (error) {
+		return c.json({ error: 'Internal Server Error - failed to initialize services' }, 500);
+	}
+	await next();
+});
 
 // =============================================================================
 // Utility Functions
